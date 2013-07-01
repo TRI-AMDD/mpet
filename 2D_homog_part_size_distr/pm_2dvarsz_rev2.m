@@ -1,9 +1,12 @@
-function [t,cpcs,disc,psd,ffvec,vvec] = pm_2dvarsz_rev1(disc,psd)
+function [t,cpcs,csmat,disc,psd,ffvec,vvec] = pm_2dvarsz_rev2(psd,disc)
 
-% This script simulates a 2D electrode with variable size particles.  The
+% This script simulates a 1D electrode with variable size particles.  The
 % particles are all homogeneous and use the regular solution model (ONLY).
 % The purpose of this script is to simulate the case of a simple constant
 % non-monotonic OCP for all particles, with particle size effects.
+
+% Each volume contains a number of particles taken from a distribution of
+% particle sizes.  A function for area and volume are required.
 
 % The user enters a C-rate and particle size distribution.  The area:volume
 % ratio can be user defined but is assumed to be either plate particles or
@@ -21,8 +24,8 @@ F = e*Na;           % Faraday's number
 % SET DIMENSIONAL VALUES HERE
 
 % Discharge settings
-dim_crate = .01;                    % C-rate (electrode capacity per hour)
-dim_io = 1;                         % Exchange current density, A/m^2 (0.1 for H2/Pt)
+dim_crate = 1;                    % C-rate (electrode capacity per hour)
+dim_io = .1;                         % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Electrode properties
 Lx = 50e-6;                         % electrode thickness, m
@@ -57,7 +60,7 @@ alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
 Nx = 20;                            % Number disc. in x direction
-Ny = 10;                            % Number disc. in y direction
+numpart = 100;                       % Particles per volume
 tsteps = 200;                       % Number disc. in time
 ffend = .4;                          % Final filling fraction
 
@@ -66,15 +69,16 @@ ffend = .4;                          % Final filling fraction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % First we take care of our particle size distributions
-num_particles = Nx * Ny;
-if (max(size(psd))>1)
-    part_size = psd;
-    ap = 3.475 ./ part_size;
+if max(size(psd))==1
+    totalpart = Nx * numpart;
+    psd = abs(normrnd(mean,stddev,totalpart,1));
+    pareavec = (4*pi).*psd.^2;
+    pvolvec = (4/3).*pi.*psd.^3;
 else
-    part_size = abs(normrnd(mean,stddev,num_particles,1));
-    ap = 3.475 ./ part_size;     % Area:volume ratio for plate particles
+    totalpart = disc.steps*disc.numpart;
+    pareavec = (4*pi).*psd.^2;
+    pvolvec = (4/3).*pi.*psd.^3;
 end
-psd = part_size;
 
 % Now we calculate the dimensionless quantities used in the simulation
 td = Lx^2 / Damb;       % Diffusive time
@@ -87,29 +91,24 @@ if currset ~= 0
 else    
     tr = linspace(0,30,100);
 end
-io = (ap .* dim_io .* td) ./ (F .* csmax);
+io = ((pareavec./pvolvec) .* dim_io .* td) ./ (F .* csmax);
 beta = ((1-poros)*Lp*csmax) / (poros*c0);
 
 % Need some noise
-noise = 0.0000001*randn(max(size(tr)),Nx*Ny);
-% noise = zeros(max(size(tr)),Nx*Ny);
-
-% Material properties
-% kappa = dim_kappa ./ (k*T*rhos*part_size.^2);
+% noise = 0.0000001*randn(max(size(tr)),Nx*Ny);
+noise = zeros(max(size(tr)),totalpart);
 a = dim_a / (k*T);
-% b = dim_b / (k*T*rhos);
 
 % Set the discretization values
 if ~isa(disc,'struct')
     sf = Lsep/Lx;
     ssx = ceil(sf*Nx);
-    ss = ssx*Ny;
-    disc = struct('ss',ss,'steps',Nx*Ny,...
-                    'len',2*(ss+Nx*Ny)+Nx*Ny+1, ...
-                    'sol',2*(ss+Nx*Ny)+1,'Nx',Nx,'Ny',Ny,'sf',sf);
+    ss = ssx;
+    disc = struct('ss',ss,'steps',Nx,'numpart',numpart,...
+                    'len',2*(ss+Nx)+totalpart+1, ...
+                    'sol',2*(ss+Nx)+1,'Nx',Nx,'sf',sf);                      
 else
     Nx = disc.Nx;
-    Ny = disc.Ny;
 end
 
 cs0 = 0.01;                 
@@ -122,25 +121,20 @@ cpcsinit(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = phi_init;
 cpcsinit(disc.sol:end-1) = cs0;
 cpcsinit(end) = phi_init;
 
-% Create a grid for the porosity
-pxg = ones(Ny,ssx+Nx+1);
-pyg = ones(Ny+1,ssx+Nx);
-pxg(:,ssx+1:end) = poros;
-pyg(:,ssx+1:end) = poros;
-
-% Bruggeman relation
-pxg = pxg.^(3/2);
-pyg = pyg.^(3/2);
-
 % Before we can call the solver, we need a Mass matrix
-M = genMass(disc,poros,Nx,Ny,beta,tp);
+M = genMass(disc,poros,Nx,beta,tp,pvolvec);
+
+% Porosity vector
+porosvec = ones(disc.ss+disc.steps+1,1);
+porosvec(disc.ss+1:end) = poros;
+porosvec = porosvec.^(3/2);     % Bruggeman
 
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
-[t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,...
-                 Nx,Ny,ssx,disc,tp,zp,zm,nDp,nDm,pxg,pyg,tr,beta,ffend,noise);
+[t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -153,14 +147,25 @@ vvec = Vstd - (k*T/e)*cpcs(:,end);
 % the particle.  That is, we ignore the surface wetting as it does not move
 ffvec = zeros(max(size(t)),1);
 for i=1:max(size(t))
-    ffvec(i) = sum(cpcs(i,disc.sol:end-1))/(Nx*Ny);
+    ffvec(i) = sum(pvolvec.*cpcs(i,disc.sol:end-1)')/sum(pvolvec);
 end
+
+% Create cs matrix
+csmat = zeros(max(size(t)),Nx,numpart);
+for i=1:max(size(t))
+    for j=1:Nx
+        for k=0:numpart-1
+            csmat(i,j,k+1) = cpcs(i,disc.sol+(j-1)*numpart+k);
+        end
+    end
+end
+
 disp('Finished.')
 
 return;
 
-function val = calcRHS(t,cpcs,io,currset,a,alpha,...
-                 Nx,Ny,ssx,disc,tp,zp,zm,nDp,nDm,pxg,pyg,tr,beta,ffend,noise)
+function val = calcRHS(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -172,50 +177,33 @@ phi0 = cpcs(end);
 csvec = cpcs(disc.sol:end-1);
 
 % MASS CONSERVATION - ELECTROLYTE DIFFUSION
-cxtmp = zeros(Ny,ssx+Nx+2);
-cytmp = zeros(Ny+2,ssx+Nx);
-cxtmp(:,2:end-1) = reshape(cvec,Ny,ssx+Nx);
-cytmp(2:end-1,:) = reshape(cvec,Ny,ssx+Nx);
-% No flux conditions
-cxtmp(:,end) = cxtmp(:,end-1);
-cytmp(1,:) = cytmp(2,:);
-cytmp(end,:) = cytmp(end-1,:);
-% Flux into separator
-cxtmp(:,1) = cxtmp(:,2) + currset*beta*(1-tp)/Nx;
-% Get fluxes, multiply by porosity
-cxflux = -pxg.*diff(cxtmp,1,2).*Nx;
-cyflux = -pyg.*diff(cytmp,1,1).*Ny;
-% Divergence of the fluxes
-val(1:disc.ss+disc.steps) = reshape(-diff(cxflux,1,2)*Nx - ...
-                                diff(cyflux,1,1)*Ny,disc.ss+disc.steps,1);
-                            
+ctmp = zeros(disc.ss+disc.steps+2,1);
+ctmp(2:end-1) = cvec;
+% Boundary conditions
+ctmp(1) = ctmp(2) + currset*beta*(1-tp)/Nx;
+ctmp(end) = ctmp(end-1);
+% Porosity effects
+cflux = -porosvec.*diff(ctmp).*Nx;
+val(1:disc.ss+disc.steps) = -diff(cflux).*Nx;
+
 % CHARGE CONSERVATION - DIVERGENCE OF CURRENT DENSITY
-phixtmp = zeros(Ny,ssx+Nx+2);
-phiytmp = zeros(Ny+2,ssx+Nx);
-phixtmp(:,2:end-1) = reshape(phivec,Ny,ssx+Nx);
-phiytmp(2:end-1,:) = reshape(phivec,Ny,ssx+Nx);
-% No flux conditions
-phixtmp(:,end) = phixtmp(:,end-1);
-phiytmp(1,:) = phiytmp(2,:);
-phiytmp(end,:) = phiytmp(end-1,:);
-% Potential BC
-phixtmp(:,1) = phi0;
-% Average c values for current density on boundaries
-cavgx = (cxtmp(:,1:end-1)+cxtmp(:,2:end))/2;
-cavgy = (cytmp(1:end-1,:)+cytmp(2:end,:))/2;
-cdx = -((zp*nDp-zp*nDm).*diff(cxtmp,1,2).*Nx)- ...
-            ((zp*nDp+zm*nDm).*cavgx.*(diff(phixtmp,1,2).*Nx));
-cdx = cdx.*pxg;
-cdy = -((zp*nDp-zp*nDm).*diff(cytmp,1,1).*Ny)- ...
-            ((zp*nDp+zm*nDm).*cavgy.*(diff(phiytmp,1,1).*Ny));
-cdy = cdy.*pyg;
-val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = ...
-        reshape(-diff(cdx,1,2).*Nx-diff(cdy,1,1).*Ny,disc.ss+disc.steps,1);                           
+phitmp = zeros(disc.ss+disc.steps+2,1);
+phitmp(2:end-1) = phivec;
+% Boundary conditions
+phitmp(1) = phi0;
+phitmp(end) = phitmp(end-1);
+% Current density
+cavg = (ctmp(1:end-1)+ctmp(2:end))/2;
+currdens = -((zp*nDp-zm*nDm).*diff(ctmp).*Nx) - ...
+                ((zp*nDp+zm*nDm).*cavg.*diff(phitmp).*Nx);
+val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx;                                                            
 
 % REACTION RATE OF PARTICLES
+rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
+rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
 muvec = calcmu(csvec,a);
-ecd = io.*sqrt(exp(muvec)).*(1-csvec);
-eta = muvec-phivec(disc.ss+1:end);
+ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
+eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
 val(disc.sol:end-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 val(disc.sol:end-1) = val(disc.sol:end-1) + interp1q(tr,noise,t)';
 
@@ -232,29 +220,46 @@ mu = log(cs./(1-cs))+a.*(1-2.*cs);
 
 return;
 
-function M = genMass(disc,poros,Nx,Ny,beta,tp)
-    
+function M = genMass(disc,poros,Nx,beta,tp,pvolvec)
+
 % Initialize
 M = sparse(disc.len,disc.len);
 
 % Electrolyte terms
 M(1:disc.ss,1:disc.ss) = speye(disc.ss);
 M(disc.ss+1:disc.ss+disc.steps,disc.ss+1:disc.ss+disc.steps) = poros*speye(disc.steps);
-M(disc.ss+1:disc.ss+disc.steps,disc.sol:end-1) = beta*(1-tp)*speye(disc.steps);
+% Sink terms
+numpart = max(size(pvolvec))/Nx;
+for i=1:Nx
+    for j=0:numpart-1
+        M(disc.ss+i,...
+             disc.sol+(i-1)*numpart+j) = beta*(1-tp)*pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart));
+    end
+end
 
 % Potential terms
-M(2*disc.ss+disc.steps+1:2*(disc.ss+disc.steps),disc.sol:end-1) = beta.*speye(disc.steps);
+for i=1:Nx
+    for j=0:numpart-1
+        M(2*disc.ss+disc.steps+i,...
+             disc.sol+(i-1)*numpart+j) = beta*pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart));
+    end
+end
 
 % Solid particles
-M(disc.sol:end-1,disc.sol:end-1) = speye(disc.steps);
+M(disc.sol:end-1,disc.sol:end-1) = speye(Nx*numpart,Nx*numpart);
 
 % Current conservation
-M(end,disc.sol:end-1) = 1./(Nx*Ny);
+for i=1:Nx
+    for j=0:numpart-1
+        M(end,disc.sol+(i-1)*numpart+j) = ...
+            pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart))/Nx;
+    end
+end
 
 return;
 
-function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,...
-                 Nx,Ny,ssx,disc,tp,zp,zm,nDp,nDm,pxg,pyg,tr,beta,ffend,noise)
+function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise)
                         
 value = 0;
 isterminal = 0;
@@ -266,9 +271,9 @@ dvec = [num2str(perc),' percent completed'];
 disp(dvec)      
 
 % Calculate the filling fraction 
-ffvec = sum(cpcs(disc.sol:end-1))/(Nx*Ny);
-value = ffvec - ffend;
-isterminal = 1;
-direction = 0;
+% ffvec = sum(cpcs(disc.sol:end-1))/(Nx*Ny);
+% value = ffvec - ffend;
+% isterminal = 1;
+% direction = 0;
                         
 return;
