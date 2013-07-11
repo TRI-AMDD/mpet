@@ -1,4 +1,4 @@
-function [t,cpcs,csmat,disc,psd,ffvec,vvec] = pm_2dvarsz_rev2(psd,disc)
+function [t,cpcs,csmat,disc,psd,ffvec,vvec] = mpet_homog_1d_psd_in_vol(psd,disc)
 
 % This script simulates a 1D electrode with variable size particles.  The
 % particles are all homogeneous and use the regular solution model (ONLY).
@@ -24,7 +24,7 @@ F = e*Na;           % Faraday's number
 % SET DIMENSIONAL VALUES HERE
 
 % Discharge settings
-dim_crate = 1;                    % C-rate (electrode capacity per hour)
+dim_crate = 5;                    % C-rate (electrode capacity per hour)
 dim_io = .1;                         % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Electrode properties
@@ -60,9 +60,9 @@ alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
 Nx = 20;                            % Number disc. in x direction
-numpart = 100;                       % Particles per volume
+numpart = 50;                       % Particles per volume
 tsteps = 200;                       % Number disc. in time
-ffend = .4;                          % Final filling fraction
+ffend = .8;                          % Final filling fraction
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT EDIT BELOW THIS LINE
@@ -110,6 +110,9 @@ if ~isa(disc,'struct')
 else
     Nx = disc.Nx;
 end
+% cstestvec = 0.001:0.001:0.999;
+% plot(cstestvec, calcmu(cstestvec,a))
+% return
 
 cs0 = 0.01;                 
 phi_init = calcmu(cs0,a);
@@ -228,20 +231,23 @@ M = sparse(disc.len,disc.len);
 % Electrolyte terms
 M(1:disc.ss,1:disc.ss) = speye(disc.ss);
 M(disc.ss+1:disc.ss+disc.steps,disc.ss+1:disc.ss+disc.steps) = poros*speye(disc.steps);
-% Sink terms
+
+% Mass conservation between electrolyte and solid particles
 numpart = max(size(pvolvec))/Nx;
 for i=1:Nx
     for j=0:numpart-1
-        M(disc.ss+i,...
-             disc.sol+(i-1)*numpart+j) = beta*(1-tp)*pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart));
+        M(disc.ss+i, disc.sol+(i-1)*numpart+j) = ...
+                beta*(1-tp)*pvolvec((i-1)*numpart+j+1,1) ...
+                / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
 end
 
 % Potential terms
 for i=1:Nx
     for j=0:numpart-1
-        M(2*disc.ss+disc.steps+i,...
-             disc.sol+(i-1)*numpart+j) = beta*pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart));
+        M(2*disc.ss+disc.steps+i, disc.sol+(i-1)*numpart+j) = ...
+                beta*pvolvec((i-1)*numpart+j+1,1) ...
+                / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
 end
 
@@ -252,7 +258,8 @@ M(disc.sol:end-1,disc.sol:end-1) = speye(Nx*numpart,Nx*numpart);
 for i=1:Nx
     for j=0:numpart-1
         M(end,disc.sol+(i-1)*numpart+j) = ...
-            pvolvec((i-1)*numpart+j+1,1)/sum(pvolvec((i-1)*numpart+1:i*numpart))/Nx;
+                pvolvec((i-1)*numpart+j+1,1) ...
+                / sum(pvolvec((i-1)*numpart+1:i*numpart))/Nx;
     end
 end
 
@@ -271,9 +278,9 @@ dvec = [num2str(perc),' percent completed'];
 disp(dvec)      
 
 % Calculate the filling fraction 
-% ffvec = sum(cpcs(disc.sol:end-1))/(Nx*Ny);
-% value = ffvec - ffend;
-% isterminal = 1;
-% direction = 0;
+ffvec = sum(cpcs(disc.sol:end-1))/(Nx*numpart);
+value = ffvec - ffend;
+isterminal = 1;
+direction = 0;
                         
 return;

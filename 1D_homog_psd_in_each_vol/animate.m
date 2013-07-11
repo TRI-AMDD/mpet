@@ -1,4 +1,4 @@
-function animate_rev2(t,cpcs,csmat,disc,psd,ffvec,vvec,fig,output)
+function animate(t,cpcs,csmat,disc,psd,ffvec,vvec,fig,output)
 
 close all
 tlen = max(size(t));
@@ -23,7 +23,7 @@ elseif strcmp(fig,'c')
 end
 
 if(output)
-    movie2avi(M,'C:\Users\trf\Desktop\movie.avi')    
+    movie2avi(M,'/home/raymond/movie_homog_5C.avi')    
 end
 
 
