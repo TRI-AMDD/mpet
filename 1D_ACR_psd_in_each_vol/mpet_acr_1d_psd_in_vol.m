@@ -122,7 +122,7 @@ else
     tr = linspace(0,30,100);
 end
 io = ((pareavec./pvolvec) .* dim_io .* td) ./ (F .* csmax);
-beta = ((1-poros)*Lp*csmax) / (poros*c0);
+epsbeta = ((1-poros)*Lp*csmax) / c0; % Vs/V*csmax/c0 = poros*beta
 
 % Material properties
 kappa = dim_kappa ./ (k*T*rhos*part_size.^2);
@@ -199,14 +199,14 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 %pyg = pyg.^(3/2);
 
 % Before we can call the solver, we need a Mass matrix
-M = genMass(disc,poros,part_steps,Nx,beta,tp,pvolvec);
+M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec);
 
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,kappa,a,b,alpha, ...
-                    cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,beta,ffend);
+                    cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,epsbeta,ffend);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -256,7 +256,7 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,beta,ffend)
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,epsbeta,ffend)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -280,7 +280,7 @@ ctmp(end) = ctmp(end-1);
 %cytmp(end,:) = cytmp(end-1,:);
 % Flux into separator
 %cxtmp(:,1) = cxtmp(:,2) + currset*beta*(1-tp)/Nx;
-ctmp(1) = ctmp(2) + currset*beta*(1-tp)/Nx;
+ctmp(1) = ctmp(2) + currset*epsbeta*(1-tp)/Nx;
 % Get fluxes, multiply by porosity
 cflux = -porosvec.*diff(ctmp).*Nx;
 %cxflux = -pxg.*diff(cxtmp,1,2).*Nx;
@@ -382,7 +382,7 @@ dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 
 return;
 
-function M = genMass(disc,poros,part_steps,Nx,beta,tp,pvolvec)
+function M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec)
     
 M = sparse(disc.len,disc.len);
 % Electrolyte terms
@@ -400,7 +400,7 @@ for i=1:Nx
         ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
         M(disc.ss+i, disc.sol+ind1:disc.sol+ind2) = ...
-                (beta*(1-tp))/part_steps((i-1)*numpart+1+j+1) ...
+                (epsbeta*(1-tp))/part_steps((i-1)*numpart+1+j+1) ...
                 * pvolvec((i-1)*numpart+j+1,1) ...
                 / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
@@ -416,7 +416,7 @@ for i=1:Nx
         ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
         M(2*disc.ss+disc.steps+i, disc.sol+ind1:disc.sol+ind2) = ...
-                beta/part_steps((i-1)*numpart+1+j+1) ...
+                epsbeta/part_steps((i-1)*numpart+1+j+1) ...
                 * pvolvec((i-1)*numpart+j+1,1) ...
                 / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
@@ -444,7 +444,7 @@ end
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,beta,ffend)
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,porosvec,pvolvec,tr,epsbeta,ffend)
                         
 value = 0;
 isterminal = 0;

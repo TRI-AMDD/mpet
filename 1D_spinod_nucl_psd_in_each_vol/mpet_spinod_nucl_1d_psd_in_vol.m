@@ -1,4 +1,4 @@
-function [t,cpcs,csmat,disc,psd,ffvec,vvec] = mpet_spinod_1d_psd_in_vol(psd,disc)
+function [t,cpcs,csmat,disc,psd,ffvec,vvec] = mpet_spinod_nucl_1d_psd_in_vol(psd,disc)
 
 % This script simulates a 1D electrode with variable size particles.  The
 % particles are all homogeneous and use the regular solution model (ONLY).
@@ -59,7 +59,7 @@ Vstd = 3.422;                       % Standard potential, V
 alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
-Nx = 20;                            % Number disc. in x direction
+Nx = 25;                            % Number disc. in x direction
 numpart = 50;                       % Particles per volume
 tsteps = 200;                       % Number disc. in time
 ffend = .95;                          % Final filling fraction
@@ -128,9 +128,16 @@ csup = fsolve(@(cs) log(cs/(1-cs))+a*(1-2*cs), 0.995);
 % cstestvec = 0.001:0.001:0.999;
 % plot(cstestvec, calcmu(cstestvec,a,cslow,csup))
 % return
+% Create global information for nucleation events
+global nucl_vec t_last
+t_last = 0;
+nucl_vec = ones(totalpart,1); % Everything starts homogeneous
+nu_nucl = 1e-10*td; % dimensionless (dimensional = 1e-10 1/sec)
+mu_crit = log(cslow/(1-cslow))+a*(1-2*cslow);
 
 cs0 = 0.01;                 
-phi_init = calcmu(cs0,a,cslow,csup);
+%phi_init = calcmu(cs0,a,cslow,csup,nu_nucl,mu_crit,t_last);
+phi_init = log(cs0/(1-cs0))+a.*(1-2.*cs0);
 cinit = 1;
 % Assemble it all
 cpcsinit = zeros(disc.len,1);
@@ -150,10 +157,11 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none',...
-    'RelTol',1e-2,'AbsTol',1e-4','Events',@events);
+    'RelTol',5e-2,'AbsTol',1e-3','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise);
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,nu_nucl,mu_crit,...
+                 ffend,noise);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -184,7 +192,8 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,nu_nucl,mu_crit,...
+                 ffend,noise)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -220,7 +229,7 @@ val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx
 % REACTION RATE OF PARTICLES
 rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
 rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
-muvec = calcmu(csvec,a,cslow,csup);
+muvec = calcmu(csvec,a,cslow,csup,nu_nucl,mu_crit,t);
 ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
 eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
 val(disc.sol:end-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
@@ -232,15 +241,40 @@ val = real(val);
 
 return;
 
-function mu = calcmu(cs,a,cslow,csup)
+function mu = calcmu(cs,a,cslow,csup,nu_nucl,mu_crit,t)
 % This function calculates the chemical potential. If we're
 % passed the low-concentration spinodal point but below the
 % high-concentration binodal, we're phase separated, with mu = 0.
+% Alternatively, if a particle has already nucleated and still
+% below csup, mu = 0.
 
-% "if cs is between cslow and csup --> 1, else 0"
-% then invert mumask --> 0 if inside chemical chemical spinodal, 1 if outside
-mumask = 1 - bitand((cslow < cs), (cs < csup)); % 0 when between cslow, csup
-mu = (log(cs./(1-cs))+a.*(1-2.*cs)).*mumask;
+global nucl_vec t_last
+% Establish where the particles are
+gtr_than_cslow = (cslow < cs); % 1 if cs > cslow
+% "if we've passed cslow and not nucleated, nucleate that
+% particle"
+% it has _not_ nucleated if nucl_vec is 1
+nucleated_spinod = bitand(gtr_than_cslow, nucl_vec);
+nucl_vec = nucl_vec - nucleated_spinod;
+% Figure out the probability that particles nucleated in the last
+% function call (delta t will go to zero unless this is one in
+% which a real time step was taken)
+delta_t = t-t_last;
+mu_homog = log(cs./(1-cs))+a.*(1-2.*cs);
+nucl_rate = nu_nucl*exp(-(mu_crit-mu_homog)); % -> 0 for low cs
+% 0 percent chance to nucleate if already have nuclated (nucl_vec=0)
+% 1 * Poisson distribution probability of nucleating otherwise
+prob_vec = nucl_vec.*(1 - exp(-delta_t*nucl_rate));
+% Generate some uniform random numbers between 0 and 1 to compare to.
+rand_vec = rand(max(size(cs)),1);
+% If the random number is lower than the probability, the
+% particle nucleated.
+nucleated_rand = (rand_vec < prob_vec);
+nucl_vec = nucl_vec - nucleated_rand;
+% If we've gone beyond csup, we're homogeneous again
+gtr_than_csup = (csup < cs); % 1 if cs > csup
+mumask = nucl_vec + gtr_than_csup;
+mu = mu_homog.*mumask;
 
 return;
 
@@ -287,7 +321,8 @@ end
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,nu_nucl,mu_crit,...
+                 ffend,noise)
                         
 value = 0;
 isterminal = 0;

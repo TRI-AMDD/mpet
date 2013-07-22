@@ -24,7 +24,7 @@ F = e*Na;           % Faraday's number
 % SET DIMENSIONAL VALUES HERE
 
 % Discharge settings
-dim_crate = 5;                    % C-rate (electrode capacity per hour)
+dim_crate = 0.1;                    % C-rate (electrode capacity per hour)
 dim_io = .1;                         % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Electrode properties
@@ -59,10 +59,10 @@ Vstd = 3.422;                       % Standard potential, V
 alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
-Nx = 20;                            % Number disc. in x direction
-numpart = 50;                       % Particles per volume
+Nx = 15;                            % Number disc. in x direction
+numpart = 30;                       % Particles per volume
 tsteps = 200;                       % Number disc. in time
-ffend = .8;                          % Final filling fraction
+ffend = .95;                          % Final filling fraction
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT EDIT BELOW THIS LINE
@@ -92,7 +92,7 @@ else
     tr = linspace(0,30,100);
 end
 io = ((pareavec./pvolvec) .* dim_io .* td) ./ (F .* csmax);
-beta = ((1-poros)*Lp*csmax) / (poros*c0);
+epsbeta = ((1-poros)*Lp*csmax) / c0; % Vs/V*csmax/c0 = poros*beta
 
 % Need some noise
 % noise = 0.0000001*randn(max(size(tr)),Nx*Ny);
@@ -125,7 +125,7 @@ cpcsinit(disc.sol:end-1) = cs0;
 cpcsinit(end) = phi_init;
 
 % Before we can call the solver, we need a Mass matrix
-M = genMass(disc,poros,Nx,beta,tp,pvolvec);
+M = genMass(disc,poros,Nx,epsbeta,tp,pvolvec);
 
 % Porosity vector
 porosvec = ones(disc.ss+disc.steps+1,1);
@@ -137,7 +137,7 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise);
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -168,7 +168,7 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -183,8 +183,8 @@ csvec = cpcs(disc.sol:end-1);
 ctmp = zeros(disc.ss+disc.steps+2,1);
 ctmp(2:end-1) = cvec;
 % Boundary conditions
-ctmp(1) = ctmp(2) + currset*beta*(1-tp)/Nx;
-ctmp(end) = ctmp(end-1);
+ctmp(1) = ctmp(2) + currset*epsbeta*(1-tp)/Nx;
+ctmp(end) = ctmp(end-1); % porosity is constant in the porous material
 % Porosity effects
 cflux = -porosvec.*diff(ctmp).*Nx;
 val(1:disc.ss+disc.steps) = -diff(cflux).*Nx;
@@ -223,7 +223,7 @@ mu = log(cs./(1-cs))+a.*(1-2.*cs);
 
 return;
 
-function M = genMass(disc,poros,Nx,beta,tp,pvolvec)
+function M = genMass(disc,poros,Nx,epsbeta,tp,pvolvec)
 
 % Initialize
 M = sparse(disc.len,disc.len);
@@ -237,7 +237,7 @@ numpart = max(size(pvolvec))/Nx;
 for i=1:Nx
     for j=0:numpart-1
         M(disc.ss+i, disc.sol+(i-1)*numpart+j) = ...
-                beta*(1-tp)*pvolvec((i-1)*numpart+j+1,1) ...
+                epsbeta*(1-tp)*pvolvec((i-1)*numpart+j+1,1) ...
                 / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
 end
@@ -246,7 +246,7 @@ end
 for i=1:Nx
     for j=0:numpart-1
         M(2*disc.ss+disc.steps+i, disc.sol+(i-1)*numpart+j) = ...
-                beta*pvolvec((i-1)*numpart+j+1,1) ...
+                epsbeta*pvolvec((i-1)*numpart+j+1,1) ...
                 / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
 end
@@ -266,7 +266,7 @@ end
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,beta,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise)
                         
 value = 0;
 isterminal = 0;
