@@ -126,8 +126,9 @@ csup = fsolve(@(cs) log(cs/(1-cs))+a*(1-2*cs), 0.995);
 %     error('cs bound calcs wrong')
 % end
 % cstestvec = 0.001:0.001:0.999;
-% plot(cstestvec, calcmu(cstestvec,a,cslow,csup))
-% return
+% muvec = calcmu(cstestvec,a,cslow,csup);
+% plot(cstestvec, muvec)
+% return;
 
 cs0 = 0.01;                 
 phi_init = calcmu(cs0,a,cslow,csup);
@@ -150,7 +151,7 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none',...
-    'RelTol',1e-2,'AbsTol',1e-4','Events',@events);
+    'RelTol',1e-3,'AbsTol',1e-6','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
                  Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise);
@@ -239,7 +240,21 @@ function mu = calcmu(cs,a,cslow,csup)
 
 % "if cs is between cslow and csup --> 1, else 0"
 % then invert mumask --> 0 if inside chemical chemical spinodal, 1 if outside
-mumask = 1 - bitand((cslow < cs), (cs < csup)); % 0 when between cslow, csup
+delta = 0.01;
+%mumask = 1 - bitand((cslow < cs), (cs < csup)); % 0 when between cslow, csup
+mumask = ones(size(cs));
+%gtr_than_cslowbnd = ((cslow - delta) < cs); % 1 if cs > (cslow - delta)
+%gtr_than_csupbnd = ((cslow + delta) < cs); % 1 if cs > (cslow + delta)
+% Linearly decay from the homogeneous curve to the flat spinodal
+% decomposition region over a range 2*delta
+withindelta = ( bitand( ((cslow - delta) < cs), ...
+    (cs < (cslow + delta)) ) ) ...
+    .* ((cs-(cslow-delta))/(2*delta));
+% mumask = mumask - withindelta.*((cs-(cslow-delta))/(2*delta));
+% Zero (flat) if cs is within the spinodal decomposition region
+in_flat_region = bitand((cslow+delta < cs), (cs < csup)); % 1 when between cslow, csup
+mumask = mumask - withindelta - in_flat_region;
+% plot(cs,mumask)
 mu = (log(cs./(1-cs))+a.*(1-2.*cs)).*mumask;
 
 return;
