@@ -125,15 +125,22 @@ csup = fsolve(@(cs) log(cs/(1-cs))+a*(1-2*cs), 0.995);
 % if cslow > csup
 %     error('cs bound calcs wrong')
 % end
-% cstestvec = 0.001:0.001:0.999;
-% plot(cstestvec, calcmu(cstestvec,a,cslow,csup))
-% return
 % Create global information for nucleation events
 global nucl_vec t_last
 t_last = 0;
-nucl_vec = ones(totalpart,1); % Everything starts homogeneous
+%nucl_vec = ones(totalpart,1); % Everything starts homogeneous
+nucl_vec = cslow*ones(totalpart,1); % Each particle's nucleation point
 nu_nucl = 1e-10*td; % dimensionless (dimensional = 1e-10 1/sec)
-mu_crit = log(cslow/(1-cslow))+a*(1-2*cslow);
+% For nucleation barrier, calculate mu_homog(cslow), where
+% barrier goes to zero.
+mu_crit = log(cslow/(1-cslow))+a*(1-2*cslow); % mu_homog(cslow)
+%% <Debug>
+%cstestvec = [0.001:0.001:0.999]';
+%nucl_vec = (cslow-0.05)*ones(size(cstestvec));
+%muvec = calcmu(cstestvec,a,cslow,csup,nu_nucl,mu_crit,0);
+%plot(cstestvec, muvec)
+%return
+%% </Debug>
 
 cs0 = 0.01;                 
 %phi_init = calcmu(cs0,a,cslow,csup,nu_nucl,mu_crit,t_last);
@@ -157,7 +164,7 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none',...
-    'RelTol',5e-2,'AbsTol',1e-3','Events',@events);
+    'RelTol',1e-3,'AbsTol',1e-6','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
                  Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,nu_nucl,mu_crit,...
@@ -249,31 +256,47 @@ function mu = calcmu(cs,a,cslow,csup,nu_nucl,mu_crit,t)
 % below csup, mu = 0.
 
 global nucl_vec t_last
-% Establish where the particles are
-gtr_than_cslow = (cslow < cs); % 1 if cs > cslow
-% "if we've passed cslow and not nucleated, nucleate that
-% particle"
-% it has _not_ nucleated if nucl_vec is 1
-nucleated_spinod = bitand(gtr_than_cslow, nucl_vec);
-nucl_vec = nucl_vec - nucleated_spinod;
-% Figure out the probability that particles nucleated in the last
-% function call (delta t will go to zero unless this is one in
-% which a real time step was taken)
+% The time step taken will be needed for determining if nuclation
+% has happened. Of note, this is okay for repeat function calls
+% (i.e. Jacobian evaluations, etc.) within a time step because
+% when delta_t = 0, nothing global will change.
 delta_t = t-t_last;
 mu_homog = log(cs./(1-cs))+a.*(1-2.*cs);
+% Assume an Arrhenius nucleation rate
 nucl_rate = nu_nucl*exp(-(mu_crit-mu_homog)); % -> 0 for low cs
-% 0 percent chance to nucleate if already have nuclated (nucl_vec=0)
-% 1 * Poisson distribution probability of nucleating otherwise
-prob_vec = nucl_vec.*(1 - exp(-delta_t*nucl_rate));
+% Make a 'mask' that's zero if a particle has previously
+% nuclated, so there won't be a chance of it nucleating.
+nucl_mask = 1 - (cs >= nucl_vec); % 0 if particle has nucleated
+% If already nuclated (nucl_mask=0), 0 percent chance to nucleate
+% Otherwise, 1 * Poisson distribution probability of nucleating
+prob_vec = nucl_mask.*(1 - exp(-delta_t*nucl_rate));
 % Generate some uniform random numbers between 0 and 1 to compare to.
-rand_vec = rand(max(size(cs)),1);
+rand_vec = rand(size(cs));
 % If the random number is lower than the probability, the
-% particle nucleated.
+% particle just nucleated.
 nucleated_rand = (rand_vec < prob_vec);
-nucl_vec = nucl_vec - nucleated_rand;
-% If we've gone beyond csup, we're homogeneous again
-gtr_than_csup = (csup < cs); % 1 if cs > csup
-mumask = nucl_vec + gtr_than_csup;
+% nucleation vec:
+%   If it did not just nucleate (1-nuclated=1), then leave its
+%   cslow as it was.
+%   If it did just nucleate, then record the value at which it
+%   nuclated.
+nucl_vec = (1-nucleated_rand).*nucl_vec ...
+        + nucleated_rand.*cs;
+
+% Now that we know the point at which each particle nucleated, do
+% a linear interpolation between mu_homog left of that point and
+% zero right of that point
+delta = 0.01;
+mumask = ones(size(cs));
+% If within 2*delta after the nucleation point, gradually
+% decay down to mu=0
+withindelta = ( bitand( (nucl_vec < cs), ...
+        (cs < (nucl_vec + 2*delta)) ) ) ...
+        .* ((cs-nucl_vec)/(2*delta));
+% Zero (flat) if cs is within the spinodal decomposition region
+% (past the nucleated point)
+in_flat_region = bitand((nucl_vec+2*delta < cs), (cs < csup));
+mumask = mumask - withindelta - in_flat_region;
 mu = mu_homog.*mumask;
 
 return;
