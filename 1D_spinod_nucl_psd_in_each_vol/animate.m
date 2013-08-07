@@ -23,7 +23,7 @@ elseif strcmp(fig,'c')
 end
 
 if(output)
-    movie2avi(M,'/home/raymond/movie_spinod_5C.avi')    
+    movie2avi(M,'/home/raymond/movie_spinod_nucl_1C_nu=1e-5.avi')    
 end
 
 

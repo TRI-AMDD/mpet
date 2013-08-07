@@ -130,7 +130,7 @@ global nucl_vec t_last
 t_last = 0;
 %nucl_vec = ones(totalpart,1); % Everything starts homogeneous
 nucl_vec = cslow*ones(totalpart,1); % Each particle's nucleation point
-nu_nucl = 1e-10*td; % dimensionless (dimensional = 1e-10 1/sec)
+nu_nucl = 1e-5*td; % dimensionless (dimensional = 1e-10 1/sec)
 % For nucleation barrier, calculate mu_homog(cslow), where
 % barrier goes to zero.
 mu_crit = log(cslow/(1-cslow))+a*(1-2*cslow); % mu_homog(cslow)
