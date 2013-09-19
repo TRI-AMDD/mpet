@@ -1,4 +1,4 @@
-function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol(part,disc,cpcs0)
+function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol(dim_crate,part,disc,cpcs0,ffend)
 
 % NAME: Allen-Cahn surface wetted coherent strain particles in a porous electrode
 % AUTHOR: TR Ferguson, Bazant Group, MIT
@@ -34,7 +34,7 @@ F = e*Na;           % Faraday's number
 % SET DIMENSIONAL VALUES HERE
 
 % Discharge settings
-dim_crate = 0.1;                  % C-rate (electrode capacity per hour)
+% dim_crate = 0.1;                  % C-rate (electrode capacity per hour)
 dim_io = 0.1;                      % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Pick starting voltage based on charge/discharge
@@ -72,6 +72,7 @@ rhos = 1.3793e28;                   % site density, 1/m^3
 csmax = rhos/Na;                    % maximum concentration, mol/m^3
 cwet = 0.98;                        % Dimensionless wetted conc.
 wet_thick = 2e-9;                   % Thickness of wetting on surf.
+part_thick = 20e-9;                 % Particle thickness, m
 Vstd = 3.422;                       % Standard potential, V
 alpha = 0.5;                        % Charge transfer coefficient
 
@@ -80,7 +81,7 @@ Nx = 5;                            % Number disc. in x direction
 solid_disc = 1e-9;                 % Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
 numpart = 4;                       % Particles per volume
 tsteps = 200;                      % Number disc. in time
-ffend = 0.95;                       % Final filling fraction
+% ffend = 0.95;                       % Final filling fraction
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT EDIT BELOW THIS LINE
@@ -92,9 +93,15 @@ wet_steps = ceil(wet_thick / solid_disc);
 if ~isa(part,'struct')
     part_size = abs(normrnd(mean,stddev,totalpart,1));
     part_steps = [0; ceil(part_size/solid_disc)];
-    pareavec = (4*pi).*part_size.^2;
-    pvolvec = (4/3).*pi.*part_size.^3;
-%    ap = 3.475 ./ part_size;     % Area:volume ratio for plate particles
+    
+    % Spherical particles
+%     pareavec = (4*pi).*part_size.^2;
+%     pvolvec = (4/3).*pi.*part_size.^3;
+    
+    % C3 particles
+    pareavec = 2 .* 1.2263 .* part_size.^2;             % active area
+    pvolvec = 1.2263 .* part_size.^2 .* part_thick;     % volume 
+    
     part = struct('steps',part_steps,'sizes',part_size, ...
                 'wetsteps',wet_steps,'cwet',cwet, ...
                 'areas', pareavec, 'vols', pvolvec);
@@ -194,7 +201,7 @@ porosvec = ones(disc.ss+disc.steps+1, 1);
 porosvec(disc.ss+1:end) = poros;
 porosvec = porosvec.^(3/2);     % Bruggeman
 
-%% Bruggeman relation
+% Bruggeman relation
 %pxg = pxg.^(3/2);
 %pyg = pyg.^(3/2);
 
