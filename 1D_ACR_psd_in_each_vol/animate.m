@@ -1,14 +1,14 @@
 function animate(t,cpcs,ffvec,vvec,disc,part,fig,output)
 
-close all
+% close all
 tlen = max(size(t));
 numpart = max(size(part.steps))-1;
 
 Nx = disc.Nx;
-Ny = 1;
-numpart = disc.numpart;
+Ny = disc.numpart;
 ss = disc.ss;
-ssx = disc.ss / 1;
+steps = disc.steps;
+ssx = disc.ss / Ny;
 
 e = 1.6e-19;
 k = 1.381e-23;
@@ -16,10 +16,9 @@ T = 298;
 % vvec = 3.422-cpcs(:,end)*(k*T/e);
 
 % First let's break down the cpcs vector
-c = zeros(tlen,Ny,ssx+Nx);
+c = zeros(tlen,ss+Nx);
 for i=1:tlen
-    c(i,:,:) = reshape(cpcs(i,1:ss+Nx*Ny),Ny,ssx+Nx);
-    
+    c(i,:,:) = reshape(cpcs(i,1:ss+steps),1,ss+steps);
 end
 
 phi = zeros(tlen,Ny,ssx+Nx);
@@ -55,8 +54,8 @@ if strcmp(fig,'s')
 elseif strcmp(fig,'e')
     figure
     for i=1:tlen
-        surf(squeeze(c(i,:,:)))
-        axis([0 ssx+Nx 0 Ny 0 1])
+        plot((c(i,:)))
+        axis([0 ss+steps 0 2])
         M(i) = getframe(gcf);
     end
 
