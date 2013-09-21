@@ -8,11 +8,13 @@ import math
 
 import numpy as np
 import scipy.sparse as sprs
+import scipy.interpolate as sint
 
 from daetools.pyDAE import *
 from daetools.pyDAE.data_reporters import *
 from daetools.solvers.superlu import pySuperLU
-from pyUnits import s
+#from pyUnits import s
+from pyUnits import s, kg, m, K, Pa, mol, J, W
 
 #########################################################################
 # CONSTANTS
@@ -27,7 +29,7 @@ F = e*Na           # Faraday's number
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
 currset = 0.001                         # Battery discharge c-rate
-partsize = 1000                       # particle size, nm
+partsize = 50                       # particle size, nm
 
 # Particle size
 part_size = partsize * 1e-9                  # Average particle size, m
@@ -57,6 +59,45 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
 
+class extfnPower(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, m, cp):
+        arguments = {}
+        arguments["m"]  = m
+        arguments["cp"] = cp
+
+        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
+
+    def Calculate(self, values):
+        """
+        """
+        m  = values["m"]
+        cp = values["cp"]
+        
+        res = m * cp# * dT
+        
+        #print('Power(m = {0}, cp = {1}, dT = {2}) = {3}'.format(m, cp, dT, res))
+        return res
+
+class noise(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, time, noise_vec, numnoise):
+        arguments = {}
+        self.interp = sint.interp1d(
+                np.arange(numnoise), noise_vec, axis=0)
+        arguments["time"] = time
+        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
+
+    def Calculate(self, values):
+        time = values["time"]
+        # A derivative for Jacobian is requested - return always 0.0
+        if time.Derivative != 0:
+            return adouble(0)
+        # interp returns ndarrays, in this case 0-dimensional
+        # therefore, the values should be converted to float
+        noise_val = float(self.interp(time.Value))
+#        print '    noise at time {0} = {1}'.format(time.Value, noise_val)
+        return adouble(noise_val)
+#        return self.interp(time)
+
 class modRay(daeModel):
     def __init__(self, Name, Parent = None, Description = ""):
         print "Init modRay"
@@ -68,6 +109,10 @@ class modRay(daeModel):
         # y distributed on N
         self.c = daeVariable("c", mole_frac_t, self, "", [self.N])
         self.phi = daeVariable("phi", elec_pot_t, self, "")
+
+        # Debug external function stuff
+        self.m     = daeParameter("m",       kg,           self, "Mass of the copper plate")
+        self.cp    = daeParameter("c_p",     J/(kg*K),     self, "Specific heat capacity of the plate")
 
         # Parameters
         self.a = daeParameter("a", unit(), self,
@@ -116,6 +161,27 @@ class modRay(daeModel):
 
         N = self.N.NumberOfPoints
 
+        # Prepare the noise
+#        numnoise = 20
+#        noise_prefac = 1e-5
+#        noise_data = noise_prefac*np.random.randn(numnoise, N)
+#        self.noise_vec = np.empty(N, dtype=object)
+#        self.noise_vec[:] = [noise("Noise", self, unit(), Time(),
+#                noise_data[:, i], numnoise) for i in range(N)]
+        # Debug for external function
+        numnoise = 20
+        noise_prefac = 1e-5
+        noise_data = noise_prefac*np.random.randn(numnoise)
+        self.noise_vec = noise("Noise", self, unit(), Time(),
+                noise_data, numnoise)
+
+#        # Debug for external function
+#        self.Pext = extfnPower("Power", self, W, self.m(), self.cp())
+#        # XXX -- Looks like all arguments to
+#        # daeScalarExternalFunctions should be daeParameters or
+#        # daeVariables -- maybe just adoubles would also work?
+
+        # Prepare to evalute the RHS function
         cs = np.empty(N, dtype=object)
         cs[0:N] = [self.c(i) for i in range(N)]
         print "about to set up RHS"
@@ -132,7 +198,9 @@ class modRay(daeModel):
         for i in range(N):
             # Finally create an equation and set its residual to 'res'
             eq = self.CreateEquation("dydt({num})".format(num=i))
-            eq.Residual = Mdydt[i] - RHS[i]
+#            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec[i]()
+            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec()
+#            eq.Residual = Mdydt[i] - RHS[i] - self.Pext()
             eq.CheckUnitsConsistency = False
         # Total Current Constraint Equation
         # Full equation: self.psivec*dcdt = sum(self.psivec)*self.I
@@ -248,6 +316,10 @@ class simRay(daeSimulation):
         self.m.Lx.SetValue(part_size)
         self.m.delx.SetValue(solid_disc)
         self.m.N.CreateArray(part_steps)
+
+        # Debug for external function
+        self.m.cp.SetValue(385 * J/(kg*K))
+        self.m.m.SetValue(1 * kg)
 
 #        dt = 0.005
 #        nmnoise = int(1./dt+1)
