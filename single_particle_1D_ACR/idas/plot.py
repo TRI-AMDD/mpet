@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 def plot(plot_type, save_flag):
     infile = "acr_sp_0.001C.mat"
-    infile = "acr_sp.mat"
+#    infile = "acr_sp.mat"
     data = sio.loadmat(infile)
 #    print data.keys()
     # Plot voltage profile

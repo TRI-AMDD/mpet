@@ -64,6 +64,8 @@ class noise(daeScalarExternalFunction):
             currset):
         arguments = {}
         tmax = 1/currset.GetValue()
+        self.counter = 0
+        self.previous_value = None
         self.interp = sint.interp1d(
                 tmax*np.arange(numnoise), noise_vec, axis=0)
         arguments["time"] = time
@@ -74,9 +76,15 @@ class noise(daeScalarExternalFunction):
         # A derivative for Jacobian is requested - return always 0.0
         if time.Derivative != 0:
             return adouble(0)
+        # Store the previous time value to prevent excessive
+        # interpolation.
+        if self.previous_value and self.previous_value[0] == time.Value:
+            return self.previous_value[1]
         # interp returns ndarrays, in this case 0-dimensional
         # therefore, the values should be converted to float
         noise_val = float(self.interp(time.Value))
+        self.counter += 1
+        self.previous_value = (time.Value, adouble(noise_val))
         return adouble(noise_val)
 
 class modRay(daeModel):
@@ -130,8 +138,9 @@ class modRay(daeModel):
         N = self.N.NumberOfPoints
 
         # Prepare the noise
-        numnoise = 20
-        noise_prefac = 1e-5
+        # XXX -- maybe this should be a parameter?
+        numnoise = tsteps
+        noise_prefac = 1e-3
         noise_data = noise_prefac*np.random.randn(numnoise, N)
         self.noise_vec = np.empty(N, dtype=object)
         self.noise_vec[:] = [noise("Noise", self, unit(), Time(),
@@ -154,7 +163,10 @@ class modRay(daeModel):
         for i in range(N):
             # Finally create an equation and set its residual to 'res'
             eq = self.CreateEquation("dydt({num})".format(num=i))
+            # With noise
             eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec[i]()
+#            # No noise
+#            eq.Residual = Mdydt[i] - RHS[i]
             eq.CheckUnitsConsistency = False
         # Total Current Constraint Equation
         # Full equation: self.psivec*dcdt = sum(self.psivec)*self.I
@@ -171,7 +183,8 @@ class modRay(daeModel):
         eq.Residual = (
 #                Sum(self.phi_parts.array([]), isLargeArray=True)
 #                - current_tot)
-                self.SUM(dcdt_vec) - self.currset())
+                np.sum(dcdt_vec) - self.currset())
+#                self.SUM(dcdt_vec) - self.currset())
 #                - self.I()*np.sum(self.psivec) )
 #                Sum(self.c.dt_array([]), isLargeArray=True)
 #                - self.I()*np.sum(self.psivec) )
@@ -185,19 +198,19 @@ class modRay(daeModel):
         cstmp[-1] = self.cwet()
         dxs = 1./part_steps
         curv = np.diff(cstmp, 2)/(dxs**2)
-        meanfill = self.SUM(cs)/part_steps
+        meanfill = np.sum(cs)/part_steps
         mu = ( self.mu_reg_sln(cs) - self.kappa()*curv
                 + self.b()*(cs - meanfill) )
         # XXX -- Ask about exp
-#        act = np.exp(mu)
-        act = self.EXP(mu)
+        act = np.exp(mu)
+#        act = self.EXP(mu)
         ecd = ( self.k0() * self.aO()**(1-self.alpha())
                 * act**(self.alpha()) * (1-cs) )
         eta = mu - self.phi()
-#        return ( ecd*(np.exp(-self.alpha()*eta)
-#                - np.exp((1-self.alpha())*eta)) )
-        return ( ecd*(self.EXP(-self.alpha()*eta)
-                - self.EXP((1-self.alpha())*eta)) )
+        return ( ecd*(np.exp(-self.alpha()*eta)
+                - np.exp((1-self.alpha())*eta)) )
+#        return ( ecd*(self.EXP(-self.alpha()*eta)
+#                - self.EXP((1-self.alpha())*eta)) )
     def mu_reg_sln(self, c):
         if (type(c[0]) == pyCore.adouble):
             isAdouble = True
@@ -227,23 +240,23 @@ class modRay(daeModel):
             low = mat.indptr[i]
             up = mat.indptr[i+1]
             if up > low:
-                out[i] = self.SUM(
+                out[i] = np.sum(
                         mat.data[low:up] * objvec[mat.indices[low:up]] )
             else:
                 out[i] = 0.0
         return out
-    def SUM(self, vec):
-        if (type(vec[0]) == pyCore.adouble):
-            return Sum(adouble_array.FromNumpyArray(vec),
-                isLargeArray=True)
-        else:
-            return np.sum(vec)
-    def EXP(self, vec):
-        if (type(vec[0]) == pyCore.adouble):
-            out = np.empty(len(vec), dtype=object)
-            return np.array([Exp(vec[i]) for i in range(len(vec))])
-        else:
-            return np.exp(vec)
+#    def SUM(self, vec):
+#        if (type(vec[0]) == pyCore.adouble):
+#            return Sum(adouble_array.FromNumpyArray(vec),
+#                isLargeArray=True)
+#        else:
+#            return np.sum(vec)
+#    def EXP(self, vec):
+#        if (type(vec[0]) == pyCore.adouble):
+#            out = np.empty(len(vec), dtype=object)
+#            return np.array([Exp(vec[i]) for i in range(len(vec))])
+#        else:
+#            return np.exp(vec)
 
 class simRay(daeSimulation):
     def __init__(self):
@@ -368,10 +381,15 @@ def consoleRun():
     print "run the simulation"
     simulation.Run()
     simulation.Finalize()
+    
+    print 'Number of numpy.interp1d calls in noise ext. functions:'
+    print [n.counter for n in simulation.m.noise_vec]
 
 if __name__ == "__main__":
     import timeit
     time_tot = timeit.timeit("consoleRun()",
             setup="from __main__ import consoleRun",  number=1)
     print time_tot, "s"
+#    import cProfile
+#    cProfile.run("consoleRun()")
 #    consoleRun()
