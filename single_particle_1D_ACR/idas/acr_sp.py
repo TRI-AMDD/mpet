@@ -13,8 +13,11 @@ import scipy.interpolate as sint
 from daetools.pyDAE import *
 from daetools.pyDAE.data_reporters import *
 from daetools.solvers.superlu import pySuperLU
-#from pyUnits import s
-from pyUnits import s, kg, m, K, Pa, mol, J, W
+#from daetools.solvers.superlu_mt import pySuperLU_MT
+from daetools.solvers.trilinos import pyTrilinos
+#from daetools.solvers.intel_pardiso import pyIntelPardiso
+from pyUnits import s
+#from pyUnits import s, kg, m, K, Pa, mol, J, W
 
 #########################################################################
 # CONSTANTS
@@ -95,9 +98,13 @@ class modRay(daeModel):
         # Domains where variables are distributed
         self.N = daeDomain("N", self, unit(), "")
         
-        # y distributed on N
-        self.c = daeVariable("c", mole_frac_t, self, "", [self.N])
-        self.phi = daeVariable("phi", elec_pot_t, self, "")
+        # variables distributed on N
+        self.c = daeVariable("c", mole_frac_t, self,
+                "Concentration", [self.N])
+        self.cbar = daeVariable("cbar", mole_frac_t, self,
+                "Average concentration in the particle")
+        self.phi = daeVariable("phi", elec_pot_t, self,
+                "Electrostatic potential in the solid")
 
         # Parameters
         self.a = daeParameter("a", unit(), self,
@@ -152,6 +159,11 @@ class modRay(daeModel):
         print "about to set up RHS"
         RHS = self.calc_dcs_dt(cs)
 
+        # The average concentration in the particle
+        eq = self.CreateEquation("cbar")
+        eq.Residual = self.cbar() - np.sum(cs)/N
+        eq.BuildJacobianExpressions = True
+        eq.CheckUnitsConsistency = False
         # The following will iterate over rows in the matrix M and
         # create the ∑M(i,:) * y(:) product
         dydt = np.empty(N, dtype=object)
@@ -163,10 +175,10 @@ class modRay(daeModel):
         for i in range(N):
             # Finally create an equation and set its residual to 'res'
             eq = self.CreateEquation("dydt({num})".format(num=i))
-            # With noise
-            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec[i]()
-#            # No noise
-#            eq.Residual = Mdydt[i] - RHS[i]
+#            # With noise
+#            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec[i]()
+            # No noise
+            eq.Residual = Mdydt[i] - RHS[i]
             eq.CheckUnitsConsistency = False
         # Total Current Constraint Equation
         # Full equation: self.psivec*dcdt = sum(self.psivec)*self.I
@@ -198,9 +210,9 @@ class modRay(daeModel):
         cstmp[-1] = self.cwet()
         dxs = 1./part_steps
         curv = np.diff(cstmp, 2)/(dxs**2)
-        meanfill = np.sum(cs)/part_steps
+#        meanfill = np.sum(cs)/part_steps
         mu = ( self.mu_reg_sln(cs) - self.kappa()*curv
-                + self.b()*(cs - meanfill) )
+                + self.b()*(cs - self.cbar()) )
         # XXX -- Ask about exp
         act = np.exp(mu)
 #        act = self.EXP(mu)
@@ -389,7 +401,7 @@ if __name__ == "__main__":
     import timeit
     time_tot = timeit.timeit("consoleRun()",
             setup="from __main__ import consoleRun",  number=1)
-    print time_tot, "s"
+    print "Total time:", time_tot, "s"
 #    import cProfile
 #    cProfile.run("consoleRun()")
 #    consoleRun()
