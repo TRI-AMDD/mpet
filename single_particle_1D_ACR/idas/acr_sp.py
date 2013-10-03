@@ -153,15 +153,15 @@ class noise(daeScalarExternalFunction):
 #        return output
 
 #class noise(daeScalarExternalFunction):
-#    def __init__(self, Name, Model, units, time, noise_vec, numnoise,
-#            currset):
+#    def __init__(self, Name, Model, units, time, time_vec, noise_vec):
+##    def __init__(self, Name, Model, units, time, time_vec,
+##            noise_data, position):
 #        arguments = {}
-#        tmax = 1/currset.GetValue()
+##        tmax = 1/currset.GetValue()
 #        self.counter = 0
 #        self.previous_value = None
 #        # XXX -- this should be a linspace(0,1,numnoise), not arange
-#        self.interp = sint.interp1d(
-#                tmax*np.arange(numnoise), noise_vec, axis=0)
+#        self.interp = sint.interp1d(time_vec, noise_vec, axis=0)
 #        arguments["time"] = time
 #        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
 #
@@ -242,16 +242,16 @@ class modRay(daeModel):
 
         # Prepare the noise
         # XXX -- maybe this should be a parameter?
-        numnoise = tsteps
+        numnoise = tsteps/20
         noise_prefac = 1e-3
         noise_data = noise_prefac*np.random.randn(numnoise, N)
         # a vector going from 0 to the max simulation time.
-        time_vec = (1./self.currset.GetValue())*np.linspace(0, 1, numnoise)
-        # daeScalarExternalEquation
+        time_vec = np.linspace(0, (1./self.currset.GetValue()), numnoise)
+#        # daeScalarExternalEquation
 #        self.noise_vec = np.empty(N, dtype=object)
 #        self.noise_vec[:] = [noise("Noise", self, unit(), Time(),
-#                noise_data[:, i], numnoise, self.currset) for i in range(N)]
-        # daeVectorExternalEquation
+#            time_vec, noise_data[:, i]) for i in range(N)]
+#        # daeVectorExternalEquation
 #        self.noise_vec = noise("Noise", self, unit(), N,
 #                Time(), noise_data, numnoise, self.currset)
 #        # Local vector interpolation only using external to find
@@ -527,9 +527,9 @@ def consoleRun():
     simulation.Run()
     simulation.Finalize()
     
-    print 'Number of numpy.interp1d calls in noise ext. functions:'
-    print simulation.m.noise_local.counter
-    print simulation.m.noise_local.saved
+#    print 'Number of numpy.interp1d calls in noise ext. functions:'
+#    print simulation.m.noise_local.counter
+#    print simulation.m.noise_local.saved
 #    print [n.counter for n in simulation.m.noise_vec]
 
 if __name__ == "__main__":
