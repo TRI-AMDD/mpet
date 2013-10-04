@@ -32,7 +32,7 @@ F = e*Na           # Faraday's number
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
 currset = 0.001                         # Battery discharge c-rate
-partsize = 50                       # particle size, nm
+partsize = 1000                       # particle size, nm
 
 # Particle size
 part_size = partsize * 1e-9                  # Average particle size, m
@@ -64,122 +64,50 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
-            noise_data, position):
+            noise_data, previous_output, position):
         arguments = {}
         self.counter = 0
         self.saved = 0
-        self.previous_output = None
-        self.interp = sint.interp1d(time_vec, noise_data, axis=0)
+        self.previous_output = previous_output
+        self.time_vec = time_vec
+        self.noise_data = noise_data
+        self.tlo = time_vec[0]
+        self.thi = time_vec[-1]
+        self.numnoise = len(time_vec)
         arguments["time"] = time
-        arguments["position"] = position
+        self.position = position
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
 
     def Calculate(self, values):
         time = values["time"]
-        position = values["position"]
         # A derivative for Jacobian is requested - return always 0.0
         if time.Derivative != 0:
             return adouble(0)
         # Store the previous time value to prevent excessive
         # interpolation.
-        if self.previous_output and self.previous_output[0] == time.Value:
+        if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
             self.saved += 1
-            return adouble(float(self.previous_output[1][int(position.Value)]))
-        # interp returns ndarrays, in this case 1-dimensional
-        noise_vec = self.interp(time.Value)
-        self.previous_output = (time.Value, noise_vec)
+            return adouble(float(self.previous_output[1][self.position]))
+        indx = (float(time.Value - self.tlo)/(self.thi-self.tlo) *
+                (self.numnoise - 1))
+        ilo = np.floor(indx)
+        ihi = np.ceil(indx)
+        # If we're exactly at a time in time_vec
+        if ilo == ihi:
+            noise_vec = self.noise_data[ilo, :]
+        else:
+            noise_vec = (self.noise_data[ilo, :] +
+                    (time.Value - self.time_vec[ilo]) /
+                    (self.time_vec[ihi] - self.time_vec[ilo]) *
+                    (self.noise_data[ihi, :] - self.noise_data[ilo, :])
+                    )
+#        print 'At time = %f the function with index = %d interpolated the noise' % (time.Value, int(self.position)) 
+        # previous_output is a reference to a common object and must
+        # be updated here - not deleted.  using self.previous_output = []
+        # it will delete the common object and create a new one
+        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
         self.counter += 1
-        return adouble(float(noise_vec[int(position.Value)]))
-
-#class time_indx(daeScalarExternalFunction):
-#    def __init__(self, Name, Model, units, time, time_vec):
-#        arguments = {}
-#        self.counter = 0
-#        self.previous_value = None
-#        self.num_times = len(time_vec)
-#        self.time_vec = time_vec
-#        arguments["time"] = time
-#        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
-#
-#    def Calculate(self, values):
-#        time = values["time"]
-#        # A derivative for Jacobian is requested - return always 0.0
-#        if time.Derivative != 0:
-#            return adouble(0)
-#        # Store the previous time value to prevent excessive
-#        # interpolation.
-#        if self.previous_value and self.previous_value[0] == time.Value:
-#            return self.previous_value[1]
-#        # If we didn't just see this value
-#        indx = np.searchsorted(self.time_vec, time.Value)
-#        # Taking cue from scipy interp1d -- This removes
-#        # misinterpolation of time.Value = time_vec[0]
-#        indx = indx.clip(1, self.num_times - 1).astype(int)
-#        self.counter += 1
-#        output = adouble(indx)
-#        self.previous_value = (time.Value, output)
-#        return output
-
-#class noise(daeVectorExternalFunction):
-#    def __init__(self, Name, Model, units, num_results,
-#            time, noise_mat, numnoise, currset):
-#        if num_results != noise_mat.shape[1]:
-#            raise Exception("Vector noise equation problem")
-#        arguments = {}
-#        tmax = 1/currset.GetValue()
-#        self.counter = 0
-#        self.previous_output = None
-#        self.interp = sint.interp1d(
-#                tmax*np.arange(numnoise), noise_mat, axis=0)
-#        arguments["time"] = time
-#        daeVectorExternalFunction.__init__(self, Name, Model, units,
-#                num_results, arguments)
-#
-#    def Calculate(self, values):
-#        time = values["time"]
-#        # A derivative for Jacobian is requested - return always 0.0
-#        if time.Derivative != 0:
-#            return Array(self.NumberOfResults*[0])
-#        # Store the previous time value to prevent excessive
-#        # interpolation.
-#        if self.previous_output and self.previous_output[0] == time.Value:
-#            return self.previous_output[1]
-#        # interp returns ndarrays, in this case 1-dimensional.
-#        # The Array function takes a list input, not an ndarray
-#        noise_vec = self.interp(time.Value).tolist()
-#        self.counter += 1
-#        output = Array(noise_vec)
-#        self.previous_output = (time.Value, output)
-#        return output
-
-#class noise(daeScalarExternalFunction):
-#    def __init__(self, Name, Model, units, time, time_vec, noise_vec):
-##    def __init__(self, Name, Model, units, time, time_vec,
-##            noise_data, position):
-#        arguments = {}
-##        tmax = 1/currset.GetValue()
-#        self.counter = 0
-#        self.previous_value = None
-#        # XXX -- this should be a linspace(0,1,numnoise), not arange
-#        self.interp = sint.interp1d(time_vec, noise_vec, axis=0)
-#        arguments["time"] = time
-#        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
-#
-#    def Calculate(self, values):
-#        time = values["time"]
-#        # A derivative for Jacobian is requested - return always 0.0
-#        if time.Derivative != 0:
-#            return adouble(0)
-#        # Store the previous time value to prevent excessive
-#        # interpolation.
-#        if self.previous_value and self.previous_value[0] == time.Value:
-#            return self.previous_value[1]
-#        # interp returns ndarrays, in this case 0-dimensional
-#        # therefore, the values should be converted to float
-#        noise_val = float(self.interp(time.Value))
-#        self.counter += 1
-#        self.previous_value = (time.Value, adouble(noise_val))
-#        return adouble(noise_val)
+        return adouble(float(noise_vec[self.position]))
 
 class modRay(daeModel):
     def __init__(self, Name, Parent = None, Description = ""):
@@ -196,8 +124,6 @@ class modRay(daeModel):
                 "Average concentration in the particle")
         self.phi = daeVariable("phi", elec_pot_t, self,
                 "Electrostatic potential in the solid")
-#        self.noise_var = daeVariable("noise", no_t, self,
-#                "Noise values for each position", [self.N])
 
         # Parameters
         self.a = daeParameter("a", unit(), self,
@@ -230,9 +156,6 @@ class modRay(daeModel):
                 "Number of volumes in particle")
         self.delx = daeParameter("delx", unit(), self,
                 "size of discretization")
-        # For noise interpolation purposes
-        self.noise_pos = daeParameter("noise_pos", unit(), self,
-                "position to access external noise function data")
 
     def DeclareEquations(self):
         print "DeclareEquations()"
@@ -242,31 +165,18 @@ class modRay(daeModel):
 
         # Prepare the noise
         # XXX -- maybe this should be a parameter?
-        numnoise = tsteps/20
+        numnoise = tsteps/10
         noise_prefac = 1e-3
         noise_data = noise_prefac*np.random.randn(numnoise, N)
         # a vector going from 0 to the max simulation time.
         time_vec = np.linspace(0, (1./self.currset.GetValue()), numnoise)
-#        # daeScalarExternalEquation
-#        self.noise_vec = np.empty(N, dtype=object)
-#        self.noise_vec[:] = [noise("Noise", self, unit(), Time(),
-#            time_vec, noise_data[:, i]) for i in range(N)]
-#        # daeVectorExternalEquation
-#        self.noise_vec = noise("Noise", self, unit(), N,
-#                Time(), noise_data, numnoise, self.currset)
-#        # Local vector interpolation only using external to find
-#        # indices
-#        self.noise_ind = time_indx("NoiseIndex", self, unit(), Time(),
-#                time_vec)
-#        # Set the noise values
-#        print "forming Noise equations"
-#        for i in range(N):
-#            eq = self.CreateEquation("Noise{num}".format(num=i))
-#            eq.Residual = self.noise_var(i) -
+        # Previous_output is common for all external functions
+        previous_output = []
         # daeScalarExternalFunction (noise interpolation done as vector)
         self.noise_local = np.empty(N, dtype=object)
-        self.noise_local = noise("Noise", self, unit(), Time(),
-                time_vec, noise_data, self.noise_pos())
+        self.noise_local[:] = [noise("Noise", self, unit(), Time(),
+                                     time_vec, noise_data, previous_output, _position_)
+                               for _position_ in range(N)]
 
         # Prepare to evalute the RHS function
         cs = np.empty(N, dtype=object)
@@ -279,37 +189,22 @@ class modRay(daeModel):
         eq.Residual = self.cbar() - np.sum(cs)/N
         eq.BuildJacobianExpressions = True
         eq.CheckUnitsConsistency = False
+
         # The following will iterate over rows in the matrix M and
         # create the ∑M(i,:) * y(:) product
         dydt = np.empty(N, dtype=object)
         dydt[0:N] = [self.c.dt(i) for i in range(N)]
-#        dydt[N] = self.phi.dt
         Mdydt = self.MX(self.M, dydt)
         # Loop through and make N equations
         print "Forming c Differential Equations"
         for i in range(N):
             # Finally create an equation and set its residual to 'res'
             eq = self.CreateEquation("dydt({num})".format(num=i))
-            # With noise
-#            # vector of functions
-#            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec[i]()
-#            # function outputting a vector
-#            # First () on noise_vec returns the adouble_array of noise
-#            # values.
-#            # Second, (i), accesses the correct adouble object
-#            eq.Residual = Mdydt[i] - RHS[i] - self.noise_vec()(i)
-#            # manual interpolation
-#            eq.Residual = (Mdydt[i] - RHS[i] -
-#                    (Time() - time_vec[self.nind() - 1])*
-#                    (noise_data[self.nind() - 1, :]
-#                        - noise_data[self.nind(), :]) /
-#                    (time_vec[self.nind()] - time_vec[self.nind() - 1])
-#                    )
-            # scalar pseudo-vector
-            self.noise_pos.SetValue(i)
-            eq.Residual = (Mdydt[i] - RHS[i] - self.noise_local())
-#            # No noise
-#            eq.Residual = Mdydt[i] - RHS[i]
+#            # With noise
+#            # scalar function, referencing common noise-vector
+#            eq.Residual = (Mdydt[i] - RHS[i] - self.noise_local[i]())
+            # No noise
+            eq.Residual = Mdydt[i] - RHS[i]
             eq.CheckUnitsConsistency = False
         # Total Current Constraint Equation
         # Full equation: self.psivec*dcdt = sum(self.psivec)*self.I
@@ -341,19 +236,14 @@ class modRay(daeModel):
         cstmp[-1] = self.cwet()
         dxs = 1./part_steps
         curv = np.diff(cstmp, 2)/(dxs**2)
-#        meanfill = np.sum(cs)/part_steps
         mu = ( self.mu_reg_sln(cs) - self.kappa()*curv
                 + self.b()*(cs - self.cbar()) )
-        # XXX -- Ask about exp
         act = np.exp(mu)
-#        act = self.EXP(mu)
         ecd = ( self.k0() * self.aO()**(1-self.alpha())
                 * act**(self.alpha()) * (1-cs) )
         eta = mu - self.phi()
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
-#        return ( ecd*(self.EXP(-self.alpha()*eta)
-#                - self.EXP((1-self.alpha())*eta)) )
     def mu_reg_sln(self, c):
         if (type(c[0]) == pyCore.adouble):
             isAdouble = True
@@ -388,18 +278,6 @@ class modRay(daeModel):
             else:
                 out[i] = 0.0
         return out
-#    def SUM(self, vec):
-#        if (type(vec[0]) == pyCore.adouble):
-#            return Sum(adouble_array.FromNumpyArray(vec),
-#                isLargeArray=True)
-#        else:
-#            return np.sum(vec)
-#    def EXP(self, vec):
-#        if (type(vec[0]) == pyCore.adouble):
-#            out = np.empty(len(vec), dtype=object)
-#            return np.array([Exp(vec[i]) for i in range(len(vec))])
-#        else:
-#            return np.exp(vec)
 
 class simRay(daeSimulation):
     def __init__(self):
@@ -426,12 +304,9 @@ class simRay(daeSimulation):
         self.m.Lx.SetValue(part_size)
         self.m.delx.SetValue(solid_disc)
         self.m.N.CreateArray(part_steps)
-        # For noise interpolation purposes
-        self.m.noise_pos.SetValue(0)
 
         self.m.M = sprs.lil_matrix((part_steps, part_steps))
         self.m.M.setdiag(np.ones(part_steps))
-#        self.m.M[part_steps, 0:N] = 1./part_steps
         self.m.curr_weight_vec = (1./part_steps)*np.ones(part_steps)
         self.m.M = self.m.M.tocsr()
 
@@ -497,7 +372,8 @@ def consoleRun():
 
     # Use SuperLU direct sparse LA solver
     print "Set up LU solver"
-    lasolver = pySuperLU.daeCreateSuperLUSolver()
+#    lasolver = pySuperLU.daeCreateSuperLUSolver()
+    lasolver = pyTrilinos.daeCreateTrilinosSolver("Amesos_Umfpack", "")
     daesolver.SetLASolver(lasolver)
     
     # Enable reporting of all variables
