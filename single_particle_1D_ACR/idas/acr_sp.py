@@ -55,7 +55,6 @@ tsteps = 200                      # Number disc. in time
 
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-#        lowerBound=-1e+20, upperBound=1e+20, initialGuess=0,
         lowerBound=0, upperBound=1, initialGuess=0.25,
         absTolerance=1e-6)
 elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
@@ -190,11 +189,10 @@ class modRay(daeModel):
         eq.BuildJacobianExpressions = True
         eq.CheckUnitsConsistency = False
 
-        # The following will iterate over rows in the matrix M and
-        # create the ∑M(i,:) * y(:) product
+        # Make a numpy array of the derivative variables for easy
+        # manipulation.
         dydt = np.empty(N, dtype=object)
         dydt[0:N] = [self.c.dt(i) for i in range(N)]
-        Mdydt = self.MX(self.M, dydt)
         # Loop through and make N equations
         print "Forming c Differential Equations"
         for i in range(N):
@@ -202,30 +200,19 @@ class modRay(daeModel):
             eq = self.CreateEquation("dydt({num})".format(num=i))
 #            # With noise
 #            # scalar function, referencing common noise-vector
-#            eq.Residual = (Mdydt[i] - RHS[i] - self.noise_local[i]())
+#            eq.Residual = (dydt[i] - RHS[i] - self.noise_local[i]())
             # No noise
-            eq.Residual = Mdydt[i] - RHS[i]
+            eq.Residual = dydt[i] - RHS[i]
             eq.CheckUnitsConsistency = False
         # Total Current Constraint Equation
         # Full equation: self.psivec*dcdt = sum(self.psivec)*self.I
         # parts
-        dcdt_vec = self.curr_weight_vec*dydt[0:N]
-#        splits_dcdt = self.gensplits(dcdt_vec, num_phi)
-#        for i in range(num_phi):
-#            dcdt_part = splits_dcdt.next()
-#            eq = self.CreateEquation("current_part{num}".format(num=i))
-#            eq.Residual = self.phi_parts(i) - self.SUM(dcdt_part)
-#            eq.CheckUnitsConsistency = False
+        curr_cons_weight_vec = (1./N)*np.ones(N)
+        dcdt_vec = curr_cons_weight_vec*dydt[0:N]
         # combined, sum(dc/dt) = I
         eq = self.CreateEquation("Total_Current_Constraint")
         eq.Residual = (
-#                Sum(self.phi_parts.array([]), isLargeArray=True)
-#                - current_tot)
                 np.sum(dcdt_vec) - self.currset())
-#                self.SUM(dcdt_vec) - self.currset())
-#                - self.I()*np.sum(self.psivec) )
-#                Sum(self.c.dt_array([]), isLargeArray=True)
-#                - self.I()*np.sum(self.psivec) )
         eq.CheckUnitsConsistency = False
 
     def calc_dcs_dt(self, cs):
@@ -305,11 +292,6 @@ class simRay(daeSimulation):
         self.m.delx.SetValue(solid_disc)
         self.m.N.CreateArray(part_steps)
 
-        self.m.M = sprs.lil_matrix((part_steps, part_steps))
-        self.m.M.setdiag(np.ones(part_steps))
-        self.m.curr_weight_vec = (1./part_steps)*np.ones(part_steps)
-        self.m.M = self.m.M.tocsr()
-
     def SetUpVariables(self):
         print "SetUpVariables"
         N = self.m.N.NumberOfPoints
@@ -326,13 +308,9 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """
     def WriteDataToFile(self):
         mdict = {}
-#        print self.Process
-#        print type(self.Process)
-#        print dir(self.Process)
         for var in self.Process.Variables:
             mdict[var.Name] = var.Values
             mdict[var.Name + '_times'] = var.TimeValues
-#            mdict['psimask'] = self.Process.psimask
         try:
             scipy.io.savemat(self.ConnectionString,
                              mdict,
@@ -355,7 +333,6 @@ def setupDataReporters(simulation):
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
     simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
-#    matfilename = tempfile.gettempdir() + "/daet.mat"
     matfilename = os.path.join(os.getcwd(),
             "acr_sp_{curr}C.mat".format(curr=currset))
     if (simulation.dr.Connect(matfilename, simName) == False):
