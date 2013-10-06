@@ -18,7 +18,7 @@ T = 298;
 c = zeros(tlen,Ny,ssx+Nx);
 for i=1:tlen
     c(i,:,:) = reshape(cpcs(i,1:ss+Nx*Ny),Ny,ssx+Nx);
-    
+
 end
 
 phi = zeros(tlen,Ny,ssx+Nx);
@@ -47,10 +47,10 @@ if strcmp(fig,'s')
                 plot(cs{ind}(i,:))
                 axis([0 sz(2) 0 1])
                 M(i) = getframe(gcf);
-            end 
+            end
         end
-    end   
-    
+    end
+
 elseif strcmp(fig,'e')
     figure
     for i=1:tlen
@@ -59,7 +59,7 @@ elseif strcmp(fig,'e')
         M(i) = getframe(gcf);
     end
 
-    
+
 elseif strcmp(fig,'d')
     scrsz = get(0,'ScreenSize');
     figure('OuterPosition',[3/4 scrsz(4)/2 3*scrsz(3)/4 scrsz(4)/2])
@@ -72,7 +72,7 @@ elseif strcmp(fig,'d')
                 sz = size(cs{ind});
                 plot(cs{ind}(i,:))
                 axis([0 sz(2) 0 1])
-            end 
+            end
         end
         % Now the voltage
         subplot(Nx,Ny*2,[Ny+1 2*Ny*Nx])
@@ -84,7 +84,7 @@ elseif strcmp(fig,'d')
     end
 end
 
-if output == 1 
+if output == 1
     movie2avi(M,'C:\Users\trf\Desktop\movie.avi')
 end
 
