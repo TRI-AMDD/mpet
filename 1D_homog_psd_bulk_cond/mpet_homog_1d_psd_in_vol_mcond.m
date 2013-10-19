@@ -41,7 +41,7 @@ Dm = 2.94e-10;                      % Anion diff, m^2/s, LiPF6 in EC/DMC
 Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm);   % Ambipolar diffusivity
 tp = zp*Dp / (zp*Dp + zm*Dm);       % Cation transference number
 dim_mcond = 0.001;                  % Dimensional electronic conductivity
-dim_ASRcont = 20e-4;                % Dimensional area specific contact resistance, ohm*m^2
+dim_ASRcont = 0.0;                % Dimensional area specific contact resistance, ohm*m^2
 
 % Particle size distribution
 mean = 160e-9;                      % Average particle size, m
@@ -111,7 +111,7 @@ if ~isa(disc,'struct')
     ssx = ceil(sf*Nx);
     ss = ssx;
     disc = struct('ss',ss,'steps',Nx,'numpart',numpart,...
-                    'len',2*(ss+Nx)+totalpart+1, ...
+                    'len',2*(ss+Nx)+totalpart+Nx+1, ...
                     'totalpart',totalpart, ...
                     'sol',2*(ss+Nx)+1,'Nx',Nx,'sf',sf);                      
 else
@@ -129,7 +129,7 @@ cpcsinit = zeros(disc.len,1);
 cpcsinit(1:disc.ss+disc.steps) = cinit;
 cpcsinit(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = phi_init;
 cpcsinit(disc.sol:disc.sol+disc.totalpart-1) = cs0;
-%cpcsinit(disc.sol:end-1) = cs0;
+cpcsinit(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1) = 0;
 cpcsinit(end) = phi_init;
 
 % Before we can call the solver, we need a Mass matrix
@@ -145,7 +145,7 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise);
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -158,7 +158,7 @@ vvec = Vstd - (k*T/e)*cpcs(:,end);
 % the particle.  That is, we ignore the surface wetting as it does not move
 ffvec = zeros(max(size(t)),1);
 for i=1:max(size(t))
-    ffvec(i) = sum(pvolvec.*cpcs(i,disc.sol:end-1)')/sum(pvolvec);
+    ffvec(i) = sum(pvolvec.*cpcs(i,disc.sol:disc.sol+disc.totalpart-1)')/sum(pvolvec);
 end
 
 % Create cs matrix
@@ -176,7 +176,7 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -185,7 +185,7 @@ val = zeros(max(size(cpcs)),1);
 cvec = cpcs(1:disc.ss+disc.steps);
 phivec = cpcs(disc.ss+disc.steps+1:2*(disc.ss+disc.steps));
 phi0 = cpcs(end);
-csvec = cpcs(disc.sol:end-1);
+csvec = cpcs(disc.sol:disc.sol+disc.totalpart-1);
 
 % MASS CONSERVATION - ELECTROLYTE DIFFUSION
 ctmp = zeros(disc.ss+disc.steps+2,1);
@@ -215,8 +215,19 @@ rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
 muvec = calcmu(csvec,a);
 ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
 eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
-val(disc.sol:end-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
-val(disc.sol:end-1) = val(disc.sol:end-1) + interp1q(tr,noise,t)';
+val(disc.sol:disc.sol+disc.totalpart-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
+val(disc.sol:disc.sol+disc.totalpart-1) = val(disc.sol:disc.sol+disc.totalpart-1) + interp1q(tr,noise,t)';
+
+% Charge conservation in solid (Ohm's law)
+phimtmp = zeros(2+disc.steps,1);
+phimtmp(2:end-1) = cpcs(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1);
+% Potential at current collector is 0
+phimtmp(end) = 0;
+% No flux at electrode/separator interface
+phimtmp(1) = phimtmp(2);
+% divergence of current density:
+val(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1) = ...
+    -diff(-mcond.*diff(phimtmp)*Nx).*Nx;
 
 % CURRENT CONDITION
 val(end) = currset;
@@ -260,7 +271,17 @@ for i=1:Nx
 end
 
 % Solid particles
-M(disc.sol:end-1,disc.sol:end-1) = speye(Nx*numpart,Nx*numpart);
+M(disc.sol:disc.sol+disc.totalpart-1, disc.sol:disc.sol+disc.totalpart-1) = speye(Nx*numpart,Nx*numpart);
+
+% Charge conservation in solid (Ohm's law)
+for i=1:Nx
+    % Loop through the particles
+    for j=0:numpart-1
+        M(disc.sol+disc.totalpart+i-1, disc.sol+(i-1)*numpart+j) = ...
+            -epsbeta*pvolvec((i-1)*numpart+j+1,1) ...
+            / sum(pvolvec((i-1)*numpart+1:i*numpart));
+    end
+end
 
 % Current conservation
 for i=1:Nx
@@ -274,7 +295,7 @@ end
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise)
                         
 value = 0;
 isterminal = 0;
