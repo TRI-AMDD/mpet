@@ -4,7 +4,7 @@
 import sys
 import os
 from time import localtime, strftime
-import math
+#import math
 
 import numpy as np
 import scipy.sparse as sprs
@@ -31,12 +31,8 @@ F = e*N_A          # Faraday's number
 #########################################################################
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 0.001                   # Battery discharge c-rate
+dim_crate = 0.000                   # Battery discharge c-rate
 #currset = 0.001                         # Battery discharge c-rate
-#partsize = 1000                       # particle size, nm
-
-## Particle size
-#part_size = partsize * 1e-9                  # Average particle size, m
 
 # Electrode properties
 Ltrode = 50e-6                      # electrode thickness, m
@@ -53,8 +49,8 @@ Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)    # Ambipolar diffusivity
 tp = zp*Dp / (zp*Dp + zm*Dm)        # Cation transference number
 
 # Particle size distribution
-mean = 160e-9                       # Average particle size, m
-stddev = 20e-9                      # Standard deviation, m
+mean = 20e-9                       # Average particle size, m
+stddev = 2e-9                      # Standard deviation, m
 
 # Material properties
 dim_k0 = 0.1                       # Exchange current density, A/m^2 (0.1 for h2/Pt)
@@ -70,9 +66,9 @@ Vstd = 3.422                       # Standard potential, V
 alpha = 0.5                        # Charge transfer coefficient
 
 # Discretization settings
-Ntrode = 5                              # Numer disc. in x direction (volumes in electrode)
+Ntrode = 2                              # Numer disc. in x direction (volumes in electrode)
 solid_disc = 1e-9                   # Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
-numpart = 4                         # Particles per volume
+numpart = 1                         # Particles per volume
 tsteps = 200                        # Number disc. in time
 
 
@@ -289,8 +285,16 @@ class modRay(daeModel):
 #                print type(Nsld_mat[i, j])
 
         # The porosity vector
+#        porosvec = np.empty(Nlyte, dtype=object)
+#        # Use the Bruggeman relationship to approximate an effective
+#        # effect on the transport.
+#        porosvec[0:Nsep] = [self.poros_sep()**(3./2) for i in range(Nsep)]
+#        porosvec[Nsep:Nlyte] = [self.poros_trode()**(3./2) for i in
+#                range(Ntrode)]
         porosvec = np.empty(Nlyte + 1, dtype=object)
-        porosvec[0:Nsep] = [self.poros_sep() for i in range(Nsep)]
+        # Use the Bruggeman relationship to approximate an effective
+        # effect on the transport.
+        porosvec[0:Nsep] = [self.poros_sep()**(3./2) for i in range(Nsep)]
         porosvec[Nsep:Nlyte+1] = [self.poros_trode()**(3./2) for i in
                 range(Ntrode+1)]
 
@@ -309,6 +313,8 @@ class modRay(daeModel):
 #                                     time_vec, noise_data, previous_output, _position_)
 #                               for _position_ in range(Nsld)]
 
+        print "\n\n=========================\n\n"
+        print "avg conc"
         # Define the average concentration in each particle (algebraic
         # equations)
         for i in range(Ntrode):
@@ -317,18 +323,29 @@ class modRay(daeModel):
                 eq.Residual = (self.cbar_sld(i, j) -
                         Sum(self.c_sld[i, j].array([])) / Nsld_mat[i, j]
                         )
-                eq.BuildJacobianExpressions = True
+#                eq.BuildJacobianExpressions = True
                 eq.CheckUnitsConsistency = False
+                print eq.Residual
 
+        print "\n\n=========================\n\n"
+        print "overall ffrac"
         # Define the overall filling fraction in the cathode
+        # XXX -- This is wrong, but shouldn't affect
+        # convergence... Need to adjust for particle sizes
         eq = self.CreateEquation("ffrac_cathode")
         eq.Residual = (self.ffrac_cathode() -
                 Sum(self.cbar_sld.array([], []))/(Ntrode*numpart)
                 )
+        eq.CheckUnitsConsistency = False
+        print eq.Residual
 
+        print "\n\n=========================\n\n"
+        print "j plus"
         # Define dimensionless j_plus for each volume
         for i in range(Ntrode):
             eq = self.CreateEquation("j_plus_vol{i}".format(i=i))
+            # Start with no reaction, then add reactions for each
+            # particle in the volume.
             res = 0
             # sum over particle volumes in given electrode volume
             Vu = Sum(self.psd_vol.array(i, []))
@@ -338,7 +355,10 @@ class modRay(daeModel):
                 res += (Vj/Vu)*self.cbar_sld.dt(i, j)
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
+            print eq.Residual
 
+        print "\n\n=========================\n\n"
+        print "dcsdt"
         # Calculate the solid concentration rates of change
         # (differential equations)
         for i in range(Ntrode):
@@ -348,7 +368,7 @@ class modRay(daeModel):
                 # Prepare the RHS function
                 Nij = Nsld_mat[i, j]
                 c_sld = np.empty(Nij, dtype=object)
-                c_sld[0:Nij] = [self.c_sld[i, j](k) for k in range(Nij)]
+                c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
 #                k0 = self.k0(i, j)
 #                kappa = self.kappa(i, j)
                 RHS_c_sld_ij = self.calc_dcs_dt(c_sld, phi_lyte,
@@ -360,6 +380,7 @@ class modRay(daeModel):
                                 i=i,j=j,k=k))
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
+                    print eq.Residual
 
         # Calculate RHS for electrolyte equations
         Nlyte = Nsep + Ntrode
@@ -374,6 +395,8 @@ class modRay(daeModel):
         (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte, Nlyte,
                 porosvec)
 
+        print "\n\n=========================\n\n"
+        print "electrolyte in sep"
         # Equations governing the electrolyte in the separator
         for i in range(Nsep):
             # Mass Conservation
@@ -382,11 +405,15 @@ class modRay(daeModel):
             eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
                     RHS_c[i])
             eq.CheckUnitsConsistency = False
+            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "sep_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (RHS_phi[i])
             eq.CheckUnitsConsistency = False
+            print eq.Residual
+        print "\n\n=========================\n\n"
+        print "electrolyte in trode"
         # Equations governing the electrolyte in the electrode.
         # Here, we are coupled to the total reaction rates in the
         # solids.
@@ -398,17 +425,22 @@ class modRay(daeModel):
                     self.epsbeta()*(1-self.tp())*self.j_plus(i) -
                     RHS_c[i])
             eq.CheckUnitsConsistency = False
+            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "trode_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (self.epsbeta()*self.j_plus(i) - RHS_phi[i])
             eq.CheckUnitsConsistency = False
+            print eq.Residual
 
+        print "\n\n=========================\n\n"
+        print "total current"
         # Total Current Constraint Equation
         eq = self.CreateEquation("Total_Current_Constraint")
         eq.Residual = (
                 Sum(self.j_plus.array([])) - self.currset())
         eq.CheckUnitsConsistency = False
+        print eq.Residual
 
     def calc_dcs_dt(self, cs, phi_lyte, c_lyte, vol_indx, part_indx):
 #        part_steps = self.N.NumberOfPoints
@@ -449,6 +481,8 @@ class modRay(daeModel):
         # The lengths are nondimensionalized by the electrode length
         dx = 1./Ntrode
         # Mass conservation equations
+#        ctmp = np.empty(Nlyte + 1, dtype=object)
+#        ctmp[:-1] = cvec
         ctmp = np.empty(Nlyte + 2, dtype=object)
         ctmp[1:-1] = cvec
         # XXX -- Is this overspecifying the system?
@@ -474,11 +508,11 @@ class modRay(daeModel):
         # We need average values of c_lyte for the current densities
         # at the finite volume boundaries
         c_edges = (ctmp[0:-1] + ctmp[1:])/2.
-        # XXX -- typo in Todd's code? -- yes (says trf)
         zp = self.zp()
         zm = self.zm()
         Dp = self.Dp()
         Dm = self.Dm()
+        # Typo in Todd's code in currdens equation
         currdens = (-((Dp - Dm)*np.diff(ctmp)/dx) -
                 (zp*Dp + zm*Dm)*c_edges*np.diff(phitmp)/dx)
         RHS_phi = -np.diff(porosvec*currdens)/dx
@@ -635,7 +669,7 @@ class simRay(daeSimulation):
             self.m.c_lyte_trode.SetInitialCondition(i, c_lyte_init)
             self.m.phi_lyte_trode.SetInitialGuess(i, phi_guess)
         # Guess initial filling fraction
-        self.m.ffrac_cathode.SetInitialGuess(0.0)
+        self.m.ffrac_cathode.SetInitialGuess(0.01)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
         print "done SetUpVariables"
@@ -732,6 +766,8 @@ def consoleRun():
     psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
     # Convert psd to integers -- number of steps
     psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
+    # TODO -- pass mean and stddev into simulation/model and store as
+    # parameters
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
@@ -749,7 +785,8 @@ def consoleRun():
 
     # Set the time horizon and the reporting interval
     print "set up simulation time parameters"
-    simulation.TimeHorizon = 0.98/abs(dim_crate)
+#    simulation.TimeHorizon = 0.98/abs(dim_crate)
+    simulation.TimeHorizon = 0.98/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
