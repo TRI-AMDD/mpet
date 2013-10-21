@@ -31,7 +31,7 @@ F = e*N_A          # Faraday's number
 #########################################################################
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 0.000                   # Battery discharge c-rate
+dim_crate = 0.001                   # Battery discharge c-rate
 #currset = 0.001                         # Battery discharge c-rate
 
 # Electrode properties
@@ -122,11 +122,6 @@ class modRay(daeModel):
                 [self.Ntrode])
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
-#        self.c_sld = daeVariable("c_sld", mole_frac_t, self,
-#                "Concentration in the solid particles", [self.Nsld])
-#        self.c_sld = daeVariable("c_sld", mole_frac_t, self,
-#                "Concentration in the solid particles",
-#                [self.Nx, self.numpart, self.Nsld_max])
         self.c_sld = np.empty(psd.shape, dtype=object)
         for i in range(psd.shape[0]):
             for j in range(psd.shape[1]):
@@ -352,7 +347,9 @@ class modRay(daeModel):
             for  j in range(numpart):
                 # The volume of this particular particle
                 Vj = self.psd_vol(i, j)
-                res += (Vj/Vu)*self.cbar_sld.dt(i, j)
+#                res += (Vj/Vu)*self.cbar_sld.dt(i, j)
+                res += (Vj/Vu)*(Sum(self.c_sld[i, j].dt_array([])) /
+                        Nsld_mat[i, j])
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
             print eq.Residual
@@ -654,7 +651,8 @@ class simRay(daeSimulation):
             self.m.j_plus.SetInitialGuess(i, 0.0)
             for j in range(numpart):
                 # Set initial value for the average solid concentrations
-                self.m.cbar_sld.SetInitialCondition(i, j, cs0)
+#                self.m.cbar_sld.SetInitialCondition(i, j, cs0)
+                self.m.cbar_sld.SetInitialGuess(i, j, cs0)
                 # Set initial solid concentration values
                 Nij = self.m.Nsld_mat[i, j].NumberOfPoints
                 for k in range(Nij):
@@ -785,8 +783,8 @@ def consoleRun():
 
     # Set the time horizon and the reporting interval
     print "set up simulation time parameters"
-#    simulation.TimeHorizon = 0.98/abs(dim_crate)
-    simulation.TimeHorizon = 0.98/abs(0.001)
+    simulation.TimeHorizon = 0.98/abs(dim_crate)
+#    simulation.TimeHorizon = 0.98/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
