@@ -31,7 +31,7 @@ F = e*N_A          # Faraday's number
 #########################################################################
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 0.001                   # Battery discharge c-rate
+dim_crate = 0.000                   # Battery discharge c-rate
 #currset = 0.001                         # Battery discharge c-rate
 
 # Electrode properties
@@ -80,9 +80,9 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
 
-class modRay(daeModel):
+class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="", psd=None):
-        print "Init modRay"
+        print "Init modMPET"
         daeModel.__init__(self, Name, Parent, Description)
 
         if psd is None:
@@ -551,14 +551,14 @@ class modRay(daeModel):
 #                out[i] = 0.0
 #        return out
 
-class simRay(daeSimulation):
+class simMPET(daeSimulation):
     def __init__(self, psd):
-        print "initalize simRay"
+        print "initalize simulation"
         daeSimulation.__init__(self)
         if psd is None:
             raise Exception("Need particle size distr. as input")
         self.psd = psd
-        self.m = modRay("Ray", psd=psd)
+        self.m = modMPET("mpet", psd=psd)
 
     def SetUpParametersAndDomains(self):
         print "SetUpParametersAndDomains"
@@ -769,7 +769,7 @@ def consoleRun():
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
-    simulation   = simRay(psd)
+    simulation   = simMPET(psd)
     datareporter = setupDataReporters(simulation)
 
     # Use SuperLU direct sparse LA solver
@@ -783,8 +783,8 @@ def consoleRun():
 
     # Set the time horizon and the reporting interval
     print "set up simulation time parameters"
-    simulation.TimeHorizon = 0.98/abs(dim_crate)
-#    simulation.TimeHorizon = 0.98/abs(0.001)
+#    simulation.TimeHorizon = 0.98/abs(dim_crate)
+    simulation.TimeHorizon = 0.98/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
