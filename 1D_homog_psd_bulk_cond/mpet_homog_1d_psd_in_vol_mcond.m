@@ -207,16 +207,7 @@ phitmp(end) = phitmp(end-1);
 cavg = (ctmp(1:end-1)+ctmp(2:end))/2;
 currdens = -((zp*nDp-zm*nDm).*diff(ctmp).*Nx) - ...
                 ((zp*nDp+zm*nDm).*cavg.*diff(phitmp).*Nx);
-val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx;                                                            
-
-% REACTION RATE OF PARTICLES
-rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
-rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
-muvec = calcmu(csvec,a);
-ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
-eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
-val(disc.sol:disc.sol+disc.totalpart-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
-val(disc.sol:disc.sol+disc.totalpart-1) = val(disc.sol:disc.sol+disc.totalpart-1) + interp1q(tr,noise,t)';
+val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx;
 
 % Charge conservation in solid (Ohm's law)
 phimtmp = zeros(2+disc.steps,1);
@@ -228,6 +219,17 @@ phimtmp(1) = phimtmp(2);
 % divergence of current density:
 val(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1) = ...
     -diff(-mcond.*diff(phimtmp)*Nx).*Nx;
+
+% REACTION RATE OF PARTICLES
+rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
+rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
+phimmat = repmat(phimtmp(2:end-1), 1, numpart);
+phimvec = reshape(phimmat', numpart*disc.steps, 1);
+muvec = calcmu(csvec,a);
+ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
+eta = phimvec + muvec-reshape(rxnphimat',numpart*disc.steps,1);
+val(disc.sol:disc.sol+disc.totalpart-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
+val(disc.sol:disc.sol+disc.totalpart-1) = val(disc.sol:disc.sol+disc.totalpart-1) + interp1q(tr,noise,t)';
 
 % CURRENT CONDITION
 val(end) = currset;
@@ -307,7 +309,7 @@ dvec = [num2str(perc),' percent completed'];
 disp(dvec)      
 
 % Calculate the filling fraction 
-ffvec = sum(cpcs(disc.sol:end-1))/(Nx*numpart);
+ffvec = sum(cpcs(disc.sol:disc.sol+disc.totalpart-1))/(Nx*numpart);
 value = ffvec - ffend;
 isterminal = 1;
 direction = 0;
