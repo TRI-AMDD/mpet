@@ -31,7 +31,7 @@ F = e*N_A          # Faraday's number
 #########################################################################
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 0.000                   # Battery discharge c-rate
+dim_crate = 0.001                   # Battery discharge c-rate
 #currset = 0.001                         # Battery discharge c-rate
 
 # Electrode properties
@@ -66,7 +66,7 @@ Vstd = 3.422                       # Standard potential, V
 alpha = 0.5                        # Charge transfer coefficient
 
 # Discretization settings
-Ntrode = 2                              # Numer disc. in x direction (volumes in electrode)
+Ntrode = 10                              # Numer disc. in x direction (volumes in electrode)
 solid_disc = 1e-9                   # Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
 numpart = 1                         # Particles per volume
 tsteps = 200                        # Number disc. in time
@@ -237,6 +237,8 @@ class modMPET(daeModel):
 #                "Length of particle")
 #        self.Ntrode = daeParameter("Ntrode", unit(), self,
 #                "Number of volumes in particle")
+        self.Ltrode = daeParameter("Ltrode", unit(), self,
+                "Length of the electrode")
         self.delx_sld = daeParameter("delx_sld", unit(), self,
                 "size of discretization")
 #        self.part_sizes = daeParameter("sizes", unit(), self,
@@ -354,8 +356,8 @@ class modMPET(daeModel):
             eq.CheckUnitsConsistency = False
             print eq.Residual
 
-        print "\n\n=========================\n\n"
-        print "dcsdt"
+#        print "\n\n=========================\n\n"
+#        print "dcsdt"
         # Calculate the solid concentration rates of change
         # (differential equations)
         for i in range(Ntrode):
@@ -370,6 +372,10 @@ class modMPET(daeModel):
 #                kappa = self.kappa(i, j)
                 RHS_c_sld_ij = self.calc_dcs_dt(c_sld, phi_lyte,
                         c_lyte, i, j)
+                # For homogeneous particles
+                k0 = self.k0(i, j)
+                RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
+                        c_lyte, k0)
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
@@ -377,7 +383,7 @@ class modMPET(daeModel):
                                 i=i,j=j,k=k))
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
-                    print eq.Residual
+#                    print eq.Residual
 
         # Calculate RHS for electrolyte equations
         Nlyte = Nsep + Ntrode
@@ -420,13 +426,14 @@ class modMPET(daeModel):
                     "trode_lyte_mass_cons_vol{i}".format(i=i))
             eq.Residual = (self.poros_trode()*self.c_lyte_trode.dt(i) +
                     self.epsbeta()*(1-self.tp())*self.j_plus(i) -
-                    RHS_c[i])
+                    RHS_c[Nsep + i])
             eq.CheckUnitsConsistency = False
             print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "trode_lyte_charge_cons_vol{i}".format(i=i))
-            eq.Residual = (self.epsbeta()*self.j_plus(i) - RHS_phi[i])
+            eq.Residual = (self.epsbeta()*self.j_plus(i) -
+                    RHS_phi[Nsep + i])
             eq.CheckUnitsConsistency = False
             print eq.Residual
 
@@ -473,6 +480,18 @@ class modMPET(daeModel):
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
 
+    def calc_homog_dcs_dt(self, c_sld, phi_lyte, c_lyte, k0):
+        mu = self.mu_reg_sln(c_sld)
+        act_R = np.exp(mu)
+        gamma_ts = (1./(1-c_sld))
+        act_O = c_lyte
+        ecd = ( k0 * act_O**(1-self.alpha())
+                * act_R**(self.alpha()) / gamma_ts )
+        delta_phi = self.phi_cathode() - phi_lyte
+        eta = mu + delta_phi
+        return ( ecd*(np.exp(-self.alpha()*eta) -
+                np.exp((1-self.alpha())*eta)) )
+
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
 #        Nlyte = Nsep + Ntrode
         # The lengths are nondimensionalized by the electrode length
@@ -493,6 +512,7 @@ class modMPET(daeModel):
         cflux = -porosvec*np.diff(ctmp)/dx
         # Divergence of the flux
         RHS_c = -np.diff(cflux)/dx
+#        RHS_c = 0*RHS_c
 
         # Charge conservation equations
         phitmp = np.empty(Nlyte + 2, dtype=object)
@@ -528,29 +548,6 @@ class modMPET(daeModel):
             return ( self.a.GetValue()*(1-2*c)
                     + self.T.GetValue()*np.log(c/(1-c)) )
 
-#    def MX(self, mat, objvec):
-#        if type(mat) is not sprs.csr.csr_matrix:
-#            raise Exception("MX function designed for csr mult")
-#        if (type(objvec[0]) == pyCore.adouble):
-#            isAdouble = True
-#        else:
-#            isAdouble = False
-#        n = objvec.shape[0]
-#        if isAdouble:
-#            out = np.empty(n, dtype=object)
-#        else:
-#            out = np.zeros(n, dtype=float)
-#        # Loop through the rows
-#        for i in range(n):
-#            low = mat.indptr[i]
-#            up = mat.indptr[i+1]
-#            if up > low:
-#                out[i] = np.sum(
-#                        mat.data[low:up] * objvec[mat.indices[low:up]] )
-#            else:
-#                out[i] = 0.0
-#        return out
-
 class simMPET(daeSimulation):
     def __init__(self, psd):
         print "initalize simulation"
@@ -583,6 +580,7 @@ class simMPET(daeSimulation):
         self.m.F.SetValue(F)
         self.m.alpha.SetValue(alpha)
         td = Ltrode**2 / Damb
+        self.m.Ltrode.SetValue(Ltrode)
         self.m.td.SetValue(td)
         self.m.zp.SetValue(zp)
         self.m.zm.SetValue(zm)
@@ -614,7 +612,6 @@ class simMPET(daeSimulation):
             for j in range(numpart):
                 p_num = float(self.psd[i, j])
                 p_len = p_num*solid_disc
-                self.m.psd_len.SetValue(i, j, p_len)
                 # Spherical particles
                 p_area = (4*np.pi)*p_len**2
                 p_vol = (4./3)*np.pi*p_len**3
@@ -622,6 +619,7 @@ class simMPET(daeSimulation):
                 p_area = 2 * 1.2263 * p_len**2
                 p_vol = 1.2263 * p_len**2 * part_thick
                 self.m.psd_num.SetValue(i, j, p_num)
+                self.m.psd_len.SetValue(i, j, p_len)
                 self.m.psd_area.SetValue(i, j, p_area)
                 self.m.psd_vol.SetValue(i, j, p_vol)
                 self.m.kappa.SetValue(i, j,
@@ -764,6 +762,8 @@ def consoleRun():
     psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
     # Convert psd to integers -- number of steps
     psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
+    # For homogeneous particles
+    psd = (50*np.ones((Ntrode, numpart))).astype(np.integer)
     # TODO -- pass mean and stddev into simulation/model and store as
     # parameters
     # Create Log, Solver, DataReporter and Simulation object
@@ -784,7 +784,11 @@ def consoleRun():
     # Set the time horizon and the reporting interval
     print "set up simulation time parameters"
 #    simulation.TimeHorizon = 0.98/abs(dim_crate)
-    simulation.TimeHorizon = 0.98/abs(0.001)
+    td = Ltrode**2 / Damb
+    currset = dim_crate*td/3600
+    simulation.TimeHorizon = 0.98/abs(currset)
+#    simulation.TimeHorizon = 0.98/abs(0.001)
+#    simulation.TimeHorizon = 0.50/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
@@ -803,7 +807,11 @@ def consoleRun():
 
     # Run
     print "run the simulation"
-    simulation.Run()
+    try:
+        simulation.Run()
+    except Exception as e:
+        print str(e)
+        simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
     
 #    print 'Number of numpy.interp1d calls in noise ext. functions:'
