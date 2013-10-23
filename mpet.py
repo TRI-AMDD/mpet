@@ -143,6 +143,12 @@ class modMPET(daeModel):
                 "Overall filling fraction of solids in cathode")
 
         # Parameters
+        self.NumTrode = daeParameter("NumTrode", unit(), self,
+                "Number of volumes in the electrode")
+        self.NumPart = daeParameter("NumPart", unit(), self,
+                "Number of particles in each electrode volume")
+        self.NumSep = daeParameter("NumSep", unit(), self,
+                "Number of volumes in the electrolyte")
         self.Lp = daeParameter("Lp", unit(), self,
                 "loading percent (vol active per vol solid)")
         self.c_lyte0 = daeParameter("c_lyte0", unit(), self,
@@ -157,18 +163,10 @@ class modMPET(daeModel):
                 "positive transference number")
         self.poros_sep = daeParameter("poros_sep", unit(), self,
                 "porosity in separator")
-#                "porosity in separator", [self.Nsep])
         self.poros_trode = daeParameter("poros_trode", unit(), self,
                 "porosity in electrode")
-#                "porosity in electrode", [self.Ntrode])
         self.phi_cathode = daeParameter("phi_cathode", unit(), self,
                 "potential at the cathode (phi_applied is relative to this)")
-#        self.part_areas = daeParameter("part_areas", unit(), self,
-#                "particle areas",
-#                [self.Ntrode, self.numpart])
-#        self.part_vols = daeParameter("part_vols", unit(), self,
-#                "particle volumes",
-#                [self.Ntrode, self.numpart])
         self.td = daeParameter("td", unit(), self,
                 "Diffusive time [s]")
         self.dim_Dp = daeParameter("dim_Dp", unit(), self,
@@ -240,6 +238,8 @@ class modMPET(daeModel):
 #                "Number of volumes in particle")
         self.Ltrode = daeParameter("Ltrode", unit(), self,
                 "Length of the electrode")
+        self.Lsep = daeParameter("Lsep", unit(), self,
+                "Length of the separator")
         self.delx_sld = daeParameter("delx_sld", unit(), self,
                 "size of discretization")
 #        self.part_sizes = daeParameter("sizes", unit(), self,
@@ -560,7 +560,8 @@ class simMPET(daeSimulation):
         numpart = self.psd.shape[1]
         self.m.Ntrode.CreateArray(Ntrode)
         sep_frac = float(Lsep)/Ltrode
-        self.m.Nsep.CreateArray(int(np.ceil(sep_frac*Ntrode)))
+        Nsep = int(np.ceil(sep_frac*Ntrode))
+        self.m.Nsep.CreateArray(Nsep)
         self.m.numpart.CreateArray(numpart)
         for i in range(self.psd.shape[0]):
             for j in range(self.psd.shape[1]):
@@ -577,6 +578,10 @@ class simMPET(daeSimulation):
         self.m.alpha.SetValue(alpha)
         td = Ltrode**2 / Damb
         self.m.Ltrode.SetValue(Ltrode)
+        self.m.Lsep.SetValue(Lsep)
+        self.m.NumTrode.SetValue(Ntrode)
+        self.m.NumSep.SetValue(Nsep)
+        self.m.NumPart.SetValue(numpart)
         self.m.td.SetValue(td)
         self.m.zp.SetValue(zp)
         self.m.zm.SetValue(zm)
@@ -610,9 +615,9 @@ class simMPET(daeSimulation):
             for j in range(numpart):
                 p_num = float(self.psd[i, j])
                 p_len = p_num*solid_disc
-                # Spherical particles
-                p_area = (4*np.pi)*p_len**2
-                p_vol = (4./3)*np.pi*p_len**3
+#                # Spherical particles
+#                p_area = (4*np.pi)*p_len**2
+#                p_vol = (4./3)*np.pi*p_len**3
                 # C3 particles
                 p_area = 2 * 1.2263 * p_len**2
                 p_vol = 1.2263 * p_len**2 * part_thick
@@ -634,12 +639,6 @@ class simMPET(daeSimulation):
         Ntrode = self.m.Ntrode.NumberOfPoints
         Nlyte = Nsep + Ntrode
         numpart = self.m.numpart.NumberOfPoints
-#        Nsld = self.m.Nsld.NumberOfPoints
-##        Nsld_max = self.m.Nsld_max.NumberOfPoints
-#        Nsld_mat = np.zeros(Ntrode, numpart)
-#        for i in range(Ntrode):
-#            for j in range(numpart):
-#                Nsld_mat[i, j] = self.m.Nsld_mat[i, j].NumberOfPoints
         # Set/guess values
         cs0 = 0.01
         for i in range(Ntrode):
@@ -755,7 +754,7 @@ def setupDataReporters(simulation):
 
 def consoleRun():
     print "START"
-    # XXX -- a bit awkward, but we'll have to generate our
+    # A bit awkward, but we'll have to generate our
     # particle size distribution here and pass it to the
     # simulation/model.
     psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
