@@ -1,4 +1,4 @@
-function [t,cpcs,csmat,disc,psd,ffvec,vvec] = mpet_spinod_1d_psd_in_vol(psd,disc)
+function [t,cpcs,csmat,disc,psd,ffvec,vvec] = mpet_homog_1d_psd_in_vol_mcond(psd,disc)
 
 % This script simulates a 1D electrode with variable size particles.  The
 % particles are all homogeneous and use the regular solution model (ONLY).
@@ -24,7 +24,7 @@ F = e*Na;           % Faraday's number
 % SET DIMENSIONAL VALUES HERE
 
 % Discharge settings
-dim_crate = 1;                    % C-rate (electrode capacity per hour)
+dim_crate = 0.1;                    % C-rate (electrode capacity per hour)
 dim_io = .1;                         % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Electrode properties
@@ -40,6 +40,8 @@ Dp = 2.2e-10;                       % Cation diff, m^2/s, LiPF6 in EC/DMC
 Dm = 2.94e-10;                      % Anion diff, m^2/s, LiPF6 in EC/DMC
 Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm);   % Ambipolar diffusivity
 tp = zp*Dp / (zp*Dp + zm*Dm);       % Cation transference number
+dim_mcond = 0.001;                  % Dimensional electronic conductivity
+dim_ASRcont = 0.0;                % Dimensional area specific contact resistance, ohm*m^2
 
 % Particle size distribution
 mean = 160e-9;                      % Average particle size, m
@@ -59,8 +61,8 @@ Vstd = 3.422;                       % Standard potential, V
 alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
-Nx = 20;                            % Number disc. in x direction
-numpart = 50;                       % Particles per volume
+Nx = 15;                            % Number disc. in x direction
+numpart = 30;                       % Particles per volume
 tsteps = 200;                       % Number disc. in time
 ffend = .95;                          % Final filling fraction
 
@@ -85,6 +87,10 @@ td = Lx^2 / Damb;       % Diffusive time
 nDp = Dp / Damb;
 nDm = Dm / Damb;
 currset = dim_crate * (td/3600);
+ASRcont = dim_ASRcont * Lx * csmax * F * (1-eps) * Lp / td * e / (k * T);
+
+% scaling of conductivity
+mcond = dim_mcond * (td * k * Na * T) / (Lx^2 * F^2 * c0);
 
 if currset ~= 0
     tr = linspace(0,1/abs(currset),tsteps);
@@ -105,39 +111,25 @@ if ~isa(disc,'struct')
     ssx = ceil(sf*Nx);
     ss = ssx;
     disc = struct('ss',ss,'steps',Nx,'numpart',numpart,...
-                    'len',2*(ss+Nx)+totalpart+1, ...
+                    'len',2*(ss+Nx)+totalpart+Nx+1, ...
+                    'totalpart',totalpart, ...
                     'sol',2*(ss+Nx)+1,'Nx',Nx,'sf',sf);                      
 else
     Nx = disc.Nx;
 end
-
-% Calculate the composition bounds within which the particles are
-% phase separated.
-% cslow is the spinodal point at the lower composition
-% (other is 0.5*(1+sqrt(1-2/a)) )
-cslow = 0.5*(1-sqrt(1-2/a));
-% csup is the binodal, the upper comp where mu_homogeneous = 0
-csup = fsolve(@(cs) log(cs/(1-cs))+a*(1-2*cs), 0.995);
-% disp('cslow')
-% disp(cslow)
-% disp('csup')
-% disp(csup)
-% if cslow > csup
-%     error('cs bound calcs wrong')
-% end
 % cstestvec = 0.001:0.001:0.999;
-% muvec = calcmu(cstestvec,a,cslow,csup);
-% plot(cstestvec, muvec)
-% return;
+% plot(cstestvec, calcmu(cstestvec,a))
+% return
 
 cs0 = 0.01;                 
-phi_init = calcmu(cs0,a,cslow,csup);
+phi_init = calcmu(cs0,a);
 cinit = 1;
 % Assemble it all
 cpcsinit = zeros(disc.len,1);
 cpcsinit(1:disc.ss+disc.steps) = cinit;
 cpcsinit(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = phi_init;
-cpcsinit(disc.sol:end-1) = cs0;
+cpcsinit(disc.sol:disc.sol+disc.totalpart-1) = cs0;
+cpcsinit(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1) = 0;
 cpcsinit(end) = phi_init;
 
 % Before we can call the solver, we need a Mass matrix
@@ -150,11 +142,10 @@ porosvec = porosvec.^(3/2);     % Bruggeman
 
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
-options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none',...
-    'RelTol',1e-3,'AbsTol',1e-6','Events',@events);
+options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise);
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -167,7 +158,7 @@ vvec = Vstd - (k*T/e)*cpcs(:,end);
 % the particle.  That is, we ignore the surface wetting as it does not move
 ffvec = zeros(max(size(t)),1);
 for i=1:max(size(t))
-    ffvec(i) = sum(pvolvec.*cpcs(i,disc.sol:end-1)')/sum(pvolvec);
+    ffvec(i) = sum(pvolvec.*cpcs(i,disc.sol:disc.sol+disc.totalpart-1)')/sum(pvolvec);
 end
 
 % Create cs matrix
@@ -185,7 +176,7 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -194,14 +185,14 @@ val = zeros(max(size(cpcs)),1);
 cvec = cpcs(1:disc.ss+disc.steps);
 phivec = cpcs(disc.ss+disc.steps+1:2*(disc.ss+disc.steps));
 phi0 = cpcs(end);
-csvec = cpcs(disc.sol:end-1);
+csvec = cpcs(disc.sol:disc.sol+disc.totalpart-1);
 
 % MASS CONSERVATION - ELECTROLYTE DIFFUSION
 ctmp = zeros(disc.ss+disc.steps+2,1);
 ctmp(2:end-1) = cvec;
 % Boundary conditions
 ctmp(1) = ctmp(2) + currset*epsbeta*(1-tp)/Nx;
-ctmp(end) = ctmp(end-1);
+ctmp(end) = ctmp(end-1); % porosity is constant in the porous material
 % Porosity effects
 cflux = -porosvec.*diff(ctmp).*Nx;
 val(1:disc.ss+disc.steps) = -diff(cflux).*Nx;
@@ -216,16 +207,29 @@ phitmp(end) = phitmp(end-1);
 cavg = (ctmp(1:end-1)+ctmp(2:end))/2;
 currdens = -((zp*nDp-zm*nDm).*diff(ctmp).*Nx) - ...
                 ((zp*nDp+zm*nDm).*cavg.*diff(phitmp).*Nx);
-val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx;                                                            
+val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx;
+
+% Charge conservation in solid (Ohm's law)
+phimtmp = zeros(2+disc.steps,1);
+phimtmp(2:end-1) = cpcs(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1);
+% Potential at current collector is 0
+phimtmp(end) = 0;
+% No flux at electrode/separator interface
+phimtmp(1) = phimtmp(2);
+% divergence of current density:
+val(disc.sol+disc.totalpart:disc.sol+disc.totalpart+Nx-1) = ...
+    -diff(-mcond.*diff(phimtmp)*Nx).*Nx;
 
 % REACTION RATE OF PARTICLES
 rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
 rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
-muvec = calcmu(csvec,a,cslow,csup);
+phimmat = repmat(phimtmp(2:end-1), 1, numpart);
+phimvec = reshape(phimmat', numpart*disc.steps, 1);
+muvec = calcmu(csvec,a);
 ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
-eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
-val(disc.sol:end-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
-val(disc.sol:end-1) = val(disc.sol:end-1) + interp1q(tr,noise,t)';
+eta = phimvec + muvec-reshape(rxnphimat',numpart*disc.steps,1);
+val(disc.sol:disc.sol+disc.totalpart-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
+val(disc.sol:disc.sol+disc.totalpart-1) = val(disc.sol:disc.sol+disc.totalpart-1) + interp1q(tr,noise,t)';
 
 % CURRENT CONDITION
 val(end) = currset;
@@ -233,29 +237,10 @@ val = real(val);
 
 return;
 
-function mu = calcmu(cs,a,cslow,csup)
-% This function calculates the chemical potential. If we're
-% passed the low-concentration spinodal point but below the
-% high-concentration binodal, we're phase separated, with mu = 0.
+function mu = calcmu(cs,a)
 
-% "if cs is between cslow and csup --> 1, else 0"
-% then invert mumask --> 0 if inside chemical chemical spinodal, 1 if outside
-delta = 0.01;
-%mumask = 1 - bitand((cslow < cs), (cs < csup)); % 0 when between cslow, csup
-mumask = ones(size(cs));
-%gtr_than_cslowbnd = ((cslow - delta) < cs); % 1 if cs > (cslow - delta)
-%gtr_than_csupbnd = ((cslow + delta) < cs); % 1 if cs > (cslow + delta)
-% Linearly decay from the homogeneous curve to the flat spinodal
-% decomposition region over a range 2*delta
-withindelta = ( bitand( ((cslow - delta) < cs), ...
-    (cs < (cslow + delta)) ) ) ...
-    .* ((cs-(cslow-delta))/(2*delta));
-% mumask = mumask - withindelta.*((cs-(cslow-delta))/(2*delta));
-% Zero (flat) if cs is within the spinodal decomposition region
-in_flat_region = bitand((cslow+delta < cs), (cs < csup)); % 1 when between cslow, csup
-mumask = mumask - withindelta - in_flat_region;
-% plot(cs,mumask)
-mu = (log(cs./(1-cs))+a.*(1-2.*cs)).*mumask;
+% This function calculates the chemical potential
+mu = log(cs./(1-cs))+a.*(1-2.*cs);
 
 return;
 
@@ -288,7 +273,17 @@ for i=1:Nx
 end
 
 % Solid particles
-M(disc.sol:end-1,disc.sol:end-1) = speye(Nx*numpart,Nx*numpart);
+M(disc.sol:disc.sol+disc.totalpart-1, disc.sol:disc.sol+disc.totalpart-1) = speye(Nx*numpart,Nx*numpart);
+
+% Charge conservation in solid (Ohm's law)
+for i=1:Nx
+    % Loop through the particles
+    for j=0:numpart-1
+        M(disc.sol+disc.totalpart+i-1, disc.sol+(i-1)*numpart+j) = ...
+            -epsbeta*pvolvec((i-1)*numpart+j+1,1) ...
+            / sum(pvolvec((i-1)*numpart+1:i*numpart));
+    end
+end
 
 % Current conservation
 for i=1:Nx
@@ -302,7 +297,7 @@ end
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,a,alpha,porosvec,numpart,...
-                 Nx,disc,tp,zp,zm,nDp,nDm,tr,epsbeta,cslow,csup,ffend,noise)
+                 Nx,disc,tp,zp,zm,nDp,nDm,mcond,tr,epsbeta,ffend,noise)
                         
 value = 0;
 isterminal = 0;
@@ -314,7 +309,7 @@ dvec = [num2str(perc),' percent completed'];
 disp(dvec)      
 
 % Calculate the filling fraction 
-ffvec = sum(cpcs(disc.sol:end-1))/(Nx*numpart);
+ffvec = sum(cpcs(disc.sol:disc.sol+disc.totalpart-1))/(Nx*numpart);
 value = ffvec - ffend;
 isterminal = 1;
 direction = 0;

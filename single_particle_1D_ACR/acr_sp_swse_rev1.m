@@ -45,6 +45,7 @@ else
     tr = linspace(0,300,tsteps);
 end
 noise = .001*randn(max(size(tr)),part_steps);
+%noise = zeros(max(size(tr)),part_steps);
 
 % Material properties
 kappa = dim_kappa ./ (k*T*rhos*part_size.^2);
@@ -68,16 +69,16 @@ if (csinit == 0)
     csinit(1:part_steps) = real(cs0);
     csinit(end) = phi_init;
 end
-    
+
 % Before we can call the solver, we need a Mass matrix
 M = genMass(part_steps);
 
 % Prepare to call the solver
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
-[t,cs]=ode15s(@calcRHS,tr,csinit,options,kappa,a,b,part_steps,alpha,cwet,currset,noise,tr,ffend);              
-                
-% First we calculate the voltage                 
+[t,cs]=ode15s(@calcRHS,tr,csinit,options,kappa,a,b,part_steps,alpha,cwet,currset,noise,tr,ffend);
+
+% First we calculate the voltage
 vvec = Vstd - (k*T/e)*cs(:,end);
 
 % Now the filling fraction vector - we only care about the active parts of
@@ -93,8 +94,10 @@ return;
 function val = calcRHS(t,cs,kappa,a,b,part_steps,alpha,cwet,currset,noise,tr,ffend)
 
 val = zeros(part_steps+1,1);
+%val(1:part_steps) = calc_dcs_dt(cs(1:part_steps),cs(end),1,1, ...
+%                        kappa,a,b,part_steps,alpha,cwet) + interp1q(tr,noise,t)';
 val(1:part_steps) = calc_dcs_dt(cs(1:part_steps),cs(end),1,1, ...
-                        kappa,a,b,part_steps,alpha,cwet) + interp1q(tr,noise,t)';
+                        kappa,a,b,part_steps,alpha,cwet);
 val(end) = real(currset);
 
 return;
@@ -120,7 +123,7 @@ dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 return;
 
 function M = genMass(part_steps)
-    
+
 M = sparse(part_steps+1,part_steps+1);
 M(1:part_steps,1:part_steps) = speye(part_steps);
 M(end,1:part_steps) = 1/part_steps;
@@ -130,12 +133,12 @@ return;
 
 function [value, isterminal, direction] = events(t,cs,kappa,a,b, ...
                         part_steps,alpha,cwet,currset,noise,tr,ffend)
-                        
+
 tfinal = tr(end);
 tsteps = max(size(tr));
 perc = ((t/tsteps) / (tfinal/tsteps)) * 100;
 dvec = [num2str(perc),' percent completed'];
-disp(dvec)      
+disp(dvec)
 
 % Calculate the filling fraction
 ffvec = sum(cs(1:end-1))/part_steps;
@@ -143,6 +146,6 @@ value = ffvec - ffend;
 isterminal = 1;
 direction = 0;
 
-                        
+
 return;
 

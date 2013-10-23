@@ -10,7 +10,7 @@ function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_scon
 % distribution.
 
 % OUTPUTS
-% t = time vector 
+% t = time vector
 % cpcs = conc., potential, and solid conc. vector
 % ffvec = filling fraction vector
 % vvec = voltage vector
@@ -20,7 +20,7 @@ function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_scon
 % INPUTS
 % dim_crate = dimensional C-rate
 % part = particle sizes and discretizations (if from another simulation)
-%           this allows you to run the same setup at a different C-rate               
+%           this allows you to run the same setup at a different C-rate
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS
@@ -41,7 +41,7 @@ dim_io = .1;                      % Exchange current density, A/m^2 (0.1 for H2/
 if dim_crate > 0
     init_voltage = 3.45;
 else
-    init_voltage = 3.35;                 
+    init_voltage = 3.35;
 end
 
 % Electrode properties
@@ -105,13 +105,13 @@ if ~isa(part,'struct')
 elseif (isa(part,'struct') && (max(size(part.sizes)) == totalpart))
     part_size = part.sizes;
     part_steps = part.steps;
-%    ap = 3.475 ./ part_size;    
+%    ap = 3.475 ./ part_size;
     pareavec = part.areas;
     pvolvec = part.vols;
     wet_steps = part.wetsteps;
     cwet = part.cwet;
 else
-    error('Error retrieving particle sizes. Be sure your input values match the discretization settings') 
+    error('Error retrieving particle sizes. Be sure your input values match the discretization settings')
 end
 
 % Now we calculate the dimensionless quantities used in the simulation
@@ -127,7 +127,7 @@ scond = scond .* ((Na*k*T)/(F^2*Damb*csmax)) .* (Lx./(part.steps(2:end)*solid_di
 
 if currset ~= 0
     tr = linspace(0,1/abs(currset),tsteps);
-else    
+else
     tr = linspace(0,30,100);
 end
 io = ((pareavec./pvolvec) .* dim_io .* td) ./ (F .* csmax);
@@ -168,7 +168,7 @@ if max(size(cpcs0)) == 1
         cs0 = 0.98;
         ffend = 1 - ffend;
     end
-    
+
     phi_init = -(init_voltage-Vstd)*(e/(k*T));
     cinit = 1;
     disp('Generating initial solid concentration profiles...')
@@ -190,7 +190,7 @@ if max(size(cpcs0)) == 1
 
     % Create the initial vector for the time stepper
     disp('Generating initial vector...')
-    
+
     % Assemble it all
     cpcsinit = zeros(disc.len,1);
     cpcsinit(1:disc.ss+disc.steps) = cinit;
@@ -227,10 +227,10 @@ disp('Calling ode15s solver...')
                     cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend);
 
 % Now we analyze the results before returning
-disp('Done.')                
-disp('Calculating the voltage and filling fraction vectors...')                
-                
-% First we calculate the voltage                 
+disp('Done.')
+disp('Calculating the voltage and filling fraction vectors...')
+
+% First we calculate the voltage
 vvec = Vstd - (k*T/e)*cpcs(:,end) - (k*T/e) * currset * ASRcont;
 
 % Converting scaled time to actual time
@@ -280,8 +280,8 @@ function val = calcRHS(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
                  part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend)
 
 % Initialize output
-val = zeros(max(size(cpcs)),1);             
-             
+val = zeros(max(size(cpcs)),1);
+
 % Pull out the concentrations first
 cvec = cpcs(1:disc.ss+disc.steps);
 phivec = cpcs(disc.ss+disc.steps+1:2*(disc.ss+disc.steps));
@@ -310,7 +310,7 @@ cflux = -porosvec.*diff(ctmp).*Nx;
 val(1:disc.ss+disc.steps) = -diff(cflux).*Nx;
 %val(1:disc.ss+disc.steps) = reshape(-diff(cxflux,1,2)*Nx - ...
 %                                diff(cyflux,1,1)*Ny,disc.ss+disc.steps,1);
-                           
+
 % CHARGE CONSERVATION - DIVERGENCE OF CURRENT DENSITY
 %phixtmp = zeros(Ny,ssx+Nx+2);
 %phiytmp = zeros(Ny+2,ssx+Nx);
@@ -388,7 +388,7 @@ for i=1:Nx
 %         tmpvec(end) = 0;
         divecd = -scond((i-1)*numpart+1+j).*diff(tmpvec,2).*Nx^2;
         outarr{(i-1)*numpart+j+1} = divecd;
-    end    
+    end
 end
 % Move to output vector
 val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
@@ -401,10 +401,10 @@ val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
 % phimtmp = zeros(2+disc.steps,1);
 % phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:end-1);
 % % No flux condition
-% phimtmp(1) = phimtmp(2);    
-% 
+% phimtmp(1) = phimtmp(2);
+%
 % % Robin condition - set ground and flux out
-% phimtmp(end-1) = currset/mcond/Nx; 
+% phimtmp(end-1) = currset/mcond/Nx;
 % %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % new test
@@ -413,12 +413,12 @@ val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
 phimtmp = zeros(2+disc.steps,1);
 
 % Robin condition - set ground and flux out
-% phimtmp(end-1) = currset / mcond / Nx; 
+% phimtmp(end-1) = currset / mcond / Nx;
 
 phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:disc.sol+disc.ssteps+disc.Nx-1);
 
 % No flux condition
-phimtmp(1) = phimtmp(2); 
+phimtmp(1) = phimtmp(2);
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -456,7 +456,7 @@ dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 return;
 
 function M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec)
-    
+
 M = sparse(disc.len,disc.len);
 % Electrolyte terms
 M(1:disc.ss,1:disc.ss) = speye(disc.ss);
@@ -523,7 +523,7 @@ for i=1:Nx
         M(disc.sol+disc.ssteps+i-1, disc.sol+ind1:disc.sol+ind2) = ...
                 -epsbeta./part_steps((i-1)*numpart+1+j+1) ...
                 * pvolvec((i-1)*numpart+j+1,1) ...
-                / sum(pvolvec((i-1)*numpart+1:i*numpart));      
+                / sum(pvolvec((i-1)*numpart+1:i*numpart));
     end
 end
 
@@ -534,7 +534,7 @@ return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
                  part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend)
-                        
+
 value = 0;
 isterminal = 0;
 direction = 0;
@@ -542,7 +542,7 @@ tfinal = tr(end);
 tsteps = max(size(tr));
 perc = ((t/tsteps) / (tfinal/tsteps)) * 100;
 dvec = [num2str(perc),' percent completed'];
-disp(dvec)      
+disp(dvec)
 
 k = 1.381e-23;      % Boltzmann constant
 T = 298;            % Temp, K
