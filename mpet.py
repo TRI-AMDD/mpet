@@ -31,7 +31,7 @@ F = e*N_A          # Faraday's number
 #########################################################################
 # SET DIMENSIONAL VALUES HERE
 #init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 0.001                   # Battery discharge c-rate
+dim_crate = 5                   # Battery discharge c-rate
 #currset = 0.001                         # Battery discharge c-rate
 
 # Electrode properties
@@ -66,9 +66,9 @@ Vstd = 3.422                       # Standard potential, V
 alpha = 0.5                        # Charge transfer coefficient
 
 # Discretization settings
-Ntrode = 10                              # Numer disc. in x direction (volumes in electrode)
+Ntrode = 6                              # Numer disc. in x direction (volumes in electrode)
 solid_disc = 1e-9                   # Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
-numpart = 1                         # Particles per volume
+numpart = 4                         # Particles per volume
 tsteps = 200                        # Number disc. in time
 
 
@@ -328,8 +328,7 @@ class modMPET(daeModel):
 #                print eq.Residual
 
         # Define the overall filling fraction in the cathode
-        # XXX -- This is wrong, but shouldn't affect
-        # convergence... Need to adjust for particle sizes
+        # XXX -- This is wrong: need to adjust for particle sizes
         eq = self.CreateEquation("ffrac_cathode")
         eq.Residual = (self.ffrac_cathode() -
                 Sum(self.cbar_sld.array([], []))/(Ntrode*numpart)
@@ -352,6 +351,11 @@ class modMPET(daeModel):
                 res += (Vj/Vu)*(Sum(self.c_sld[i, j].dt_array([])) /
                         Nsld_mat[i, j])
             eq.Residual = self.j_plus(i) - res
+#            # DEBUG -- single particle per volume
+#            j = 0
+#            eq.Residual = (self.j_plus(i) -
+#                    Sum(self.c_sld[i, j].dt_array([])) /
+#                        Nsld_mat[i, j])
             eq.CheckUnitsConsistency = False
 #            print eq.Residual
 
@@ -423,6 +427,13 @@ class modMPET(daeModel):
             eq.Residual = (self.poros_trode()*self.c_lyte_trode.dt(i) +
                     self.epsbeta()*(1-self.tp())*self.j_plus(i) -
                     RHS_c[Nsep + i])
+#            eq.Residual = self.poros_trode()*self.c_lyte_trode.dt(i)
+#            Vu = Sum(self.psd_vol.array(i, []))
+#            for j in range(numpart):
+#                Vj = self.psd_vol(i, j)
+#                eq.Residual += (self.epsbeta()*(1-self.tp()) * (Vj/Vu) *
+#                        Sum(self.c_sld[i, j].dt_array([]))/Nsld_mat[i, j])
+#            eq.Residual -= RHS_c[Nsep + i]
             eq.CheckUnitsConsistency = False
 #            print eq.Residual
             # Charge Conservation
@@ -430,13 +441,29 @@ class modMPET(daeModel):
                     "trode_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (self.epsbeta()*self.j_plus(i) -
                     RHS_phi[Nsep + i])
+#            eq.Residual = -RHS_phi[Nsep + i]
+#            for j in range(numpart):
+#                Vj = self.psd_vol(i, j)
+#                eq.Residual += (self.epsbeta() * (Vj/Vu) *
+#                        Sum(self.c_sld[i, j].dt_array([]))/Nsld_mat[i, j])
             eq.CheckUnitsConsistency = False
 #            print eq.Residual
 
         # Total Current Constraint Equation
         eq = self.CreateEquation("Total_Current_Constraint")
-        eq.Residual = (
-                Sum(self.j_plus.array([])) - self.currset())
+#        eq.Residual = (
+#                Sum(self.j_plus.array([])) - self.currset())
+        eq.Residual = -self.currset()
+        dx = 1./Ntrode
+        for i in range(Ntrode):
+            eq.Residual += dx*self.j_plus(i)
+#        eq.Residual = -self.currset()
+#        for i in range(Ntrode):
+#            Vu = Sum(self.psd_vol.array(i, []))
+#            for j in range(numpart):
+#                Vj = self.psd_vol(i, j)
+#                eq.Residual += ((Vj/Vu) *
+#                        Sum(self.c_sld[i, j].dt_array([]))/Nsld_mat[i, j])
         eq.CheckUnitsConsistency = False
 #        print eq.Residual
 
@@ -488,6 +515,7 @@ class modMPET(daeModel):
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
 #        Nlyte = Nsep + Ntrode
+#        print porosvec
         # The lengths are nondimensionalized by the electrode length
         dx = 1./Ntrode
         # Mass conservation equations
@@ -495,11 +523,12 @@ class modMPET(daeModel):
 #        ctmp[:-1] = cvec
         ctmp = np.empty(Nlyte + 2, dtype=object)
         ctmp[1:-1] = cvec
-        # XXX -- Is this overspecifying the system?
+        # XXX -- Is this overspecifying the system? No.
         # The total current flowing into the electrolyte is set
         ctmp[0] = (ctmp[1] +
                 self.currset()*self.epsbeta()*(1-self.tp())*dx
                 )
+#        ctmp[0] = ctmp[1]
         # No electrolyte flux at the separator
         ctmp[-1] = ctmp[-2]
         # Flux into the separator
@@ -784,7 +813,8 @@ def consoleRun():
 #    simulation.TimeHorizon = 0.98/abs(dim_crate)
     td = Ltrode**2 / Damb
     currset = dim_crate*td/3600
-    simulation.TimeHorizon = 1./abs(currset)
+#    simulation.TimeHorizon = 1./abs(currset)
+    simulation.TimeHorizon = 0.95/abs(currset)
 #    simulation.TimeHorizon = 0.98/abs(0.001)
 #    simulation.TimeHorizon = 0.50/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
