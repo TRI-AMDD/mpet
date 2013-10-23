@@ -3,6 +3,7 @@
 
 import sys
 import os
+import ConfigParser
 from time import localtime, strftime
 #import math
 
@@ -18,59 +19,6 @@ from daetools.solvers.trilinos import pyTrilinos
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 from pyUnits import s
 #from pyUnits import s, kg, m, K, Pa, mol, J, W
-
-#########################################################################
-# CONSTANTS
-k = 1.381e-23      # Boltzmann constant
-T = 298            # Temp, K
-Tref = 298         # Reference temp, K (for non-dimensionalization)
-e = 1.602e-19      # Charge of proton, C
-N_A = 6.02e23      # Avogadro's number
-F = e*N_A          # Faraday's number
-
-#########################################################################
-# SET DIMENSIONAL VALUES HERE
-#init_voltage = 3.5                 # Initial cell voltage, V
-dim_crate = 5                   # Battery discharge c-rate
-#currset = 0.001                         # Battery discharge c-rate
-
-# Electrode properties
-Ltrode = 50e-6                      # electrode thickness, m
-Lsep = 25e-6                        # separator thickness, m
-Asep = 1e-4                         # area of separator, m^2
-Lp = 0.69                           # Volume loading percent active material
-poros = 0.4                         # Porosity
-c0 = 1000                           # Initial electrolyte conc., mol/m^3
-zp = 1                              # Cation charge number
-zm = 1                              # Anion charge number
-Dp = 2.2e-10                        # Cation diff, m^2/s, LiPF6 in EC/DMC
-Dm = 2.94e-10                       # Anion diff, m^2/s, LiPF6 in EC/DMC
-Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)    # Ambipolar diffusivity
-tp = zp*Dp / (zp*Dp + zm*Dm)        # Cation transference number
-
-# Particle size distribution
-mean = 20e-9                       # Average particle size, m
-stddev = 2e-9                      # Standard deviation, m
-
-# Material properties
-dim_k0 = 0.1                       # Exchange current density, A/m^2 (0.1 for h2/Pt)
-dim_a = 1.8560e-20                 # Regular solution parameter, J
-dim_kappa = 5.0148e-10             # Gradient penalty, J/m
-dim_b = 0.1916e9                   # Stress, Pa
-rhos = 1.3793e28                   # site density, 1/m^3
-csmax = rhos/N_A                   # maximum concentration, mol/m^3
-cwet = 0.98                        # Dimensionless wetted conc.
-#wet_thick = 2e-9                   # Thickness of wetting on surf.
-part_thick = 20e-9                 # C3 Particle thickness, m
-Vstd = 3.422                       # Standard potential, V
-alpha = 0.5                        # Charge transfer coefficient
-
-# Discretization settings
-Ntrode = 6                              # Numer disc. in x direction (volumes in electrode)
-solid_disc = 1e-9                   # Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
-numpart = 4                         # Particles per volume
-tsteps = 200                        # Number disc. in time
-
 
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
@@ -517,7 +465,7 @@ class modMPET(daeModel):
 #        Nlyte = Nsep + Ntrode
 #        print porosvec
         # The lengths are nondimensionalized by the electrode length
-        dx = 1./Ntrode
+        dx = 1./self.Ntrode.NumberOfPoints
         # Mass conservation equations
 #        ctmp = np.empty(Nlyte + 1, dtype=object)
 #        ctmp[:-1] = cvec
@@ -572,21 +520,71 @@ class modMPET(daeModel):
                     + self.T.GetValue()*np.log(c/(1-c)) )
 
 class simMPET(daeSimulation):
-    def __init__(self, psd, psd_mean, psd_stddev):
+    def __init__(self, P=None):
         print "initalize simulation"
         daeSimulation.__init__(self)
-        if psd is None:
-            raise Exception("Need particle size distr. as input")
-        self.psd = psd
-        self.psd_mean = psd_mean
-        self.psd_stddev = psd_stddev
-        self.m = modMPET("mpet", psd=psd)
+        if P is None:
+            raise Exception("Need parameters input")
+        mean = P.getfloat('Sim Params', 'mean')
+        stddev = P.getfloat('Sim Params', 'stddev')
+        Ntrode = P.getfloat('Sim Params', 'Ntrode')
+        numpart = P.getfloat('Sim Params', 'numpart')
+        psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
+        # Convert psd to integers -- number of steps
+        solid_disc = P.getfloat('ACR info', 'solid_disc')
+        self.P = P
+        self.psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
+        self.psd_mean = mean
+        self.psd_stddev = stddev
+        self.m = modMPET("mpet", psd=self.psd)
 
     def SetUpParametersAndDomains(self):
         print "SetUpParametersAndDomains"
+        # Extract info from the config file
+        # Simulation
+        dim_crate = self.P.getfloat('Sim Params', 'dim_crate')
+        Ntrode = self.P.getint('Sim Params', 'Ntrode')
+        numpart = self.P.getint('Sim Params', 'numpart')
+        T = self.P.getfloat('Sim Params', 'T')
+        # Geometry
+        Ltrode = self.P.getfloat('Geometry', 'Ltrode')
+        Lsep = self.P.getfloat('Geometry', 'Lsep')
+        Asep = self.P.getfloat('Geometry', 'Asep')
+        Lp = self.P.getfloat('Geometry', 'Lp')
+        poros = self.P.getfloat('Geometry', 'poros')
+        # Electrolyte
+        c0 = self.P.getfloat('Electrolyte Params', 'c0')
+        zp = self.P.getfloat('Electrolyte Params', 'zp')
+        zm = self.P.getfloat('Electrolyte Params', 'zm')
+        Dp = self.P.getfloat('Electrolyte Params', 'Dp')
+        Dm = self.P.getfloat('Electrolyte Params', 'Dm')
+        # Cathode Material Properties
+        dim_k0 = self.P.getfloat('Cathode Material Props', 'dim_k0')
+        dim_a = self.P.getfloat('Cathode Material Props', 'dim_a')
+        dim_kappa = self.P.getfloat('Cathode Material Props', 'dim_kappa')
+        dim_b = self.P.getfloat('Cathode Material Props', 'dim_b')
+        rhos = self.P.getfloat('Cathode Material Props', 'rhos')
+        part_thick = self.P.getfloat('Cathode Material Props', 'part_thick')
+        Vstd = self.P.getfloat('Cathode Material Props', 'Vstd')
+        alpha = self.P.getfloat('Cathode Material Props', 'alpha')
+        # ACR info
+        cwet = self.P.getfloat('ACR info', 'cwet')
+        solid_disc = self.P.getfloat('ACR info', 'solid_disc')
+        # Constants
+        k = self.P.getfloat('Constants', 'k')
+        Tref = self.P.getfloat('Constants', 'Tref')
+        e = self.P.getfloat('Constants', 'e')
+        N_A = self.P.getfloat('Constants', 'N_A')
+        # Calculated values
+        # Faraday's number
+        F = e*N_A
+        # maximum concentration in cathode solid, mol/m^3
+        csmax = rhos/N_A
+        # Ambipolar diffusivity
+        Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        # Cation transference number
+        tp = zp*Dp / (zp*Dp + zm*Dm)
         # Domains
-        Ntrode = self.psd.shape[0]
-        numpart = self.psd.shape[1]
         self.m.Ntrode.CreateArray(Ntrode)
         sep_frac = float(Lsep)/Ltrode
         Nsep = int(np.ceil(sep_frac*Ntrode))
@@ -774,21 +772,22 @@ def setupDataReporters(simulation):
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
     simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
-    matfilename = os.path.join(os.getcwd(),
-            "acr_sp_{curr}C.mat".format(curr=dim_crate))
+    matfilename = os.path.join(os.getcwd(), "mpet_out.mat")
 #    print matfilename
     if (simulation.dr.Connect(matfilename, simName) == False):
         sys.exit()
     return datareporter
 
-def consoleRun():
+def consoleRun(paramfile):
     print "START"
+    P = ConfigParser.RawConfigParser()
+    P.read(paramfile)
     # A bit awkward, but we'll have to generate our
     # particle size distribution here and pass it to the
     # simulation/model.
-    psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
+#    psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
     # Convert psd to integers -- number of steps
-    psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
+#    psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
 #    # For homogeneous particles
 #    psd = (50*np.ones((Ntrode, numpart))).astype(np.integer)
     # TODO -- pass mean and stddev into simulation/model and store as
@@ -796,7 +795,7 @@ def consoleRun():
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
-    simulation   = simMPET(psd, mean, stddev)
+    simulation   = simMPET(P)
     datareporter = setupDataReporters(simulation)
 
     # Use SuperLU direct sparse LA solver
@@ -811,6 +810,16 @@ def consoleRun():
     # Set the time horizon and the reporting interval
     print "set up simulation time parameters"
 #    simulation.TimeHorizon = 0.98/abs(dim_crate)
+    # We need to get info about the system to figure out the
+    # simulation time horizon
+    dim_crate = P.getfloat('Sim Params', 'dim_crate')
+    tsteps = P.getfloat('Sim Params', 'tsteps')
+    Ltrode = P.getfloat('Geometry', 'Ltrode')
+    Dp = P.getfloat('Electrolyte Params', 'Dp')
+    Dm = P.getfloat('Electrolyte Params', 'Dm')
+    zp = P.getfloat('Electrolyte Params', 'zp')
+    zm = P.getfloat('Electrolyte Params', 'zm')
+    Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
     td = Ltrode**2 / Damb
     currset = dim_crate*td/3600
 #    simulation.TimeHorizon = 1./abs(currset)
@@ -848,10 +857,15 @@ def consoleRun():
 #    print [n.counter for n in simulation.m.noise_vec]
 
 if __name__ == "__main__":
-    import timeit
-    time_tot = timeit.timeit("consoleRun()",
-            setup="from __main__ import consoleRun",  number=1)
-    print "Total time:", time_tot, "s"
+    if len(sys.argv) < 2:
+        print "Using params.cfg for parameters"
+        paramfile = "params_default.cfg"
+    else:
+        paramfile = sys.argv[1]
+#    import timeit
+#    time_tot = timeit.timeit("consoleRun()",
+#            setup="from __main__ import consoleRun",  number=1)
+#    print "Total time:", time_tot, "s"
 #    import cProfile
 #    cProfile.run("consoleRun()")
-#    consoleRun()
+    consoleRun(paramfile)
