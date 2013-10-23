@@ -85,6 +85,7 @@ class modMPET(daeModel):
         print "Init modMPET"
         daeModel.__init__(self, Name, Parent, Description)
 
+        # TODO -- change psd to simply Num vols and numpart
         if psd is None:
             raise Exception("Need particle size distr. as input")
 
@@ -246,16 +247,20 @@ class modMPET(daeModel):
 #                [self.Nx, self.numpart])
         self.Vstd = daeParameter("Vstd", unit(), self,
                 "Standard potential [V]")
-        self.psd_num = daeParameter("particle_numVols", unit(), self,
+        self.psd_mean = daeParameter("psd_mean", unit(), self,
+                "Particle size distribution mean [m]")
+        self.psd_stddev = daeParameter("psd_stddev", unit(), self,
+                "Particle size distribution stddev [m]")
+        self.psd_num = daeParameter("psd_numVols", unit(), self,
                 "Particle numbers of discretizations",
                 [self.Ntrode, self.numpart])
-        self.psd_len = daeParameter("particle_lengths", unit(), self,
+        self.psd_len = daeParameter("psd_lengths", unit(), self,
                 "Particle lengths [nm]",
                 [self.Ntrode, self.numpart])
-        self.psd_area = daeParameter("particle_active_areas", unit(), self,
+        self.psd_area = daeParameter("psd_active_areas", unit(), self,
                 "Particle active areas [nm^2]",
                 [self.Ntrode, self.numpart])
-        self.psd_vol = daeParameter("particle_volumes", unit(), self,
+        self.psd_vol = daeParameter("psd_volumes", unit(), self,
                 "Particle volumes [nm^3]",
                 [self.Ntrode, self.numpart])
 
@@ -310,8 +315,6 @@ class modMPET(daeModel):
 #                                     time_vec, noise_data, previous_output, _position_)
 #                               for _position_ in range(Nsld)]
 
-        print "\n\n=========================\n\n"
-        print "avg conc"
         # Define the average concentration in each particle (algebraic
         # equations)
         for i in range(Ntrode):
@@ -322,10 +325,8 @@ class modMPET(daeModel):
                         )
 #                eq.BuildJacobianExpressions = True
                 eq.CheckUnitsConsistency = False
-                print eq.Residual
+#                print eq.Residual
 
-        print "\n\n=========================\n\n"
-        print "overall ffrac"
         # Define the overall filling fraction in the cathode
         # XXX -- This is wrong, but shouldn't affect
         # convergence... Need to adjust for particle sizes
@@ -334,10 +335,8 @@ class modMPET(daeModel):
                 Sum(self.cbar_sld.array([], []))/(Ntrode*numpart)
                 )
         eq.CheckUnitsConsistency = False
-        print eq.Residual
+#        print eq.Residual
 
-        print "\n\n=========================\n\n"
-        print "j plus"
         # Define dimensionless j_plus for each volume
         for i in range(Ntrode):
             eq = self.CreateEquation("j_plus_vol{i}".format(i=i))
@@ -354,10 +353,8 @@ class modMPET(daeModel):
                         Nsld_mat[i, j])
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
-            print eq.Residual
+#            print eq.Residual
 
-#        print "\n\n=========================\n\n"
-#        print "dcsdt"
         # Calculate the solid concentration rates of change
         # (differential equations)
         for i in range(Ntrode):
@@ -370,12 +367,15 @@ class modMPET(daeModel):
                 c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
 #                k0 = self.k0(i, j)
 #                kappa = self.kappa(i, j)
-                RHS_c_sld_ij = self.calc_dcs_dt(c_sld, phi_lyte,
+                # TODO -- have dcd_dt functions extract all needed
+                # information -- no arguments
+                # For ACR style particles
+                RHS_c_sld_ij = self.calc_ACR_dcs_dt(c_sld, phi_lyte,
                         c_lyte, i, j)
-                # For homogeneous particles
-                k0 = self.k0(i, j)
-                RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
-                        c_lyte, k0)
+#                # For homogeneous particles
+#                k0 = self.k0(i, j)
+#                RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
+#                        c_lyte, k0)
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
@@ -398,8 +398,6 @@ class modMPET(daeModel):
         (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte, Nlyte,
                 porosvec)
 
-        print "\n\n=========================\n\n"
-        print "electrolyte in sep"
         # Equations governing the electrolyte in the separator
         for i in range(Nsep):
             # Mass Conservation
@@ -408,15 +406,13 @@ class modMPET(daeModel):
             eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
                     RHS_c[i])
             eq.CheckUnitsConsistency = False
-            print eq.Residual
+#            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "sep_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (RHS_phi[i])
             eq.CheckUnitsConsistency = False
-            print eq.Residual
-        print "\n\n=========================\n\n"
-        print "electrolyte in trode"
+#            print eq.Residual
         # Equations governing the electrolyte in the electrode.
         # Here, we are coupled to the total reaction rates in the
         # solids.
@@ -428,25 +424,23 @@ class modMPET(daeModel):
                     self.epsbeta()*(1-self.tp())*self.j_plus(i) -
                     RHS_c[Nsep + i])
             eq.CheckUnitsConsistency = False
-            print eq.Residual
+#            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "trode_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (self.epsbeta()*self.j_plus(i) -
                     RHS_phi[Nsep + i])
             eq.CheckUnitsConsistency = False
-            print eq.Residual
+#            print eq.Residual
 
-        print "\n\n=========================\n\n"
-        print "total current"
         # Total Current Constraint Equation
         eq = self.CreateEquation("Total_Current_Constraint")
         eq.Residual = (
                 Sum(self.j_plus.array([])) - self.currset())
         eq.CheckUnitsConsistency = False
-        print eq.Residual
+#        print eq.Residual
 
-    def calc_dcs_dt(self, cs, phi_lyte, c_lyte, vol_indx, part_indx):
+    def calc_ACR_dcs_dt(self, cs, phi_lyte, c_lyte, vol_indx, part_indx):
 #        part_steps = self.N.NumberOfPoints
         # shorthand
         i = vol_indx
@@ -549,12 +543,14 @@ class modMPET(daeModel):
                     + self.T.GetValue()*np.log(c/(1-c)) )
 
 class simMPET(daeSimulation):
-    def __init__(self, psd):
+    def __init__(self, psd, psd_mean, psd_stddev):
         print "initalize simulation"
         daeSimulation.__init__(self)
         if psd is None:
             raise Exception("Need particle size distr. as input")
         self.psd = psd
+        self.psd_mean = psd_mean
+        self.psd_stddev = psd_stddev
         self.m = modMPET("mpet", psd=psd)
 
     def SetUpParametersAndDomains(self):
@@ -608,6 +604,8 @@ class simMPET(daeSimulation):
         self.m.dim_b.SetValue(dim_b)
         self.m.a.SetValue(dim_a/(k*Tref))
         self.m.b.SetValue(dim_b/(k*Tref*rhos))
+        self.m.psd_mean.SetValue(self.psd_mean)
+        self.m.psd_stddev.SetValue(self.psd_stddev)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd[i, j])
@@ -750,6 +748,7 @@ def setupDataReporters(simulation):
     simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
     matfilename = os.path.join(os.getcwd(),
             "acr_sp_{curr}C.mat".format(curr=dim_crate))
+#    print matfilename
     if (simulation.dr.Connect(matfilename, simName) == False):
         sys.exit()
     return datareporter
@@ -762,14 +761,14 @@ def consoleRun():
     psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
     # Convert psd to integers -- number of steps
     psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
-    # For homogeneous particles
-    psd = (50*np.ones((Ntrode, numpart))).astype(np.integer)
+#    # For homogeneous particles
+#    psd = (50*np.ones((Ntrode, numpart))).astype(np.integer)
     # TODO -- pass mean and stddev into simulation/model and store as
     # parameters
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
-    simulation   = simMPET(psd)
+    simulation   = simMPET(psd, mean, stddev)
     datareporter = setupDataReporters(simulation)
 
     # Use SuperLU direct sparse LA solver
@@ -786,7 +785,7 @@ def consoleRun():
 #    simulation.TimeHorizon = 0.98/abs(dim_crate)
     td = Ltrode**2 / Damb
     currset = dim_crate*td/3600
-    simulation.TimeHorizon = 0.98/abs(currset)
+    simulation.TimeHorizon = 1./abs(currset)
 #    simulation.TimeHorizon = 0.98/abs(0.001)
 #    simulation.TimeHorizon = 0.50/abs(0.001)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
