@@ -17,11 +17,13 @@ T = 298;
 
 % First let's break down the cpcs vector
 c = zeros(tlen,ss+Nx);
+phi = zeros(tlen,ss+Nx);
 for i=1:tlen
     c(i,:,:) = reshape(cpcs(i,1:ss+steps),1,ss+steps);
+    phi(i,:,:) = reshape(cpcs(i,ss+steps+1:2*(ss+steps)),1,ss+steps);
 end
 
-phi = zeros(tlen,Ny,ssx+Nx);
+%phi = zeros(tlen,Ny,ssx+Nx);
 cs = cell(numpart,1);
 % Put each particle in its own entry in a cell array
 for i=1:numpart
@@ -59,6 +61,13 @@ elseif strcmp(fig,'e')
         M(i) = getframe(gcf);
     end
 
+elseif strcmp(fig,'ep')
+    figure
+    for i=1:tlen
+        plot((phi(i,:)))
+        axis([0 ss+steps 0 5])
+        M(i) = getframe(gcf);
+    end
     
 elseif strcmp(fig,'d')
     scrsz = get(0,'ScreenSize');

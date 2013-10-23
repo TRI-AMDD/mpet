@@ -8,10 +8,10 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
-def plot(plot_type, save_flag):
+def plot(infile, plot_type, save_flag):
 #    infile = "acr_sp_0.0C_2x1_40.mat"
 #    infile = "acr_sp_0.0C.mat"
-    infile = "acr_sp_0.001C.mat"
+#    infile = "acr_sp_1C.mat"
 #    infile = "acr_sp.mat"
     data = sio.loadmat(infile)
 #    print 1./data['mpet.currset']
@@ -96,6 +96,7 @@ def plot(plot_type, save_flag):
 #            print datay_sep
 #            print datay_trode
             datay = np.hstack((datay_sep, datay_trode))
+#            print datay
 #            print datay.shape
             line1.set_ydata(datay)
             if save_flag:
@@ -241,9 +242,12 @@ def plot(plot_type, save_flag):
     return
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        plot_type = sys.argv[1]
+    if len(sys.argv) > 2:
+        plot_type = sys.argv[2]
     else:
         plot_type = "v"
+    if len(sys.argv) < 2:
+        raise Exception("Need input data file name")
+    infile = sys.argv[1]
     save_flag = False
-    plot(plot_type, save_flag)
+    plot(infile, plot_type, save_flag)
