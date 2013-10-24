@@ -30,7 +30,6 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="",
             Ntrode=None, numpart=None):
-        print "Init modMPET"
         daeModel.__init__(self, Name, Parent, Description)
 
         if (Ntrode is None) or (numpart is None):
@@ -195,7 +194,6 @@ class modMPET(daeModel):
                 [self.Ntrode, self.numpart])
 
     def DeclareEquations(self):
-        print "DeclareEquations()"
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
@@ -241,16 +239,17 @@ class modMPET(daeModel):
                         )
 #                eq.BuildJacobianExpressions = True
                 eq.CheckUnitsConsistency = False
-#                print eq.Residual
 
         # Define the overall filling fraction in the cathode
-        # XXX -- This is wrong: need to adjust for particle sizes
         eq = self.CreateEquation("ffrac_cathode")
-        eq.Residual = (self.ffrac_cathode() -
-                Sum(self.cbar_sld.array([], []))/(Ntrode*numpart)
-                )
+        eq.Residual = self.ffrac_cathode()
+        numpartvol_tot = float(np.sum(Nsld_mat))
+        for i in range(Ntrode):
+            for j in range(numpart):
+                eq.Residual -= (self.cbar_sld(i, j) *
+                        (Nsld_mat[i, j]/numpartvol_tot))
+        print eq.Residual
         eq.CheckUnitsConsistency = False
-#        print eq.Residual
 
         # Define dimensionless j_plus for each volume
         for i in range(Ntrode):
@@ -267,7 +266,6 @@ class modMPET(daeModel):
                         Nsld_mat[i, j])
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
-#            print eq.Residual
 
         # Calculate the solid concentration rates of change
         # (differential equations)
@@ -288,7 +286,6 @@ class modMPET(daeModel):
                                 i=i,j=j,k=k))
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
-#                    print eq.Residual
 
         # Calculate RHS for electrolyte equations
         Nlyte = Nsep + Ntrode
@@ -311,13 +308,11 @@ class modMPET(daeModel):
             eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
                     RHS_c[i])
             eq.CheckUnitsConsistency = False
-#            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "sep_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (RHS_phi[i])
             eq.CheckUnitsConsistency = False
-#            print eq.Residual
         # Equations governing the electrolyte in the electrode.
         # Here, we are coupled to the total reaction rates in the
         # solids.
@@ -329,14 +324,12 @@ class modMPET(daeModel):
                     self.epsbeta()*(1-self.tp())*self.j_plus(i) -
                     RHS_c[Nsep + i])
             eq.CheckUnitsConsistency = False
-#            print eq.Residual
             # Charge Conservation
             eq = self.CreateEquation(
                     "trode_lyte_charge_cons_vol{i}".format(i=i))
             eq.Residual = (self.epsbeta()*self.j_plus(i) -
                     RHS_phi[Nsep + i])
             eq.CheckUnitsConsistency = False
-#            print eq.Residual
 
         # Total Current Constraint Equation
         eq = self.CreateEquation("Total_Current_Constraint")
@@ -345,7 +338,6 @@ class modMPET(daeModel):
         for i in range(Ntrode):
             eq.Residual -= dx*self.j_plus(i)
         eq.CheckUnitsConsistency = False
-#        print eq.Residual
 
     def calc_ACR_dcs_dt(self, vol_indx, part_indx):
         # shorthand
@@ -449,7 +441,6 @@ class modMPET(daeModel):
 
 class simMPET(daeSimulation):
     def __init__(self, P=None):
-        print "initalize simulation"
         daeSimulation.__init__(self)
         if P is None:
             raise Exception("Need parameters input")
@@ -473,7 +464,6 @@ class simMPET(daeSimulation):
         self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart)
 
     def SetUpParametersAndDomains(self):
-        print "SetUpParametersAndDomains"
         # Extract info from the config file
         # Simulation
         dim_crate = self.P.getfloat('Sim Params', 'dim_crate')
@@ -596,7 +586,6 @@ class simMPET(daeSimulation):
         self.m.Vstd.SetValue(Vstd)
 
     def SetUpVariables(self):
-        print "SetUpVariables"
         Nsep = self.m.Nsep.NumberOfPoints
         Ntrode = self.m.Ntrode.NumberOfPoints
         Nlyte = Nsep + Ntrode
@@ -627,7 +616,6 @@ class simMPET(daeSimulation):
         self.m.ffrac_cathode.SetInitialGuess(cs0)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
-        print "done SetUpVariables"
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
@@ -701,20 +689,17 @@ def setupDataReporters(simulation):
     Create daeDelegateDataReporter and add data reporters:
      - daeMatlabMATFileDataReporter
     """
-    print "setupDataReporter()"
     datareporter = daeDelegateDataReporter()
     simulation.dr = MyMATDataReporter()
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
     simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
     matfilename = os.path.join(os.getcwd(), "mpet_out.mat")
-#    print matfilename
     if (simulation.dr.Connect(matfilename, simName) == False):
         sys.exit()
     return datareporter
 
 def consoleRun(paramfile):
-    print "START"
     P = ConfigParser.RawConfigParser()
     P.read(paramfile)
 #    psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
@@ -729,7 +714,6 @@ def consoleRun(paramfile):
     datareporter = setupDataReporters(simulation)
 
     # Use SuperLU direct sparse LA solver
-    print "Set up LU solver"
     lasolver = pySuperLU.daeCreateSuperLUSolver()
 #    lasolver = pyTrilinos.daeCreateTrilinosSolver("Amesos_Umfpack", "")
     daesolver.SetLASolver(lasolver)
@@ -738,7 +722,6 @@ def consoleRun(paramfile):
     simulation.m.SetReportingOn(True)
 
     # Set the time horizon and the reporting interval
-    print "set up simulation time parameters"
     # We need to get info about the system to figure out the
     # simulation time horizon
     dim_crate = P.getfloat('Sim Params', 'dim_crate')
@@ -757,21 +740,17 @@ def consoleRun(paramfile):
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
-    print "connect to data reporter"
     simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
     if(datareporter.Connect("", simName) == False):
         sys.exit()
 
     # Initialize the simulation
-    print "initialize"
     simulation.Initialize(daesolver, datareporter, log)
 
     # Solve at time=0 (initialization)
-    print "Initialize the system at t = 0"
     simulation.SolveInitial()
 
     # Run
-    print "run the simulation"
     try:
         simulation.Run()
     except Exception as e:
