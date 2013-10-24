@@ -33,7 +33,6 @@ def plot(infile, plot_type, save_flag):
 #    print np.sum(data['mpet.j_plus'][0])
 #    print np.sum(data['mpet.j_plus'][1])
 #    print data['mpet.particle_numVols']
-#    zzz
     # Pick out some useful parameters
     Vstd = float(data['mpet.Vstd'][0][0])        # Standard potential, V
     k = float(data['mpet.k'][0][0])       # Boltzmann constant
@@ -49,12 +48,12 @@ def plot(infile, plot_type, save_flag):
     # Plot voltage profile
     if plot_type == "v":
         fig = plt.figure()
-#        ax = fig.add_axes([0.05, 0.05, 0.9, 0.9])
         ax = fig.add_subplot(111)
-#        print data['mpet.phi_applied_times'][0]
-#        print data['mpet.phi_applied'][0]
         voltage = Vstd - (k*T/e)*data['mpet.phi_applied'][0]
-        ax.plot(times, voltage)
+        ffvec = data['mpet.ffrac_cathode'][0]
+        ax.plot(ffvec, voltage)
+        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        ax.set_ylabel("Voltage [V]")
         plt.show()
 
     # Plot electrolyte concentration
@@ -75,12 +74,9 @@ def plot(infile, plot_type, save_flag):
         trode = 'mpet.c_lyte_trode'
         datay_sep = data[sep][0]
         datay_trode = data[trode][0]
-#        print datay_sep
-#        print datay_trode
         Lsep = data['mpet.Lsep'][0] * 1e6
         Ltrode = data['mpet.Ltrode'][0] * 1e6
         datay = np.hstack((datay_sep, datay_trode))
-#        print datay.shape
         numy = len(datay)
         xmin = 0
         xmax = Lsep + Ltrode
@@ -93,15 +89,11 @@ def plot(infile, plot_type, save_flag):
         for i in range(numtimes):
             datay_sep = data[sep][i]
             datay_trode = data[trode][i]
-#            print datay_sep
-#            print datay_trode
             datay = np.hstack((datay_sep, datay_trode))
-#            print datay
-#            print datay.shape
             line1.set_ydata(datay)
             if save_flag:
                 filename = os.path.join(outputdir,
-                        'c{num:06d}.png'.format(num=i))
+                        'elyte_c{num:06d}.png'.format(num=i))
                 fig.savefig(filename)
             else:
                 fig.canvas.draw()
@@ -125,12 +117,9 @@ def plot(infile, plot_type, save_flag):
         trode = 'mpet.phi_lyte_trode'
         datay_sep = data[sep][0]
         datay_trode = data[trode][0]
-#        print datay_sep
-#        print datay_trode
         Lsep = data['mpet.Lsep'][0] * 1e6
         Ltrode = data['mpet.Ltrode'][0] * 1e6
         datay = np.hstack((datay_sep, datay_trode))
-#        print datay.shape
         numy = len(datay)
         xmin = 0
         xmax = Lsep + Ltrode
@@ -143,20 +132,17 @@ def plot(infile, plot_type, save_flag):
         for i in range(numtimes):
             datay_sep = data[sep][i]
             datay_trode = data[trode][i]
-#            print datay_sep
-#            print datay_trode
             datay = np.hstack((datay_sep, datay_trode))
-#            print datay.shape
             line1.set_ydata(datay)
             if save_flag:
                 filename = os.path.join(outputdir,
-                        'c{num:06d}.png'.format(num=i))
+                        'elyte_p{num:06d}.png'.format(num=i))
                 fig.savefig(filename)
             else:
                 fig.canvas.draw()
                 time.sleep(1e-3)
 
-    # Plot average solid concentrations
+    # Plot all solid concentrations
     elif plot_type == "csld":
         if save_flag:
             outputdir = "{name}_image_output".format(name=infile[0:-4])
@@ -164,7 +150,6 @@ def plot(infile, plot_type, save_flag):
         else:
             # "interactive mode on"
             plt.ion()
-#        Ntrode = 1
         fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
                 sharey=True)
         sol = np.empty((numpart, Ntrode), dtype=object)
@@ -173,17 +158,10 @@ def plot(infile, plot_type, save_flag):
         for i in range(numpart):
             for j in range(Ntrode):
                 sol[i, j] = "mpet.solid_vol{j}_part{i}".format(i=i, j=j)
-#                print data["mpet.psd_lengths"]
                 lens[i, j] = data["mpet.psd_lengths"][0][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-#                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
-                # OR
-#                ax[i, j].set_frame_on(False)
-#                ax[i, j].xaxis.set_ticks_position('none')
-#                ax[i, j].xaxis.set_ticklabels('')
-#                ax[i, j].yaxis.set_ticks_position('none')
-#                ax[i, j].yaxis.set_ticklabels('')
+                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
                 datay = data[sol[i, j]][0]
                 numy = len(datay)
                 datax = np.linspace(0, lens[i, j], numy)
@@ -198,13 +176,13 @@ def plot(infile, plot_type, save_flag):
                     lines[i, j].set_ydata(datay)
             if save_flag:
                 filename = os.path.join(outputdir,
-                        'c{num:06d}.png'.format(num=i))
+                        'c{num:06d}.png'.format(num=tval))
                 fig.savefig(filename)
             else:
                 fig.canvas.draw()
                 time.sleep(1e-3)
 
-    # Plot all solid concentrations
+    # Plot average solid concentrations
     elif plot_type == "cbar":
         if save_flag:
             outputdir = "{name}_image_output".format(name=infile[0:-4])
@@ -212,33 +190,61 @@ def plot(infile, plot_type, save_flag):
         else:
             # "interactive mode on"
             plt.ion()
+        # Get particle sizes (and max size) (length-based)
+        psd_len = data['mpet.psd_lengths'][0]
+        len_max = np.max(psd_len)
+        len_min = np.min(psd_len)
+        size_min = 0.10
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1)
-        ax.patch.set_facecolor('gray')
+        ax.set_title("% = 00.0")
+        tmin = np.min(times)
+        tmax = np.max(times)
+#        ax.patch.set_facecolor('gray')
+        ax.patch.set_facecolor('white')
         ax.set_aspect('equal', 'box')
         ax.xaxis.set_major_locator(plt.NullLocator())
         ax.yaxis.set_major_locator(plt.NullLocator())
-        for tval in range(numtimes):
+#        ax.invert_yaxis()
+        rects = np.empty((Ntrode, numpart), dtype=object)
+        cbar_mat = data['mpet.cbar_sld'][0]
+        for (i,j),c in np.ndenumerate(cbar_mat):
+            p_len = psd_len[i, j]
+            size_frac = (p_len - len_min)/(len_max - len_min)
+#                print size_frac
+            size = ((size_frac) * (1-size_min) +
+                    size_min)
+#                print size
+            color = 'green'
+            rects[i, j] = plt.Rectangle([i - size / 2, j - size / 2],
+                    size, size, facecolor=color, edgecolor=color)
+            ax.add_patch(rects[i, j])
+        ax.autoscale_view()
+        for tval in range(1,numtimes):
+            t_current = times[tval]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
+            ax.set_title("% = {perc:2.1f}".format(perc=tfrac))
             cbar_mat = data['mpet.cbar_sld'][tval]
-            for (x,y),w in np.ndenumerate(cbar_mat):
-                color = 'white' if w > 0 else 'black'
-                size = np.sqrt(np.abs(w))
-                rect = plt.Rectangle([x - size / 2, y - size / 2],
-                        size, size, facecolor=color, edgecolor=color)
-                ax.add_patch(rect)
-            ax.autoscale_view()
-            ax.invert_yaxis()
+            for (i,j),c in np.ndenumerate(cbar_mat):
+                if c < 0.4:
+                    color = 'green'
+                elif c < 0.6:
+                    color = 'yellow'
+                else: # c > 0.6
+                    color = 'red'
+                rects[i, j].set_facecolor(color)
+                rects[i, j].set_edgecolor(color)
             if save_flag:
                 filename = os.path.join(outputdir,
-                        'c{num:06d}.png'.format(num=i))
+                        'cbar{num:06d}.png'.format(num=tval))
                 fig.savefig(filename)
             else:
                 fig.canvas.draw()
-                time.sleep(1e-3)
+                time.sleep(5e-2)
 
     else:
         raise Exception("Unexpected plot type argument."
-                + "Try 'v' or 'elyte' or 'cbar' or 'csld'")
+                + "Try 'v', 'elytec', 'elytep', 'cbar', 'csld'")
     return
 
 if __name__ == "__main__":
@@ -249,5 +255,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise Exception("Need input data file name")
     infile = sys.argv[1]
+    if not os.path.isfile(os.path.join(os.getcwd(), infile)):
+        raise Exception("Input file doesn't exist")
     save_flag = False
     plot(infile, plot_type, save_flag)
