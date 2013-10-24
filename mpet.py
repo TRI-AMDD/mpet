@@ -192,6 +192,14 @@ class modMPET(daeModel):
         self.psd_vol = daeParameter("psd_volumes", unit(), self,
                 "Particle volumes [nm^3]",
                 [self.Ntrode, self.numpart])
+        self.type_ACR = daeParameter("type_ACR", unit(), self,
+                "Bool: 1 for ACR type simulation")
+        self.type_homog = daeParameter("type_homog", unit(), self,
+                "Bool: 1 for homog type simulation")
+        self.shape_sphere = daeParameter("shape_sphere", unit(), self,
+                "Bool: 1 for spherical particles")
+        self.shape_C3 = daeParameter("C3", unit(), self,
+                "Bool: 1 for C3 particles")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -248,7 +256,6 @@ class modMPET(daeModel):
             for j in range(numpart):
                 eq.Residual -= (self.cbar_sld(i, j) *
                         (Nsld_mat[i, j]/numpartvol_tot))
-        print eq.Residual
         eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each volume
@@ -444,20 +451,27 @@ class simMPET(daeSimulation):
         daeSimulation.__init__(self)
         if P is None:
             raise Exception("Need parameters input")
+        self.P = P
         mean = P.getfloat('Sim Params', 'mean')
         stddev = P.getfloat('Sim Params', 'stddev')
         Ntrode = P.getint('Sim Params', 'Ntrode')
         numpart = P.getint('Sim Params', 'numpart')
+        solidType = P.get('Sim Params', 'solidType')
         # Make a length-sampled particle size distribution
         psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
         # For ACR particles, convert psd to integers -- number of steps
-        solid_disc = P.getfloat('ACR info', 'solid_disc')
-        self.P = P
-        self.psd_num = np.ceil(psd_raw/solid_disc).astype(np.integer)
-        self.psd_len = solid_disc*self.psd_num
-#        # For homogeneous particles (only one "volume" per particle)
-#        self.psd_num = np.ones(psd_raw.shape).astype(np.integer)
-#        self.psd_len = psd_raw
+        if solidType == "ACR":
+            solid_disc = P.getfloat('ACR info', 'solid_disc')
+            self.psd_num = np.ceil(psd_raw/solid_disc).astype(np.integer)
+            self.psd_len = solid_disc*self.psd_num
+        # For homogeneous particles (only one "volume" per particle)
+        elif solidType == "homog":
+            # Each particle is only one volume
+            self.psd_num = np.ones(psd_raw.shape).astype(np.integer)
+            # The lengths are given by the original length distr.
+            self.psd_len = psd_raw
+        else:
+            raise NotImplementedError("Input solidType not defined")
         # General parameters
         self.psd_mean = mean
         self.psd_stddev = stddev
@@ -470,6 +484,8 @@ class simMPET(daeSimulation):
         Ntrode = self.P.getint('Sim Params', 'Ntrode')
         numpart = self.P.getint('Sim Params', 'numpart')
         T = self.P.getfloat('Sim Params', 'T')
+        solidType = self.P.get('Sim Params', 'solidType')
+        solidShape = self.P.get('Sim Params', 'solidShape')
         # Geometry
         Ltrode = self.P.getfloat('Geometry', 'Ltrode')
         Lsep = self.P.getfloat('Geometry', 'Lsep')
@@ -508,6 +524,8 @@ class simMPET(daeSimulation):
         Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
         # Cation transference number
         tp = zp*Dp / (zp*Dp + zm*Dm)
+        # Diffusive time scale
+        td = Ltrode**2 / Damb
 
         # Domains
         self.m.Ntrode.CreateArray(Ntrode)
@@ -528,7 +546,6 @@ class simMPET(daeSimulation):
         self.m.N_A.SetValue(N_A)
         self.m.F.SetValue(F)
         self.m.alpha.SetValue(alpha)
-        td = Ltrode**2 / Damb
         self.m.Ltrode.SetValue(Ltrode)
         self.m.Lsep.SetValue(Lsep)
         self.m.NumTrode.SetValue(Ntrode)
@@ -544,7 +561,6 @@ class simMPET(daeSimulation):
         self.m.Dp.SetValue(Dp / Damb)
         self.m.Dm.SetValue(Dm / Damb)
         self.m.rho_s.SetValue(rhos)
-        csmax = rhos/N_A
         self.m.c_lyte0.SetValue(c0)
         self.m.csmax.SetValue(csmax)
         self.m.part_thickness.SetValue(part_thick)
@@ -563,16 +579,32 @@ class simMPET(daeSimulation):
         self.m.b.SetValue(dim_b/(k*Tref*rhos))
         self.m.psd_mean.SetValue(self.psd_mean)
         self.m.psd_stddev.SetValue(self.psd_stddev)
+        if solidType == "ACR":
+            self.m.type_ACR.SetValue(1.)
+            self.m.type_homog.SetValue(0.)
+        elif solidType == "homog":
+            self.m.type_ACR.SetValue(0.)
+            self.m.type_homog.SetValue(1.)
+        if solidShape == "sphere":
+            self.m.shape_sphere.SetValue(1.)
+            self.m.shape_C3.SetValue(0.)
+        if solidShape == "C3":
+            self.m.shape_sphere.SetValue(0.)
+            self.m.shape_C3.SetValue(1.)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
                 p_len = self.psd_len[i, j]
-#                # Spherical particles
-#                p_area = (4*np.pi)*p_len**2
-#                p_vol = (4./3)*np.pi*p_len**3
-                # C3 particles
-                p_area = 2 * 1.2263 * p_len**2
-                p_vol = 1.2263 * p_len**2 * part_thick
+                if solidShape == "sphere":
+                    # Spherical particles
+                    p_area = (4*np.pi)*p_len**2
+                    p_vol = (4./3)*np.pi*p_len**3
+                elif solidShape == "C3":
+                    # C3 particles
+                    p_area = 2 * 1.2263 * p_len**2
+                    p_vol = 1.2263 * p_len**2 * part_thick
+                else:
+                    raise NotImplementedError("Input solidShape not defined")
                 self.m.psd_num.SetValue(i, j, p_num)
                 self.m.psd_len.SetValue(i, j, p_len)
                 self.m.psd_area.SetValue(i, j, p_area)
@@ -700,13 +732,9 @@ def setupDataReporters(simulation):
     return datareporter
 
 def consoleRun(paramfile):
+    # Prepare to interpret the config file for model inputs
     P = ConfigParser.RawConfigParser()
     P.read(paramfile)
-#    psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
-    # Convert psd to integers -- number of steps
-#    psd = np.ceil(psd_raw/solid_disc).astype(np.integer)
-#    # For homogeneous particles
-#    psd = (50*np.ones((Ntrode, numpart))).astype(np.integer)
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
@@ -759,9 +787,12 @@ def consoleRun(paramfile):
     simulation.Finalize()
     
 if __name__ == "__main__":
+    default_flag = 0
+    default_file = "params_default.cfg"
     if len(sys.argv) < 2:
         print "Using params.cfg for parameters"
-        paramfile = "params_default.cfg"
+        default_flag = 0
+        paramfile = default_file
     else:
         paramfile = sys.argv[1]
 #    import timeit
@@ -771,3 +802,5 @@ if __name__ == "__main__":
 #    import cProfile
 #    cProfile.run("consoleRun()")
     consoleRun(paramfile)
+    print "\n\n*** Note: Used default file, ""{fname}"" ***\n\n".format(
+            fname=default_file)
