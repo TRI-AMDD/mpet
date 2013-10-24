@@ -29,11 +29,12 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
 
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="",
-            Ntrode=None, numpart=None):
+            Ntrode=None, numpart=None, P=None):
         daeModel.__init__(self, Name, Parent, Description)
 
         if (Ntrode is None) or (numpart is None):
             raise Exception("Need particle size distr. as input")
+        self.P = P
 
         # Domains where variables are distributed
         self.Nsep = daeDomain("Nsep", self, unit(),
@@ -274,6 +275,7 @@ class modMPET(daeModel):
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
 
+        solidType = self.P.get('Sim Params', 'solidType')
         # Calculate the solid concentration rates of change
         # (differential equations)
         for i in range(Ntrode):
@@ -281,11 +283,14 @@ class modMPET(daeModel):
                 # Prepare the RHS function
                 Nij = Nsld_mat[i, j]
                 # For ACR style particles
-                RHS_c_sld_ij = self.calc_ACR_dcs_dt(i, j)
-#                # For homogeneous particles
-#                k0 = self.k0(i, j)
-#                RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
-#                        c_lyte, k0)
+                if solidType == "ACR":
+                    RHS_c_sld_ij = self.calc_ACR_dcs_dt(i, j)
+                # For homogeneous particles
+                if solidType == "homog":
+#                    k0 = self.k0(i, j)
+#                    RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
+#                            c_lyte, k0)
+                    RHS_c_sld_ij = self.calc_homog_dcs_dt(i, j)
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
@@ -383,7 +388,21 @@ class modMPET(daeModel):
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
 
-    def calc_homog_dcs_dt(self, c_sld, phi_lyte, c_lyte, k0):
+    def calc_homog_dcs_dt(self, vol_indx, part_indx):
+        # shorthand
+        i = vol_indx
+        j = part_indx
+        # Get variables for this particle/electrode volume
+        phi_lyte = self.phi_lyte_trode(i)
+        c_lyte = self.c_lyte_trode(i)
+        # Get solid information
+        k0 = self.k0(i, j)
+        # Only one volume in a homogeneous particle
+        Nij = 1
+        c_sld = np.empty(Nij, dtype=object)
+        c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
+#        c_sld = self.cbar_sld(i, j)
+        # Do calculations
         mu = self.mu_reg_sln(c_sld)
         act_R = np.exp(mu)
         gamma_ts = (1./(1-c_sld))
@@ -434,17 +453,9 @@ class modMPET(daeModel):
         return (RHS_c, RHS_phi)
 
     def mu_reg_sln(self, c):
-        if (type(c[0]) == pyCore.adouble):
-            isAdouble = True
-        else:
-            isAdouble = False
-        if isAdouble:
-            return np.array([ self.a()*(1-2*c[i])
-                    + self.T()*Log(c[i]/(1-c[i]))
-                    for i in range(len(c)) ])
-        else:
-            return ( self.a.GetValue()*(1-2*c)
-                    + self.T.GetValue()*np.log(c/(1-c)) )
+        return np.array([ self.a()*(1-2*c[i])
+                + self.T()*Log(c[i]/(1-c[i]))
+                for i in range(len(c)) ])
 
 class simMPET(daeSimulation):
     def __init__(self, P=None):
@@ -475,7 +486,7 @@ class simMPET(daeSimulation):
         # General parameters
         self.psd_mean = mean
         self.psd_stddev = stddev
-        self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart)
+        self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart, P=P)
 
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
