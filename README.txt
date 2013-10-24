@@ -23,11 +23,18 @@ as arguments).
     - Solid concentrations (all):
         $ python2 plot.py mpet_out.mat csld
     - Solid concentrations averages, sized/colored by concentration:
-        $ python2 plot.py mpet_out.mat cbar
+        $ python2 plot.py mpet_out.mat 
     - Electrolyte concentration:
         $ python2 plot.py mpet_out.mat elytec
     - Electrolyte potential:
         $ python2 plot.py mpet_out.mat elytep
+If you want to save output to a sequence of figures,
+change the save_flag variable at the bottom of plot.py to "True". This
+can be made into a movie with something like
+    $ mencoder "mf://[PREFIX]*.png" -mf type=png:fps=30 -ovc lavc -lavcopts vcodec=wmv2 -oac copy -o movie.mpg
+where [PREFIX] is replaced by the common file prefix. This requires
+that you have mencoder installed (part of MPlayer). Alternatively, you
+can make them into a movie using whatever tool you find convenient.
 
 ========
 MATLAB Codes (soon to be deprecated)
