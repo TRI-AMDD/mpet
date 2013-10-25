@@ -76,8 +76,9 @@ class modMPET(daeModel):
         self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
                 "Average concentration in each particle",
                 [self.Ntrode, self.numpart])
-#        self.phi_sld = daeVariable("phi_sld", elec_pot_t, self,
-#                "Electrostatic potential in the solid")
+        self.phi_c = daeVariable("phi_cath", elec_pot_t, self,
+                "Electrostatic potential in the solid",
+                [self.Ntrode])
         self.j_plus = daeVariable("j_plus", no_t, self,
                 "Rate of reaction of positives per solid volume",
                 [self.Ntrode])
@@ -169,6 +170,10 @@ class modMPET(daeModel):
         self.k0 = daeParameter("k0", unit(), self,
                 "exchange current density rate constant for each particle",
                 [self.Ntrode, self.numpart])
+        self.dim_mcond = daeParameter("dim_mcond", unit(), self,
+                "dimensional conductivity of cathode [S/m]")
+        self.mcond = daeParameter("mcond", unit(), self,
+                "conductivity of cathode")
         self.Ltrode = daeParameter("Ltrode", unit(), self,
                 "Length of the electrode")
         self.Lsep = daeParameter("Lsep", unit(), self,
@@ -201,6 +206,8 @@ class modMPET(daeModel):
                 "Bool: 1 for spherical particles")
         self.shape_C3 = daeParameter("C3", unit(), self,
                 "Bool: 1 for C3 particles")
+        self.cath_bulk_cond = daeParameter("cath_bulk_cond", unit(), self,
+                "Bool: 1 to simulate bulk potential drop in cathode")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -299,6 +306,27 @@ class modMPET(daeModel):
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
 
+        simBulkCathCond = self.P.getboolean('Sim Params',
+                'simBulkCathCond')
+        if simBulkCathCond:
+            # Calculate the RHS for cathode conductivity
+            phi_c = np.empty(Ntrode+2, dtype=object)
+            phi_c[1:-1] = [self.phi_c(i) for i in range(Ntrode)]
+            # No current passes into the electrolyte
+            phi_c[0] = phi_c[1]
+            # Potential at the current collector is set as a parameter
+            phi_c[-1] = self.phi_cathode()
+            dx = 1./Ntrode
+            RHS_phi_c = -np.diff(-self.mcond()*np.diff(phi_c)/dx)/dx
+        # Actually set up the equations for phi_c
+        for i in range(Ntrode):
+            eq = self.CreateEquation("phi_c{i}".format(i=i))
+            if simBulkCathCond:
+                eq.Residual = (-self.epsbeta()*self.j_plus(i) -
+                        RHS_phi_c[i])
+            else:
+                eq.Residual = self.phi_c(i) - self.phi_cathode()
+
         # Calculate RHS for electrolyte equations
         Nlyte = Nsep + Ntrode
         c_lyte = np.empty(Nlyte, dtype=object)
@@ -357,6 +385,7 @@ class modMPET(daeModel):
         j = part_indx
         # Get variables for this particle/electrode volume
         phi_lyte = self.phi_lyte_trode(i)
+        phi_m = self.phi_c(i)
         c_lyte = self.c_lyte_trode(i)
         # Number of volumes in current particle
         Nij = self.Nsld_mat[i, j].NumberOfPoints
@@ -383,7 +412,7 @@ class modMPET(daeModel):
         # of the solid of interest.
         ecd = ( k0 * act_O**(1-self.alpha())
                 * act_R**(self.alpha()) / gamma_ts )
-        delta_phi = self.phi_cathode() - phi_lyte
+        delta_phi = phi_m - phi_lyte
         eta = mu + delta_phi
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
@@ -394,6 +423,7 @@ class modMPET(daeModel):
         j = part_indx
         # Get variables for this particle/electrode volume
         phi_lyte = self.phi_lyte_trode(i)
+        phi_m = self.phi_c(i)
         c_lyte = self.c_lyte_trode(i)
         # Get solid information
         k0 = self.k0(i, j)
@@ -409,7 +439,7 @@ class modMPET(daeModel):
         act_O = c_lyte
         ecd = ( k0 * act_O**(1-self.alpha())
                 * act_R**(self.alpha()) / gamma_ts )
-        delta_phi = self.phi_cathode() - phi_lyte
+        delta_phi = phi_m - phi_lyte
         eta = mu + delta_phi
         return ( ecd*(np.exp(-self.alpha()*eta) -
                 np.exp((1-self.alpha())*eta)) )
@@ -497,6 +527,8 @@ class simMPET(daeSimulation):
         T = self.P.getfloat('Sim Params', 'T')
         solidType = self.P.get('Sim Params', 'solidType')
         solidShape = self.P.get('Sim Params', 'solidShape')
+        simBulkCathCond = self.P.getboolean('Sim Params',
+                'simBulkCathCond')
         # Geometry
         Ltrode = self.P.getfloat('Geometry', 'Ltrode')
         Lsep = self.P.getfloat('Geometry', 'Lsep')
@@ -518,6 +550,7 @@ class simMPET(daeSimulation):
         part_thick = self.P.getfloat('Cathode Material Props', 'part_thick')
         Vstd = self.P.getfloat('Cathode Material Props', 'Vstd')
         alpha = self.P.getfloat('Cathode Material Props', 'alpha')
+        dim_mcond = self.P.getfloat('Cathode Material Props', 'dim_mcond')
         # ACR info
         cwet = self.P.getfloat('ACR info', 'cwet')
         solid_disc = self.P.getfloat('ACR info', 'solid_disc')
@@ -576,6 +609,9 @@ class simMPET(daeSimulation):
         self.m.csmax.SetValue(csmax)
         self.m.part_thickness.SetValue(part_thick)
         self.m.Lp.SetValue(Lp)
+        self.m.dim_mcond.SetValue(dim_mcond)
+        self.m.mcond.SetValue(dim_mcond * (td * k * N_A * Tref) /
+                (Ltrode**2 * F**2 *c0))
         self.m.poros_sep.SetValue(1.)
         self.m.poros_trode.SetValue(poros)
         self.m.epsbeta.SetValue((1-poros)*Lp*csmax/c0)
@@ -602,6 +638,10 @@ class simMPET(daeSimulation):
         if solidShape == "C3":
             self.m.shape_sphere.SetValue(0.)
             self.m.shape_C3.SetValue(1.)
+        if simBulkCathCond:
+            self.m.cath_bulk_cond.SetValue(1.)
+        else:
+            self.m.cath_bulk_cond.SetValue(0.)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
@@ -635,11 +675,15 @@ class simMPET(daeSimulation):
         numpart = self.m.numpart.NumberOfPoints
         # Set/guess values
         cs0 = self.P.getfloat('Sim Params', 'cs0')
+        phi_cathode = self.m.phi_cathode.GetValue()
         for i in range(Ntrode):
             # Guess initial volumetric reaction rates
             self.m.j_plus.SetInitialGuess(i, 0.0)
+            # Guess initial value for the potential of the
+            # cathode
+            self.m.phi_c.SetInitialGuess(i, phi_cathode)
             for j in range(numpart):
-                # Set initial value for the average solid concentrations
+                # Guess initial value for the average solid concentrations
 #                self.m.cbar_sld.SetInitialCondition(i, j, cs0)
                 self.m.cbar_sld.SetInitialGuess(i, j, cs0)
                 # Set initial solid concentration values
@@ -713,6 +757,8 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """
     def WriteDataToFile(self):
         mdict = {}
+        print dir(self)
+        print dir(self.Process)
         for var in self.Process.Variables:
             mdict[var.Name] = var.Values
             mdict[var.Name + '_times'] = var.TimeValues
@@ -813,5 +859,9 @@ if __name__ == "__main__":
 #    import cProfile
 #    cProfile.run("consoleRun()")
     consoleRun(paramfile)
-    print "\n\n*** Note: Used default file, ""{fname}"" ***\n\n".format(
-            fname=default_file)
+    if default_flag:
+        print "\n\n*** Note: Used default file, ""{fname}"" ***\n\n".format(
+                fname=default_file)
+    else:
+        print "\n\nUsed parameter file ""{fname}""\n\n".format(
+                fname=paramfile)

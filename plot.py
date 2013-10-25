@@ -69,7 +69,7 @@ def plot(infile, plot_type, save_flag):
         ymin = 0
         ymax = 1.5
         ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Concentration of electrolyte [fraction]')
+        ax.set_ylabel('Concentration of electrolyte [nondim]')
         sep = 'mpet.c_lyte_sep'
         trode = 'mpet.c_lyte_trode'
         datay_sep = data[sep][0]
@@ -112,7 +112,7 @@ def plot(infile, plot_type, save_flag):
         ymin = -5
         ymax = 5
         ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Potential of electrolyte [fraction]')
+        ax.set_ylabel('Potential of electrolyte [nondim]')
         sep = 'mpet.phi_lyte_sep'
         trode = 'mpet.phi_lyte_trode'
         datay_sep = data[sep][0]
@@ -211,10 +211,8 @@ def plot(infile, plot_type, save_flag):
         for (i,j),c in np.ndenumerate(cbar_mat):
             p_len = psd_len[i, j]
             size_frac = (p_len - len_min)/(len_max - len_min)
-#                print size_frac
             size = ((size_frac) * (1-size_min) +
                     size_min)
-#                print size
             color = 'green'
             rects[i, j] = plt.Rectangle([i - size / 2, j - size / 2],
                     size, size, facecolor=color, edgecolor=color)
@@ -241,6 +239,42 @@ def plot(infile, plot_type, save_flag):
             else:
                 fig.canvas.draw()
                 time.sleep(5e-2)
+
+    # Plot cathode potential
+    elif plot_type == "cathp":
+        if save_flag:
+            outputdir = "{name}_image_output".format(name=infile[0:-4])
+            os.mkdir(outputdir)
+        else:
+            # "interactive mode on"
+            plt.ion()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ymin = -5
+        ymax = 5
+        ax.set_xlabel('Position in cathode [um]')
+        ax.set_ylabel('Potential of cathode [nondim]')
+        cathp = 'mpet.phi_cath'
+        Ltrode = data['mpet.Ltrode'][0] * 1e6
+        datay = data[cathp][0]
+        numy = len(datay)
+        xmin = 0
+        xmax = Ltrode
+        datax = np.linspace(xmin, xmax, numy)
+        ax.set_ylim((ymin, ymax))
+        ax.set_xlim((xmin, xmax))
+        # returns tuble of line objects, thus comma
+        line1, = ax.plot(datax, datay)
+        for i in range(numtimes):
+            datay = data[cathp][i]
+            line1.set_ydata(datay)
+            if save_flag:
+                filename = os.path.join(outputdir,
+                        'elyte_p{num:06d}.png'.format(num=i))
+                fig.savefig(filename)
+            else:
+                fig.canvas.draw()
+                time.sleep(1e-3)
 
     else:
         raise Exception("Unexpected plot type argument."
