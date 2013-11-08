@@ -1,3 +1,4 @@
 *.swp
-params.mat
+*.mat
+*.m4v
 params.m
