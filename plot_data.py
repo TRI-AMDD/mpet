@@ -198,13 +198,36 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot average solid concentrations
     elif plot_type == "cbar":
+        # Set up colors.
         # Define if you want smooth or discrete color changes
-        # SMOOTH
-        color_changes = "smooth"
-        # DISCRETE
-#        color_changes = "discrete"
-#        to_yellow = 0.4
-#        to_red = 0.6
+        # Option: "smooth" or "discrete"
+        color_changes = "discrete"
+        # Discrete color changes:
+        if color_changes == "discrete":
+            to_yellow = 0.4
+            to_red = 0.6
+            # Make a discrete colormap that goes from green to yellow
+            # to red instantaneously
+            cdict = {
+                    "red" : [(0.0, 0.0, 0.0),
+                             (to_yellow, 0.0, 1.0),
+                             (1.0, 1.0, 1.0)],
+                    "green" : [(0.0, 0.502, 0.502),
+                               (to_yellow, 0.502, 1.0),
+                               (to_red, 1.0, 0.0),
+                               (1.0, 0.0, 0.0)],
+                    "blue" : [(0.0, 0.0, 0.0),
+                              (1.0, 0.0, 0.0)]
+                    }
+            cmap = matplotlib.colors.LinearSegmentedColormap(
+                    "discrete", cdict)
+        # Smooth colormap changes:
+        if color_changes == "smooth":
+#            cmap = matplotlib.cm.RdYlGn_r # A default green-yellow-red map
+            # generated with colormap.org
+            cmaps = np.load("colormaps_custom.npz")
+            cmap_data = cmaps["GnYlRd_3"]
+            cmap = matplotlib.colors.ListedColormap(cmap_data/255.)
 
         # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
@@ -244,20 +267,6 @@ def show_data(infile, plot_type, save_flag):
         if len_max != len_min:
             size_fracs = (psd_len - len_min)/(len_max - len_min)
         sizes = (size_fracs * (1 - size_frac_min) + size_frac_min) / Ntrode
-        # Discrete color changes:
-        if color_changes == "discrete":
-            # Get information about matplotlib color codes for colors of
-            # interest.
-            converter = matplotlib.colors.ColorConverter()
-            rgba_green = converter.to_rgba('green')
-            rgba_yellow = converter.to_rgba('yellow')
-            rgba_red = converter.to_rgba('red')
-        # Smooth colormap changes:
-        if color_changes == "smooth":
-#            cmap = matplotlib.cm.RdYlGn_r # A default green-yellow-red map
-            cmaps = np.load("colormaps_custom.npz")
-            cmap_data = cmaps["GnYlRd_3"]
-            cmap = matplotlib.colors.ListedColormap(cmap_data/255.)
         # Create rectangle "patches" to add to figure axes.
         rects = np.empty((Ntrode, numpart), dtype=object)
         color = 'green' # value is irrelevant -- it will be animated
@@ -276,35 +285,13 @@ def show_data(infile, plot_type, save_flag):
         # initial state of the system.
         def init():
             cbar_mat = data[pfx + 'cbar_sld'][0]
-            if color_changes == "discrete":
-                colors = []
-                for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
-                    if c < to_yellow:
-                        color_code = rgba_green
-                    elif c < to_red:
-                        color_code = rgba_yellow
-                    else: # c > to_red:
-                        color_code = rgba_red
-                    colors.append(color_code)
-            if color_changes == "smooth":
-                colors = cmap(cbar_mat.reshape(-1))
+            colors = cmap(cbar_mat.reshape(-1))
             collection.set_color(colors)
             ttl.set_text('')
             return collection, ttl
         def animate(tind):
             cbar_mat = data[pfx + 'cbar_sld'][tind]
-            if color_changes == "discrete":
-                colors = []
-                for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
-                    if c < to_yellow:
-                        color_code = rgba_green
-                    elif c < to_red:
-                        color_code = rgba_yellow
-                    else: # c > to_red:
-                        color_code = rgba_red
-                    colors.append(color_code)
-            if color_changes == "smooth":
-                colors = cmap(cbar_mat.reshape(-1))
+            colors = cmap(cbar_mat.reshape(-1))
             collection.set_color(colors)
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
