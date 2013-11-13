@@ -198,67 +198,113 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot average solid concentrations
     elif plot_type == "cbar":
+        # Define if you want smooth or discrete color changes
+        # SMOOTH
+        color_changes = "smooth"
+        # DISCRETE
+#        color_changes = "discrete"
+#        to_yellow = 0.4
+#        to_red = 0.6
+
+        # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
         psd_len = data[pfx + 'psd_lengths'][0]
         len_max = np.max(psd_len)
         len_min = np.min(psd_len)
-        size_min = 0.10
+        size_frac_min = 0.10
         fig, ax = plt.subplots()
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
         ax.patch.set_facecolor('white')
+        # Don't stretch axes to fit figure -- keep 1:1 x:y ratio.
         ax.set_aspect('equal', 'box')
+        # Don't show axis ticks
         ax.xaxis.set_major_locator(plt.NullLocator())
         ax.yaxis.set_major_locator(plt.NullLocator())
-#        yleft = fig.text(0.3, 0.5, "Separator",
-#                rotation=90,
-#                verticalalignment="center")
-#        yright = fig.text(0.7, 0.5, "Current Collector",
-#                rotation=90,
-#                verticalalignment="center")
-#        ax.invert_yaxis()
-        # Make a collection of rectangles we'll animate
+        ax.set_xlim(0, 1.)
+        ax.set_ylim(0, float(numpart)/Ntrode)
+        # Label parts of the figure
+        ylft = ax.text(-0.07, 0.5, "Separator",
+                transform=ax.transAxes, rotation=90,
+                verticalalignment="center",
+                horizontalalignment="center")
+        yrht = ax.text(1.09, 0.5, "Current Collector",
+                transform=ax.transAxes, rotation=90,
+                verticalalignment="center",
+                horizontalalignment="center")
+        xbtm = ax.text(.50, -0.05, "Electrode Depth -->",
+                transform=ax.transAxes, rotation=0,
+                verticalalignment="center",
+                horizontalalignment="center")
+        # Geometric parameters for placing the rectangles on the axes
+        spacing = 1.0 / Ntrode
+        size_fracs = 0.4*np.ones((Ntrode, numpart))
+        if len_max != len_min:
+            size_fracs = (psd_len - len_min)/(len_max - len_min)
+        sizes = (size_fracs * (1 - size_frac_min) + size_frac_min) / Ntrode
+        # Discrete color changes:
+        if color_changes == "discrete":
+            # Get information about matplotlib color codes for colors of
+            # interest.
+            converter = matplotlib.colors.ColorConverter()
+            rgba_green = converter.to_rgba('green')
+            rgba_yellow = converter.to_rgba('yellow')
+            rgba_red = converter.to_rgba('red')
+        # Smooth colormap changes:
+        if color_changes == "smooth":
+#            cmap = matplotlib.cm.RdYlGn_r # A default green-yellow-red map
+            cmaps = np.load("colormaps_custom.npz")
+            cmap_data = cmaps["GnYlRd_3"]
+            cmap = matplotlib.colors.ListedColormap(cmap_data/255.)
+        # Create rectangle "patches" to add to figure axes.
         rects = np.empty((Ntrode, numpart), dtype=object)
-        cbar_mat = data[pfx + 'cbar_sld'][0]
-        converter = matplotlib.colors.ColorConverter()
-        rgba_green = converter.to_rgba('green')
-        rgba_yellow = converter.to_rgba('yellow')
-        rgba_red = converter.to_rgba('red')
-        color = 'green'
-        for (i, j), c in np.ndenumerate(cbar_mat):
-            p_len = psd_len[i, j]
-            if len_max == len_min:
-                size_frac = 0.4
-            else:
-                size_frac = (p_len - len_min)/(len_max - len_min)
-            size = ((size_frac) * (1-size_min) +
-                    size_min)
-            rects[i, j] = plt.Rectangle([i - size / 2, j - size / 2],
-                    size, size, facecolor=color, edgecolor=color)
+        color = 'green' # value is irrelevant -- it will be animated
+        for (i, j), c in np.ndenumerate(sizes):
+            size = sizes[i, j]
+            center = np.array([spacing*(i + 0.5), spacing*(j + 0.5)])
+            bottom_left = center - size / 2
+            rects[i, j] = plt.Rectangle(bottom_left,
+                    size, size, color=color)
+        # Create a group of rectange "patches" from the rects array
         collection = mcollect.PatchCollection(rects.reshape(-1),
                 animated=True)
+        # Put them on the axes
         ax.add_collection(collection)
-        ax.autoscale_view()
+        # Have a "background" image of rectanges representing the
+        # initial state of the system.
         def init():
-            colors = 'green'
-#            collection.set_edgecolors(colors)
-#            collection.set_facecolors(colors)
+            cbar_mat = data[pfx + 'cbar_sld'][0]
+            if color_changes == "discrete":
+                colors = []
+                for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
+                    if c < to_yellow:
+                        color_code = rgba_green
+                    elif c < to_red:
+                        color_code = rgba_yellow
+                    else: # c > to_red:
+                        color_code = rgba_red
+                    colors.append(color_code)
+            if color_changes == "smooth":
+                colors = cmap(cbar_mat.reshape(-1))
             collection.set_color(colors)
             ttl.set_text('')
             return collection, ttl
         def animate(tind):
-            colors = []
             cbar_mat = data[pfx + 'cbar_sld'][tind]
-            for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
-                if c < 0.4:
-                    color_code = rgba_green
-                elif c < 0.6:
-                    color_code = rgba_yellow
-                else: # c > 0.6:
-                    color_code = rgba_red
-                colors.append(color_code)
+            if color_changes == "discrete":
+                colors = []
+                for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
+                    if c < to_yellow:
+                        color_code = rgba_green
+                    elif c < to_red:
+                        color_code = rgba_yellow
+                    else: # c > to_red:
+                        color_code = rgba_red
+                    colors.append(color_code)
+            if color_changes == "smooth":
+                colors = cmap(cbar_mat.reshape(-1))
             collection.set_color(colors)
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
