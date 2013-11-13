@@ -181,6 +181,7 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot average solid concentrations
     elif plot_type == "cbar":
+#        matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
         psd_len = data[pfx + 'psd_lengths'][0]
         len_max = np.max(psd_len)
@@ -188,8 +189,11 @@ def show_data(infile, plot_type, save_flag):
         size_min = 0.10
         fig, ax = plt.subplots()
 #        title = ax.set_title("% = 00.0")
-#        tmin = np.min(times)
-#        tmax = np.max(times)
+        tmin = np.min(times)
+        tmax = np.max(times)
+        ttl = ax.text(0.5, 1.05, "% = 0.00", transform =
+                ax.transAxes, verticalalignment="center",
+                horizontalalignment="center")
         ax.patch.set_facecolor('white')
         ax.set_aspect('equal', 'box')
         ax.xaxis.set_major_locator(plt.NullLocator())
@@ -225,10 +229,14 @@ def show_data(infile, plot_type, save_flag):
         ax.autoscale_view()
         def init():
             colors = 'green'
-            collection.set_edgecolors(colors)
-            collection.set_facecolors(colors)
-            return collection,
+#            collection.set_edgecolors(colors)
+#            collection.set_facecolors(colors)
+            collection.set_color(colors)
+            ttl.set_text('')
+            return collection, ttl
         def animate(tind):
+            t_current = times[tind]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
             colors = []
             cbar_mat = data[pfx + 'cbar_sld'][tind]
             for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
@@ -239,9 +247,9 @@ def show_data(infile, plot_type, save_flag):
                 else: # c > 0.6:
                     color_code = rgba_red
                 colors.append(color_code)
-            collection.set_edgecolors(colors)
-            collection.set_facecolors(colors)
-            return collection,
+            collection.set_color(colors)
+            ttl.set_text("% = {perc:2.1f}".format(perc=tfrac))
+            return collection, ttl
 
     # Plot cathode potential
     elif plot_type == "cathp":
@@ -283,6 +291,30 @@ def show_data(infile, plot_type, save_flag):
     plt.show()
 
     return
+
+# This is a block of code which messes with some matplotlib internals
+# to allow for animation of a title. See
+# http://stackoverflow.com/questions/17558096/animated-title-in-matplotlib
+def _blit_draw(self, artists, bg_cache):
+    # Handles blitted drawing, which renders only the artists given instead
+    # of the entire figure.
+    updated_ax = []
+    for a in artists:
+        # If we haven't cached the background for this axes object, do
+        # so now. This might not always be reliable, but it's an attempt
+        # to automate the process.
+        if a.axes not in bg_cache:
+            # bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(a.axes.bbox)
+            # change here
+            bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(a.axes.figure.bbox)
+        a.axes.draw_artist(a)
+        updated_ax.append(a.axes)
+
+    # After rendering all the needed artists, blit each axes individually.
+    for ax in set(updated_ax):
+        # and here
+        # ax.figure.canvas.blit(ax.bbox)
+        ax.figure.canvas.blit(ax.figure.bbox)
 
 if __name__ == "__main__":
     # Get input file from script parameters
