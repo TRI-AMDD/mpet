@@ -12,6 +12,7 @@ import matplotlib.collections as mcollect
 
 def show_data(infile, plot_type, save_flag):
     pfx = 'mpet.'
+    ttl_fmt = "% = {perc:2.1f}"
     data = sio.loadmat(infile)
     # Pick out some useful parameters
     Vstd = data[pfx + 'Vstd'][0][0]  # Standard potential, V
@@ -25,6 +26,8 @@ def show_data(infile, plot_type, save_flag):
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
+    tmin = np.min(times)
+    tmax = np.max(times)
     # Simulation type
     sim_ACR = data[pfx + "type_ACR"][0][0]
     sim_homog = data[pfx + "type_homog"][0][0]
@@ -79,12 +82,15 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot electrolyte concentration
     elif plot_type == "elytec":
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        matplotlib.animation.Animation._blit_draw = _blit_draw
+        fig, ax = plt.subplots()
         ymin = 0
         ymax = 1.5
         ax.set_xlabel('Battery Position [um]')
         ax.set_ylabel('Concentration of electrolyte [nondim]')
+        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
+                transform = ax.transAxes, verticalalignment="center",
+                horizontalalignment="center")
         sep = pfx + 'c_lyte_sep'
         trode = pfx + 'c_lyte_trode'
         datay_sep = data[sep][0]
@@ -103,22 +109,29 @@ def show_data(infile, plot_type, save_flag):
         ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
-            return line1,
+            ttl.set_text('')
+            return line1, ttl
         def animate(tind):
             datay_sep = data[sep][tind]
             datay_trode = data[trode][tind]
             datay = np.hstack((datay_sep, datay_trode))
             line1.set_ydata(datay)
-            return line1,
+            t_current = times[tind]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
+            ttl.set_text(ttl_fmt.format(perc=tfrac))
+            return line1, ttl
 
     # Plot electrolyte electrostatic potential
     elif plot_type == "elytep":
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        matplotlib.animation.Animation._blit_draw = _blit_draw
+        fig, ax = plt.subplots()
         ymin = -5
         ymax = 5
         ax.set_xlabel('Battery Position [um]')
         ax.set_ylabel('Potential of electrolyte [nondim]')
+        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
+                transform = ax.transAxes, verticalalignment="center",
+                horizontalalignment="center")
         sep = pfx + 'phi_lyte_sep'
         trode = pfx + 'phi_lyte_trode'
         datay_sep = data[sep][0]
@@ -137,13 +150,17 @@ def show_data(infile, plot_type, save_flag):
         ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
-            return line1,
+            ttl.set_text('')
+            return line1, ttl
         def animate(tind):
             datay_sep = data[sep][tind]
             datay_trode = data[trode][tind]
             datay = np.hstack((datay_sep, datay_trode))
             line1.set_ydata(datay)
-            return line1,
+            t_current = times[tind]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
+            ttl.set_text(ttl_fmt.format(perc=tfrac))
+            return line1, ttl
 
     # Plot all solid concentrations
     elif plot_type == "csld":
@@ -181,18 +198,15 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot average solid concentrations
     elif plot_type == "cbar":
-#        matplotlib.animation.Animation._blit_draw = _blit_draw
+        matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
         psd_len = data[pfx + 'psd_lengths'][0]
         len_max = np.max(psd_len)
         len_min = np.min(psd_len)
         size_min = 0.10
         fig, ax = plt.subplots()
-#        title = ax.set_title("% = 00.0")
-        tmin = np.min(times)
-        tmax = np.max(times)
-        ttl = ax.text(0.5, 1.05, "% = 0.00", transform =
-                ax.transAxes, verticalalignment="center",
+        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
+                transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
         ax.patch.set_facecolor('white')
         ax.set_aspect('equal', 'box')
@@ -235,8 +249,6 @@ def show_data(infile, plot_type, save_flag):
             ttl.set_text('')
             return collection, ttl
         def animate(tind):
-            t_current = times[tind]
-            tfrac = (t_current - tmin)/(tmax - tmin) * 100
             colors = []
             cbar_mat = data[pfx + 'cbar_sld'][tind]
             for (i,), c in np.ndenumerate(cbar_mat.reshape(-1)):
@@ -248,17 +260,22 @@ def show_data(infile, plot_type, save_flag):
                     color_code = rgba_red
                 colors.append(color_code)
             collection.set_color(colors)
-            ttl.set_text("% = {perc:2.1f}".format(perc=tfrac))
+            t_current = times[tind]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
+            ttl.set_text(ttl_fmt.format(perc=tfrac))
             return collection, ttl
 
     # Plot cathode potential
     elif plot_type == "cathp":
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        matplotlib.animation.Animation._blit_draw = _blit_draw
+        fig, ax = plt.subplots()
         ymin = -1
         ymax = 10
         ax.set_xlabel('Position in cathode [um]')
         ax.set_ylabel('Potential of cathode [nondim]')
+        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
+                transform = ax.transAxes, verticalalignment="center",
+                horizontalalignment="center")
         cathp = pfx + 'phi_cath'
         Ltrode = data[pfx + 'Ltrode'][0] * 1e6
         datay = data[cathp][0]
@@ -272,11 +289,15 @@ def show_data(infile, plot_type, save_flag):
         line1, = ax.plot(datax, datay)
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
-            return line1,
-        def animate(i):
-            datay = data[cathp][i]
+            ttl.set_text('')
+            return line1, ttl
+        def animate(tind):
+            datay = data[cathp][tind]
             line1.set_ydata(datay)
-            return line1,
+            t_current = times[tind]
+            tfrac = (t_current - tmin)/(tmax - tmin) * 100
+            ttl.set_text(ttl_fmt.format(perc=tfrac))
+            return line1, ttl
 
     else:
         raise Exception("Unexpected plot type argument. "
@@ -284,7 +305,7 @@ def show_data(infile, plot_type, save_flag):
                 + "'cathp'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
-            interval=10, blit=True, repeat=False, init_func=init)
+            interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=30)
 #                extra_args=['-vcodec', 'libx264'])
