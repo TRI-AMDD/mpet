@@ -73,6 +73,9 @@ def show_data(infile, plot_type, save_flag):
         voltage = Vstd - (k*T/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
+        xmin = np.min(ffvec)
+        xmax = np.max(ffvec)
+        ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
         if save_flag:
@@ -171,7 +174,7 @@ def show_data(infile, plot_type, save_flag):
         lines = np.empty((numpart, Ntrode), dtype=object)
         for i in range(numpart):
             for j in range(Ntrode):
-                sol[i, j] = "mpet.solid_vol{j}_part{i}".format(i=i, j=j)
+                sol[i, j] = "mpet.solid_c_vol{j}_part{i}".format(i=i, j=j)
                 lens[i, j] = data["mpet.psd_lengths"][0][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
@@ -333,9 +336,9 @@ def show_data(infile, plot_type, save_flag):
             return line1, ttl
 
     else:
-        raise Exception("Unexpected plot type argument. "
-                + "Try 'v', 'elytec', 'elytep', 'cbar', 'csld', "
-                + "'cathp'.")
+        raise Exception("Unexpected plot type argument. " +
+                "Try 'v', 'elytec', 'elytep', 'cbar', 'csld', " +
+                "'cathp'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
             interval=50, blit=True, repeat=False, init_func=init)
