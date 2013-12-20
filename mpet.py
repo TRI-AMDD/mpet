@@ -283,22 +283,13 @@ class modMPET(daeModel):
             eq.Residual = self.j_plus(i) - res
             eq.CheckUnitsConsistency = False
 
-        solidType = self.P.get('Sim Params', 'solidType')
         # Calculate the solid concentration rates of change
         # (differential equations)
         for i in range(Ntrode):
             for j in range(numpart):
                 # Prepare the RHS function
                 Nij = Nsld_mat[i, j]
-                # For ACR style particles
-                if solidType == "ACR":
-                    RHS_c_sld_ij = self.calc_ACR_dcs_dt(i, j)
-                # For homogeneous particles
-                if solidType == "homog":
-#                    k0 = self.k0(i, j)
-#                    RHS_c_sld_ij = self.calc_homog_dcs_dt(c_sld, phi_lyte,
-#                            c_lyte, k0)
-                    RHS_c_sld_ij = self.calc_homog_dcs_dt(i, j)
+                RHS_c_sld_ij = self.calc_sld_dcs_dt(i, j)
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
@@ -380,7 +371,7 @@ class modMPET(daeModel):
             eq.Residual -= dx*self.j_plus(i)
         eq.CheckUnitsConsistency = False
 
-    def calc_ACR_dcs_dt(self, vol_indx, part_indx):
+    def calc_sld_dcs_dt(self, vol_indx, part_indx):
         # shorthand
         i = vol_indx
         j = part_indx
@@ -388,25 +379,31 @@ class modMPET(daeModel):
         phi_lyte = self.phi_lyte_trode(i)
         phi_m = self.phi_c(i)
         c_lyte = self.c_lyte_trode(i)
-        # Number of volumes in current particle
-        Nij = self.Nsld_mat[i, j].NumberOfPoints
-        cs = np.empty(Nij, dtype=object)
-        cs[:] = [self.c_sld[i, j](k) for k in range(Nij)]
         # Get the relevant parameters for this particle
         k0 = self.k0(i, j)
-        kappa = self.kappa(i, j)
-        cbar = self.cbar_sld(i, j)
-        # Make a blank array to allow for boundary conditions
-        cstmp = np.empty(Nij+2, dtype=object)
-        cstmp[1:-1] = cs
-        cstmp[0] = self.cwet()
-        cstmp[-1] = self.cwet()
-        dxs = 1./Nij
-        curv = np.diff(cstmp, 2)/(dxs**2)
-        mu_R = ( self.mu_reg_sln(cs) - kappa*curv
-                + self.b()*(cs - cbar) )
+        kappa = self.kappa(i, j) # only used for ACR
+        cbar = self.cbar_sld(i, j) # only used for ACR
+        # Number of volumes in current particle
+        Nij = self.Nsld_mat[i, j].NumberOfPoints
+        # Concentration (profile?) in the solid
+        c_sld = np.empty(Nij, dtype=object)
+        c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
+        # Calculate chemical potential of reduced state
+        solidType = self.P.get('Sim Params', 'solidType')
+        if solidType == "ACR":
+            # Make a blank array to allow for boundary conditions
+            cstmp = np.empty(Nij+2, dtype=object)
+            cstmp[1:-1] = c_sld
+            cstmp[0] = self.cwet()
+            cstmp[-1] = self.cwet()
+            dxs = 1./Nij
+            curv = np.diff(cstmp, 2)/(dxs**2)
+            mu_R = ( self.mu_reg_sln(c_sld) - kappa*curv
+                    + self.b()*(c_sld - cbar) )
+        elif solidType == "homog":
+            mu_R = self.mu_reg_sln(c_sld)
         act_R = np.exp(mu_R)
-        gamma_ts = (1./(1-cs))
+        gamma_ts = (1./(1-c_sld))
         # Assume dilute electrolyte
         act_O = c_lyte
         mu_O = np.log(act_O)
@@ -414,40 +411,11 @@ class modMPET(daeModel):
         # of the solid of interest.
         ecd = ( k0 * act_O**(1-self.alpha())
                 * act_R**(self.alpha()) / gamma_ts )
-#        delta_phi = phi_m - phi_lyte
         # eta = electrochem pot_R - electrochem pot_O
         # eta = (mu_R + phi_R) - (mu_O + phi_O)
         eta = (mu_R + phi_m) - (mu_O + phi_lyte)
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
-
-    def calc_homog_dcs_dt(self, vol_indx, part_indx):
-        # shorthand
-        i = vol_indx
-        j = part_indx
-        # Get variables for this particle/electrode volume
-        phi_lyte = self.phi_lyte_trode(i)
-        phi_m = self.phi_c(i)
-        c_lyte = self.c_lyte_trode(i)
-        # Get solid information
-        k0 = self.k0(i, j)
-        # Only one volume in a homogeneous particle
-        Nij = 1
-        c_sld = np.empty(Nij, dtype=object)
-        c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
-#        c_sld = self.cbar_sld(i, j)
-        # Do calculations
-        mu_R = self.mu_reg_sln(c_sld)
-        act_R = np.exp(mu_R)
-        gamma_ts = (1./(1-c_sld))
-        act_O = c_lyte
-        mu_O = np.log(act_O)
-        ecd = ( k0 * act_O**(1-self.alpha())
-                * act_R**(self.alpha()) / gamma_ts )
-#        delta_phi = phi_m - phi_lyte
-        eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-        return ( ecd*(np.exp(-self.alpha()*eta) -
-                np.exp((1-self.alpha())*eta)) )
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
         # The lengths are nondimensionalized by the electrode length
