@@ -205,8 +205,13 @@ val(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = -diff(porosvec.*currdens).*Nx
 rxncmat = repmat(cvec(disc.ss+1:end),1,numpart);
 rxnphimat = repmat(phivec(disc.ss+1:end),1,numpart);
 muvec = calcmu(csvec,a);
-ecd = io.*sqrt(reshape(rxncmat',numpart*disc.steps,1)).*sqrt(exp(muvec)).*(1-csvec);
-eta = muvec-reshape(rxnphimat',numpart*disc.steps,1);
+% Assume ideal solution in the electrolyte
+a_O = reshape(rxncmat',numpart*disc.steps,1);
+mu_O = log(a_O);
+ecd = io.*sqrt(a_O).*sqrt(exp(muvec)).*(1-csvec);
+% eta = electrochem potential_R - electrochem potential_O
+phi_M = 0; % electrostatic potential in the metal -- set to 0
+eta = (muvec + phi_M) - (mu_O + reshape(rxnphimat',numpart*disc.steps,1));
 val(disc.sol:end-1) = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 val(disc.sol:end-1) = val(disc.sol:end-1) + interp1q(tr,noise,t)';
 

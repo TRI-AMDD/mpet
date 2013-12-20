@@ -383,8 +383,13 @@ gamma_ts = (1./(1-cs));
 % New transition state with regular solution parameter
 % gamma_ts = (1./(1-cs)).*exp(a.*(1-2.*cs));
 
+% Assume ideal solution in electrolyte -- ccath (concentration in
+% electrolyte) = activity
 ecd = (io.*ccath^(1-alpha).*act.^(alpha))./gamma_ts;
-eta = mu-phi;
+mu_O = log(ccath);
+phi_M = 0; % electostatic potential in the metal -- set to zero
+% eta = electrochem potential_R - electrochem potential_O
+eta = (mu + phi_M) - (mu_O + phi);
 dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 
 return;
