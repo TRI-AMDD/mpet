@@ -9,6 +9,7 @@ from time import localtime, strftime
 import numpy as np
 import scipy.sparse as sprs
 import scipy.interpolate as sint
+import scipy.io as sio
 
 from daetools.pyDAE import *
 from daetools.pyDAE.data_reporters import *
@@ -204,7 +205,7 @@ class modMPET(daeModel):
                 "Bool: 1 for homog type simulation")
         self.shape_sphere = daeParameter("shape_sphere", unit(), self,
                 "Bool: 1 for spherical particles")
-        self.shape_C3 = daeParameter("C3", unit(), self,
+        self.shape_C3 = daeParameter("shape_C3", unit(), self,
                 "Bool: 1 for C3 particles")
         self.cath_bulk_cond = daeParameter("cath_bulk_cond", unit(), self,
                 "Bool: 1 to simulate bulk potential drop in cathode")
@@ -402,18 +403,21 @@ class modMPET(daeModel):
         cstmp[-1] = self.cwet()
         dxs = 1./Nij
         curv = np.diff(cstmp, 2)/(dxs**2)
-        mu = ( self.mu_reg_sln(cs) - kappa*curv
+        mu_R = ( self.mu_reg_sln(cs) - kappa*curv
                 + self.b()*(cs - cbar) )
-        act_R = np.exp(mu)
+        act_R = np.exp(mu_R)
         gamma_ts = (1./(1-cs))
         # Assume dilute electrolyte
         act_O = c_lyte
+        mu_O = np.log(act_O)
         # k0 is based on the _active_ area per volume for the region
         # of the solid of interest.
         ecd = ( k0 * act_O**(1-self.alpha())
                 * act_R**(self.alpha()) / gamma_ts )
-        delta_phi = phi_m - phi_lyte
-        eta = mu + delta_phi
+#        delta_phi = phi_m - phi_lyte
+        # eta = electrochem pot_R - electrochem pot_O
+        # eta = (mu_R + phi_R) - (mu_O + phi_O)
+        eta = (mu_R + phi_m) - (mu_O + phi_lyte)
         return ( ecd*(np.exp(-self.alpha()*eta)
                 - np.exp((1-self.alpha())*eta)) )
 
@@ -433,14 +437,15 @@ class modMPET(daeModel):
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
 #        c_sld = self.cbar_sld(i, j)
         # Do calculations
-        mu = self.mu_reg_sln(c_sld)
-        act_R = np.exp(mu)
+        mu_R = self.mu_reg_sln(c_sld)
+        act_R = np.exp(mu_R)
         gamma_ts = (1./(1-c_sld))
         act_O = c_lyte
+        mu_O = np.log(act_O)
         ecd = ( k0 * act_O**(1-self.alpha())
                 * act_R**(self.alpha()) / gamma_ts )
-        delta_phi = phi_m - phi_lyte
-        eta = mu + delta_phi
+#        delta_phi = phi_m - phi_lyte
+        eta = (mu_R + phi_m) - (mu_O + phi_lyte)
         return ( ecd*(np.exp(-self.alpha()*eta) -
                 np.exp((1-self.alpha())*eta)) )
 
@@ -499,7 +504,7 @@ class simMPET(daeSimulation):
         numpart = P.getint('Sim Params', 'numpart')
         solidType = P.get('Sim Params', 'solidType')
         # Make a length-sampled particle size distribution
-        psd_raw = stddev*np.abs(np.random.randn(Ntrode, numpart)) + mean
+        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
         # For ACR particles, convert psd to integers -- number of steps
         if solidType == "ACR":
             solid_disc = P.getfloat('ACR info', 'solid_disc')
@@ -673,36 +678,78 @@ class simMPET(daeSimulation):
         Ntrode = self.m.Ntrode.NumberOfPoints
         Nlyte = Nsep + Ntrode
         numpart = self.m.numpart.NumberOfPoints
-        # Set/guess values
-        cs0 = self.P.getfloat('Sim Params', 'cs0')
         phi_cathode = self.m.phi_cathode.GetValue()
-        for i in range(Ntrode):
-            # Guess initial volumetric reaction rates
-            self.m.j_plus.SetInitialGuess(i, 0.0)
-            # Guess initial value for the potential of the
-            # cathode
-            self.m.phi_c.SetInitialGuess(i, phi_cathode)
-            for j in range(numpart):
-                # Guess initial value for the average solid concentrations
-#                self.m.cbar_sld.SetInitialCondition(i, j, cs0)
-                self.m.cbar_sld.SetInitialGuess(i, j, cs0)
-                # Set initial solid concentration values
-                Nij = self.m.Nsld_mat[i, j].NumberOfPoints
-                for k in range(Nij):
-                    self.m.c_sld[i, j].SetInitialCondition(k, cs0)
-        # Set initial electrolyte concentration conditions
-        c_lyte_init = 1.
-        phi_guess = 0.
-        for i in range(Nsep):
-            self.m.c_lyte_sep.SetInitialCondition(i, c_lyte_init)
-            self.m.phi_lyte_sep.SetInitialGuess(i, phi_guess)
-        for i in range(Ntrode):
-            self.m.c_lyte_trode.SetInitialCondition(i, c_lyte_init)
-            self.m.phi_lyte_trode.SetInitialGuess(i, phi_guess)
-        # Guess initial filling fraction
-        self.m.ffrac_cathode.SetInitialGuess(cs0)
-        # Guess the initial cell voltage
-        self.m.phi_applied.SetInitialGuess(0.0)
+        continuePrev = self.P.get('Sim Params', 'continuePrevious')
+        if continuePrev == 'false':
+            # Set/guess values
+            cs0 = self.P.getfloat('Sim Params', 'cs0')
+            for i in range(Ntrode):
+                # Guess initial volumetric reaction rates
+                self.m.j_plus.SetInitialGuess(i, 0.0)
+                # Guess initial value for the potential of the
+                # cathode
+                self.m.phi_c.SetInitialGuess(i, phi_cathode)
+                for j in range(numpart):
+                    # Guess initial value for the average solid concentrations
+                    self.m.cbar_sld.SetInitialGuess(i, j, cs0)
+                    # Set initial solid concentration values
+                    Nij = self.m.Nsld_mat[i, j].NumberOfPoints
+                    for k in range(Nij):
+                        self.m.c_sld[i, j].SetInitialCondition(k, cs0)
+            # Set initial electrolyte concentration conditions
+            c_lyte_init = 1.
+            phi_guess = 0.
+            for i in range(Nsep):
+                self.m.c_lyte_sep.SetInitialCondition(i, c_lyte_init)
+                self.m.phi_lyte_sep.SetInitialGuess(i, phi_guess)
+            for i in range(Ntrode):
+                self.m.c_lyte_trode.SetInitialCondition(i, c_lyte_init)
+                self.m.phi_lyte_trode.SetInitialGuess(i, phi_guess)
+            # Guess initial filling fraction
+            self.m.ffrac_cathode.SetInitialGuess(cs0)
+            # Guess the initial cell voltage
+            self.m.phi_applied.SetInitialGuess(0.0)
+        else:
+            infile = os.path.join(os.getcwd(), continuePrev)
+            prevData = sio.loadmat(infile)
+            # The prefix -- the model name
+            pfx = 'mpet.'
+            jp_prev = prevData[pfx + 'j_plus'][-1]
+            phi_c_prev = prevData[pfx + 'phi_c'][-1]
+            cbar_sld_prev = prevData[pfx + 'cbar_sld'][-1]
+            # Set/guess values
+            for i in range(Ntrode):
+                # Guess initial volumetric reaction rates
+                self.m.j_plus.SetInitialGuess(i, jp_prev[i])
+                # Guess initial value for the potential of the
+                # cathode
+                self.m.phi_c.SetInitialGuess(i, phi_c_prev[i])
+                for j in range(numpart):
+                    # Guess initial value for the average solid concentrations
+                    self.m.cbar_sld.SetInitialGuess(i, j,
+                            cbar_sld_prev[i, j])
+                    # Set initial solid concentration values
+                    part_str = "solid_vol{i}_part{j}".format(i=i,j=j)
+                    c_sld_prev = prevData[pfx + part_str][-1]
+                    Nij = self.m.Nsld_mat[i, j].NumberOfPoints
+                    for k in range(Nij):
+                        self.m.c_sld[i, j].SetInitialCondition(k,
+                                c_sld_prev[k])
+            # Set initial electrolyte concentration conditions
+#            c_lyte_init = 1.
+#            phi_guess = 0.
+            c_lyte_sep_prev = prevData[pfx + 'c_lyte_sep'][-1]
+            phi_lyte_sep_prev = prevData[pfx + 'phi_lyte_sep'][-1]
+            for i in range(Nsep):
+                self.m.c_lyte_sep.SetInitialCondition(i, c_lyte_init)
+                self.m.phi_lyte_sep.SetInitialGuess(i, phi_guess)
+            for i in range(Ntrode):
+                self.m.c_lyte_trode.SetInitialCondition(i, c_lyte_init)
+                self.m.phi_lyte_trode.SetInitialGuess(i, phi_guess)
+            # Guess initial filling fraction
+            self.m.ffrac_cathode.SetInitialGuess(cs0)
+            # Guess the initial cell voltage
+            self.m.phi_applied.SetInitialGuess(0.0)
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
@@ -743,7 +790,6 @@ class noise(daeScalarExternalFunction):
                     (self.time_vec[ihi] - self.time_vec[ilo]) *
                     (self.noise_data[ihi, :] - self.noise_data[ilo, :])
                     )
-#        print 'At time = %f the function with index = %d interpolated the noise' % (time.Value, int(self.position)) 
         # previous_output is a reference to a common object and must
         # be updated here - not deleted.  using self.previous_output = []
         # it will delete the common object and create a new one
@@ -757,8 +803,6 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """
     def WriteDataToFile(self):
         mdict = {}
-        print dir(self)
-        print dir(self.Process)
         for var in self.Process.Variables:
             mdict[var.Name] = var.Values
             mdict[var.Name + '_times'] = var.TimeValues
@@ -821,7 +865,7 @@ def consoleRun(paramfile):
     Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
     td = Ltrode**2 / Damb
     currset = dim_crate*td/3600
-    simulation.TimeHorizon = (ffend-cs0)/abs(currset)
+    simulation.TimeHorizon = abs(ffend-cs0)/abs(currset)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
@@ -860,8 +904,9 @@ if __name__ == "__main__":
 #    cProfile.run("consoleRun()")
     consoleRun(paramfile)
     if default_flag:
-        print "\n\n*** Note: Used default file, ""{fname}"" ***\n\n".format(
+        print "\n\n*** WARNING: Used default file, ""{fname}"" ***\n\n".format(
                 fname=default_file)
+        print "Pass other parameter file as an argument to this script"
     else:
         print "\n\nUsed parameter file ""{fname}""\n\n".format(
                 fname=paramfile)
