@@ -30,7 +30,7 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
 
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="",
-            Ntrode=None, numpart=None, P=None):
+            Ntrode=None, numpart=None, P=None, simSurfCathCond=False):
         daeModel.__init__(self, Name, Parent, Description)
 
         if (Ntrode is None) or (numpart is None):
@@ -76,6 +76,16 @@ class modMPET(daeModel):
                     i=i, j=j), mole_frac_t, self,
                     "Concentration in each solid particle",
                     [self.Nsld_mat[i, j]])
+        # Only make a variable of this if we have to -- it's a lot of
+        # equations to keep track of for nothing if we don't need it.
+        if simSurfCathCond:
+            self.phi_sld = np.empty((Ntrode, numpart), dtype=object)
+            for i in range(Ntrode):
+                for j in range(numpart):
+                    self.phi_sld[i, j] = daeVariable("solid_p_vol{i}_part{j}".format(
+                        i=i, j=j), elec_pot_t, self,
+                        "Electrostatic potential in each solid particle",
+                        [self.Nsld_mat[i, j]])
         self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
                 "Average concentration in each particle",
                 [self.Ntrode, self.numpart])
@@ -177,6 +187,11 @@ class modMPET(daeModel):
                 "dimensional conductivity of cathode [S/m]")
         self.mcond = daeParameter("mcond", unit(), self,
                 "conductivity of cathode")
+        self.dim_scond = daeParameter("dim_scond", unit(), self,
+                "dimensional surface conductivity of particles [S]")
+        self.scond = daeParameter("scond", unit(), self,
+                "surface conductivity of particles",
+                [self.Ntrode, self.numpart])
         self.Ltrode = daeParameter("Ltrode", unit(), self,
                 "Length of the electrode")
         self.Lsep = daeParameter("Lsep", unit(), self,
@@ -303,6 +318,25 @@ class modMPET(daeModel):
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
 
+                # Also calculate the potential drop along cathode
+                # particle surfaces, if desired
+                simSurfCathCond = self.P.getboolean('Sim Params',
+                        'simSurfCathCond')
+                if simSurfCathCond:
+                    # Conservation of charge in the solid particles with
+                    # Ohm's Law
+                    LHS = self.calc_part_surf_LHS(i, j)
+                    k0_part = self.k0(i, j)
+                    for k in range(Nij):
+                        eq = self.CreateEquation(
+                                "charge_cons_vol{i}_part{j}_discr{k}".format(
+                                    i=i,j=j,k=k))
+                        RHS = self.c_sld[i, j].dt(k) / k0_part
+                        eq.Residual = LHS[k] - RHS
+                        eq.CheckUnitsConsistency = False
+
+        # Simulate the potential drop along the macroscopic-scale
+        # cathode solid phase
         simBulkCathCond = self.P.getboolean('Sim Params',
                 'simBulkCathCond')
         if simBulkCathCond:
@@ -387,6 +421,13 @@ class modMPET(daeModel):
         eq.CheckUnitsConsistency = False
 
     def calc_sld_dcs_dt(self, vol_indx, part_indx):
+        # Get some useful information
+        simSurfCathCond = self.P.getboolean('Sim Params',
+                'simSurfCathCond')
+        solidType = self.P.get('Sim Params', 'solidType')
+        if simSurfCathCond and solidType != "ACR":
+            raise Exception("Cannot do surface conductivity " +
+                    "without ACR particles.")
         # shorthand
         i = vol_indx
         j = part_indx
@@ -403,8 +444,12 @@ class modMPET(daeModel):
         # Concentration (profile?) in the solid
         c_sld = np.empty(Nij, dtype=object)
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
+#        # Potential (profile?) in the solid
+#        if simSurfCathCond:
+#            phi_m = np.empty(Nij
+#        else:
+#            phi_m = self.phi_c(i)
         # Calculate chemical potential of reduced state
-        solidType = self.P.get('Sim Params', 'solidType')
         if solidType == "ACR":
             # Make a blank array to allow for boundary conditions
             cstmp = np.empty(Nij+2, dtype=object)
@@ -415,6 +460,11 @@ class modMPET(daeModel):
             curv = np.diff(cstmp, 2)/(dxs**2)
             mu_R = ( self.mu_reg_sln(c_sld) - kappa*curv
                     + self.b()*(c_sld - cbar) )
+            # If we're also simulating potential drop along the solid,
+            # use that instead of self.phi_c(i)
+            if simSurfCathCond:
+                phi_m = np.empty(Nij, dtype=object)
+                phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
         elif solidType == "homog":
             mu_R = self.mu_reg_sln(c_sld)
         act_R = np.exp(mu_R)
@@ -470,6 +520,29 @@ class modMPET(daeModel):
         RHS_phi = -np.diff(porosvec*currdens)/dx
         return (RHS_c, RHS_phi)
 
+    def calc_part_surf_LHS(self, vol_indx, part_indx):
+        # shorthand
+        i = vol_indx
+        j = part_indx
+        # Number of volumes in current particle
+        Nij = self.Nsld_mat[i, j].NumberOfPoints
+        # solid potential variables for this particle
+        phi_tmp = np.empty(Nij + 2, dtype=object)
+        phi_tmp[1:-1] = [self.phi_sld[i, j](k) for k in
+                range(Nij)]
+        # BC's -- "touching carbon at each end"
+        phi_s_local = self.phi_c(i)
+        phi_tmp[0] = phi_s_local
+        phi_tmp[-1] = phi_s_local
+        # LHS
+        dx = 1./Nij
+        phi_edges = (phi_tmp[0:-1] + phi_tmp[1:])/2.
+#        curr_dens = -self.scond(i, j)*np.diff(phi_tmp, 1)/dx
+        scond_vec = self.scond(i, j)*np.exp(-1*(phi_edges -
+                phi_s_local))
+        curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
+        return np.diff(curr_dens, 1)/dx
+
     def mu_reg_sln(self, c):
         return np.array([ self.a()*(1-2*c[i])
                 + self.T()*Log(c[i]/(1-c[i]))
@@ -486,6 +559,7 @@ class simMPET(daeSimulation):
         Ntrode = P.getint('Sim Params', 'Ntrode')
         numpart = P.getint('Sim Params', 'numpart')
         solidType = P.get('Sim Params', 'solidType')
+        simSurfCathCond = P.getboolean('Sim Params', 'simSurfCathCond')
         # Make a length-sampled particle size distribution
         psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
         # For ACR particles, convert psd to integers -- number of steps
@@ -504,7 +578,8 @@ class simMPET(daeSimulation):
         # General parameters
         self.psd_mean = mean
         self.psd_stddev = stddev
-        self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart, P=P)
+        self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart, P=P,
+                simSurfCathCond=simSurfCathCond)
 
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
@@ -516,6 +591,8 @@ class simMPET(daeSimulation):
         solidType = self.P.get('Sim Params', 'solidType')
         solidShape = self.P.get('Sim Params', 'solidShape')
         simBulkCathCond = self.P.getboolean('Sim Params',
+                'simBulkCathCond')
+        simSurfCathCond = self.P.getboolean('Sim Params',
                 'simBulkCathCond')
         # Geometry
         Ltrode = self.P.getfloat('Geometry', 'Ltrode')
@@ -539,6 +616,7 @@ class simMPET(daeSimulation):
         Vstd = self.P.getfloat('Cathode Material Props', 'Vstd')
         alpha = self.P.getfloat('Cathode Material Props', 'alpha')
         dim_mcond = self.P.getfloat('Cathode Material Props', 'dim_mcond')
+        dim_scond = self.P.getfloat('Cathode Material Props', 'dim_scond')
         # ACR info
         cwet = self.P.getfloat('ACR info', 'cwet')
         solid_disc = self.P.getfloat('ACR info', 'solid_disc')
@@ -606,6 +684,7 @@ class simMPET(daeSimulation):
         self.m.dim_mcond.SetValue(dim_mcond)
         self.m.mcond.SetValue(dim_mcond * (td * k * N_A * Tref) /
                 (Ltrode**2 * F**2 *c0))
+        self.m.dim_scond.SetValue(dim_scond)
         self.m.poros_sep.SetValue(1.)
         self.m.poros_trode.SetValue(poros)
         self.m.epsbeta.SetValue((1-poros)*Lp*csmax/c0)
@@ -658,6 +737,8 @@ class simMPET(daeSimulation):
                         dim_kappa/(k*Tref*rhos*p_len**2))
                 self.m.k0.SetValue(i, j,
                         ((p_area/p_vol)*dim_k0*td)/(F*csmax))
+                self.m.scond.SetValue(i, j,
+                        dim_scond * (k*Tref)/(dim_k0*e*p_len**2))
         self.m.cwet.SetValue(cwet)
         self.m.delx_sld.SetValue(solid_disc)
         self.m.Vstd.SetValue(Vstd)
@@ -883,8 +964,7 @@ if __name__ == "__main__":
     default_flag = 0
     default_file = "params_default.cfg"
     if len(sys.argv) < 2:
-        print "Using params.cfg for parameters"
-        default_flag = 0
+        default_flag = 1
         paramfile = default_file
     else:
         paramfile = sys.argv[1]
@@ -896,9 +976,9 @@ if __name__ == "__main__":
 #    cProfile.run("consoleRun()")
     consoleRun(paramfile)
     if default_flag:
-        print "\n\n*** WARNING: Used default file, ""{fname}"" ***\n\n".format(
+        print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
                 fname=default_file)
-        print "Pass other parameter file as an argument to this script"
+        print "Pass other parameter file as an argument to this script\n"
     else:
         print "\n\nUsed parameter file ""{fname}""\n\n".format(
                 fname=paramfile)

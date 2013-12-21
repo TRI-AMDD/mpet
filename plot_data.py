@@ -78,6 +78,7 @@ def show_data(infile, plot_type, save_flag):
         ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
+        ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
         plt.show()
@@ -165,24 +166,30 @@ def show_data(infile, plot_type, save_flag):
             ttl.set_text(ttl_fmt.format(perc=tfrac))
             return line1, ttl
 
-    # Plot all solid concentrations
-    elif plot_type == "csld":
+    # Plot all solid concentrations or potentials
+    elif (plot_type == "csld") or (plot_type == "phisld"):
         fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
                 sharey=True)
         sol = np.empty((numpart, Ntrode), dtype=object)
         lens = np.zeros((numpart, Ntrode))
         lines = np.empty((numpart, Ntrode), dtype=object)
+        if plot_type == "csld":
+            str_base = "mpet.solid_c_vol{j}_part{i}"
+            ylim = (0, 1)
+        else: # plot_type == "phisld"
+            str_base = "mpet.solid_p_vol{j}_part{i}"
+            ylim = (-10, 20)
         for i in range(numpart):
             for j in range(Ntrode):
-                sol[i, j] = "mpet.solid_c_vol{j}_part{i}".format(i=i, j=j)
+                sol[i, j] = str_base.format(i=i, j=j)
                 lens[i, j] = data["mpet.psd_lengths"][0][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
+#                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
                 datay = data[sol[i, j]][0]
                 numy = len(datay)
                 datax = np.linspace(0, lens[i, j], numy)
-                ax[i, j].set_ylim((0, 1))
+                ax[i, j].set_ylim(ylim)
                 ax[i, j].set_xlim((0, lens[i, j]))
                 line, = ax[i, j].plot(datax, datay)
                 lines[i, j] = line
