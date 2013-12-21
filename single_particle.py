@@ -300,7 +300,8 @@ class modMPET(daeModel):
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
-                            "dcsdt_vol{i}_part{j}_discr{k}".format(i=i,j=j,k=k))
+                            "dcsdt_vol{i}_part{j}_discr{k}".format(
+                                i=i,j=j,k=k))
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
 
@@ -339,12 +340,15 @@ class modMPET(daeModel):
         # Get variables for this particle/electrode volume
         phi_lyte = self.phi_applied()
         c_lyte = self.c_lyte_trode(i)
-        # The reference potential
-        phi_m = self.phi_cathode()
+#        # The reference potential
+#        phi_cath = self.phi_cathode()
         # Number of volumes in current particle
         Nij = self.Nsld_mat[i, j].NumberOfPoints
         cs = np.empty(Nij, dtype=object)
         cs[:] = [self.c_sld[i, j](k) for k in range(Nij)]
+        # Prepare to use the local potential
+        phi_m = np.empty(Nij, dtype=object)
+        phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
         # Get the relevant parameters for this particle
         k0 = self.k0(i, j)
         kappa = self.kappa(i, j)
@@ -386,7 +390,11 @@ class modMPET(daeModel):
         phi_tmp[-1] = self.phi_cathode()
         # LHS
         dx = 1./Nij
-        curr_dens = -self.scond(i, j)*np.diff(phi_tmp, 1)/dx
+        phi_edges = (phi_tmp[0:-1] + phi_tmp[1:])/2.
+#        curr_dens = -self.scond(i, j)*np.diff(phi_tmp, 1)/dx
+        scond_vec = self.scond(i, j)*np.exp(-1*(phi_edges -
+                self.phi_cathode()))
+        curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
         return np.diff(curr_dens, 1)/dx
 
 #    def calc_homog_dcs_dt(self, vol_indx, part_indx):
