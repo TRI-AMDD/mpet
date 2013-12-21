@@ -38,8 +38,9 @@ class modMPET(daeModel):
         self.P = P
 
         # Domains where variables are distributed
-        self.Nsep = daeDomain("Nsep", self, unit(),
-                "Number of control volumes in the separator")
+        if Ntrode > 1: # If we have a separator
+            self.Nsep = daeDomain("Nsep", self, unit(),
+                    "Number of control volumes in the separator")
         self.Ntrode = daeDomain("Ntrode", self, unit(),
                 "Number of control volumes in the electrode")
         self.numpart = daeDomain("numpart", self, unit(),
@@ -53,26 +54,27 @@ class modMPET(daeModel):
                     + "j in volume i".format(i=i,j=j))
 
         # Variables
-        self.c_lyte_sep = daeVariable("c_lyte_sep", mole_frac_t, self,
-                "Concentration in the electrolyte in the separator",
-                [self.Nsep])
         self.c_lyte_trode = daeVariable("c_lyte_trode", mole_frac_t, self,
                 "Concentration in the electrolyte in the electrode",
                 [self.Ntrode])
-        self.phi_lyte_sep = daeVariable("phi_lyte_sep", elec_pot_t, self,
-                "Electrostatic potential in electrolyte in separator",
-                [self.Nsep])
         self.phi_lyte_trode = daeVariable("phi_lyte_trode", elec_pot_t, self,
                 "Electrostatic potential in electrolyte in electrode",
                 [self.Ntrode])
+        if Ntrode > 1: # If we have a separator
+            self.c_lyte_sep = daeVariable("c_lyte_sep", mole_frac_t, self,
+                    "Concentration in the electrolyte in the separator",
+                    [self.Nsep])
+            self.phi_lyte_sep = daeVariable("phi_lyte_sep", elec_pot_t, self,
+                    "Electrostatic potential in electrolyte in separator",
+                    [self.Nsep])
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
         self.c_sld = np.empty((Ntrode, numpart), dtype=object)
         for i in range(Ntrode):
             for j in range(numpart):
-                self.c_sld[i, j] = daeVariable("solid_vol{i}_part{j}".format(
+                self.c_sld[i, j] = daeVariable("solid_c_vol{i}_part{j}".format(
                     i=i, j=j), mole_frac_t, self,
-                    "Concentration in the solid particle",
+                    "Concentration in each solid particle",
                     [self.Nsld_mat[i, j]])
         self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
                 "Average concentration in each particle",
@@ -214,8 +216,11 @@ class modMPET(daeModel):
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
-        Nsep = self.Nsep.NumberOfPoints
         Ntrode = self.Ntrode.NumberOfPoints
+        if Ntrode > 1:
+            Nsep = self.Nsep.NumberOfPoints
+        else:
+            Nsep = 0
         Nlyte = Nsep + Ntrode
         numpart = self.numpart.NumberOfPoints
         Nsld_mat = np.zeros((Ntrode, numpart), dtype=np.integer)
@@ -293,7 +298,7 @@ class modMPET(daeModel):
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
-                            "dcsdt_vol{i}part{j}_{k}".format(
+                            "dcsdt_vol{i}_part{j}_discr{k}".format(
                                 i=i,j=j,k=k))
                     eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
@@ -319,49 +324,59 @@ class modMPET(daeModel):
             else:
                 eq.Residual = self.phi_c(i) - self.phi_cathode()
 
-        # Calculate RHS for electrolyte equations
-        Nlyte = Nsep + Ntrode
-        c_lyte = np.empty(Nlyte, dtype=object)
-        c_lyte[0:Nsep] = [self.c_lyte_sep(i) for i in range(Nsep)]
-        c_lyte[Nsep:Nlyte] = [self.c_lyte_trode(i) for i in
-                range(Ntrode)]
-        phi_lyte = np.empty(Nlyte, dtype=object)
-        phi_lyte[0:Nsep] = [self.phi_lyte_sep(i) for i in range(Nsep)]
-        phi_lyte[Nsep:Nlyte] = [self.phi_lyte_trode(i) for i in
-                range(Ntrode)]
-        (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte, Nlyte,
-                porosvec)
+        # If we only have a single volume, electrolyte equations are
+        # simple
+        if Ntrode == 1:
+            eq = self.CreateEquation("c_lyte")
+            eq.Residual = self.c_lyte_trode.dt(0) - 0
+            eq.CheckUnitsConsistency = False
+            eq = self.CreateEquation("phi_lyte")
+            eq.Residual = self.phi_lyte_trode(0) - self.phi_applied()
+            eq.CheckUnitsConsistency = False
+        else:
+            # Calculate RHS for electrolyte equations
+            Nlyte = Nsep + Ntrode
+            c_lyte = np.empty(Nlyte, dtype=object)
+            c_lyte[0:Nsep] = [self.c_lyte_sep(i) for i in range(Nsep)]
+            c_lyte[Nsep:Nlyte] = [self.c_lyte_trode(i) for i in
+                    range(Ntrode)]
+            phi_lyte = np.empty(Nlyte, dtype=object)
+            phi_lyte[0:Nsep] = [self.phi_lyte_sep(i) for i in range(Nsep)]
+            phi_lyte[Nsep:Nlyte] = [self.phi_lyte_trode(i) for i in
+                    range(Ntrode)]
+            (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte, Nlyte,
+                    porosvec)
 
-        # Equations governing the electrolyte in the separator
-        for i in range(Nsep):
-            # Mass Conservation
-            eq = self.CreateEquation(
-                    "sep_lyte_mass_cons_vol{i}".format(i=i))
-            eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
-                    RHS_c[i])
-            eq.CheckUnitsConsistency = False
-            # Charge Conservation
-            eq = self.CreateEquation(
-                    "sep_lyte_charge_cons_vol{i}".format(i=i))
-            eq.Residual = (RHS_phi[i])
-            eq.CheckUnitsConsistency = False
-        # Equations governing the electrolyte in the electrode.
-        # Here, we are coupled to the total reaction rates in the
-        # solids.
-        for i in range(Ntrode):
-            # Mass Conservation
-            eq = self.CreateEquation(
-                    "trode_lyte_mass_cons_vol{i}".format(i=i))
-            eq.Residual = (self.poros_trode()*self.c_lyte_trode.dt(i) +
-                    self.epsbeta()*(1-self.tp())*self.j_plus(i) -
-                    RHS_c[Nsep + i])
-            eq.CheckUnitsConsistency = False
-            # Charge Conservation
-            eq = self.CreateEquation(
-                    "trode_lyte_charge_cons_vol{i}".format(i=i))
-            eq.Residual = (self.epsbeta()*self.j_plus(i) -
-                    RHS_phi[Nsep + i])
-            eq.CheckUnitsConsistency = False
+            # Equations governing the electrolyte in the separator
+            for i in range(Nsep):
+                # Mass Conservation
+                eq = self.CreateEquation(
+                        "sep_lyte_mass_cons_vol{i}".format(i=i))
+                eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
+                        RHS_c[i])
+                eq.CheckUnitsConsistency = False
+                # Charge Conservation
+                eq = self.CreateEquation(
+                        "sep_lyte_charge_cons_vol{i}".format(i=i))
+                eq.Residual = (RHS_phi[i])
+                eq.CheckUnitsConsistency = False
+            # Equations governing the electrolyte in the electrode.
+            # Here, we are coupled to the total reaction rates in the
+            # solids.
+            for i in range(Ntrode):
+                # Mass Conservation
+                eq = self.CreateEquation(
+                        "trode_lyte_mass_cons_vol{i}".format(i=i))
+                eq.Residual = (self.poros_trode()*self.c_lyte_trode.dt(i) +
+                        self.epsbeta()*(1-self.tp())*self.j_plus(i) -
+                        RHS_c[Nsep + i])
+                eq.CheckUnitsConsistency = False
+                # Charge Conservation
+                eq = self.CreateEquation(
+                        "trode_lyte_charge_cons_vol{i}".format(i=i))
+                eq.Residual = (self.epsbeta()*self.j_plus(i) -
+                        RHS_phi[Nsep + i])
+                eq.CheckUnitsConsistency = False
 
         # Total Current Constraint Equation
         eq = self.CreateEquation("Total_Current_Constraint")
@@ -548,7 +563,13 @@ class simMPET(daeSimulation):
         self.m.Ntrode.CreateArray(Ntrode)
         sep_frac = float(Lsep)/Ltrode
         Nsep = int(np.ceil(sep_frac*Ntrode))
-        self.m.Nsep.CreateArray(Nsep)
+        if Ntrode == 1:
+            Nsep = 0
+            sep_frac = 0
+        else:
+            sep_frac = float(Lsep)/Ltrode
+            Nsep = int(np.ceil(sep_frac*Ntrode))
+            self.m.Nsep.CreateArray(Nsep)
         self.m.numpart.CreateArray(numpart)
         for i in range(self.psd_num.shape[0]):
             for j in range(self.psd_num.shape[1]):
@@ -642,8 +663,11 @@ class simMPET(daeSimulation):
         self.m.Vstd.SetValue(Vstd)
 
     def SetUpVariables(self):
-        Nsep = self.m.Nsep.NumberOfPoints
         Ntrode = self.m.Ntrode.NumberOfPoints
+        if Ntrode > 1:
+            Nsep = self.m.Nsep.NumberOfPoints
+        else:
+            Nsep = 0
         Nlyte = Nsep + Ntrode
         numpart = self.m.numpart.NumberOfPoints
         phi_cathode = self.m.phi_cathode.GetValue()
