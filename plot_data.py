@@ -60,11 +60,18 @@ def show_data(infile, plot_type, save_flag):
     print "dim_k0 [A/m^2]:", data[pfx + "dim_k0"][0][0]
     mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
     if mcond_bool:
-        print ("cathode conductivity loss: Yes -- " +
+        print ("cathode bulk conductivity loss: Yes -- " +
                 "dim_mcond [S/m]: " +
                 str(data[pfx + "dim_mcond"][0][0]))
     else:
-        print "cathode conductivity loss: No"
+        print "cathode bulk conductivity loss: No"
+    scond_bool = data[pfx + "cath_surf_cond"][0][0]
+    if scond_bool:
+        print ("cathode surface conductivity loss: Yes -- " +
+                "dim_scond [S]: " +
+                str(data[pfx + "dim_scond"][0][0]))
+    else:
+        print "cathode surface conductivity loss: No"
 
     # Plot voltage profile
     if plot_type == "v":

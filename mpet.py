@@ -226,6 +226,8 @@ class modMPET(daeModel):
                 "Bool: 1 for C3 particles")
         self.cath_bulk_cond = daeParameter("cath_bulk_cond", unit(), self,
                 "Bool: 1 to simulate bulk potential drop in cathode")
+        self.cath_surf_cond = daeParameter("cath_surf_cond", unit(), self,
+                "Bool: 1 to simulate surface potential drop in cathode")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -593,7 +595,7 @@ class simMPET(daeSimulation):
         simBulkCathCond = self.P.getboolean('Sim Params',
                 'simBulkCathCond')
         simSurfCathCond = self.P.getboolean('Sim Params',
-                'simBulkCathCond')
+                'simSurfCathCond')
         # Geometry
         Ltrode = self.P.getfloat('Geometry', 'Ltrode')
         Lsep = self.P.getfloat('Geometry', 'Lsep')
@@ -715,6 +717,10 @@ class simMPET(daeSimulation):
             self.m.cath_bulk_cond.SetValue(1.)
         else:
             self.m.cath_bulk_cond.SetValue(0.)
+        if simSurfCathCond:
+            self.m.cath_surf_cond.SetValue(1.)
+        else:
+            self.m.cath_surf_cond.SetValue(0.)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
