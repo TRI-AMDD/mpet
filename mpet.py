@@ -30,12 +30,14 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
 
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="",
-            Ntrode=None, numpart=None, P=None, simSurfCathCond=False):
+            Ntrode=None, numpart=None, P=None, simSurfCathCond=False,
+            profileType="CC"):
         daeModel.__init__(self, Name, Parent, Description)
 
         if (Ntrode is None) or (numpart is None):
             raise Exception("Need particle size distr. as input")
         self.P = P
+        self.profileType = profileType
 
         # Domains where variables are distributed
         if Ntrode > 1: # If we have a separator
@@ -69,6 +71,8 @@ class modMPET(daeModel):
                     [self.Nsep])
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
+        self.current = daeVariable("current", no_t, self,
+                "Total current of the cell")
         self.c_sld = np.empty((Ntrode, numpart), dtype=object)
         for i in range(Ntrode):
             for j in range(numpart):
@@ -163,6 +167,12 @@ class modMPET(daeModel):
                 "Discharge C-rate")
         self.currset = daeParameter("currset", unit(), self,
                 "dimensionless current")
+        self.dim_Vset = daeParameter("dim_Vset", unit(), self,
+                "dimensional applied voltage (relative to " +
+                "Delta V OCV of the  cell) [V]")
+        self.Vset = daeParameter("Vset", unit(), self,
+                "dimensionless applied voltage (relative to " +
+                "Delta V OCV of the  cell)")
         self.cwet = daeParameter("c_wet", unit(), self,
                 "Wetted surface concentration")
         self.dim_kappa = daeParameter("dim_kappa", unit(), self,
@@ -414,13 +424,24 @@ class modMPET(daeModel):
                         RHS_phi[Nsep + i])
                 eq.CheckUnitsConsistency = False
 
-        # Total Current Constraint Equation
-        eq = self.CreateEquation("Total_Current_Constraint")
-        eq.Residual = self.currset()
+        # Define the total current
+        eq = self.CreateEquation("Total_Current")
+        eq.Residual = self.current()
         dx = 1./Ntrode
         for i in range(Ntrode):
             eq.Residual -= dx*self.j_plus(i)
         eq.CheckUnitsConsistency = False
+
+        if self.profileType == "CC":
+            # Total Current Constraint Equation
+            eq = self.CreateEquation("Total_Current_Constraint")
+            eq.Residual = self.current() - self.currset()
+            eq.CheckUnitsConsistency = False
+        elif self.profileType == "CV":
+            # Keep applied potential constant
+            eq = self.CreateEquation("applied_potential")
+            eq.Residual = self.phi_applied() - self.Vset()
+            eq.CheckUnitsConsistency = False
 
     def calc_sld_dcs_dt(self, vol_indx, part_indx):
         # Get some useful information
@@ -492,7 +513,7 @@ class modMPET(daeModel):
         ctmp[1:-1] = cvec
         # The total current flowing into the electrolyte is set
         ctmp[0] = (ctmp[1] +
-                self.currset()*self.epsbeta()*(1-self.tp())*dx
+                self.current()*self.epsbeta()*(1-self.tp())*dx
                 )
         # No electrolyte flux at the separator
         ctmp[-1] = ctmp[-2]
@@ -556,6 +577,7 @@ class simMPET(daeSimulation):
         if P is None:
             raise Exception("Need parameters input")
         self.P = P
+        profileType = P.get('Sim Params', 'profileType')
         mean = P.getfloat('Sim Params', 'mean')
         stddev = P.getfloat('Sim Params', 'stddev')
         Ntrode = P.getint('Sim Params', 'Ntrode')
@@ -581,12 +603,14 @@ class simMPET(daeSimulation):
         self.psd_mean = mean
         self.psd_stddev = stddev
         self.m = modMPET("mpet", Ntrode=Ntrode, numpart=numpart, P=P,
-                simSurfCathCond=simSurfCathCond)
+                simSurfCathCond=simSurfCathCond,
+                profileType=profileType)
 
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
         # Simulation
         dim_crate = self.P.getfloat('Sim Params', 'dim_crate')
+        dim_Vset = self.P.getfloat('Sim Params', 'dim_Vset')
         Ntrode = self.P.getint('Sim Params', 'Ntrode')
         numpart = self.P.getint('Sim Params', 'numpart')
         T = self.P.getfloat('Sim Params', 'T')
@@ -693,6 +717,8 @@ class simMPET(daeSimulation):
         self.m.phi_cathode.SetValue(0.)
         self.m.C_rate.SetValue(dim_crate)
         self.m.currset.SetValue(dim_crate*td/3600)
+        self.m.dim_Vset.SetValue(dim_Vset)
+        self.m.Vset.SetValue(dim_Vset*e/(k*Tref))
         self.m.dim_kappa.SetValue(dim_kappa)
         self.m.dim_k0.SetValue(dim_k0)
         self.m.dim_a.SetValue(dim_a)
@@ -886,6 +912,7 @@ def consoleRun(paramfile):
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
 
+    # TODO -- optionally set the time horizon directly for CV?
     # Set the time horizon and the reporting interval
     # We need to get info about the system to figure out the
     # simulation time horizon
@@ -900,8 +927,8 @@ def consoleRun(paramfile):
     zm = P.getfloat('Electrolyte Params', 'zm')
     Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
     td = Ltrode**2 / Damb
-    currset = dim_crate*td/3600
-    simulation.TimeHorizon = abs(ffend-cs0)/abs(currset)
+    currset = dim_crate * td/3600
+    simulation.TimeHorizon = abs((ffend-cs0)/currset)
     simulation.ReportingInterval = simulation.TimeHorizon/tsteps
 
     # Connect data reporter
