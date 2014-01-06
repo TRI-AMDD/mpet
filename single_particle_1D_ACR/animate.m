@@ -18,7 +18,7 @@ if(strcmp(fig,'s'))
         axis([0 1 0 1])
         M(i) = getframe(gcf);
     end
-    
+
 elseif(strcmp(fig,'d'))
     scrsz = get(0,'ScreenSize');
     figure('OuterPosition',[3/4 scrsz(4)/2 5*scrsz(3)/8 scrsz(4)/2])
@@ -38,7 +38,7 @@ elseif(strcmp(fig,'d'))
         M(i) = getframe(gcf);
         cla
     end
-    
+
 end
 
 

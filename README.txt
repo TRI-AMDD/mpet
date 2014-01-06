@@ -1,3 +1,44 @@
+========
+mpet.py
+========
+
+1. Install python, numpy, scipy, matplotlib
+    - Linux: try using your package manager.
+    - Windows: try python(x,y) -- https://code.google.com/p/pythonxy
+
+2. Install DAE Tools
+(http://sourceforge.net/projects/daetools/files/1.3.0-beta2/)
+
+3. Copy params_default.cfg to params.cfg
+
+4. Edit params.cfg to suit simulation you're trying to run
+
+5. Run script, passing params.py as an argument:
+    - python2 mpet.py params.py
+
+6. Analyze output with plot_data.py (pass output data file, then plot-type
+as arguments).
+    - voltage vs filling fraction:
+        $ python2 plot_data.py mpet_out.mat v
+    - Solid concentrations (all):
+        $ python2 plot_data.py mpet_out.mat csld
+    - Solid concentrations averages, sized/colored by concentration:
+        $ python2 plot_data.py mpet_out.mat cbar
+    - Electrolyte concentration:
+        $ python2 plot_data.py mpet_out.mat elytec
+    - Electrolyte potential:
+        $ python2 plot_data.py mpet_out.mat elytep
+    - Cathode potential:
+        $ python2 plot_data.py mpet_out.mat cathp
+If you want to save output to a movie (or figure), add "save" (no
+quotes) as an extra argument to plot_data.py:
+        $ python2 plot_data.py mpet_out.mat cbar save
+This requires that you have ffmpeg or mencoder (part of MPlayer)
+installed.
+
+========
+MATLAB Codes (soon to be deprecated)
+========
 ACR w/ surface wetting and coherency strain
 [t,cpcs,ffvec,vvec,disc,part] = acr_mpet_swcs_rev2(dim_crate,part,cpcs0,disc,ffend)
 

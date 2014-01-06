@@ -10,7 +10,7 @@ dims = size(csmat);
 if strcmp(fig,'s')
     for i=1:tlen
         csmattmp = squeeze(csmat(i,:,:));
-        surf(csmattmp);    
+        surf(csmattmp);
         axis([0 dims(3) 0 dims(2) 0 1])
         M(i) = getframe(gcf);
     end
@@ -23,7 +23,7 @@ elseif strcmp(fig,'c')
 end
 
 if(output)
-    movie2avi(M,'C:\Users\trf\Desktop\movie.avi')    
+    movie2avi(M,'C:\Users\trf\Desktop\movie.avi')
 end
 
 

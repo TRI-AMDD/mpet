@@ -1,5 +1,4 @@
-function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_scond_rev2b(dim_crate,part,disc,cpcs0)
-
+function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_sdiff_rev2b(dim_crate,part,disc,cpcs0)
 % NAME: Allen-Cahn surface wetted coherent strain particles in a porous electrode
 % AUTHOR: TR Ferguson, Bazant Group, MIT
 % DATE: 4/30/2013
@@ -10,7 +9,7 @@ function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_scon
 % distribution.
 
 % OUTPUTS
-% t = time vector
+% t = time vector 
 % cpcs = conc., potential, and solid conc. vector
 % ffvec = filling fraction vector
 % vvec = voltage vector
@@ -20,7 +19,7 @@ function [t,cpcs,csmat,ffvec,vvec,disc,part] = mpet_acr_1d_psd_in_vol_mcond_scon
 % INPUTS
 % dim_crate = dimensional C-rate
 % part = particle sizes and discretizations (if from another simulation)
-%           this allows you to run the same setup at a different C-rate
+%           this allows you to run the same setup at a different C-rate               
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS
@@ -33,15 +32,19 @@ F = e*Na;           % Faraday's number
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SET DIMENSIONAL VALUES HERE
 
+% last time steps
+global tprev;
+tprev = zeros(5,1);
+
 % Discharge settings
 % dim_crate = 1;                  % C-rate (electrode capacity per hour)
-dim_io = .1;                      % Exchange current density, A/m^2 (0.1 for H2/Pt)
+dim_io = 10; %.1;                      % Exchange current density, A/m^2 (0.1 for H2/Pt)
 
 % Pick starting voltage based on charge/discharge
 if dim_crate > 0
     init_voltage = 3.45;
 else
-    init_voltage = 3.35;
+    init_voltage = 3.35;                 
 end
 
 % Electrode properties
@@ -58,7 +61,7 @@ Dm = 2.94e-10;                      % Anion diff, m^2/s, LiPF6 in EC/DMC
 Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm);   % Ambipolar diffusivity
 tp = zp*Dp / (zp*Dp + zm*Dm);       % Cation transference number
 mcond = 1.;%.0015;                      % Dimensional electronic conductivity, S/m
-scond = 2e-5;                          % Dimensionles surface conduction of particles, S/m
+sdiff = 2e-10;                          % Dimensional surface electron diffusivity of particles, m^2/s
 ASRcont = 25e-4;  %24                     % Dimensional area specific contact resistance, ohm*m^2
 
 
@@ -74,30 +77,44 @@ dim_b = 0.1916e9;                   % Stress, Pa
 
 rhos = 1.3793e28;                   % site density, 1/m^3
 csmax = rhos/Na;                    % maximum concentration, mol/m^3
+ce0 = 1e-4;                         % initial electron surface concentration, mol/m^3
 cwet = 0.98;                        % Dimensionless wetted conc.
 wet_thick = 2e-9;                   % Thickness of wetting on surf.
 Vstd = 3.422;                       % Standard potential, V
-alpha = 0.2;                        % Charge transfer coefficient
+alpha = 0.5;                        % Charge transfer coefficient
+
 
 % Discretization settings
-Nx = 4;                            % Number disc. in x direction
+Nx = 6;                            % Number disc. in x direction
 solid_disc = 2e-9;                 % Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
-numpart = 2;                       % Particles per volume
+numpart = 5;                       % Particles per volume
 tsteps = 200;                      % Number disc. in time
-vend = 3;                           % Final voltage
+vend_discharge = 2.7;              % Final voltage (discharge)
+vend_charge = 4;                   % Final voltage (charge)
+ffend_discharge = 0.98;
+ffend_charge = 0.02;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DO NOT EDIT BELOW THIS LINE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% First we take care of our particle size distributions
+if (isa(disc,'struct'))
+    % disc is a struct, and present, do nothing
+    Nx = disc.Nx;
+%    Ny = disc.Ny;
+    numpart = disc.numpart;
+    sf = disc.sf;
+    ssx = ceil(sf*Nx);
+end
 totalpart = Nx*numpart;
-wet_steps = ceil(wet_thick / solid_disc);
+
+% First we take care of our particle size distributions
 if ~isa(part,'struct')
     part_size = abs(normrnd(mean,stddev,totalpart,1));
     part_steps = [0; ceil(part_size/solid_disc)];
     pareavec = (4*pi).*part_size.^2;
     pvolvec = (4/3).*pi.*part_size.^3;
+    wet_steps = ceil(wet_thick / solid_disc);
 %    ap = 3.475 ./ part_size;     % Area:volume ratio for plate particles
     part = struct('steps',part_steps,'sizes',part_size, ...
                 'wetsteps',wet_steps,'cwet',cwet, ...
@@ -105,13 +122,22 @@ if ~isa(part,'struct')
 elseif (isa(part,'struct') && (max(size(part.sizes)) == totalpart))
     part_size = part.sizes;
     part_steps = part.steps;
-%    ap = 3.475 ./ part_size;
+%    ap = 3.475 ./ part_size;    
     pareavec = part.areas;
     pvolvec = part.vols;
     wet_steps = part.wetsteps;
     cwet = part.cwet;
 else
-    error('Error retrieving particle sizes. Be sure your input values match the discretization settings')
+    error('Error retrieving particle sizes. Be sure your input values match the discretization settings') 
+end
+
+if (~isa(disc,'struct'))
+    sf = Lsep/Lx; % separator fraction
+    ssx = ceil(sf*Nx);
+    ss = ssx; % separator steps?
+    disc = struct('ss',ss,'steps',Nx,'ssteps',sum(part_steps),...
+                'len',2*(ss+Nx)+sum(part_steps)+Nx+sum(part_steps)+1, ...
+                'sol',2*(ss+Nx)+1,'Nx',Nx,'numpart',numpart,'sf',sf);
 end
 
 % Now we calculate the dimensionless quantities used in the simulation
@@ -123,12 +149,13 @@ ASRcont = ASRcont * Lx * csmax * F * (1-eps) * Lp / td * e / (k * T);
 
 % scaling of conductivity
 mcond =  mcond *  (td * k * Na * T) / (Lx^2 * F^2 * c0);
-scond = scond .* ((Na*k*T)/(F^2*Damb*csmax)) .* (Lx./(part.steps(2:end)*solid_disc)).^2 ;
+% scond = scond .* ((Na*k*T)/(F^2*Damb*csmax)) .* (Lx./(part.steps(2:end)*solid_disc)).^2 ;
+sdiff = sdiff .* (td ./ (part.steps(2:end)*solid_disc).^2);
 
 if currset ~= 0
     tr = linspace(0,1/abs(currset),tsteps);
-else
-    tr = linspace(0,30,100);
+else    
+    tr = linspace(0,50000,200);
 end
 io = ((pareavec./pvolvec) .* dim_io .* td) ./ (F .* csmax);
 epsbeta = ((1-poros)*Lp*csmax) / c0; % Vs/V*csmax/c0 = poros*beta
@@ -139,23 +166,6 @@ a = dim_a / (k*T);
 b = dim_b / (k*T*rhos);
 
 
-if (isa(disc,'struct'))
-    % disc is a struct, and present, do nothing
-    Nx = disc.Nx;
-%    Ny = disc.Ny;
-    numpart = disc.numpart;
-    sf = disc.sf;
-    ssx = ceil(sf*Nx);
-else
-    sf = Lsep/Lx; % separator fraction
-    ssx = ceil(sf*Nx);
-    ss = ssx; % separator steps?
-    disc = struct('ss',ss,'steps',Nx,'ssteps',sum(part_steps),...
-                'len',2*(ss+Nx)+sum(part_steps)+Nx+sum(part_steps)+1, ...
-                'sol',2*(ss+Nx)+1,'Nx',Nx,'numpart',numpart,'sf',sf);
-end
-
-
 if max(size(cpcs0)) == 1
     % First we need to find the equilibrium solid concentration profiles for
     % each particle - use a parfor loop to loop over the particles
@@ -164,11 +174,14 @@ if max(size(cpcs0)) == 1
     % ME: set initial condition depending on current direction
     if dim_crate > 0
         cs0 = 0.01;                 % Guess an initial filling fraction
+        vend = vend_discharge;
+        ffend = ffend_discharge;
     else
-        cs0 = 0.98;
-        ffend = 1 - ffend;
+        cs0 = 0.99;
+        vend = vend_charge;
+        ffend = ffend_charge;
     end
-
+    
     phi_init = -(init_voltage-Vstd)*(e/(k*T));
     cinit = 1;
     disp('Generating initial solid concentration profiles...')
@@ -190,17 +203,18 @@ if max(size(cpcs0)) == 1
 
     % Create the initial vector for the time stepper
     disp('Generating initial vector...')
-
+    
     % Assemble it all
     cpcsinit = zeros(disc.len,1);
     cpcsinit(1:disc.ss+disc.steps) = cinit;
     cpcsinit(disc.ss+disc.steps+1:2*(disc.ss+disc.steps)) = phi_init;
     cpcsinit(disc.sol:disc.sol+disc.ssteps-1) = initcsvec;
     cpcsinit(disc.sol+disc.ssteps:disc.sol+disc.ssteps+Nx-1) = 0;
-    cpcsinit(disc.sol+disc.ssteps+Nx:end-1) = 0;
+    cpcsinit(disc.sol+disc.ssteps+Nx:disc.sol+2*disc.ssteps+Nx-1) = ce0;
     cpcsinit(end) = phi_init;
 else
     cpcsinit = cpcs0;
+    vend = 0;
 end
 
 % Create a grid for the porosity
@@ -223,14 +237,15 @@ M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec);
 % options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none');
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
+fprintf('%s\n',char(ones(74,1)*32)); % needed for progress bar...
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,kappa,a,b,alpha, ...
-                    cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend);
+                    cwet,ce0,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,sdiff,porosvec,pvolvec,tr,epsbeta,Vstd,vend,ffend);
 
 % Now we analyze the results before returning
-disp('Done.')
-disp('Calculating the voltage and filling fraction vectors...')
-
-% First we calculate the voltage
+disp('Done.')                
+disp('Calculating the voltage and filling fraction vectors...')                
+                
+% First we calculate the voltage                 
 vvec = Vstd - (k*T/e)*cpcs(:,end) - (k*T/e) * currset * ASRcont;
 
 % Converting scaled time to actual time
@@ -276,12 +291,12 @@ disp('Finished.')
 
 return;
 
-function val = calcRHS(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend)
+function val = calcRHS(t,cpcs,io,currset,kappa,a,b,alpha,cwet,ce0,...
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,sdiff,porosvec,pvolvec,tr,epsbeta,Vstd,vend,ffend)
 
 % Initialize output
-val = zeros(max(size(cpcs)),1);
-
+val = zeros(max(size(cpcs)),1);             
+             
 % Pull out the concentrations first
 cvec = cpcs(1:disc.ss+disc.steps);
 phivec = cpcs(disc.ss+disc.steps+1:2*(disc.ss+disc.steps));
@@ -310,7 +325,7 @@ cflux = -porosvec.*diff(ctmp).*Nx;
 val(1:disc.ss+disc.steps) = -diff(cflux).*Nx;
 %val(1:disc.ss+disc.steps) = reshape(-diff(cxflux,1,2)*Nx - ...
 %                                diff(cyflux,1,1)*Ny,disc.ss+disc.steps,1);
-
+                           
 % CHARGE CONSERVATION - DIVERGENCE OF CURRENT DENSITY
 %phixtmp = zeros(Ny,ssx+Nx+2);
 %phiytmp = zeros(Ny+2,ssx+Nx);
@@ -357,12 +372,14 @@ for i=1:Nx
         ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
         csi = cpcs(disc.sol+ind1-1:disc.sol+ind2-1);
-        phimi = cpcs(disc.sol+disc.ssteps+disc.Nx+ind1-1:disc.sol+disc.ssteps+disc.Nx+ind2-1);
-        outarr{(i-1)*numpart+j+1} = calc_dcs_dt(csi,phii,phimi,ci, ...
+%         phimi = cpcs(disc.sol+disc.ssteps+disc.Nx+ind1-1:disc.sol+disc.ssteps+disc.Nx+ind2-1);
+        phimi = cpcs(disc.sol+disc.ssteps+i-1);
+        cei = cpcs(disc.sol+disc.ssteps+disc.Nx+ind1-1:disc.sol+disc.ssteps+disc.Nx+ind2-1);
+        outarr{(i-1)*numpart+j+1} = calc_dcs_dt(csi,phii,phimi,cei,ci, ...
                 io((i-1)*numpart+j+1), ...
                 kappa((i-1)*numpart+j+1),a,b, ...
                 part_steps((i-1)*numpart+1+j+1), ...
-                alpha, cwet, wet_steps);
+                alpha, cwet);
     end
 %    ind1 = sum(part_steps(1:i))+1;
 %    ind2 = sum(part_steps(1:i+1));
@@ -374,7 +391,7 @@ end
 % Move to output vector
 val(disc.sol:disc.sol+disc.ssteps-1) = real(cell2mat(outarr));
 
-% Charge conservation of surface conduction
+% Charge/mass conservation at particle surface 
 outarr = cell(totalpart,1);
 for i=1:Nx
     % Loop through particles in each volume
@@ -383,16 +400,16 @@ for i=1:Nx
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
         tmpvec = zeros(part_steps((i-1)*numpart+1+j+1)+2,1);
         tmpvec(2:end-1) = cpcs(disc.sol+disc.ssteps+disc.Nx+ind1-1:disc.sol+disc.ssteps+disc.Nx+ind2-1);
-        tmpvec(1) = cpcs(disc.sol+disc.ssteps+i-1);
-        tmpvec(end) = cpcs(disc.sol+disc.ssteps+i-1);
+        tmpvec(1) = ce0;
+        tmpvec(end) = ce0;
 %         tmpvec(end) = 0;
-        divecd = -scond((i-1)*numpart+1+j).*diff(tmpvec,2).*Nx^2;
+        divecd = sdiff((i-1)*numpart+1+j).*diff(tmpvec,2).*Nx^2;
         outarr{(i-1)*numpart+j+1} = divecd;
-    end
+    end    
 end
 % Move to output vector
-val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
-
+val(disc.sol+disc.ssteps+disc.Nx:disc.sol+2*disc.ssteps+disc.Nx-1) = real(cell2mat(outarr));
+    
 % Charge conservation for phim domain
 
 % % original setup
@@ -401,10 +418,10 @@ val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
 % phimtmp = zeros(2+disc.steps,1);
 % phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:end-1);
 % % No flux condition
-% phimtmp(1) = phimtmp(2);
-%
+% phimtmp(1) = phimtmp(2);    
+% 
 % % Robin condition - set ground and flux out
-% phimtmp(end-1) = currset/mcond/Nx;
+% phimtmp(end-1) = currset/mcond/Nx; 
 % %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % new test
@@ -413,12 +430,12 @@ val(disc.sol+disc.ssteps+disc.Nx:end-1) = real(cell2mat(outarr));
 phimtmp = zeros(2+disc.steps,1);
 
 % Robin condition - set ground and flux out
-% phimtmp(end-1) = currset / mcond / Nx;
+% phimtmp(end-1) = currset / mcond / Nx; 
 
 phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:disc.sol+disc.ssteps+disc.Nx-1);
 
 % No flux condition
-phimtmp(1) = phimtmp(2);
+phimtmp(1) = phimtmp(2); 
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -429,7 +446,7 @@ val(end) = currset;
 
 return;
 
-function dcsdt = calc_dcs_dt(cs,phi,phim,ccath,io,kappa,a,b,ssteps,alpha,cwet,wet_steps)
+function dcsdt = calc_dcs_dt(cs,phi,phim,cei,ccath,io,kappa,a,b,ssteps,alpha,cwet)
 
 % This function returns the reaction rate for each channel in the particle
 % - first we need the curvature and the average filling, X
@@ -449,20 +466,20 @@ gamma_ts = (1./(1-cs));
 % New transition state with regular solution parameter
 % gamma_ts = (1./(1-cs)).*exp(a.*(1-2.*cs));
 
-ecd = (io.*ccath^(1-alpha).*act.^(alpha))./gamma_ts;
+ecd = (io.*ccath^(1-alpha) .* cei.^(1-alpha) .* act.^(alpha))./gamma_ts;
 eta = mu-phi+phim;                                      % ME: check the sign...
 dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 
 return;
 
 function M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec)
-
+    
 M = sparse(disc.len,disc.len);
 % Electrolyte terms
 M(1:disc.ss,1:disc.ss) = speye(disc.ss);
 M(disc.ss+1:disc.ss+disc.steps,disc.ss+1:disc.ss+disc.steps) = poros*speye(disc.steps);
 
-% Mass conservation (solid particles)
+% Mass conservation (transfer between electrolyte and solid)
 numpart = max(size(pvolvec))/Nx;
 for i=1:Nx
 %    ind1 = sum(part_steps(1:i))+1;
@@ -479,7 +496,7 @@ for i=1:Nx
     end
 end
 
-% Potential terms
+% Potential terms (electrode potential as function of depth)
 for i=1:Nx
 %    ind1 = sum(part_steps(1:i))+1;
 %    ind2 = sum(part_steps(1:i+1));
@@ -495,10 +512,10 @@ for i=1:Nx
     end
 end
 
-% Solid particles
+% Solid particles (composition profiles of individual particles)
 M(disc.sol:disc.sol+disc.ssteps-1,disc.sol:disc.sol+disc.ssteps-1) = speye(sum(part_steps));
 
-% Potential terms
+% Potential terms (overall current constraint) 
 for i=1:Nx
 %    ind1 = sum(part_steps(1:i))+1;
 %    ind2 = sum(part_steps(1:i+1));
@@ -514,7 +531,7 @@ for i=1:Nx
     end
 end
 
-% Electric potential
+% Charge conservation and Ohm's law in the macroscopic electrode
 for i=1:Nx
     % Loop through particles
     for j=0:numpart-1
@@ -523,17 +540,22 @@ for i=1:Nx
         M(disc.sol+disc.ssteps+i-1, disc.sol+ind1:disc.sol+ind2) = ...
                 -epsbeta./part_steps((i-1)*numpart+1+j+1) ...
                 * pvolvec((i-1)*numpart+j+1,1) ...
-                / sum(pvolvec((i-1)*numpart+1:i*numpart));
+                / sum(pvolvec((i-1)*numpart+1:i*numpart));      
     end
 end
 
-M(disc.sol+disc.ssteps+disc.Nx:end-1,disc.sol:disc.sol+disc.ssteps-1) = speye(disc.ssteps);
-
+% Surface profile of potential/electron concentration
+M(disc.sol+disc.ssteps+disc.Nx:disc.sol+2*disc.ssteps+disc.Nx-1,disc.sol:disc.sol+disc.ssteps-1) = speye( disc.ssteps );
+M(disc.sol+disc.ssteps+disc.Nx:disc.sol+2*disc.ssteps+disc.Nx-1,disc.sol+disc.ssteps+disc.Nx:disc.sol+2*disc.ssteps+disc.Nx-1) = speye( disc.ssteps );
 
 return;
 
-function [value, isterminal, direction] = events(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,scond,porosvec,pvolvec,tr,epsbeta,Vstd,vend)
+function [value, isterminal, direction] = events(t,cpcs,io,currset,kappa,a,b,alpha,cwet,ce0,...
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,sdiff,porosvec,pvolvec,tr,epsbeta,Vstd,vend,ffend)
+global tprev;
+
+% delete progress bar 
+fprintf('%s',char(ones(52+23,1)*8)); 
 
 value = 0;
 isterminal = 0;
@@ -541,8 +563,12 @@ direction = 0;
 tfinal = tr(end);
 tsteps = max(size(tr));
 perc = ((t/tsteps) / (tfinal/tsteps)) * 100;
-dvec = [num2str(perc),' percent completed'];
-disp(dvec)
+if perc>1e-4
+    dvec = [num2str(perc,'%08.5f'),' % completed'];
+else
+    dvec = [num2str(perc,'%1.2e'),' % completed'];
+end
+% disp(dvec)      
 
 k = 1.381e-23;      % Boltzmann constant
 T = 298;            % Temp, K
@@ -550,8 +576,50 @@ e = 1.602e-19;      % Charge of proton, C
 
 voltage = Vstd - cpcs(end)*k*T/e;
 
-value = voltage - vend;
+% Calculate the filling fraction
+%totalpart = max(size(io));
+%numpart = totalpart/Nx;
+numpart = max(size(pvolvec))/Nx;
+ffvec = 0;
+for j=1:Nx
+        for k=0:numpart-1
+            ind1 = sum(part_steps(1:(j-1)*numpart+1+k))+1;
+            ind2 = sum(part_steps(1:(j-1)*numpart+1+k+1));
+%            sum(cpcs(disc.sol+ind1:disc.sol+ind2))
+%            (Nx*part_steps((j-1)*numpart+1+k+1))
+%            pvolvec((j-1)*numpart+k+1,1)
+%            sum(pvolvec((j-1)*numpart+1:j*numpart))
+            ffvec = ffvec + ...
+                    sum(cpcs(disc.sol+ind1:disc.sol+ind2)) ...
+                    / (Nx*part_steps((j-1)*numpart+1+k+1)) ...
+                    * pvolvec((j-1)*numpart+k+1,1) ...
+                    / sum(pvolvec((j-1)*numpart+1:j*numpart));
+%                    sum(cpcs(disc.sol+ind1-1:disc.sol+ind2-1))/(Nx*Ny*part_steps(j+1));
+        end
+%        ind1 = sum(part_steps(1:j))+1;
+%        ind2 = sum(part_steps(1:j+1));
+%        ffvec = ffvec + ...
+%                sum(cpcs(disc.sol+ind1-1:disc.sol+ind2-1))/(Nx*Ny*part_steps(j+1));
+end
+
+% exit if either the cutoff potential or the final filling fraction are
+% reached
+value = min( (voltage - vend), (ffend-ffvec) );
+
+% additionally, exit if the last five timesteps have been very small and we
+% reached a filling fraction of above 10 percent
+tprev = circshift(tprev,-1);
+tprev(end) = t;
+if ( (perc > 10) && ( mean(diff(tprev)) < 1e-4 ) )
+    value = -1;
+end
+
+    
+    
 isterminal = 1;
 direction = 0;
 
+% write new progress bar
+tmp = sprintf('[%s%s]   %s',char(ones(round(perc*0.5),1)*42),char(ones(50-round(0.5*perc),1)*32),dvec);
+fprintf('%s', tmp);
 return;
