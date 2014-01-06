@@ -17,8 +17,9 @@ def show_data(infile, plot_type, save_flag):
     # Pick out some useful parameters
     Vstd = data[pfx + 'Vstd'][0][0]  # Standard potential, V
     k = data[pfx + 'k'][0][0]        # Boltzmann constant
-    T = data[pfx + 'Tabs'][0][0]     # Temp, K
+    Tref = data[pfx + 'Tref'][0][0]     # Temp, K
     e = data[pfx + 'e'][0][0]        # Charge of proton, C
+    td = data[pfx + 'td'][0][0]     # diffusive time
     # Discretization info
     Ntrode = int(data[pfx + 'NumTrode'][0][0])
     Nsep = int(data[pfx + 'NumSep'][0][0])
@@ -75,9 +76,8 @@ def show_data(infile, plot_type, save_flag):
 
     # Plot voltage profile
     if plot_type == "v":
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        voltage = Vstd - (k*T/e)*data[pfx + 'phi_applied'][0]
+        fig, ax = plt.subplots()
+        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
         xmin = np.min(ffvec)
@@ -88,6 +88,23 @@ def show_data(infile, plot_type, save_flag):
         ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
+        plt.show()
+        return
+
+    # Plot current profile
+    if plot_type == "curr":
+        fig, ax = plt.subplots()
+        current = data[pfx + "current"][0] * 3600/td
+        ffvec = data[pfx + 'ffrac_cathode'][0]
+#        ax.plot(ffvec, current)
+        ax.plot(times, current)
+        xmin = np.min(ffvec)
+        xmax = np.max(ffvec)
+        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        ax.set_ylabel("Current [C-rate]")
+#        ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
+        if save_flag:
+            fig.savefig("mpet_current.png")
         plt.show()
         return
 
