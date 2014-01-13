@@ -183,7 +183,8 @@ class modMPET(daeModel):
         self.dim_a = daeParameter("dim_a", unit(), self,
                 "dimensional reg sln [J]")
         self.a = daeParameter("a", unit(), self,
-                "regular solution parameter for each particle [J]")
+                "regular solution parameter for each particle [J]",
+                [self.Ntrode, self.numpart])
         self.dim_b = daeParameter("dim_b", unit(), self,
                 "Stress coefficient [Pa]")
         self.b = daeParameter("b", unit(), self,
@@ -230,6 +231,9 @@ class modMPET(daeModel):
                 "Bool: 1 for ACR type simulation")
         self.type_homog = daeParameter("type_homog", unit(), self,
                 "Bool: 1 for homog type simulation")
+        self.type_homog_sdn = daeParameter("type_homog_sdn", unit(), self,
+                "Bool: 1 for homog type simulation with size" +
+                " dependent nucleation")
         self.shape_sphere = daeParameter("shape_sphere", unit(), self,
                 "Bool: 1 for spherical particles")
         self.shape_C3 = daeParameter("shape_C3", unit(), self,
@@ -462,16 +466,12 @@ class modMPET(daeModel):
         k0 = self.k0(i, j)
         kappa = self.kappa(i, j) # only used for ACR
         cbar = self.cbar_sld(i, j) # only used for ACR
+        a = self.a(i, j)
         # Number of volumes in current particle
         Nij = self.Nsld_mat[i, j].NumberOfPoints
         # Concentration (profile?) in the solid
         c_sld = np.empty(Nij, dtype=object)
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
-#        # Potential (profile?) in the solid
-#        if simSurfCathCond:
-#            phi_m = np.empty(Nij
-#        else:
-#            phi_m = self.phi_c(i)
         # Calculate chemical potential of reduced state
         if solidType == "ACR":
             # Make a blank array to allow for boundary conditions
@@ -481,15 +481,15 @@ class modMPET(daeModel):
             cstmp[-1] = self.cwet()
             dxs = 1./Nij
             curv = np.diff(cstmp, 2)/(dxs**2)
-            mu_R = ( self.mu_reg_sln(c_sld) - kappa*curv
+            mu_R = ( self.mu_reg_sln(c_sld, a) - kappa*curv
                     + self.b()*(c_sld - cbar) )
             # If we're also simulating potential drop along the solid,
             # use that instead of self.phi_c(i)
             if simSurfCathCond:
                 phi_m = np.empty(Nij, dtype=object)
                 phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
-        elif solidType == "homog":
-            mu_R = self.mu_reg_sln(c_sld)
+        elif solidType == "homog" or solidType == "homog_sdn":
+            mu_R = self.mu_reg_sln(c_sld, a)
         act_R = np.exp(mu_R)
         gamma_ts = (1./(1-c_sld))
         # Assume dilute electrolyte
@@ -566,8 +566,8 @@ class modMPET(daeModel):
         curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
         return np.diff(curr_dens, 1)/dx
 
-    def mu_reg_sln(self, c):
-        return np.array([ self.a()*(1-2*c[i])
+    def mu_reg_sln(self, c, a):
+        return np.array([ a*(1-2*c[i])
                 + self.T()*Log(c[i]/(1-c[i]))
                 for i in range(len(c)) ])
 
@@ -592,7 +592,7 @@ class simMPET(daeSimulation):
             self.psd_num = np.ceil(psd_raw/solid_disc).astype(np.integer)
             self.psd_len = solid_disc*self.psd_num
         # For homogeneous particles (only one "volume" per particle)
-        elif solidType == "homog":
+        elif solidType == "homog" or solidType == "homog_sdn":
             # Each particle is only one volume
             self.psd_num = np.ones(psd_raw.shape).astype(np.integer)
             # The lengths are given by the original length distr.
@@ -613,7 +613,7 @@ class simMPET(daeSimulation):
         dim_Vset = self.P.getfloat('Sim Params', 'dim_Vset')
         Ntrode = self.P.getint('Sim Params', 'Ntrode')
         numpart = self.P.getint('Sim Params', 'numpart')
-        T = self.P.getfloat('Sim Params', 'T')
+        Tabs = self.P.getfloat('Sim Params', 'T')
         solidType = self.P.get('Sim Params', 'solidType')
         solidShape = self.P.get('Sim Params', 'solidShape')
         simBulkCathCond = self.P.getboolean('Sim Params',
@@ -662,6 +662,8 @@ class simMPET(daeSimulation):
         tp = zp*Dp / (zp*Dp + zm*Dm)
         # Diffusive time scale
         td = Ltrode**2 / Damb
+        # Temperature
+        T = float(Tabs)/Tref
 
         # Domains
         self.m.Ntrode.CreateArray(Ntrode)
@@ -680,9 +682,9 @@ class simMPET(daeSimulation):
                 self.m.Nsld_mat[i, j].CreateArray(int(self.psd_num[i, j]))
 
         # Parameters
-        self.m.Tabs.SetValue(T)
+        self.m.Tabs.SetValue(Tabs)
         self.m.Tref.SetValue(Tref)
-        self.m.T.SetValue(float(T)/Tref)
+        self.m.T.SetValue(T)
         self.m.k.SetValue(k)
         self.m.e.SetValue(e)
         self.m.N_A.SetValue(N_A)
@@ -723,16 +725,22 @@ class simMPET(daeSimulation):
         self.m.dim_k0.SetValue(dim_k0)
         self.m.dim_a.SetValue(dim_a)
         self.m.dim_b.SetValue(dim_b)
-        self.m.a.SetValue(dim_a/(k*Tref))
+#        self.m.a.SetValue(dim_a/(k*Tref))
         self.m.b.SetValue(dim_b/(k*Tref*rhos))
         self.m.psd_mean.SetValue(self.psd_mean)
         self.m.psd_stddev.SetValue(self.psd_stddev)
         if solidType == "ACR":
             self.m.type_ACR.SetValue(1.)
             self.m.type_homog.SetValue(0.)
+            self.m.type_homog_sdn.SetValue(0.)
         elif solidType == "homog":
             self.m.type_ACR.SetValue(0.)
             self.m.type_homog.SetValue(1.)
+            self.m.type_homog_sdn.SetValue(0.)
+        elif solidType == "homog_sdn":
+            self.m.type_ACR.SetValue(0.)
+            self.m.type_homog.SetValue(0.)
+            self.m.type_homog_sdn.SetValue(1.)
         if solidShape == "sphere":
             self.m.shape_sphere.SetValue(1.)
             self.m.shape_C3.SetValue(0.)
@@ -771,6 +779,12 @@ class simMPET(daeSimulation):
                         ((p_area/p_vol)*dim_k0*td)/(F*csmax))
                 self.m.scond.SetValue(i, j,
                         dim_scond * (k*Tref)/(dim_k0*e*p_len**2))
+                if solidType == "homog" or solidType == "ACR":
+                    self.m.a.SetValue(i, j, dim_a/(k*Tref))
+                elif solidType == "homog_sdn":
+                    # Not sure about factor of nondimensional T. Thus,
+                    # only use this when T = 1, Tabs = Tref = 298
+                    self.m.a.SetValue(i, j, T*self.size2regsln(p_len))
         self.m.cwet.SetValue(cwet)
         self.m.delx_sld.SetValue(solid_disc)
         self.m.Vstd.SetValue(Vstd)
@@ -812,6 +826,35 @@ class simMPET(daeSimulation):
         self.m.ffrac_cathode.SetInitialGuess(cs0)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
+
+    def size2regsln(self, size):
+        """
+        This function returns the non-dimensional regular solution
+        parameter which creates a barrier height that corresponds to
+        the given particle size (C3 particle, measured in nm in the
+        [100] direction). The barrier height vs size is taken from
+        Cogswell 2013, and the reg sln vs barrier height was done by
+        TRF 2014.
+        """
+        # Parameters for polynomial curve fit
+        p1 = -1.168e4
+        p2 = 2985
+        p3 = -208.3
+        p4 = -8.491
+        p5 = -10.25
+        p6 = 4.516
+        # The nucleation barrier depends on the ratio of the particle
+        # wetted area to total particle volume.
+        # *Wetted* area to volume ratio for C3 particles (Cogswell
+        # 2013 or Kyle Smith)
+        AV = 3.6338/size
+        # Fit function (TRF, "SWCS" paper 2014)
+        param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
+        if param < 2:
+            param = 2
+#        param = [param[i] if param[i] >= 2 else 2 for i in
+#                range(len(param))]
+        return param
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
