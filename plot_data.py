@@ -15,7 +15,7 @@ def show_data(infile, plot_type, save_flag):
     ttl_fmt = "% = {perc:2.1f}"
     data = sio.loadmat(infile)
     # Pick out some useful parameters
-    Vstd = data[pfx + 'Vstd'][0][0]  # Standard potential, V
+    Vstd = data[pfx + 'Vstd_c'][0][0]  # Standard potential, V
     k = data[pfx + 'k'][0][0]        # Boltzmann constant
     Tref = data[pfx + 'Tref'][0][0]     # Temp, K
     e = data[pfx + 'e'][0][0]        # Charge of proton, C
@@ -58,6 +58,7 @@ def show_data(infile, plot_type, save_flag):
     print "dim_Dm [m^2/s]:", data[pfx + "dim_Dm"][0][0]
     print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
     print "alpha:", data[pfx + "alpha"][0][0]
+#    print "lambda:", data[pfx + "lambda_c"][0][0]
     print "dim_k0 [A/m^2]:", data[pfx + "dim_k0"][0][0]
     mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
     if mcond_bool:
@@ -199,7 +200,7 @@ def show_data(infile, plot_type, save_flag):
         lines = np.empty((numpart, Ntrode), dtype=object)
         if plot_type == "csld":
             str_base = "mpet.solid_c_vol{j}_part{i}"
-            ylim = (0, 1)
+            ylim = (0, 1.01)
         else: # plot_type == "phisld"
             str_base = "mpet.solid_p_vol{j}_part{i}"
             ylim = (-10, 20)

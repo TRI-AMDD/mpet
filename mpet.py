@@ -181,7 +181,7 @@ class modMPET(daeModel):
                 "kappa for each particle",
                 [self.Ntrode, self.numpart])
         self.dim_a = daeParameter("dim_a", unit(), self,
-                "dimensional reg sln [J]")
+                "dimensional reg sln [J/Li]")
         self.a = daeParameter("a", unit(), self,
                 "regular solution parameter for each particle [J]",
                 [self.Ntrode, self.numpart])
@@ -194,6 +194,10 @@ class modMPET(daeModel):
         self.k0 = daeParameter("k0", unit(), self,
                 "exchange current density rate constant for each particle",
                 [self.Ntrode, self.numpart])
+        self.dim_lambda_c = daeParameter("dim_lambda_c", unit(), self,
+                "dimensional Marcus reorganizational energy [J/Li]")
+        self.lambda_c = daeParameter("lambda_c", unit(), self,
+                "Marcus reorganizational energy")
         self.dim_mcond = daeParameter("dim_mcond", unit(), self,
                 "dimensional conductivity of cathode [S/m]")
         self.mcond = daeParameter("mcond", unit(), self,
@@ -209,8 +213,8 @@ class modMPET(daeModel):
                 "Length of the separator")
         self.delx_sld = daeParameter("delx_sld", unit(), self,
                 "size of discretization")
-        self.Vstd = daeParameter("Vstd", unit(), self,
-                "Standard potential [V]")
+        self.Vstd_c = daeParameter("Vstd_c", unit(), self,
+                "Standard potential of cathode [V]")
         self.psd_mean = daeParameter("psd_mean", unit(), self,
                 "Particle size distribution mean [m]")
         self.psd_stddev = daeParameter("psd_stddev", unit(), self,
@@ -242,6 +246,10 @@ class modMPET(daeModel):
                 "Bool: 1 to simulate bulk potential drop in cathode")
         self.cath_surf_cond = daeParameter("cath_surf_cond", unit(), self,
                 "Bool: 1 to simulate surface potential drop in cathode")
+        self.rxnType_c_BV = daeParameter("rxnType_c_BV", unit(), self,
+                "Bool: 1 to simulate cathode reaction as Butler-Volmer")
+        self.rxnType_c_Marcus = daeParameter("rxnType_c_Marcus", unit(), self,
+                "Bool: 1 to simulate cathode reaction as Marcus")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -452,6 +460,7 @@ class modMPET(daeModel):
         simSurfCathCond = self.P.getboolean('Sim Params',
                 'simSurfCathCond')
         solidType = self.P.get('Sim Params', 'solidType')
+        rxnType = self.P.get('Cathode Reaction', 'rxnType')
         if simSurfCathCond and solidType != "ACR":
             raise Exception("Cannot do surface conductivity " +
                     "without ACR particles.")
@@ -491,19 +500,37 @@ class modMPET(daeModel):
         elif solidType == "homog" or solidType == "homog_sdn":
             mu_R = self.mu_reg_sln(c_sld, a)
         act_R = np.exp(mu_R)
-        gamma_ts = (1./(1-c_sld))
         # Assume dilute electrolyte
         act_O = c_lyte
         mu_O = np.log(act_O)
-        # k0 is based on the _active_ area per volume for the region
-        # of the solid of interest.
-        ecd = ( k0 * act_O**(1-self.alpha())
-                * act_R**(self.alpha()) / gamma_ts )
         # eta = electrochem pot_R - electrochem pot_O
         # eta = (mu_R + phi_R) - (mu_O + phi_O)
         eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-        return ( ecd*(np.exp(-self.alpha()*eta)
-                - np.exp((1-self.alpha())*eta)) )
+        # We need the (non-dimensional) temperature to get the
+        # reaction rate dependence correct
+        T = self.T()
+        # k0 is based on the _active_ area per volume for the region
+        # of the solid of interest.
+        if rxnType == "Marcus":
+            # XXX 2-electrode
+            lmbda = self.lambda_c()
+            alpha = 0.5*(1 + (self.T()/lmbda) * np.log(c_lyte/c_sld))
+#            alpha = 0.5
+            # We'll assume c_e = 1 (at the standard state for electrons)
+            ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
+                    c_lyte**((3-2*alpha)/4.) *
+                    c_sld**((1+2*alpha)/4.) )
+            Rate = ( ecd * np.exp(-eta**2/(4*T*lmbda)) *
+                (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        elif rxnType == "BV":
+            # XXX 2-electrode
+            alpha = self.alpha()
+            gamma_ts = (1./(1-c_sld))
+            ecd = ( k0 * act_O**(1-alpha)
+                    * act_R**(alpha) / gamma_ts )
+            Rate = ( ecd *
+                (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        return Rate
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
         # The lengths are nondimensionalized by the electrode length
@@ -633,16 +660,19 @@ class simMPET(daeSimulation):
         Dp = self.P.getfloat('Electrolyte Params', 'Dp')
         Dm = self.P.getfloat('Electrolyte Params', 'Dm')
         # Cathode Material Properties
-        dim_k0 = self.P.getfloat('Cathode Material Props', 'dim_k0')
         dim_a = self.P.getfloat('Cathode Material Props', 'dim_a')
         dim_kappa = self.P.getfloat('Cathode Material Props', 'dim_kappa')
         dim_b = self.P.getfloat('Cathode Material Props', 'dim_b')
         rhos = self.P.getfloat('Cathode Material Props', 'rhos')
         part_thick = self.P.getfloat('Cathode Material Props', 'part_thick')
-        Vstd = self.P.getfloat('Cathode Material Props', 'Vstd')
-        alpha = self.P.getfloat('Cathode Material Props', 'alpha')
+        Vstd_c = self.P.getfloat('Cathode Material Props', 'Vstd')
         dim_mcond = self.P.getfloat('Cathode Material Props', 'dim_mcond')
         dim_scond = self.P.getfloat('Cathode Material Props', 'dim_scond')
+        # Cathode reaction
+        rxnType_c = self.P.get('Cathode Reaction', 'rxnType')
+        dim_k0 = self.P.getfloat('Cathode Reaction', 'dim_k0')
+        alpha = self.P.getfloat('Cathode Reaction', 'alpha')
+        dim_lambda_c = self.P.getfloat('Cathode Reaction', 'dim_lambda_c')
         # ACR info
         cwet = self.P.getfloat('ACR info', 'cwet')
         solid_disc = self.P.getfloat('ACR info', 'solid_disc')
@@ -723,6 +753,8 @@ class simMPET(daeSimulation):
         self.m.Vset.SetValue(dim_Vset*e/(k*Tref))
         self.m.dim_kappa.SetValue(dim_kappa)
         self.m.dim_k0.SetValue(dim_k0)
+        self.m.dim_lambda_c.SetValue(dim_lambda_c)
+        self.m.lambda_c.SetValue(dim_lambda_c/(k*Tref))
         self.m.dim_a.SetValue(dim_a)
         self.m.dim_b.SetValue(dim_b)
 #        self.m.a.SetValue(dim_a/(k*Tref))
@@ -755,6 +787,13 @@ class simMPET(daeSimulation):
             self.m.cath_surf_cond.SetValue(1.)
         else:
             self.m.cath_surf_cond.SetValue(0.)
+        rxnType_c = self.P.get('Cathode Reaction', 'rxnType')
+        if rxnType_c == "BV":
+            self.m.rxnType_c_BV.SetValue(1.)
+            self.m.rxnType_c_Marcus.SetValue(0.)
+        if rxnType_c == "Marcus":
+            self.m.rxnType_c_BV.SetValue(0.)
+            self.m.rxnType_c_Marcus.SetValue(1.)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
@@ -787,7 +826,7 @@ class simMPET(daeSimulation):
                     self.m.a.SetValue(i, j, T*self.size2regsln(p_len))
         self.m.cwet.SetValue(cwet)
         self.m.delx_sld.SetValue(solid_disc)
-        self.m.Vstd.SetValue(Vstd)
+        self.m.Vstd_c.SetValue(Vstd_c)
 
     def SetUpVariables(self):
         Ntrode = self.m.Ntrode.NumberOfPoints
