@@ -612,7 +612,14 @@ class simMPET(daeSimulation):
         solidType = P.get('Sim Params', 'solidType')
         simSurfCathCond = P.getboolean('Sim Params', 'simSurfCathCond')
         # Make a length-sampled particle size distribution
-        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
+#        # Normally distributed
+#        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
+        # Log-normally distributed
+        var = stddev**2
+        mu = np.log((mean**2)/np.sqrt(var+mean**2))
+        sigma = np.sqrt(np.log(var/(mean**2)+1))
+        psd_raw = np.random.lognormal(mu, sigma,
+                size=(Ntrode, numpart))
         # For ACR particles, convert psd to integers -- number of steps
         if solidType == "ACR":
             solid_disc = P.getfloat('ACR info', 'solid_disc')
