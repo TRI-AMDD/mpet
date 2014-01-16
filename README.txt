@@ -16,25 +16,24 @@ mpet.py
 5. Run script, passing params.py as an argument:
     - python2 mpet.py params.py
 
-6. Analyze output with plot_data.py (pass output data file, then plot-type
-as arguments).
-    - voltage vs filling fraction:
-        $ python2 plot_data.py mpet_out.mat v
-    - Solid concentrations (all):
-        $ python2 plot_data.py mpet_out.mat csld
-    - Solid concentrations averages, sized/colored by concentration:
-        $ python2 plot_data.py mpet_out.mat cbar
-    - Electrolyte concentration:
-        $ python2 plot_data.py mpet_out.mat elytec
-    - Electrolyte potential:
-        $ python2 plot_data.py mpet_out.mat elytep
-    - Cathode potential:
-        $ python2 plot_data.py mpet_out.mat cathp
+6. Analyze output with plot_data.py (pass output data directory, then
+plot-type as arguments).
+    - e.g., voltage plot:
+        $ python2 plot_data.py sim_output v
+    - all options:
+      v -- voltage vs filling fraction
+      curr -- current vs time
+      elytec -- electrolyte concentration (movie)
+      elytep -- electrolyte potential (movie)
+      csld -- solid concentrations (all, movie)
+      phisld -- solid potential (all, used with simSurfCathCond = true, movie)
+      cbar -- average solid concentrations (movie)
+      cathp -- macroscopic cathode solid phise potential (movie)
 If you want to save output to a movie (or figure), add "save" (no
 quotes) as an extra argument to plot_data.py:
-        $ python2 plot_data.py mpet_out.mat cbar save
-This requires that you have ffmpeg or mencoder (part of MPlayer)
-installed.
+        $ python2 plot_data.py sim_output cbar save
+Movie output requires that you have ffmpeg or mencoder (part of
+MPlayer) installed.
 
 ========
 MATLAB Codes (soon to be deprecated)
