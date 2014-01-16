@@ -18,7 +18,7 @@ if fig=='e'
         set(gcf,'Renderer','zbuffer')       % Fix for Windows 7
         M(i) = getframe(gcf);
     end   
-    
+
 elseif fig=='s'
     figure
     % Construct solid concentration vector
