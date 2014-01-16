@@ -116,10 +116,6 @@ class modMPET(daeModel):
                 "Number of particles in each electrode volume")
         self.NumSep = daeParameter("NumSep", unit(), self,
                 "Number of volumes in the electrolyte")
-#        self.Lp = daeParameter("Lp", unit(), self,
-#                "loading percent (vol active per vol solid)")
-#        self.c_lyte0 = daeParameter("c_lyte0", unit(), self,
-#                "initial conc. of electrolyte [mol/m^3]")
         self.epsbeta = daeParameter("epsbeta", unit(), self,
                 "porosity times beta")
         self.zp = daeParameter("zp", unit(), self,
@@ -136,95 +132,41 @@ class modMPET(daeModel):
                 "potential at the cathode (phi_applied is relative to this)")
         self.td = daeParameter("td", unit(), self,
                 "Diffusive time [s]")
-#        self.dim_Dp = daeParameter("dim_Dp", unit(), self,
-#                "diffusivity of positive ions [m^2/s]")
-#        self.dim_Dm = daeParameter("dim_Dm", unit(), self,
-#                "diffusivity of negative ions [m^2/s]")
         self.dim_Damb = daeParameter("dim_Damb", unit(), self,
                 "ambipolar diffusivity [m^2/s]")
         self.Dp = daeParameter("Dp", unit(), self,
                 "non-dimensional diffusivity of positive ions")
         self.Dm = daeParameter("Dm", unit(), self,
                 "non-dimensional diffusivity of negative ions")
-#        self.rho_s = daeParameter("rho_s", unit(), self,
-#                "density of sites in solid [1/m^3]")
-#        self.csmax = daeParameter("csmax", unit(), self,
-#                "maximum concentration in solid [mol/m^3]")
-#        self.part_thickness = daeParameter("part_thickness",
-#                unit(), self,
-#                "Thickness of C3 particles")
         self.alpha = daeParameter("alpha", unit(), self,
                 " Charge transfer coefficient")
-#        self.Tabs = daeParameter("Tabs", unit(), self,
-#                "Temperature in K")
-#        self.Tref = daeParameter("Tref", unit(), self,
-#                "Reference temperature in K")
         self.T = daeParameter("T", unit(), self,
                 "Non dimensional temperature")
-#        self.k = daeParameter("k", unit(), self,
-#                "Boltzmann constant [J/(particle K)]")
-#        self.e = daeParameter("e", unit(), self,
-#                "Charge of proton, C")
-#        self.N_A = daeParameter("N_A", unit(), self,
-#                "Avogadro's number")
-#        self.F = daeParameter("F", unit(), self,
-#                "Faraday's number")
-#        self.C_rate = daeParameter("C_rate", unit(), self,
-#                "Discharge C-rate")
         self.currset = daeParameter("currset", unit(), self,
                 "dimensionless current")
-#        self.dim_Vset = daeParameter("dim_Vset", unit(), self,
-#                "dimensional applied voltage (relative to " +
-#                "Delta V OCV of the  cell) [V]")
         self.Vset = daeParameter("Vset", unit(), self,
                 "dimensionless applied voltage (relative to " +
                 "Delta V OCV of the  cell)")
         self.cwet = daeParameter("c_wet", unit(), self,
                 "Wetted surface concentration")
-#        self.dim_kappa = daeParameter("dim_kappa", unit(), self,
-#                "dimensional gradient penalty [J/m]")
         self.kappa = daeParameter("kappa", unit(), self,
                 "kappa for each particle",
                 [self.Ntrode, self.numpart])
-#        self.dim_a = daeParameter("dim_a", unit(), self,
-#                "dimensional reg sln [J/Li]")
         self.a = daeParameter("a", unit(), self,
                 "regular solution parameter for each particle [J]",
                 [self.Ntrode, self.numpart])
-#        self.dim_b = daeParameter("dim_b", unit(), self,
-#                "Stress coefficient [Pa]")
         self.b = daeParameter("b", unit(), self,
                 "Stress coefficient for each particle")
-#        self.dim_k0 = daeParameter("dim_k0", unit(), self,
-#                "dimensional exchange current density rate constant [A/m^2]")
         self.k0 = daeParameter("k0", unit(), self,
                 "exchange current density rate constant for each particle",
                 [self.Ntrode, self.numpart])
-#        self.dim_lambda_c = daeParameter("dim_lambda_c", unit(), self,
-#                "dimensional Marcus reorganizational energy [J/Li]")
         self.lambda_c = daeParameter("lambda_c", unit(), self,
                 "Marcus reorganizational energy")
-#        self.dim_mcond = daeParameter("dim_mcond", unit(), self,
-#                "dimensional conductivity of cathode [S/m]")
         self.mcond = daeParameter("mcond", unit(), self,
                 "conductivity of cathode")
-#        self.dim_scond = daeParameter("dim_scond", unit(), self,
-#                "dimensional surface conductivity of particles [S]")
         self.scond = daeParameter("scond", unit(), self,
                 "surface conductivity of particles",
                 [self.Ntrode, self.numpart])
-#        self.Ltrode = daeParameter("Ltrode", unit(), self,
-#                "Length of the electrode")
-#        self.Lsep = daeParameter("Lsep", unit(), self,
-#                "Length of the separator")
-#        self.delx_sld = daeParameter("delx_sld", unit(), self,
-#                "size of discretization")
-#        self.Vstd_c = daeParameter("Vstd_c", unit(), self,
-#                "Standard potential of cathode [V]")
-#        self.psd_mean = daeParameter("psd_mean", unit(), self,
-#                "Particle size distribution mean [m]")
-#        self.psd_stddev = daeParameter("psd_stddev", unit(), self,
-#                "Particle size distribution stddev [m]")
         self.psd_num = daeParameter("psd_numVols", unit(), self,
                 "Particle numbers of discretizations",
                 [self.Ntrode, self.numpart])
@@ -237,25 +179,6 @@ class modMPET(daeModel):
         self.psd_vol = daeParameter("psd_volumes", unit(), self,
                 "Particle volumes [nm^3]",
                 [self.Ntrode, self.numpart])
-#        self.type_ACR = daeParameter("type_ACR", unit(), self,
-#                "Bool: 1 for ACR type simulation")
-#        self.type_homog = daeParameter("type_homog", unit(), self,
-#                "Bool: 1 for homog type simulation")
-#        self.type_homog_sdn = daeParameter("type_homog_sdn", unit(), self,
-#                "Bool: 1 for homog type simulation with size" +
-#                " dependent nucleation")
-#        self.shape_sphere = daeParameter("shape_sphere", unit(), self,
-#                "Bool: 1 for spherical particles")
-#        self.shape_C3 = daeParameter("shape_C3", unit(), self,
-#                "Bool: 1 for C3 particles")
-#        self.cath_bulk_cond = daeParameter("cath_bulk_cond", unit(), self,
-#                "Bool: 1 to simulate bulk potential drop in cathode")
-#        self.cath_surf_cond = daeParameter("cath_surf_cond", unit(), self,
-#                "Bool: 1 to simulate surface potential drop in cathode")
-#        self.rxnType_c_BV = daeParameter("rxnType_c_BV", unit(), self,
-#                "Bool: 1 to simulate cathode reaction as Butler-Volmer")
-#        self.rxnType_c_Marcus = daeParameter("rxnType_c_Marcus", unit(), self,
-#                "Bool: 1 to simulate cathode reaction as Marcus")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -518,7 +441,6 @@ class modMPET(daeModel):
             # XXX 2-electrode
             lmbda = self.lambda_c()
             alpha = 0.5*(1 + (self.T()/lmbda) * np.log(c_lyte/c_sld))
-#            alpha = 0.5
             # We'll assume c_e = 1 (at the standard state for electrons)
             ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
                     c_lyte**((3-2*alpha)/4.) *
@@ -607,13 +529,11 @@ class simMPET(daeSimulation):
         if D is None:
             raise Exception("Need parameters input")
         self.D = D
-#        profileType = P.get('Sim Params', 'profileType')
         mean = D['mean']
         stddev = D['stddev']
         Ntrode = D['Ntrode']
         numpart = D['numpart']
         solidType = D['solidType']
-#        simSurfCathCond = D['simSurfCathCond']
         # Make a length-sampled particle size distribution
 #        # Normally distributed
 #        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
@@ -644,46 +564,20 @@ class simMPET(daeSimulation):
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
         # Simulation
-#        dim_crate = self.P.getfloat('Sim Params', 'dim_crate')
-#        dim_Vset = self.P.getfloat('Sim Params', 'dim_Vset')
         Ntrode = self.D['Ntrode']
         numpart = self.D['numpart']
-#        Tabs = self.P.getfloat('Sim Params', 'T')
         solidType = self.D['solidType']
         solidShape = self.D['solidShape']
-#        simBulkCathCond = self.P.getboolean('Sim Params',
-#                'simBulkCathCond')
-#        simSurfCathCond = self.P.getboolean('Sim Params',
-#                'simSurfCathCond')
         # Geometry
         Ltrode = self.D['Ltrode']
-#        Lsep = self.P.getfloat('Geometry', 'Lsep')
-#        Asep = self.P.getfloat('Geometry', 'Asep')
-#        Lp = self.P.getfloat('Geometry', 'Lp')
-#        poros = self.P.getfloat('Geometry', 'poros')
         # Electrolyte
-#        c0 = self.P.getfloat('Electrolyte Params', 'c0')
         zp = self.D['zp']
         zm = self.D['zm']
         dim_Dp = self.D['dim_Dp']
         dim_Dm = self.D['dim_Dm']
         # Cathode Material Properties
-#        dim_a = self.P.getfloat('Cathode Material Props', 'dim_a')
-#        dim_kappa = self.P.getfloat('Cathode Material Props', 'dim_kappa')
-#        dim_b = self.P.getfloat('Cathode Material Props', 'dim_b')
-#        rhos = self.P.getfloat('Cathode Material Props', 'rhos')
-#        part_thick = self.P.getfloat('Cathode Material Props', 'part_thick')
-#        Vstd_c = self.P.getfloat('Cathode Material Props', 'Vstd')
-#        dim_mcond = self.P.getfloat('Cathode Material Props', 'dim_mcond')
-#        dim_scond = self.P.getfloat('Cathode Material Props', 'dim_scond')
         # Cathode reaction
-#        rxnType_c = self.P.get('Cathode Reaction', 'rxnType')
-#        dim_k0 = self.P.getfloat('Cathode Reaction', 'dim_k0')
-#        alpha = self.P.getfloat('Cathode Reaction', 'alpha')
-#        dim_lambda_c = self.P.getfloat('Cathode Reaction', 'dim_lambda_c')
         # ACR info
-#        cwet = self.P.getfloat('ACR info', 'cwet')
-#        solid_disc = self.P.getfloat('ACR info', 'solid_disc')
         # Constants
         k = self.D['k']
         Tref = self.D['Tref']
@@ -720,16 +614,8 @@ class simMPET(daeSimulation):
                 self.m.Nsld_mat[i, j].CreateArray(int(self.psd_num[i, j]))
 
         # Parameters
-#        self.m.Tabs.SetValue(Tabs)
-#        self.m.Tref.SetValue(Tref)
         self.m.T.SetValue(T)
-#        self.m.k.SetValue(k)
-#        self.m.e.SetValue(e)
-#        self.m.N_A.SetValue(N_A)
-#        self.m.F.SetValue(F)
         self.m.alpha.SetValue(D['alpha'])
-#        self.m.Ltrode.SetValue(Ltrode)
-#        self.m.Lsep.SetValue(Lsep)
         self.m.NumTrode.SetValue(Ntrode)
         self.m.NumSep.SetValue(Nsep)
         self.m.NumPart.SetValue(numpart)
@@ -737,70 +623,19 @@ class simMPET(daeSimulation):
         self.m.zp.SetValue(zp)
         self.m.zm.SetValue(zm)
         self.m.tp.SetValue(tp)
-#        self.m.dim_Dp.SetValue(Dp)
-#        self.m.dim_Dm.SetValue(Dm)
         self.m.dim_Damb.SetValue(Damb)
         self.m.Dp.SetValue(dim_Dp / Damb)
         self.m.Dm.SetValue(dim_Dm / Damb)
-#        self.m.rho_s.SetValue(rhos)
-#        self.m.c_lyte0.SetValue(c0)
-#        self.m.csmax.SetValue(csmax)
-#        self.m.part_thickness.SetValue(part_thick)
-#        self.m.Lp.SetValue(Lp)
-#        self.m.dim_mcond.SetValue(dim_mcond)
         self.m.mcond.SetValue(D['dim_mcond'] * (td * k * N_A * Tref) /
                 (Ltrode**2 * F**2 *D['dim_c0']))
-#        self.m.dim_scond.SetValue(dim_scond)
         self.m.poros_sep.SetValue(1.)
         self.m.poros_trode.SetValue(D['poros'])
         self.m.epsbeta.SetValue((1-D['poros'])*D['Lp']*csmax/D['dim_c0'])
         self.m.phi_cathode.SetValue(0.)
-#        self.m.C_rate.SetValue(D['dim_crate'])
         self.m.currset.SetValue(D['dim_crate']*td/3600)
-#        self.m.dim_Vset.SetValue(dim_Vset)
         self.m.Vset.SetValue(D['dim_Vset']*e/(k*Tref))
-#        self.m.dim_kappa.SetValue(dim_kappa)
-#        self.m.dim_k0.SetValue(dim_k0)
-#        self.m.dim_lambda_c.SetValue(dim_lambda_c)
         self.m.lambda_c.SetValue(D['dim_lambda_c']/(k*Tref))
-#        self.m.dim_a.SetValue(dim_a)
-#        self.m.dim_b.SetValue(dim_b)
-#        self.m.a.SetValue(dim_a/(k*Tref))
         self.m.b.SetValue(D['dim_b']/(k*Tref*D['rhos']))
-#        self.m.psd_mean.SetValue(self.psd_mean)
-#        self.m.psd_stddev.SetValue(self.psd_stddev)
-#        if solidType == "ACR":
-#            self.m.type_ACR.SetValue(1.)
-#            self.m.type_homog.SetValue(0.)
-#            self.m.type_homog_sdn.SetValue(0.)
-#        elif solidType == "homog":
-#            self.m.type_ACR.SetValue(0.)
-#            self.m.type_homog.SetValue(1.)
-#            self.m.type_homog_sdn.SetValue(0.)
-#        elif solidType == "homog_sdn":
-#            self.m.type_ACR.SetValue(0.)
-#            self.m.type_homog.SetValue(0.)
-#            self.m.type_homog_sdn.SetValue(1.)
-#        if solidShape == "sphere":
-#            self.m.shape_sphere.SetValue(1.)
-#            self.m.shape_C3.SetValue(0.)
-#        if solidShape == "C3":
-#            self.m.shape_sphere.SetValue(0.)
-#            self.m.shape_C3.SetValue(1.)
-#        if simBulkCathCond:
-#            self.m.cath_bulk_cond.SetValue(1.)
-#        else:
-#            self.m.cath_bulk_cond.SetValue(0.)
-#        if simSurfCathCond:
-#            self.m.cath_surf_cond.SetValue(1.)
-#        else:
-#            self.m.cath_surf_cond.SetValue(0.)
-#        if rxnType_c == "BV":
-#            self.m.rxnType_c_BV.SetValue(1.)
-#            self.m.rxnType_c_Marcus.SetValue(0.)
-#        if rxnType_c == "Marcus":
-#            self.m.rxnType_c_BV.SetValue(0.)
-#            self.m.rxnType_c_Marcus.SetValue(1.)
         for i in range(Ntrode):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
@@ -832,8 +667,6 @@ class simMPET(daeSimulation):
                     # only use this when T = 1, Tabs = Tref = 298
                     self.m.a.SetValue(i, j, T*self.size2regsln(p_len))
         self.m.cwet.SetValue(D['cwet'])
-#        self.m.delx_sld.SetValue(solid_disc)
-#        self.m.Vstd_c.SetValue(Vstd_c)
 
     def SetUpVariables(self):
         Ntrode = self.m.Ntrode.NumberOfPoints
