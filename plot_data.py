@@ -69,12 +69,12 @@ def show_data(indir, plot_type, save_flag):
     print "dim_k0 [A/m^2]:", D['dim_k0']
     if D['simBulkCathCond']:
         print ("cathode bulk conductivity loss: Yes -- " +
-                "dim_mcond [S/m]: " + D['dim_mcond'])
+                "dim_mcond [S/m]: " + str(D['dim_mcond']))
     else:
         print "cathode bulk conductivity loss: No"
     if D['simSurfCathCond']:
         print ("cathode surface conductivity loss: Yes -- " +
-                "dim_scond [S]: " + D['dim_scond'])
+                "dim_scond [S]: " + str(D['dim_scond']))
     else:
         print "cathode surface conductivity loss: No"
 
@@ -112,64 +112,30 @@ def show_data(indir, plot_type, save_flag):
         plt.show()
         return
 
-    # Plot electrolyte concentration
-    elif plot_type == "elytec":
+    # Plot electrolyte concentration or potential
+    elif plot_type == "elytec" or plot_type == "elytep":
         matplotlib.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
-        ymin = 0
-        ymax = 1.5
+        if plot_type == "elytec":
+            ymin = 0
+            ymax = 1.5
+            ax.set_ylabel('Concentration of electrolyte [nondim]')
+            sep = pfx + 'c_lyte_sep'
+            trode = pfx + 'c_lyte_trode'
+        elif plot_type == "elytep":
+            ymin = -5
+            ymax = 5
+            ax.set_ylabel('Potential of electrolyte [nondim]')
+            sep = pfx + 'phi_lyte_sep'
+            trode = pfx + 'phi_lyte_trode'
         ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Concentration of electrolyte [nondim]')
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        sep = pfx + 'c_lyte_sep'
-        trode = pfx + 'c_lyte_trode'
         datay_sep = data[sep][0]
         datay_trode = data[trode][0]
-        Lsep = data[pfx + 'Lsep'][0] * 1e6
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
-        datay = np.hstack((datay_sep, datay_trode))
-        numy = len(datay)
-        xmin = 0
-        xmax = Lsep + Ltrode
-        datax = np.linspace(xmin, xmax, numy)
-        ax.set_ylim((ymin, ymax))
-        ax.set_xlim((xmin, xmax))
-        # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay)
-        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
-        def init():
-            line1.set_ydata(np.ma.array(datax, mask=True))
-            ttl.set_text('')
-            return line1, ttl
-        def animate(tind):
-            datay_sep = data[sep][tind]
-            datay_trode = data[trode][tind]
-            datay = np.hstack((datay_sep, datay_trode))
-            line1.set_ydata(datay)
-            t_current = times[tind]
-            tfrac = (t_current - tmin)/(tmax - tmin) * 100
-            ttl.set_text(ttl_fmt.format(perc=tfrac))
-            return line1, ttl
-
-    # Plot electrolyte electrostatic potential
-    elif plot_type == "elytep":
-        matplotlib.animation.Animation._blit_draw = _blit_draw
-        fig, ax = plt.subplots()
-        ymin = -5
-        ymax = 5
-        ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Potential of electrolyte [nondim]')
-        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
-                transform = ax.transAxes, verticalalignment="center",
-                horizontalalignment="center")
-        sep = pfx + 'phi_lyte_sep'
-        trode = pfx + 'phi_lyte_trode'
-        datay_sep = data[sep][0]
-        datay_trode = data[trode][0]
-        Lsep = data[pfx + 'Lsep'][0] * 1e6
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
+        Lsep = D['Lsep'] * 1e6
+        Ltrode = D['Ltrode'] * 1e6
         datay = np.hstack((datay_sep, datay_trode))
         numy = len(datay)
         xmin = 0
@@ -270,7 +236,6 @@ def show_data(indir, plot_type, save_flag):
         # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
-        psd_len = data[pfx + 'psd_lengths'][0]
         len_max = np.max(psd_len)
         len_min = np.min(psd_len)
         size_frac_min = 0.10
@@ -348,7 +313,7 @@ def show_data(indir, plot_type, save_flag):
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
         cathp = pfx + 'phi_cath'
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
+        Ltrode = D['Ltrode'] * 1e6
         datay = data[cathp][0]
         numy = len(datay)
         xmin = 0
@@ -372,7 +337,8 @@ def show_data(indir, plot_type, save_flag):
 
     else:
         raise Exception("Unexpected plot type argument. " +
-                "Try 'v', 'elytec', 'elytep', 'cbar', 'csld', " +
+                "Try 'v', 'curr', 'elytec', 'elytep', " +
+                "'cbar', 'csld', 'phisld', " +
                 "'cathp'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
