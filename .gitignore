@@ -1,4 +1,9 @@
 *.swp
 *.mat
 *.m4v
+*.mp4
+*.png
+*.pdf
 params.m
+params.cfg
+sim_output

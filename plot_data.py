@@ -10,83 +10,130 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
-def show_data(infile, plot_type, save_flag):
+import mpet_params_IO
+
+def show_data(indir, plot_type, save_flag):
     pfx = 'mpet.'
     ttl_fmt = "% = {perc:2.1f}"
-    data = sio.loadmat(infile)
+    # Read in the simulation results and calcuations data
+    dataFileName = "output_data.mat"
+    dataFile = os.path.join(indir, dataFileName)
+    data = sio.loadmat(dataFile)
+    # Read in the parameters used to define the simulation
+    paramFileName = "output_params.cfg"
+    paramFile = os.path.join(indir, paramFileName)
+    IO = mpet_params_IO.mpetIO()
+    D, P = IO.readConfig(paramFile)
     # Pick out some useful parameters
-    Vstd = data[pfx + 'Vstd_c'][0][0]  # Standard potential, V
-    k = data[pfx + 'k'][0][0]        # Boltzmann constant
-    Tref = data[pfx + 'Tref'][0][0]     # Temp, K
-    e = data[pfx + 'e'][0][0]        # Charge of proton, C
+#    Vstd = data[pfx + 'Vstd_c'][0][0]  # Standard potential, V
+#    k = data[pfx + 'k'][0][0]        # Boltzmann constant
+#    Tref = data[pfx + 'Tref'][0][0]     # Temp, K
+#    e = data[pfx + 'e'][0][0]        # Charge of proton, C
+    Vstd_c = D['Vstd_c']            # Standard potential of cathode, V
+    k = D['k']                      # Boltzmann constant, J/(K Li)
+    Tref = D['Tref']                # Temp, K
+    e = D['e']                      # Charge of proton, C
     td = data[pfx + 'td'][0][0]     # diffusive time
     # Discretization info
-    Ntrode = int(data[pfx + 'NumTrode'][0][0])
+    Ntrode = D['Ntrode']
+    numpart = D['numpart']
     Nsep = int(data[pfx + 'NumSep'][0][0])
-    numpart = int(data[pfx + 'NumPart'][0][0])
+#    Ntrode = int(data[pfx + 'NumTrode'][0][0])
+#    numpart = int(data[pfx + 'NumPart'][0][0])
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
     # Simulation type
-    sim_ACR = data[pfx + "type_ACR"][0][0]
-    sim_homog = data[pfx + "type_homog"][0][0]
-    shape_sphere = data[pfx + "shape_sphere"][0][0]
-    shape_C3 = data[pfx + "shape_C3"][0][0]
+    solidType = D['solidType']
+    solidShape = D['solidShape']
+#    sim_ACR = data[pfx + "type_ACR"][0][0]
+#    sim_homog = data[pfx + "type_homog"][0][0]
+#    shape_sphere = data[pfx + "shape_sphere"][0][0]
+#    shape_C3 = data[pfx + "shape_C3"][0][0]
 
     # Print relevant simulation info
-    if sim_ACR:
-        print "Type: ACR"
-    elif sim_homog:
-        print "Type: homog"
-    else:
-        print "Type: ?"
-    if shape_sphere:
-        print "Shape: sphere"
-    elif shape_C3:
-        print "Shape: C3"
-    else:
-        print "Shape: ?"
-    print "C_rate:", data[pfx + "C_rate"][0][0]
-    print "psd_mean [nm]:", data[pfx + "psd_mean"][0][0]*1e9
-    print "psd_stddev [nm]:", data[pfx + "psd_stddev"][0][0]*1e9
+    print "solidType:", solidType
+    print "solidShape", solidShape
+    print "rxnType_c:", D['rxnType_c']
+    print "C_rate:", D['dim_crate']
+    print "psd_mean [nm]:", D['mean']*1e9
+    print "psd_stddev [nm]:", D['stddev']*1e9
     print "Nsep:", Nsep
     print "Ntrode:", Ntrode
     print "Npart:", numpart
-    print "dim_Dp [m^2/s]:", data[pfx + "dim_Dp"][0][0]
-    print "dim_Dm [m^2/s]:", data[pfx + "dim_Dm"][0][0]
+    print "dim_Dp [m^2/s]:", D['dim_Dp']
+    print "dim_Dm [m^2/s]:", D['dim_Dm']
     print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
-    print "alpha:", data[pfx + "alpha"][0][0]
-#    print "lambda:", data[pfx + "lambda_c"][0][0]
-    print "dim_k0 [A/m^2]:", data[pfx + "dim_k0"][0][0]
-    mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
-    if mcond_bool:
+    print "alpha:", D['alpha']
+#    print "lambda:", D['dim_lambda_c']
+    print "dim_k0 [A/m^2]:", D['dim_k0']
+#    mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
+    if D['simBulkCathCond']:
         print ("cathode bulk conductivity loss: Yes -- " +
-                "dim_mcond [S/m]: " +
-                str(data[pfx + "dim_mcond"][0][0]))
+                "dim_mcond [S/m]: " + D['dim_mcond'])
     else:
         print "cathode bulk conductivity loss: No"
-    scond_bool = data[pfx + "cath_surf_cond"][0][0]
-    if scond_bool:
+#    scond_bool = data[pfx + "cath_surf_cond"][0][0]
+    if D['simSurfCathCond']:
         print ("cathode surface conductivity loss: Yes -- " +
-                "dim_scond [S]: " +
-                str(data[pfx + "dim_scond"][0][0]))
+                "dim_scond [S]: " + D['dim_scond'])
     else:
         print "cathode surface conductivity loss: No"
+#    if solidType == "ACR":
+#        print "Type: ACR"
+#    elif solidType == "homog":
+#        print "Type: homog"
+#    elif solidType == "homog-sdn":
+#        print "Type: homog-sdn"
+#    else:
+#        print "Type: ?"
+#    if solidShape == "shpere":
+#        print "Shape: sphere"
+#    elif shape_C3:
+#        print "Shape: C3"
+#    else:
+#        print "Shape: ?"
+#    print "C_rate:", data[pfx + "C_rate"][0][0]
+#    print "psd_mean [nm]:", data[pfx + "psd_mean"][0][0]*1e9
+#    print "psd_stddev [nm]:", data[pfx + "psd_stddev"][0][0]*1e9
+#    print "Nsep:", Nsep
+#    print "Ntrode:", Ntrode
+#    print "Npart:", numpart
+#    print "dim_Dp [m^2/s]:", data[pfx + "dim_Dp"][0][0]
+#    print "dim_Dm [m^2/s]:", data[pfx + "dim_Dm"][0][0]
+#    print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
+#    print "alpha:", data[pfx + "alpha"][0][0]
+##    print "lambda:", data[pfx + "lambda_c"][0][0]
+#    print "dim_k0 [A/m^2]:", data[pfx + "dim_k0"][0][0]
+#    mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
+#    if mcond_bool:
+#        print ("cathode bulk conductivity loss: Yes -- " +
+#                "dim_mcond [S/m]: " +
+#                str(data[pfx + "dim_mcond"][0][0]))
+#    else:
+#        print "cathode bulk conductivity loss: No"
+#    scond_bool = data[pfx + "cath_surf_cond"][0][0]
+#    if scond_bool:
+#        print ("cathode surface conductivity loss: Yes -- " +
+#                "dim_scond [S]: " +
+#                str(data[pfx + "dim_scond"][0][0]))
+#    else:
+#        print "cathode surface conductivity loss: No"
 
     # Plot voltage profile
     if plot_type == "v":
         fig, ax = plt.subplots()
-        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+        voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
-        ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+        ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
-        ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
+        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
         plt.show()
@@ -408,9 +455,9 @@ def _blit_draw(self, artists, bg_cache):
 if __name__ == "__main__":
     # Get input file from script parameters
     if len(sys.argv) < 2:
-        raise Exception("Need input data file name")
-    infile = sys.argv[1]
-    if not os.path.isfile(os.path.join(os.getcwd(), infile)):
+        raise Exception("Need input data directory name")
+    indir = sys.argv[1]
+    if not os.path.exists(os.path.join(os.getcwd(), indir)):
         raise Exception("Input file doesn't exist")
     # Get plot type from script parameters
     if len(sys.argv) > 2:
@@ -423,4 +470,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
-    show_data(infile, plot_type, save_flag)
+    show_data(indir, plot_type, save_flag)
