@@ -1,4 +1,13 @@
 *.swp
 *.mat
 *.m4v
+*.mp4
+*.png
+*.pdf
+*.pyc
 params.m
+params.cfg
+sim_output
+
+py_mat_compare
+data_capacity.txt

@@ -117,7 +117,7 @@ tp = cp.tp;
 
 % Initialize vectors
 cs0 = 0.01;
-phieqc0 = calc_phieqc(cs0,cs0,ac,bc,cc);
+phieqc0 = calc_phieqc(cs0,cs0,ac,bc,cc,1);
 cpcs0 = zeros(2*len + asteps + 2*csteps,1);       % Empty vector
 cpcs0(1:len) = ones(len,1);
 cpcs0(len+1:2*len) = -phieqc0.*ones(len,1);
@@ -205,8 +205,8 @@ iocat2 = calcexcurrc(ccs2tmp,ccs1tmp,cpcs(asteps+ss+1:len),ioc,ac,bc,cc);
 
 % Get our overpotentials
 etaa = (phima - cpcs(len+1:len+asteps)) - calc_phieqa(acstmp,aa);
-etac1 = (0 - cpcs(len+asteps+ss+1:2*len)) - calc_phieqc(ccs1tmp,ccs2tmp,ac,bc,cc);
-etac2 = (0 - cpcs(len+asteps+ss+1:2*len)) - calc_phieqc(ccs2tmp,ccs1tmp,ac,bc,cc);
+etac1 = (0 - cpcs(len+asteps+ss+1:2*len)) - calc_phieqc(ccs1tmp,ccs2tmp,ac,bc,cc,cpcs(asteps+ss+1:len));
+etac2 = (0 - cpcs(len+asteps+ss+1:2*len)) - calc_phieqc(ccs2tmp,ccs1tmp,ac,bc,cc,cpcs(asteps+ss+1:len));
 
 % Calculate the reaction rates
 val(2*len+1:2*len+asteps) = ioan.*sinh(etaa/2);
@@ -241,11 +241,12 @@ phieqa = zeros(sz,1);
 
 return;
 
-function phieqc = calc_phieqc(cs1,cs2,ac,bc,cc)
+function phieqc = calc_phieqc(cs1,cs2,ac,bc,cc,celec)
 
 % Returns equilibrium potential for cathode material
 % Use regular solution model for potential
-phieqc = -log(cs1./(1-cs1)) - ac.*(1-2.*cs1) - bc.*cs2 - cc.*cs2.*(1-cs2).*(1-2.*cs1);
+phieqc = -log(cs1./(1-cs1)) - ac.*(1-2.*cs1) - bc.*cs2 - ...
+            cc.*cs2.*(1-cs2).*(1-2.*cs1) + log(celec);
 
 return;
 

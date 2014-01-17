@@ -1,4 +1,5 @@
-function [t,cpcs,cmat,csmat,ffvec,vvec,disc,param,szs] = pm_2dvarsizecc_rev3(dim_crate,param,useparam,cpcs0,FFend)
+function [t,cpcs,cmat,csmat,ffvec,vvec,disc] = ...
+                pm_2dvarsizecc_rev1(io,currset,szs,cpcs0,FFend,Rcont,cp,xs,ys,tsteps)
 
 % This script can simulate any direction (charge/discharge) and accepts a
 % given starting point and ending filling fraction
@@ -17,85 +18,57 @@ function [t,cpcs,cmat,csmat,ffvec,vvec,disc,param,szs] = pm_2dvarsizecc_rev3(dim
 %   matrix before gradient/divergence operations, then converted back to a
 %   vector before passing to the ODE solver
 
+% TO DO:
+%   Add porosity effects in conductivity and diffusivity
+%   Variable diffusivities (CST)  (rev2?)
+
 % CONSTANTS
 k = 1.381e-23;
 e = 1.602e-19;
 T = 298;
-Na = 6.02e23;
-F = Na*e;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SET DIMENSIONAL VALUES HERE
+% CELL DIMENSIONS/LOADING
+poros = cp.poros;       % Porosity
+c0 = cp.c0;             % mol/L - initial concentration of electrolyte
+Lp = cp.Lp;             % Loading percent (vol. fraction active material)
 
-% Discharge settings
-% dim_crate = 0.1;                  % C-rate (electrode capacity per hour)
-dim_io = 0.01;                      % Exchange current density, A/m^2 (0.1 for H2/Pt)
-Vinit = 3.5;                        % Initial voltage, (V)
+% ELECTROLYTE PROPERTIES
+zp = cp.zp;
+zm = cp.zm;
+Dp = cp.Dp;
+Dm = cp.Dm;
+Damb = cp.Damb;
+nDp = Dp/Damb;
+nDm = Dm/Damb;
+tp = cp.tp;
 
-% Electrode properties
-Lx = 50e-6;                         % electrode thickness, m
-Lp = 0.69;                          % Volume loading percent active material
-poros = 0.3;                        % Porosity
-c0init = 1200;                          % Initial electrolyte conc., mol/m^3
-zp = 1;                             % Cation charge number
-zm = 1;                             % Anion charge number
-Dp = 2.2e-10;                       % Cation diff, m^2/s, LiPF6 in EC/DMC
-Dm = 2.94e-10;                      % Anion diff, m^2/s, LiPF6 in EC/DMC
-Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm);   % Ambipolar diffusivity
-tp = zp*Dp / (zp*Dp + zm*Dm);       % Cation transference number
-
-% Particle size distribution
-avg = 160e-9;                      % Average particle size, m
-stddev = 30e-9;                    % Standard deviation, m
-
-% Discretization settings
-sf = 0.5;      % Length of separator as fraction of cathode
-xs = 20;
-ys = 10;
-ss = sf*xs;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% DO NOT EDIT BELOW THIS LINE
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Material properties
-rhos = 1.3793e28;                   % site density, 1/m^3
-csmax = rhos/Na;                    % maximum concentration, mol/m^3
-
-% Generate our particle sizes from a normal distribution with a mean and
-% std deviation of size
-szs = abs(avg + stddev*randn(xs*ys,1));
-ap = 3.475./(reshape(szs,xs*ys,1));
-
-% Non-dimensional discharge settings
-td = Lx^2 / Damb;       % Diffusive time
-nDp = Dp / Damb;
-nDm = Dm / Damb;
-currset = dim_crate * (td/3600);
-io = (ap .* dim_io .* td) ./ (F .* csmax);
+% CALCULATE NON-DIMENSIONAL CURRENT FROM C-RATE
+% td = L^2/Damb;
+% onec = td/3600;
+% currset = onec*crate;
 
 % MATERIAL PROPERTIES 
-Vo = 3.422;
-ndVinit = (Vinit - Vo)*(e/(k*T));
-
-% Convert sizes to nm units for rest of simulation
-szs = szs/1e-9;
+a0 = 4.51;              % reference regular soln parameter - ONLY FOR INITIAL VALUE CALCULATION
+csmax = cp.csmax;           % mol/L - maximum solid concentration
+Vo = cp.Vo;
 
 % MESH DIMENSIONS
-
+sf = 0.5;      % Length of separator as fraction of cathode
+% xs = 20;
+% ys = 10;
+ss = sf*xs;
 tinit = 0;
 if currset ~= 0
     tfinal = 1/abs(currset);
 else
     tfinal = 1000;
 end
-tsteps = 200;
 tr = linspace(tinit,tfinal,tsteps);
 sl = ss*ys;
 el = xs*ys;
 
 % NON-DIMENSIONAL QUANTITIES
-beta = ((1-poros)*Lp*csmax) / (poros*c0init);
+beta = ((Lp*(1-poros)))*(csmax/c0);
 betamat = beta*ones(ys,xs);
 
 % GET OUR MASS MATRIX
@@ -108,7 +81,8 @@ xfmat = ones(ys,xs+ss+1);
 yfmat = ones(ys+1,xs+ss);
 % First Dx
 Dxmat = xfmat;
-Dxmat(:,ss+1:end) = poros^1.5;
+Dxmat(:,ss+1) = (1+poros^1.5)/2;
+Dxmat(:,ss+2:end) = poros^1.5;
 % Now Dy
 Dymat = yfmat;
 Dymat(:,ss+1:end) = poros^1.5;
@@ -121,39 +95,37 @@ options = odeset('MASS',M,'MassSingular','yes','MStateDependence','none','Events
 %options = odeset('MASS',M,'Jacobian',@calcJ,'MassSingular','yes','MStateDependence','none','RelTol',1e-7);
 
 % INITIALIZE VECTORS
-c0 = c0init / 1000;
-% These are guesses for the solver
+c0 = 1;
 if (currset>0)
     cs0 = .01;      % Start empty for discharge
 else
     cs0 = .99;      % Start full for charging
 end
 
-% Now we generate a vector of regular solution parameters
-if ~useparam
-    param = size2regsoln(szs);
-end
+
+% Use our passed size vector
+param = size2regsoln(szs);
 parammat = reshape(param,ys,xs);
+iomat = reshape(io,ys,xs);
 % Now we generate initial concentrations based on these regular solution
 % parameters and our initial concentration (assumed)
-
-cs0vec = calcinitcs(param,cs0,ndVinit);
+cs0vec = calcinitcs(param,cs0,a0);
 
 % If we have one constant supplied for our initial condition, let the
 % script generate an initial condition
 if max(size(cpcs0)) == 1
     cpcs0 = zeros(2*sl+3*el+1,1);
     cpcs0(1:sl+el) = c0;
-    cpcs0(sl+el+1:2*(sl+el)) = -ndVinit;
+    cpcs0(sl+el+1:2*(sl+el)) = -calc_phieq(cs0,a0);
     cpcs0(2*(sl+el)+1:2*sl+3*el) = cs0vec;
-    cpcs0(end) = -ndVinit; 
+    cpcs0(end) = -calc_phieq(cs0,a0);
 end
 
-tic     % Start timer
-disp('Solving ODE...')
+% tic     % Start timer
+% disp('Solving ODE...')
 [t,cpcs] = ode15s(@petsolver,tr,cpcs0,options,ss,xs,ys,zp,zm,nDp,nDm, ...
-                        parammat,io,currset,betamat,tp,sl,el,porosmats,tr,FFend);
-toc     % End timer
+                        parammat,iomat,currset,betamat,tp,sl,el,porosmats,tr,FFend);
+% toc     % End timer
 
 tlen = max(size(t));
 % PREPARE DATA FOR OUTPUT
@@ -161,15 +133,18 @@ tlen = max(size(t));
 cmat = zeros(tlen,ys,xs+ss);
 csmat = zeros(tlen,ys,xs);
 ffvec = zeros(tlen,1);
+vvec = zeros(tlen,1);
 for i=1:tlen
     cmat(i,:,:) = real(reshape(cpcs(i,1:sl+el),ys,xs+ss));
     csmat(i,:,:) = real(reshape(cpcs(i,2*(sl+el)+1:2*sl+3*el),ys,xs));
     ffvec(i) = real(sum(cpcs(i,2*(sl+el)+1:2*sl+3*el))/(xs*ys));
 end
 vvec = -(real(cpcs(:,end)))*(k*T/e);
-vvec = vvec + Vo;
+vvec = vvec + Vo - currset * Rcont;
+% vvec = vvec + Vo;
 
 disc = struct('xs',xs,'ys',ys,'ss',ss,'sf',sf);
+bm = betamat;
 
 return;
 
@@ -199,6 +174,7 @@ dy = 1/ys;
 cvec =  cpcs(1:sl+el);
 phivec = cpcs(sl+el+1:2*(sl+el));
 csvec = cpcs(2*(sl+el)+1:2*sl+3*el);
+c0 = cpcs(end-1);
 phi0 = cpcs(end);
 
 % SOLID REACTION RATE
@@ -207,13 +183,12 @@ celecvec = cpcs(sl+1:sl+el);
 celecmat = reshape(celecvec,ys,xs);
 phielecvec = cpcs(sl+el+sl+1:2*(sl+el));
 phielecmat = reshape(phielecvec,ys,xs);
-iomat = reshape(io,ys,xs);
 % Get our solid concentration matrix
 csmat = reshape(csvec,ys,xs);
 deltaphi = 0-phielecmat;
 deltaphieq = calc_phieq(csmat,parammat);
 eta = deltaphi-deltaphieq;
-dcsdtmat = calc_R(iomat,parammat,celecmat,csmat,eta);
+dcsdtmat = calc_R(io,parammat,celecmat,csmat,eta);
 % Reshape and insert into output
 dcsdtvec = reshape(dcsdtmat,el,1);
 val(2*(sl+el)+1:2*sl+3*el) = dcsdtvec;
@@ -279,7 +254,11 @@ function R = calc_R(io,parammat,cmat,csmat,eta)
 
 % This function calculates the reaction rate of the particles based on the
 % overpotential.  A transfer coefficient of 0.5 is assumed
-ecd = -2.*io.*sqrt(cmat.*csmat.*(1./csmat)).*exp((parammat/2).*(1-2.*csmat));
+
+% ERROR FROM PREVIOUS MODEL, CORRECTED 20130524
+% ecd = -2.*io.*sqrt(cmat.*csmat.*(1./csmat)).*exp((parammat/2).*(1-2.*csmat));
+
+ecd = -2.*io.*sqrt(cmat.*csmat.*(1-csmat)).*exp((parammat/2).*(1-2.*csmat));
 R = ecd.*sinh(eta);
 
 return;
@@ -316,20 +295,23 @@ return;
 function param = size2regsoln(sz)
 
 % This function returns the regular solution parameter for a given particle
-% size.  The particles are assumed to be spherical, from which an
+% size (C3 particle, measured in nm in the 100 direction).
+% The particles are assumed to be spherical, from which an
 % Area:Volume ratio is calculated and then used to produce a regular
 % solution model parameter.
 
 % Parameters from polynomial curve fit
-p1 = -54.17;
-p2 = -1.532;
-p3 = -5.68;
-p4 = 3.459;
+p1 = -1.168e4;
+p2 = 2985;
+p3 = -208.3;
+p4 = -8.491;
+p5 = -10.25;
+p6 = 4.516;
 
-% f(x) = p1*x^3 + p2*x^2 + p3*x + p4
+% f(x) = p1*x^5 + p2*x^4 + p3*x^3 + p4*x^2 + p5^x + p6
  
-AV = 3.475./sz;     % A:V = (4 pi r^2 / (4/3) pi r ^3)
-param = p1.*AV.^3 + p2.*AV.^2 + p3.*AV + p4;
+AV = 3.6338./sz;     % From Dan's paper with particle sizes
+param = p1.*AV.^5 + p2.*AV.^4 + p3.*AV.^3 + p4.*AV.^2 + p5.*AV + p6;
 
 len = max(size(param));
 for i=1:len
@@ -340,7 +322,7 @@ end
 
 return;
 
-function val = calcinitcs(paramvec,cs0,ndVinit)
+function val = calcinitcs(paramvec,cs0,a0)
 
 % This function returns a vector of particle concentrations for various
 % particles with different regular solution parameters based on an assumed
@@ -348,12 +330,12 @@ function val = calcinitcs(paramvec,cs0,ndVinit)
 
 % This script facilitates the initial condition of the DAE solver
 % Assume 4.5kT for large particles
-
+phi0 = calc_phieq(cs0,a0);
 len = max(size(paramvec));
 csinit = cs0*ones(len,1);
 
 opt = optimset('Display','off');
-val = fsolve(@calcerr,csinit,opt,paramvec,ndVinit);
+val = fsolve(@calcerr,csinit,opt,paramvec,phi0);
 
 
 return;
@@ -364,9 +346,9 @@ mu = -log(cs./(1-cs))-params.*(1-2.*cs);
 
 return;
 
-function err = calcerr(csvec,paramvec,ndVinit)
+function err = calcerr(csvec,paramvec,phi0)
 
-err =   ndVinit - calcmu(csvec,paramvec);
+err = calcmu(csvec,paramvec) - phi0;
 
 return;
 
@@ -377,7 +359,8 @@ value = 0;
 isterminal = 0;
 direction = 0;
 tfinal = tr(end);
-perc = (t/tfinal) * 100;
+tsteps = max(size(tr));
+perc = ((t/tsteps) / (tfinal/tsteps)) * 100;
 dvec = [num2str(perc),' percent completed'];
 disp(dvec)                       
 

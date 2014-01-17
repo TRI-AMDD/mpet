@@ -10,82 +10,86 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
-def show_data(infile, plot_type, save_flag):
+import mpet_params_IO
+
+def show_data(indir, plot_type, save_flag):
     pfx = 'mpet.'
     ttl_fmt = "% = {perc:2.1f}"
-    data = sio.loadmat(infile)
+    # Read in the simulation results and calcuations data
+    dataFileName = "output_data.mat"
+    dataFile = os.path.join(indir, dataFileName)
+    data = sio.loadmat(dataFile)
+    # Read in the parameters used to define the simulation
+    paramFileName = "output_params.cfg"
+    paramFile = os.path.join(indir, paramFileName)
+    IO = mpet_params_IO.mpetIO()
+    D, P = IO.readConfig(paramFile)
     # Pick out some useful parameters
-    Vstd = data[pfx + 'Vstd'][0][0]  # Standard potential, V
-    k = data[pfx + 'k'][0][0]        # Boltzmann constant
-    Tref = data[pfx + 'Tref'][0][0]     # Temp, K
-    e = data[pfx + 'e'][0][0]        # Charge of proton, C
+    Vstd_c = D['Vstd_c']            # Standard potential of cathode, V
+    k = D['k']                      # Boltzmann constant, J/(K Li)
+    Tref = D['Tref']                # Temp, K
+    e = D['e']                      # Charge of proton, C
     td = data[pfx + 'td'][0][0]     # diffusive time
     # Discretization info
-    Ntrode = int(data[pfx + 'NumTrode'][0][0])
+    Ntrode = D['Ntrode']
+    numpart = D['numpart']
     Nsep = int(data[pfx + 'NumSep'][0][0])
-    numpart = int(data[pfx + 'NumPart'][0][0])
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
     # Simulation type
-    sim_ACR = data[pfx + "type_ACR"][0][0]
-    sim_homog = data[pfx + "type_homog"][0][0]
-    shape_sphere = data[pfx + "shape_sphere"][0][0]
-    shape_C3 = data[pfx + "shape_C3"][0][0]
+    solidType = D['solidType']
+    solidShape = D['solidShape']
+    rxnType_c = D['rxnType_c']
 
     # Print relevant simulation info
-    if sim_ACR:
-        print "Type: ACR"
-    elif sim_homog:
-        print "Type: homog"
-    else:
-        print "Type: ?"
-    if shape_sphere:
-        print "Shape: sphere"
-    elif shape_C3:
-        print "Shape: C3"
-    else:
-        print "Shape: ?"
-    print "C_rate:", data[pfx + "C_rate"][0][0]
-    print "psd_mean [nm]:", data[pfx + "psd_mean"][0][0]*1e9
-    print "psd_stddev [nm]:", data[pfx + "psd_stddev"][0][0]*1e9
+    print "solidType:", solidType
+    print "solidShape", solidShape
+    print "rxnType_c:", rxnType_c
+    print "C_rate:", D['dim_crate']
+    print "Specified psd_mean [nm]:", D['mean']*1e9
+    print "Specified psd_stddev [nm]:", D['stddev']*1e9
+    psd_len = data[pfx + "psd_lengths"][0].transpose()*1e9
+#    print psd_len
+    print "Actual psd_mean [nm]:", np.mean(psd_len)
+    print "Actual psd_stddev [nm]:", np.std(psd_len)
     print "Nsep:", Nsep
     print "Ntrode:", Ntrode
     print "Npart:", numpart
-    print "dim_Dp [m^2/s]:", data[pfx + "dim_Dp"][0][0]
-    print "dim_Dm [m^2/s]:", data[pfx + "dim_Dm"][0][0]
+    print "dim_Dp [m^2/s]:", D['dim_Dp']
+    print "dim_Dm [m^2/s]:", D['dim_Dm']
     print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
-    print "alpha:", data[pfx + "alpha"][0][0]
-    print "dim_k0 [A/m^2]:", data[pfx + "dim_k0"][0][0]
-    mcond_bool = data[pfx + "cath_bulk_cond"][0][0]
-    if mcond_bool:
+    if rxnType_c == "BV":
+        print "alpha:", D['alpha']
+    elif rxnType_c == "Marcus":
+#        print "dimensional lambda:", D['dim_lambda_c']
+        print "lambda/(kTref):", data[pfx + "lambda_c"][0][0]
+    print "dim_k0 [A/m^2]:", D['dim_k0']
+    if D['simBulkCathCond']:
         print ("cathode bulk conductivity loss: Yes -- " +
-                "dim_mcond [S/m]: " +
-                str(data[pfx + "dim_mcond"][0][0]))
+                "dim_mcond [S/m]: " + str(D['dim_mcond']))
     else:
         print "cathode bulk conductivity loss: No"
-    scond_bool = data[pfx + "cath_surf_cond"][0][0]
-    if scond_bool:
+    if D['simSurfCathCond']:
         print ("cathode surface conductivity loss: Yes -- " +
-                "dim_scond [S]: " +
-                str(data[pfx + "dim_scond"][0][0]))
+                "dim_scond [S]: " + str(D['dim_scond']))
     else:
         print "cathode surface conductivity loss: No"
 
     # Plot voltage profile
     if plot_type == "v":
         fig, ax = plt.subplots()
-        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+        voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
-        ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+        ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
-        ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
+        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
         plt.show()
@@ -108,64 +112,30 @@ def show_data(infile, plot_type, save_flag):
         plt.show()
         return
 
-    # Plot electrolyte concentration
-    elif plot_type == "elytec":
+    # Plot electrolyte concentration or potential
+    elif plot_type == "elytec" or plot_type == "elytep":
         matplotlib.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
-        ymin = 0
-        ymax = 1.5
+        if plot_type == "elytec":
+            ymin = 0
+            ymax = 1.5
+            ax.set_ylabel('Concentration of electrolyte [nondim]')
+            sep = pfx + 'c_lyte_sep'
+            trode = pfx + 'c_lyte_trode'
+        elif plot_type == "elytep":
+            ymin = -5
+            ymax = 5
+            ax.set_ylabel('Potential of electrolyte [nondim]')
+            sep = pfx + 'phi_lyte_sep'
+            trode = pfx + 'phi_lyte_trode'
         ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Concentration of electrolyte [nondim]')
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        sep = pfx + 'c_lyte_sep'
-        trode = pfx + 'c_lyte_trode'
         datay_sep = data[sep][0]
         datay_trode = data[trode][0]
-        Lsep = data[pfx + 'Lsep'][0] * 1e6
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
-        datay = np.hstack((datay_sep, datay_trode))
-        numy = len(datay)
-        xmin = 0
-        xmax = Lsep + Ltrode
-        datax = np.linspace(xmin, xmax, numy)
-        ax.set_ylim((ymin, ymax))
-        ax.set_xlim((xmin, xmax))
-        # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay)
-        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
-        def init():
-            line1.set_ydata(np.ma.array(datax, mask=True))
-            ttl.set_text('')
-            return line1, ttl
-        def animate(tind):
-            datay_sep = data[sep][tind]
-            datay_trode = data[trode][tind]
-            datay = np.hstack((datay_sep, datay_trode))
-            line1.set_ydata(datay)
-            t_current = times[tind]
-            tfrac = (t_current - tmin)/(tmax - tmin) * 100
-            ttl.set_text(ttl_fmt.format(perc=tfrac))
-            return line1, ttl
-
-    # Plot electrolyte electrostatic potential
-    elif plot_type == "elytep":
-        matplotlib.animation.Animation._blit_draw = _blit_draw
-        fig, ax = plt.subplots()
-        ymin = -5
-        ymax = 5
-        ax.set_xlabel('Battery Position [um]')
-        ax.set_ylabel('Potential of electrolyte [nondim]')
-        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
-                transform = ax.transAxes, verticalalignment="center",
-                horizontalalignment="center")
-        sep = pfx + 'phi_lyte_sep'
-        trode = pfx + 'phi_lyte_trode'
-        datay_sep = data[sep][0]
-        datay_trode = data[trode][0]
-        Lsep = data[pfx + 'Lsep'][0] * 1e6
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
+        Lsep = D['Lsep'] * 1e6
+        Ltrode = D['Ltrode'] * 1e6
         datay = np.hstack((datay_sep, datay_trode))
         numy = len(datay)
         xmin = 0
@@ -199,7 +169,7 @@ def show_data(infile, plot_type, save_flag):
         lines = np.empty((numpart, Ntrode), dtype=object)
         if plot_type == "csld":
             str_base = "mpet.solid_c_vol{j}_part{i}"
-            ylim = (0, 1)
+            ylim = (0, 1.01)
         else: # plot_type == "phisld"
             str_base = "mpet.solid_p_vol{j}_part{i}"
             ylim = (-10, 20)
@@ -266,7 +236,6 @@ def show_data(infile, plot_type, save_flag):
         # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
-        psd_len = data[pfx + 'psd_lengths'][0]
         len_max = np.max(psd_len)
         len_min = np.min(psd_len)
         size_frac_min = 0.10
@@ -344,7 +313,7 @@ def show_data(infile, plot_type, save_flag):
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
         cathp = pfx + 'phi_cath'
-        Ltrode = data[pfx + 'Ltrode'][0] * 1e6
+        Ltrode = D['Ltrode'] * 1e6
         datay = data[cathp][0]
         numy = len(datay)
         xmin = 0
@@ -368,7 +337,8 @@ def show_data(infile, plot_type, save_flag):
 
     else:
         raise Exception("Unexpected plot type argument. " +
-                "Try 'v', 'elytec', 'elytep', 'cbar', 'csld', " +
+                "Try 'v', 'curr', 'elytec', 'elytep', " +
+                "'cbar', 'csld', 'phisld', " +
                 "'cathp'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
@@ -407,9 +377,9 @@ def _blit_draw(self, artists, bg_cache):
 if __name__ == "__main__":
     # Get input file from script parameters
     if len(sys.argv) < 2:
-        raise Exception("Need input data file name")
-    infile = sys.argv[1]
-    if not os.path.isfile(os.path.join(os.getcwd(), infile)):
+        raise Exception("Need input data directory name")
+    indir = sys.argv[1]
+    if not os.path.exists(os.path.join(os.getcwd(), indir)):
         raise Exception("Input file doesn't exist")
     # Get plot type from script parameters
     if len(sys.argv) > 2:
@@ -422,4 +392,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
-    show_data(infile, plot_type, save_flag)
+    show_data(indir, plot_type, save_flag)
