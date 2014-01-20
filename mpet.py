@@ -134,6 +134,8 @@ class modMPET(daeModel):
                 "Diffusive time [s]")
         self.dim_Damb = daeParameter("dim_Damb", unit(), self,
                 "ambipolar diffusivity [m^2/s]")
+        self.csmax = daeParameter("csmax", unit(), self,
+                "maximum lithium concentration in solid [mol/m^3]")
         self.Dp = daeParameter("Dp", unit(), self,
                 "non-dimensional diffusivity of positive ions")
         self.Dm = daeParameter("Dm", unit(), self,
@@ -445,7 +447,7 @@ class modMPET(daeModel):
             ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
                     c_lyte**((3-2*alpha)/4.) *
                     c_sld**((1+2*alpha)/4.) )
-            Rate = ( ecd * np.exp(-eta**2/(4*T*lmbda)) *
+            Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
                 (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         elif rxnType == "BV":
             # XXX 2-electrode
@@ -538,11 +540,14 @@ class simMPET(daeSimulation):
 #        # Normally distributed
 #        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
         # Log-normally distributed
-        var = stddev**2
-        mu = np.log((mean**2)/np.sqrt(var+mean**2))
-        sigma = np.sqrt(np.log(var/(mean**2)+1))
-        psd_raw = np.random.lognormal(mu, sigma,
-                size=(Ntrode, numpart))
+        if stddev == 0:
+            psd_raw = mean*np.ones((Ntrode, numpart))
+        else:
+            var = stddev**2
+            mu = np.log((mean**2)/np.sqrt(var+mean**2))
+            sigma = np.sqrt(np.log(var/(mean**2)+1))
+            psd_raw = np.random.lognormal(mu, sigma,
+                    size=(Ntrode, numpart))
         # For ACR particles, convert psd to integers -- number of steps
         if solidType == "ACR":
             solid_disc = D['solid_disc']
@@ -623,6 +628,7 @@ class simMPET(daeSimulation):
         self.m.zp.SetValue(zp)
         self.m.zm.SetValue(zm)
         self.m.tp.SetValue(tp)
+        self.m.csmax.SetValue(csmax)
         self.m.dim_Damb.SetValue(Damb)
         self.m.Dp.SetValue(dim_Dp / Damb)
         self.m.Dm.SetValue(dim_Dm / Damb)
@@ -843,7 +849,7 @@ def consoleRun(D):
     zm = D['zm']
     Damb = ((zp+zm)*dim_Dp*dim_Dm)/(zp*dim_Dp+zm*dim_Dm)
     td = D['Ltrode']**2 / Damb
-    currset = D['dim_crate'] * td/3600
+    currset = D['dim_crate'] * td/3600.
     simulation.TimeHorizon = abs((D['ffend']-D['cs0'])/currset)
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
 
@@ -854,6 +860,9 @@ def consoleRun(D):
 
     # Initialize the simulation
     simulation.Initialize(daesolver, datareporter, log)
+
+#    # Save model report
+#    simulation.m.SaveModelReport(simulation.m.Name + ".xml")
 
     # Solve at time=0 (initialization)
     simulation.SolveInitial()
