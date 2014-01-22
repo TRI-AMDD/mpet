@@ -51,8 +51,8 @@ def show_data(indir, plot_type, save_flag):
     print "C_rate:", D['dim_crate']
     print "Specified psd_mean [nm]:", D['mean']*1e9
     print "Specified psd_stddev [nm]:", D['stddev']*1e9
-    psd_len = data[pfx + "psd_lengths"][0].transpose()*1e9
-#    print psd_len
+    psd_len = data[pfx + "psd_lengths"][0]*1e9
+#    print psd_len.transpose()
     print "Actual psd_mean [nm]:", np.mean(psd_len)
     print "Actual psd_stddev [nm]:", np.std(psd_len)
     print "Nsep:", Nsep
@@ -168,15 +168,15 @@ def show_data(indir, plot_type, save_flag):
         lens = np.zeros((numpart, Ntrode))
         lines = np.empty((numpart, Ntrode), dtype=object)
         if plot_type == "csld":
-            str_base = "mpet.solid_c_vol{j}_part{i}"
+            str_base = pfx + "solid_c_vol{j}_part{i}"
             ylim = (0, 1.01)
         else: # plot_type == "phisld"
-            str_base = "mpet.solid_p_vol{j}_part{i}"
+            str_base = pfx + "solid_p_vol{j}_part{i}"
             ylim = (-10, 20)
         for i in range(numpart):
             for j in range(Ntrode):
                 sol[i, j] = str_base.format(i=i, j=j)
-                lens[i, j] = data["mpet.psd_lengths"][0][j, i]
+                lens[i, j] = psd_len[j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
 #                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
