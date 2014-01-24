@@ -667,7 +667,7 @@ class simMPET(daeSimulation):
                 self.m.scond.SetValue(i, j,
                         D['dim_scond'] * (k*Tref)/(D['dim_k0']*e*p_len**2))
                 if solidType == "homog" or solidType == "ACR":
-                    self.m.a.SetValue(i, j, D['dim_a']/(k*Tref))
+                    self.m.a.SetValue(i, j, D['Omega_a']/(k*Tref))
                 elif solidType == "homog_sdn":
                     # Not sure about factor of nondimensional T. Thus,
                     # only use this when T = 1, Tabs = Tref = 298
@@ -842,7 +842,6 @@ def consoleRun(D):
     # Set the time horizon and the reporting interval
     # We need to get info about the system to figure out the
     # simulation time horizon
-    Ltrode = P.getfloat('Geometry', 'Ltrode')
     dim_Dp = D['dim_Dp']
     dim_Dm = D['dim_Dm']
     zp = D['zp']
