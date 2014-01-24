@@ -30,7 +30,6 @@ class mpetIO():
         # Geometry
         D["Ltrode"] = P.getfloat('Geometry', 'Ltrode')
         D["Lsep"] = P.getfloat('Geometry', 'Lsep')
-        D["Asep"] = P.getfloat('Geometry', 'Asep')
         D["Lp"] = P.getfloat('Geometry', 'Lp')
         D["poros"] = P.getfloat('Geometry', 'poros')
 

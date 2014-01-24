@@ -440,23 +440,9 @@ class modMPET(daeModel):
         # k0 is based on the _active_ area per volume for the region
         # of the solid of interest.
         if rxnType == "Marcus":
-            # XXX 2-electrode
-            lmbda = self.lambda_c()
-            alpha = 0.5*(1 + (self.T()/lmbda) * np.log(c_lyte/c_sld))
-            # We'll assume c_e = 1 (at the standard state for electrons)
-            ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
-                    c_lyte**((3-2*alpha)/4.) *
-                    c_sld**((1+2*alpha)/4.) )
-            Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
-                (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+            Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
         elif rxnType == "BV":
-            # XXX 2-electrode
-            alpha = self.alpha()
-            gamma_ts = (1./(1-c_sld))
-            ecd = ( k0 * act_O**(1-alpha)
-                    * act_R**(alpha) / gamma_ts )
-            Rate = ( ecd *
-                (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+            Rate = self.R_BV(k0, c_sld, act_O, act_R, eta, T)
         return Rate
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
@@ -524,6 +510,25 @@ class modMPET(daeModel):
         return np.array([ a*(1-2*c[i])
                 + self.T()*Log(c[i]/(1-c[i]))
                 for i in range(len(c)) ])
+
+    def R_BV(self, k0, c_sld, act_O, act_R, eta, T):
+        alpha = self.alpha()
+        gamma_ts = (1./(1-c_sld))
+        ecd = ( k0 * act_O**(1-alpha)
+                * act_R**(alpha) / gamma_ts )
+        Rate = ( ecd *
+            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        return Rate
+
+    def R_Marcus(self, k0, lmbda, c_lyte, c_sld, eta, T):
+        alpha = 0.5*(1 + (T/lmbda) * np.log(c_lyte/c_sld))
+        # We'll assume c_e = 1 (at the standard state for electrons)
+        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
+                c_lyte**((3-2*alpha)/4.) *
+                c_sld**((1+2*alpha)/4.) )
+        Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
+            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        return Rate
 
 class simMPET(daeSimulation):
     def __init__(self, D=None):
