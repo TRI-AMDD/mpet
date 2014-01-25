@@ -5,7 +5,7 @@ import sys
 import os
 import errno
 import ConfigParser
-from time import localtime, strftime
+import time
 
 import numpy as np
 import scipy.sparse as sprs
@@ -140,6 +140,9 @@ class modMPET(daeModel):
                 "non-dimensional diffusivity of positive ions")
         self.Dm = daeParameter("Dm", unit(), self,
                 "non-dimensional diffusivity of negative ions")
+        self.Dsld_c = daeParameter("Dsld_c", unit(), self,
+                "Diffusivity in cathode solid particles",
+                [self.Ntrode, self.numpart])
         self.alpha = daeParameter("alpha", unit(), self,
                 " Charge transfer coefficient")
         self.T = daeParameter("T", unit(), self,
@@ -264,13 +267,17 @@ class modMPET(daeModel):
             for j in range(numpart):
                 # Prepare the RHS function
                 Nij = Nsld_mat[i, j]
-                RHS_c_sld_ij = self.calc_sld_dcs_dt(i, j)
+                (Mmat, RHS_c_sld_ij) = self.calc_sld_dcs_dt(i, j)
+                dcdt_vec = np.empty(Nij, dtype=object)
+                dcdt_vec[0:Nij] = [self.c_sld[i, j].dt(k) for k in range(Nij)]
+                LHS_vec = self.MX(Mmat, dcdt_vec)
                 # Set up equations: dcdt = RHS
                 for k in range(Nij):
                     eq = self.CreateEquation(
                             "dcsdt_vol{i}_part{j}_discr{k}".format(
                                 i=i,j=j,k=k))
-                    eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
+#                    eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
+                    eq.Residual = LHS_vec[k] - RHS_c_sld_ij[k]
                     eq.CheckUnitsConsistency = False
 
                 # Also calculate the potential drop along cathode
@@ -388,10 +395,8 @@ class modMPET(daeModel):
         # Get some useful information
         simSurfCathCond = self.D['simSurfCathCond']
         solidType = self.D['solidType']
+        solidShape = self.D['solidShape']
         rxnType = self.D['rxnType_c']
-        if simSurfCathCond and solidType != "ACR":
-            raise Exception("Cannot do surface conductivity " +
-                    "without ACR particles.")
         # shorthand
         i = vol_indx
         j = part_indx
@@ -403,47 +408,89 @@ class modMPET(daeModel):
         k0 = self.k0(i, j)
         kappa = self.kappa(i, j) # only used for ACR
         cbar = self.cbar_sld(i, j) # only used for ACR
+        lmbda = self.lambda_c() # Only used for Marcus
+        alpha = self.alpha() # Only used for BV
         a = self.a(i, j)
+        Ds = self.Dsld_c(i, j) # Only used for "diffn"
+        # We need the (non-dimensional) temperature to get the
+        # reaction rate dependence correct
+        T = self.T()
         # Number of volumes in current particle
         Nij = self.Nsld_mat[i, j].NumberOfPoints
         # Concentration (profile?) in the solid
         c_sld = np.empty(Nij, dtype=object)
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
         # Calculate chemical potential of reduced state
-        if solidType == "ACR":
-            # Make a blank array to allow for boundary conditions
-            cstmp = np.empty(Nij+2, dtype=object)
-            cstmp[1:-1] = c_sld
-            cstmp[0] = self.cwet()
-            cstmp[-1] = self.cwet()
-            dxs = 1./Nij
-            curv = np.diff(cstmp, 2)/(dxs**2)
-            mu_R = ( self.mu_reg_sln(c_sld, a) - kappa*curv
-                    + self.b()*(c_sld - cbar) )
-            # If we're also simulating potential drop along the solid,
-            # use that instead of self.phi_c(i)
-            if simSurfCathCond:
-                phi_m = np.empty(Nij, dtype=object)
-                phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
-        elif solidType == "homog" or solidType == "homog_sdn":
-            mu_R = self.mu_reg_sln(c_sld, a)
-        act_R = np.exp(mu_R)
-        # Assume dilute electrolyte
-        act_O = c_lyte
-        mu_O = np.log(act_O)
-        # eta = electrochem pot_R - electrochem pot_O
-        # eta = (mu_R + phi_R) - (mu_O + phi_O)
-        eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-        # We need the (non-dimensional) temperature to get the
-        # reaction rate dependence correct
-        T = self.T()
-        # k0 is based on the _active_ area per volume for the region
-        # of the solid of interest.
-        if rxnType == "Marcus":
-            Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
-        elif rxnType == "BV":
-            Rate = self.R_BV(k0, c_sld, act_O, act_R, eta, T)
-        return Rate
+        if solidType in ["ACR", "homog", "homog_sdn"]:
+            if solidType == "ACR":
+                # Make a blank array to allow for boundary conditions
+                cstmp = np.empty(Nij+2, dtype=object)
+                cstmp[1:-1] = c_sld
+                cstmp[0] = self.cwet()
+                cstmp[-1] = self.cwet()
+                dxs = 1./Nij
+                curv = np.diff(cstmp, 2)/(dxs**2)
+                mu_R = ( self.mu_reg_sln(c_sld, a) - kappa*curv
+                        + self.b()*(c_sld - cbar) )
+                # If we're also simulating potential drop along the solid,
+                # use that instead of self.phi_c(i)
+                if simSurfCathCond:
+                    phi_m = np.empty(Nij, dtype=object)
+                    phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
+            elif solidType == "homog" or solidType == "homog_sdn":
+                mu_R = self.mu_reg_sln(c_sld, a)
+            act_R = np.exp(mu_R)
+            # Assume dilute electrolyte
+            act_O = c_lyte
+            mu_O = np.log(act_O)
+            # eta = electrochem pot_R - electrochem pot_O
+            # eta = (mu_R + phi_R) - (mu_O + phi_O)
+            eta = (mu_R + phi_m) - (mu_O + phi_lyte)
+            if rxnType == "Marcus":
+                Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
+            elif rxnType == "BV":
+                Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
+            M = sprs.eye(Nij, format="csr")
+            return (M, Rate)
+        elif solidType in ["diffn"] and solidShape == "sphere":
+            # For discretization background, see Zeng & Bazant 2013
+            Rs = 1.
+            dr = Rs/(Nij - 1)
+            r_vec = np.linspace(0, Rs, Nij)
+            vol_vec = r_vec**2 * dr + (1./12)*dr**3
+            vol_vec[0] = (1./24)*dr**3
+            vol_vec[-1] = (1./3)*(Rs**3 - (Rs - dr/2.)**3)
+            M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
+                    shape=(Nij,Nij), format="csr")
+            M1[1, 0] = M1[-2, -1] = 1./4
+            M2 = sprs.diags(vol_vec, 0, format="csr")
+            M = M1*M2
+            RHS = np.empty(Nij, dtype=object)
+            c_diffs = np.diff(c_sld)
+            RHS[1:Nij - 1] = (
+                    Ds*(r_vec[1:Nij - 1] + dr/2)**2*c_diffs[1:]/dr -
+                    Ds*(r_vec[1:Nij - 1] - dr/2)**2*c_diffs[:-1]/dr )
+            RHS[0] = Ds*(dr/2)**2*c_diffs[0]/dr
+            # Figure out reaction rate information, assuming DILUTE
+            # electrolyte AND solid
+            # Take the surface concentration
+            c_surf = c_sld[-1]
+            # Overpotential
+            eta = (phi_m - phi_lyte) - T*np.log(c_lyte/c_surf)
+            if rxnType == "Marcus":
+                Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
+            elif rxnType == "BV":
+                # Assume dilute electrolyte
+                act_O = c_lyte
+                act_R = c_surf
+                Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R, eta, T)
+            RHS[-1] = (Rs**2 * Rxn -
+                    Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
+            return (M, RHS)
+        elif solidType in ["diffn"] and solidShape == "C3":
+            # TODO -- Implement
+            raise
+            return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
         # The lengths are nondimensionalized by the electrode length
@@ -511,8 +558,7 @@ class modMPET(daeModel):
                 + self.T()*Log(c[i]/(1-c[i]))
                 for i in range(len(c)) ])
 
-    def R_BV(self, k0, c_sld, act_O, act_R, eta, T):
-        alpha = self.alpha()
+    def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
         gamma_ts = (1./(1-c_sld))
         ecd = ( k0 * act_O**(1-alpha)
                 * act_R**(alpha) / gamma_ts )
@@ -530,12 +576,32 @@ class modMPET(daeModel):
             (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         return Rate
 
+    def MX(self, mat, objvec):
+        if type(mat) is not sprs.csr.csr_matrix:
+            raise Exception("MX function designed for csr mult")
+        n = objvec.shape[0]
+        if (type(objvec[0]) == pyCore.adouble):
+            out = np.empty(n, dtype=object)
+        else:
+            out = np.zeros(n, dtype=float)
+        # Loop through the rows
+        for i in range(n):
+            low = mat.indptr[i]
+            up = mat.indptr[i+1]
+            if up > low:
+                out[i] = np.sum(
+                        mat.data[low:up] * objvec[mat.indices[low:up]] )
+            else:
+                out[i] = 0.0
+        return out
+
 class simMPET(daeSimulation):
     def __init__(self, D=None):
         daeSimulation.__init__(self)
         if D is None:
             raise Exception("Need parameters input")
         self.D = D
+        self.test_input(D)
         mean = D['mean']
         stddev = D['stddev']
         Ntrode = D['Ntrode']
@@ -553,19 +619,18 @@ class simMPET(daeSimulation):
             sigma = np.sqrt(np.log(var/(mean**2)+1))
             psd_raw = np.random.lognormal(mu, sigma,
                     size=(Ntrode, numpart))
-        # For ACR particles, convert psd to integers -- number of steps
-        if solidType == "ACR":
+        # For particles with internal profiles, convert psd to
+        # integers -- number of steps
+        if solidType in ["ACR", "diffn"]:
             solid_disc = D['solid_disc']
             self.psd_num = np.ceil(psd_raw/solid_disc).astype(np.integer)
             self.psd_len = solid_disc*self.psd_num
         # For homogeneous particles (only one "volume" per particle)
-        elif solidType == "homog" or solidType == "homog_sdn":
+        elif solidType in ["homog", "homog_sdn"]:
             # Each particle is only one volume
             self.psd_num = np.ones(psd_raw.shape).astype(np.integer)
             # The lengths are given by the original length distr.
             self.psd_len = psd_raw
-        else:
-            raise NotImplementedError("Input solidType not defined")
         # General parameters
         self.psd_mean = mean
         self.psd_stddev = stddev
@@ -651,6 +716,8 @@ class simMPET(daeSimulation):
             for j in range(numpart):
                 p_num = float(self.psd_num[i, j])
                 p_len = self.psd_len[i, j]
+                # k0 is based on the _active_ area per volume for the region
+                # of the solid of interest.
                 if solidShape == "sphere":
                     # Spherical particles
                     p_area = (4*np.pi)*p_len**2
@@ -659,8 +726,6 @@ class simMPET(daeSimulation):
                     # C3 particles
                     p_area = 2 * 1.2263 * p_len**2
                     p_vol = 1.2263 * p_len**2 * D['part_thick']
-                else:
-                    raise NotImplementedError("Input solidShape not defined")
                 self.m.psd_num.SetValue(i, j, p_num)
                 self.m.psd_len.SetValue(i, j, p_len)
                 self.m.psd_area.SetValue(i, j, p_area)
@@ -671,7 +736,9 @@ class simMPET(daeSimulation):
                         ((p_area/p_vol)*D['dim_k0']*td)/(F*csmax))
                 self.m.scond.SetValue(i, j,
                         D['dim_scond'] * (k*Tref)/(D['dim_k0']*e*p_len**2))
-                if solidType == "homog" or solidType == "ACR":
+                self.m.Dsld_c.SetValue(i, j,
+                        D['Dsld_c']*(p_area/p_vol)*td/p_len)
+                if solidType in ["homog", "ACR",  "diffn"]:
                     self.m.a.SetValue(i, j, D['Omega_a']/(k*Tref))
                 elif solidType == "homog_sdn":
                     # Not sure about factor of nondimensional T. Thus,
@@ -745,6 +812,24 @@ class simMPET(daeSimulation):
 #        param = [param[i] if param[i] >= 2 else 2 for i in
 #                range(len(param))]
         return param
+
+    def test_input(self, D):
+        solidType = D['solidType']
+        solidShape = D['solidShape']
+        if D['simSurfCathCond'] and solidType != "ACR":
+            raise Exception("simSurfCathCond req. ACR")
+        if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
+            raise Exception("ACR and homog_sdn req. C3 shape")
+        if solidType not in ["ACR", "homog", "homog-sdn", "diffn"]:
+            raise NotImplementedError("Input solidType not defined")
+        if solidShape not in ["C3", "sphere"]:
+            raise NotImplementedError("Input solidShape not defined")
+        if solidType == "homog_sdn" and (D['Tabs'] != 298 or
+                D['Tref'] != 298):
+            raise NotImplementedError("homog_snd req. Tref=Tabs=298")
+        if solidType in ["diffn"] and solidShape != "sphere":
+            raise NotImplementedError("diffn currently req. sphere")
+        return
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
@@ -821,7 +906,8 @@ def setupDataReporters(simulation):
     simulation.dr = MyMATDataReporter()
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
-    simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
+    simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
+            time.localtime())
     matDataName = "output_data.mat"
     matfilename = os.path.join(outdir, matDataName)
     if (simulation.dr.Connect(matfilename, simName) == False):
@@ -858,7 +944,8 @@ def consoleRun(D):
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
 
     # Connect data reporter
-    simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
+    simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
+            time.localtime())
     if(datareporter.Connect("", simName) == False):
         sys.exit()
 
@@ -880,6 +967,7 @@ def consoleRun(D):
     simulation.Finalize()
     
 if __name__ == "__main__":
+    timeStart = time.time()
     default_flag = 0
     default_file = "params_default.cfg"
     if len(sys.argv) < 2:
@@ -908,3 +996,5 @@ if __name__ == "__main__":
     else:
         print "\n\nUsed parameter file ""{fname}""\n\n".format(
                 fname=paramfile)
+    timeEnd = time.time()
+    print "Total time:", (timeEnd - timeStart), "s"
