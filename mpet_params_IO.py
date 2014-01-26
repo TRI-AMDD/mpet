@@ -30,7 +30,6 @@ class mpetIO():
         # Geometry
         D["Ltrode"] = P.getfloat('Geometry', 'Ltrode')
         D["Lsep"] = P.getfloat('Geometry', 'Lsep')
-        D["Asep"] = P.getfloat('Geometry', 'Asep')
         D["Lp"] = P.getfloat('Geometry', 'Lp')
         D["poros"] = P.getfloat('Geometry', 'poros')
 
@@ -42,7 +41,7 @@ class mpetIO():
         D["dim_Dm"] = P.getfloat('Electrolyte Params', 'dim_Dm')
 
         # Cathode Material Properties
-        D["dim_a"] = P.getfloat('Cathode Material Props', 'dim_a')
+        D["Omega_a"] = P.getfloat('Cathode Material Props', 'Omega_a')
         D["dim_kappa"] = P.getfloat('Cathode Material Props', 'dim_kappa')
         D["dim_b"] = P.getfloat('Cathode Material Props', 'dim_b')
         D["rhos"] = P.getfloat('Cathode Material Props', 'rhos')
