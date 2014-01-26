@@ -95,6 +95,25 @@ def show_data(indir, plot_type, save_flag):
         plt.show()
         return
 
+    # Plot surface conc.
+    if plot_type == "surf":
+        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+                sharey=True)
+        str_base = pfx + "solid_c_vol{j}_part{i}"
+        ylim = (0, 1.01)
+        datax = times
+        for i in range(numpart):
+            for j in range(Ntrode):
+                sol_str = str_base.format(i=i, j=j)
+                # Remove axis ticks
+                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                datay = data[sol_str][:,-1]
+#                import delta_phi_fits
+#                fits = delta_phi_fits.DPhiFits()
+#                datay = fits.LiMn2O4(datay, 298)
+                line, = ax[i, j].plot(times, datay)
+        plt.show()
+
     # Plot current profile
     if plot_type == "curr":
         fig, ax = plt.subplots()

@@ -22,6 +22,7 @@ from pyUnits import s
 #from pyUnits import s, kg, m, K, Pa, mol, J, W
 
 import mpet_params_IO
+import delta_phi_fits
 
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
@@ -391,12 +392,23 @@ class modMPET(daeModel):
             eq.Residual = self.phi_applied() - self.Vset()
             eq.CheckUnitsConsistency = False
 
+        self.action = doNothingAction()
+#        self.ON_CONDITION(Time() >= Constant(300*s),
+        self.ON_CONDITION(
+#                Time() >= Constant(100*s) & Abs(self.phi_applied()) >= 60,
+                Abs(self.phi_applied()) >= 20,
+                switchToStates = [],
+                setVariableValues = [],
+                triggerEvents = [],
+                userDefinedActions = [self.action] )
+
     def calc_sld_dcs_dt(self, vol_indx, part_indx):
         # Get some useful information
         simSurfCathCond = self.D['simSurfCathCond']
         solidType = self.D['solidType']
         solidShape = self.D['solidShape']
         rxnType = self.D['rxnType_c']
+        etaFit = self.D['etaFit']
         # shorthand
         i = vol_indx
         j = part_indx
@@ -439,6 +451,7 @@ class modMPET(daeModel):
                     phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
             elif solidType == "homog" or solidType == "homog_sdn":
                 mu_R = self.mu_reg_sln(c_sld, a)
+            # XXX -- Temp dependence!
             act_R = np.exp(mu_R)
             # Assume dilute electrolyte
             act_O = c_lyte
@@ -476,7 +489,14 @@ class modMPET(daeModel):
             # Take the surface concentration
             c_surf = c_sld[-1]
             # Overpotential
-            eta = (phi_m - phi_lyte) - T*np.log(c_lyte/c_surf)
+            delta_phi = phi_m - phi_lyte
+            if etaFit:
+                fits = delta_phi_fits.DPhiFits(self.D)
+                delta_phi_eq = fits.LiMn2O4(c_surf)
+#                delta_phi_eq = T*np.log(c_lyte/c_surf)
+                eta = delta_phi - delta_phi_eq
+            else:
+                eta = delta_phi - T*np.log(c_lyte/c_surf)
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
             elif rxnType == "BV":
@@ -548,6 +568,7 @@ class modMPET(daeModel):
         dx = 1./Nij
         phi_edges = (phi_tmp[0:-1] + phi_tmp[1:])/2.
 #        curr_dens = -self.scond(i, j)*np.diff(phi_tmp, 1)/dx
+        # XXX -- Temp dependence!
         scond_vec = self.scond(i, j)*np.exp(-1*(phi_edges -
                 phi_s_local))
         curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
@@ -831,6 +852,25 @@ class simMPET(daeSimulation):
             raise NotImplementedError("diffn currently req. sphere")
         return
 
+    def Run(self):
+        """
+        Overload the simulation "run" function so that the simulation
+        terminates when the specified condition is satisfied.
+        """
+        while self.CurrentTime < self.TimeHorizon:
+            t_step = self.CurrentTime + self.ReportingInterval
+            if t_step > self.TimeHorizon:
+                t_step = self.TimeHorizon
+
+            self.Log.Message("Integrating from %.2f to %.2fs ..." % (self.CurrentTime, t_step), 0)
+            self.IntegrateUntilTime(t_step, eStopAtModelDiscontinuity)
+            self.ReportData(self.CurrentTime)
+
+            if self.LastSatisfiedCondition:
+                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
+                self.Log.Message('Stopping the simulation...', 0)
+                return
+
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
             noise_data, previous_output, position):
@@ -876,6 +916,12 @@ class noise(daeScalarExternalFunction):
         self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
         self.counter += 1
         return adouble(float(noise_vec[self.position]))
+
+class doNothingAction(daeAction):
+    def __init__(self):
+        daeAction.__init__(self)
+    def Execute(self):
+        pass
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """
@@ -961,8 +1007,12 @@ def consoleRun(D):
     # Run
     try:
         simulation.Run()
+#    except Exception as e:
     except Exception as e:
         print str(e)
+        simulation.ReportData(simulation.CurrentTime)
+    except KeyboardInterrupt:
+        print "\nphi_applied at ctrl-C:", simulation.m.phi_applied.GetValue(), "\n"
         simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
     
