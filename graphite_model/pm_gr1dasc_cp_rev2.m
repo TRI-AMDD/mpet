@@ -19,11 +19,23 @@ function [t,cpcs,clv,plva,plvc,ffvec,vvec,disc] = pm_gr1dasc_cp_rev2(cporos)
 
 tic
 
+% Constants
+k = 1.381e-23;
+T = 298;
+e = 1.602e-19;
+
+% Material properties
+cc = 30;
+ac = 3.4;
+bc = 1.4;
+V0 = 5.3174;
+
 % Discharge settings
 ioa = 1;
 ioc = 1;
 % currset = .001;
-phima = 4.63;
+% phima = 4.63;    % WRONG VOLTAGE
+phima = (e/(k*T))*((V0*k*T/e)-.002);
 
 % Discretization setup
 catlen = 10;
@@ -74,12 +86,6 @@ k = 1.381e-23;
 T = 298;
 e = 1.602e-19;
 
-% Material properties
-cc = 30;
-ac = 3.4;
-bc = 1.4;
-V0 = 5.3174;
-
 % [ac, bc, V0] = calcabc(cc);
 % ac = 3.3955;             % Graphite regular solution parameter
 % bc = 0.7065;             % Graphite interaction parameter
@@ -122,7 +128,7 @@ cpcs0 = zeros(2*len + asteps + 2*csteps,1);       % Empty vector
 cpcs0(1:len) = ones(len,1);
 cpcs0(len+1:2*len) = -phieqc0.*ones(len,1);
 cpcs0(2*len+1:2*len+asteps) = ones(asteps,1);
-cpcs0(2*len+asteps+1:2*len+asteps+2*csteps) = cs0.*ones(2*csteps,1);
+cpcs0(2*len+asteps+1:2*len+asteps+2*csteps) = cs0.*ones(2*csteps,1)+.01*(rand(2*csteps,1)-.5);
 
 % Initialize a porosity vector
 % porvec = ones(len+2,1);
