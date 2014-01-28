@@ -30,6 +30,10 @@ def show_data(indir, plot_type, save_flag):
     Tref = D['Tref']                # Temp, K
     e = D['e']                      # Charge of proton, C
     td = data[pfx + 'td'][0][0]     # diffusive time
+    # Replace the standard potential is a fit voltage curve was used.
+    # Use the value that the simulation used in initialization.
+    if D['etaFit']:
+        Vstd_c = data[pfx + 'dphi_eq_ref'][0]*(k*Tref/e)
     # Discretization info
     Ntrode = D['Ntrode']
     numpart = D['numpart']
@@ -84,12 +88,16 @@ def show_data(indir, plot_type, save_flag):
         voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
-        xmin = np.min(ffvec)
-        xmax = np.max(ffvec)
-        ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+#        xmin = np.min(ffvec)
+#        xmax = np.max(ffvec)
+        xmin = 0.
+        xmax = 1.
+        ax.set_xlim((xmin, xmax))
+        if not D['etaFit']:
+            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
-        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
+#        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
         plt.show()

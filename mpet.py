@@ -153,6 +153,10 @@ class modMPET(daeModel):
         self.Vset = daeParameter("Vset", unit(), self,
                 "dimensionless applied voltage (relative to " +
                 "Delta V OCV of the  cell)")
+        if self.D['etaFit']:
+            self.dphi_eq_ref = daeParameter("dphi_eq_ref", unit(), self,
+                    "dimensionless potential offset in referencing fit " +
+                    "delta_phi_eq curves")
         self.cwet = daeParameter("c_wet", unit(), self,
                 "Wetted surface concentration")
         self.kappa = daeParameter("kappa", unit(), self,
@@ -392,15 +396,15 @@ class modMPET(daeModel):
             eq.Residual = self.phi_applied() - self.Vset()
             eq.CheckUnitsConsistency = False
 
-        self.action = doNothingAction()
-#        self.ON_CONDITION(Time() >= Constant(300*s),
-        self.ON_CONDITION(
-#                Time() >= Constant(100*s) & Abs(self.phi_applied()) >= 60,
-                Abs(self.phi_applied()) >= 20,
-                switchToStates = [],
-                setVariableValues = [],
-                triggerEvents = [],
-                userDefinedActions = [self.action] )
+#        self.action = doNothingAction()
+##        self.ON_CONDITION(Time() >= Constant(300*s),
+#        self.ON_CONDITION(
+##                Time() >= Constant(100*s) & Abs(self.phi_applied()) >= 60,
+#                Abs(self.phi_applied()) >= 20,
+#                switchToStates = [],
+#                setVariableValues = [],
+#                triggerEvents = [],
+#                userDefinedActions = [self.action] )
 
     def calc_sld_dcs_dt(self, vol_indx, part_indx):
         # Get some useful information
@@ -496,11 +500,9 @@ class modMPET(daeModel):
                 material = self.D['material_c']
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
-                delta_phi_eq = phifunc(c_surf)
-#                eta = delta_phi - delta_phi_eq
+                delta_phi_eq = phifunc(c_surf, self.dphi_eq_ref())
             else:
                 delta_phi_eq = T*np.log(c_lyte/c_surf)
-#                eta = delta_phi - T*np.log(c_lyte/c_surf)
             eta = delta_phi - delta_phi_eq
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
@@ -736,6 +738,11 @@ class simMPET(daeSimulation):
         self.m.phi_cathode.SetValue(0.)
         self.m.currset.SetValue(D['dim_crate']*td/3600)
         self.m.Vset.SetValue(D['dim_Vset']*e/(k*Tref))
+        if self.D['etaFit']:
+            material = self.D['material_c']
+            fits = delta_phi_fits.DPhiFits(self.D)
+            phifunc = fits.materialData[material]
+            self.m.dphi_eq_ref.SetValue(phifunc(self.D['cs0'], 0))
         self.m.lambda_c.SetValue(D['dim_lambda_c']/(k*Tref))
         self.m.b.SetValue(D['dim_b']/(k*Tref*D['rhos']))
         for i in range(Ntrode):
