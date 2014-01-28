@@ -5,13 +5,19 @@ class DPhiFits():
         self.D = D
         self.kToe = D['k']*D['Tref']/D['e']
         self.eokT = 1./self.kToe
+        self.materialData = {}
+        self.materialData['LiMn2O4'] = self.LiMn2O4
+        self.materialData['LiC6'] = self.LiC6
 
     def LiMn2O4(self, y):
+#    def LiMn2O4(self, y, del_phi_ref):
         """
         Fit \Delta\phi^{eq} for Li_y Mn_2 O_4 as a function of y.
         This can only return values for Tabs = 298 K
         This function was obtained from
         Doyle, Newman, 1996
+        del_phi_ref is the offset (non-dimensional) potential by which
+        the returned value will be shifted (for numerical convenience)
         """
         if self.D['Tabs'] != 298:
             raise NotImplementedError("Only fit for T = 298 K")
@@ -23,6 +29,7 @@ class DPhiFits():
                 0.157123*np.exp(-0.04738*y**8) +
                 0.810239*np.exp(-40*(y - 0.133875))
                 )
+#                ) - del_phi_ref
         return del_phi_eq
 
     def LiC6(self, y):

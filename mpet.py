@@ -433,6 +433,7 @@ class modMPET(daeModel):
         c_sld = np.empty(Nij, dtype=object)
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
         # Calculate chemical potential of reduced state
+
         if solidType in ["ACR", "homog", "homog_sdn"]:
             if solidType == "ACR":
                 # Make a blank array to allow for boundary conditions
@@ -465,6 +466,7 @@ class modMPET(daeModel):
                 Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
             M = sprs.eye(Nij, format="csr")
             return (M, Rate)
+
         elif solidType in ["diffn"] and solidShape == "sphere":
             # For discretization background, see Zeng & Bazant 2013
             Rs = 1.
@@ -491,12 +493,15 @@ class modMPET(daeModel):
             # Overpotential
             delta_phi = phi_m - phi_lyte
             if etaFit:
+                material = self.D['material_c']
                 fits = delta_phi_fits.DPhiFits(self.D)
-                delta_phi_eq = fits.LiMn2O4(c_surf)
-#                delta_phi_eq = T*np.log(c_lyte/c_surf)
-                eta = delta_phi - delta_phi_eq
+                phifunc = fits.materialData[material]
+                delta_phi_eq = phifunc(c_surf)
+#                eta = delta_phi - delta_phi_eq
             else:
-                eta = delta_phi - T*np.log(c_lyte/c_surf)
+                delta_phi_eq = T*np.log(c_lyte/c_surf)
+#                eta = delta_phi - T*np.log(c_lyte/c_surf)
+            eta = delta_phi - delta_phi_eq
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
             elif rxnType == "BV":
