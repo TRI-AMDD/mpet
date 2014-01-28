@@ -113,6 +113,7 @@ def show_data(indir, plot_type, save_flag):
 #                datay = fits.LiMn2O4(datay, 298)
                 line, = ax[i, j].plot(times, datay)
         plt.show()
+        return
 
     # Plot current profile
     if plot_type == "curr":
@@ -358,7 +359,7 @@ def show_data(indir, plot_type, save_flag):
         raise Exception("Unexpected plot type argument. " +
                 "Try 'v', 'curr', 'elytec', 'elytep', " +
                 "'cbar', 'csld', 'phisld', " +
-                "'cathp'.")
+                "'cathp', 'surf'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
             interval=50, blit=True, repeat=False, init_func=init)
