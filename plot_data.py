@@ -66,6 +66,7 @@ def show_data(indir, plot_type, save_flag):
     print "dim_Dp [m^2/s]:", D['dim_Dp']
     print "dim_Dm [m^2/s]:", D['dim_Dm']
     print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
+    print "td [s]:", data[pfx + "td"][0][0]
     if rxnType_c == "BV":
         print "alpha:", D['alpha']
     elif rxnType_c == "Marcus":
@@ -101,8 +102,7 @@ def show_data(indir, plot_type, save_flag):
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
-        plt.show()
-        return
+        return fig, ax
 
     # Plot surface conc.
     if plot_type == "surf":
@@ -121,8 +121,7 @@ def show_data(indir, plot_type, save_flag):
 #                fits = delta_phi_fits.DPhiFits()
 #                datay = fits.LiMn2O4(datay, 298)
                 line, = ax[i, j].plot(times, datay)
-        plt.show()
-        return
+        return fig, ax
 
     # Plot current profile
     if plot_type == "curr":
@@ -130,16 +129,16 @@ def show_data(indir, plot_type, save_flag):
         current = data[pfx + "current"][0] * 3600/td
         ffvec = data[pfx + 'ffrac_cathode'][0]
 #        ax.plot(ffvec, current)
-        ax.plot(times, current)
+        ax.plot(times*td, current)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+#        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        ax.set_xlabel("Time [s]")
         ax.set_ylabel("Current [C-rate]")
 #        ax.set_ylim((Vstd - 0.3, Vstd + 0.4))
         if save_flag:
             fig.savefig("mpet_current.png")
-        plt.show()
-        return
+        return fig, ax
 
     # Plot electrolyte concentration or potential
     elif plot_type == "elytec" or plot_type == "elytep":
@@ -375,9 +374,8 @@ def show_data(indir, plot_type, save_flag):
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=30)
 #                extra_args=['-vcodec', 'libx264'])
-    plt.show()
 
-    return
+    return fig, ax, ani
 
 # This is a block of code which messes with some matplotlib internals
 # to allow for animation of a title. See
@@ -421,4 +419,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
-    show_data(indir, plot_type, save_flag)
+    out = show_data(indir, plot_type, save_flag)
+    plt.show()
