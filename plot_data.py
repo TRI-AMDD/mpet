@@ -30,6 +30,10 @@ def show_data(indir, plot_type, save_flag):
     Tref = D['Tref']                # Temp, K
     e = D['e']                      # Charge of proton, C
     td = data[pfx + 'td'][0][0]     # diffusive time
+    # Replace the standard potential is a fit voltage curve was used.
+    # Use the value that the simulation used in initialization.
+    if D['etaFit']:
+        Vstd_c = data[pfx + 'dphi_eq_ref'][0]*(k*Tref/e)
     # Discretization info
     Ntrode = D['Ntrode']
     numpart = D['numpart']
@@ -84,14 +88,38 @@ def show_data(indir, plot_type, save_flag):
         voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
-        xmin = np.min(ffvec)
-        xmax = np.max(ffvec)
-        ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+#        xmin = np.min(ffvec)
+#        xmax = np.max(ffvec)
+        xmin = 0.
+        xmax = 1.
+        ax.set_xlim((xmin, xmax))
+        if not D['etaFit']:
+            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
-        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
+#        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
+        plt.show()
+        return
+
+    # Plot surface conc.
+    if plot_type == "surf":
+        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+                sharey=True)
+        str_base = pfx + "solid_c_vol{j}_part{i}"
+        ylim = (0, 1.01)
+        datax = times
+        for i in range(numpart):
+            for j in range(Ntrode):
+                sol_str = str_base.format(i=i, j=j)
+                # Remove axis ticks
+                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                datay = data[sol_str][:,-1]
+#                import delta_phi_fits
+#                fits = delta_phi_fits.DPhiFits()
+#                datay = fits.LiMn2O4(datay, 298)
+                line, = ax[i, j].plot(times, datay)
         plt.show()
         return
 
@@ -339,7 +367,7 @@ def show_data(indir, plot_type, save_flag):
         raise Exception("Unexpected plot type argument. " +
                 "Try 'v', 'curr', 'elytec', 'elytep', " +
                 "'cbar', 'csld', 'phisld', " +
-                "'cathp'.")
+                "'cathp', 'surf'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
             interval=50, blit=True, repeat=False, init_func=init)

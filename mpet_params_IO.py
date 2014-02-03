@@ -49,6 +49,9 @@ class mpetIO():
         D["Vstd_c"] = P.getfloat('Cathode Material Props', 'Vstd')
         D["dim_mcond"] = P.getfloat('Cathode Material Props', 'dim_mcond')
         D["dim_scond"] = P.getfloat('Cathode Material Props', 'dim_scond')
+        D["Dsld_c"] = P.getfloat('Cathode Material Props', 'Dsld')
+        D["etaFit"] = P.getboolean('Cathode Material Props', 'etaFit')
+        D["material_c"] = P.get('Cathode Material Props', 'material')
 
         # Cathode reaction
         D["rxnType_c"] = P.get('Cathode Reaction', 'rxnType')
