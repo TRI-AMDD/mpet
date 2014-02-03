@@ -2,10 +2,13 @@ import ConfigParser
 
 class mpetIO():
 
-    def readConfig(self, paramfile="params.cfg"):
+    def getConfig(self, paramfile="params.cfg"):
         P = ConfigParser.RawConfigParser()
         P.optionxform = str
         P.read(paramfile)
+        return P
+
+    def getDictFromConfig(self, P):
         D = {}
 
         # Simulation Parameters
@@ -128,9 +131,9 @@ class mpetIO():
 #        e = self.P.getfloat('Constants', 'e')
 #        N_A = self.P.getfloat('Constants', 'N_A')
 
-        return D, P
+        return D
 
-    def writeConfig(self, P, filename="output_params.cfg"):
+    def writeConfigFile(self, P, filename="output_params.cfg"):
         fo = open(filename, "w")
         P.write(fo)
         fo.close()

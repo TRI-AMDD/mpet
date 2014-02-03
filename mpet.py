@@ -1040,7 +1040,8 @@ if __name__ == "__main__":
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     IO = mpet_params_IO.mpetIO()
-    D, P = IO.readConfig(paramfile)
+    P = IO.getConfig(paramfile)
+    D = IO.getDictFromConfig(P)
     # Make sure there's a place to store the output
     try:
         os.makedirs(outdir)
@@ -1049,7 +1050,7 @@ if __name__ == "__main__":
             raise
     paramFileName = "output_params.cfg"
     paramFile = os.path.join(outdir, paramFileName)
-    IO.writeConfig(P, filename=paramFile)
+    IO.writeConfigFile(P, filename=paramFile)
     consoleRun(D)
     if default_flag:
         print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(

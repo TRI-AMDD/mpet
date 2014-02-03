@@ -23,7 +23,8 @@ def show_data(indir, plot_type, save_flag):
     paramFileName = "output_params.cfg"
     paramFile = os.path.join(indir, paramFileName)
     IO = mpet_params_IO.mpetIO()
-    D, P = IO.readConfig(paramFile)
+    P = IO.getConfig(paramFile)
+    D = IO.getDictFromConfig(P)
     # Pick out some useful parameters
     Vstd_c = D['Vstd_c']            # Standard potential of cathode, V
     k = D['k']                      # Boltzmann constant, J/(K Li)
