@@ -667,25 +667,26 @@ class simMPET(daeSimulation):
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
         # Simulation
-        Ntrode = self.D['Ntrode']
-        numpart = self.D['numpart']
-        solidType = self.D['solidType']
-        solidShape = self.D['solidShape']
+        D = self.D
+        Ntrode = D['Ntrode']
+        numpart = D['numpart']
+        solidType = D['solidType']
+        solidShape = D['solidShape']
         # Geometry
-        Ltrode = self.D['Ltrode']
+        Ltrode = D['Ltrode']
         # Electrolyte
-        zp = self.D['zp']
-        zm = self.D['zm']
-        dim_Dp = self.D['dim_Dp']
-        dim_Dm = self.D['dim_Dm']
+        zp = D['zp']
+        zm = D['zm']
+        dim_Dp = D['dim_Dp']
+        dim_Dm = D['dim_Dm']
         # Cathode Material Properties
         # Cathode reaction
         # ACR info
         # Constants
-        k = self.D['k']
-        Tref = self.D['Tref']
-        e = self.D['e']
-        N_A = self.D['N_A']
+        k = D['k']
+        Tref = D['Tref']
+        e = D['e']
+        N_A = D['N_A']
         # Calculated values
         # Faraday's number
         F = e*N_A
@@ -853,7 +854,7 @@ class simMPET(daeSimulation):
             raise Exception("simSurfCathCond req. ACR")
         if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
             raise Exception("ACR and homog_sdn req. C3 shape")
-        if solidType not in ["ACR", "homog", "homog-sdn", "diffn"]:
+        if solidType not in ["ACR", "homog", "homog_sdn", "diffn"]:
             raise NotImplementedError("Input solidType not defined")
         if solidShape not in ["C3", "sphere"]:
             raise NotImplementedError("Input solidShape not defined")
@@ -864,24 +865,24 @@ class simMPET(daeSimulation):
             raise NotImplementedError("diffn currently req. sphere")
         return
 
-    def Run(self):
-        """
-        Overload the simulation "run" function so that the simulation
-        terminates when the specified condition is satisfied.
-        """
-        while self.CurrentTime < self.TimeHorizon:
-            t_step = self.CurrentTime + self.ReportingInterval
-            if t_step > self.TimeHorizon:
-                t_step = self.TimeHorizon
-
-            self.Log.Message("Integrating from %.2f to %.2fs ..." % (self.CurrentTime, t_step), 0)
-            self.IntegrateUntilTime(t_step, eStopAtModelDiscontinuity)
-            self.ReportData(self.CurrentTime)
-
-            if self.LastSatisfiedCondition:
-                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
-                self.Log.Message('Stopping the simulation...', 0)
-                return
+#    def Run(self):
+#        """
+#        Overload the simulation "run" function so that the simulation
+#        terminates when the specified condition is satisfied.
+#        """
+#        while self.CurrentTime < self.TimeHorizon:
+#            t_step = self.CurrentTime + self.ReportingInterval
+#            if t_step > self.TimeHorizon:
+#                t_step = self.TimeHorizon
+#
+#            self.Log.Message("Integrating from %.2f to %.2fs ..." % (self.CurrentTime, t_step), 0)
+#            self.IntegrateUntilTime(t_step, eStopAtModelDiscontinuity)
+#            self.ReportData(self.CurrentTime)
+#
+#            if self.LastSatisfiedCondition:
+#                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
+#                self.Log.Message('Stopping the simulation...', 0)
+#                return
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
@@ -1027,7 +1028,7 @@ def consoleRun(D):
         print "\nphi_applied at ctrl-C:", simulation.m.phi_applied.GetValue(), "\n"
         simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
-    
+
 if __name__ == "__main__":
     timeStart = time.time()
     default_flag = 0
