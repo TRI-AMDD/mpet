@@ -827,6 +827,8 @@ class simMPET(daeSimulation):
         Cogswell 2013, and the reg sln vs barrier height was done by
         TRF 2014.
         """
+        # First, this function wants the argument to be in [nm]
+        size *= 1e+9
         # Parameters for polynomial curve fit
         p1 = -1.168e4
         p2 = 2985
@@ -863,6 +865,8 @@ class simMPET(daeSimulation):
             raise NotImplementedError("homog_snd req. Tref=Tabs=298")
         if solidType in ["diffn"] and solidShape != "sphere":
             raise NotImplementedError("diffn currently req. sphere")
+        if D['etaFit'] and solidType != "diffn":
+            raise NotImplementedError("etafit req. solidType = diffn")
         return
 
 #    def Run(self):

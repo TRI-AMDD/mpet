@@ -57,7 +57,10 @@ def show_data(indir, plot_type, save_flag):
     print "Specified psd_mean [nm]:", D['mean']*1e9
     print "Specified psd_stddev [nm]:", D['stddev']*1e9
     psd_len = data[pfx + "psd_lengths"][0]*1e9
+#    print "PSD:"
 #    print psd_len.transpose()
+#    print "reg sln params:"
+#    print data[pfx + "a"][0]
     print "Actual psd_mean [nm]:", np.mean(psd_len)
     print "Actual psd_stddev [nm]:", np.std(psd_len)
     print "Nsep:", Nsep
