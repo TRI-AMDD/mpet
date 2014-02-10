@@ -48,6 +48,9 @@ def show_data(indir, plot_type, save_flag):
     solidType = D['solidType']
     solidShape = D['solidShape']
     rxnType_c = D['rxnType_c']
+    # Colors for plotting concentrations
+    to_yellow = 0.4
+    to_red = 0.6
 
     # Print relevant simulation info
     print "solidType:", solidType
@@ -192,13 +195,15 @@ def show_data(indir, plot_type, save_flag):
             return line1, ttl
 
     # Plot all solid concentrations or potentials
-    elif (plot_type == "csld") or (plot_type == "phisld"):
+#    elif (plot_type == "csld") or (plot_type == "phisld"):
+    elif plot_type in ["csld", "phisld", "csld_col"]:
         fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
                 sharey=True)
         sol = np.empty((numpart, Ntrode), dtype=object)
         lens = np.zeros((numpart, Ntrode))
         lines = np.empty((numpart, Ntrode), dtype=object)
-        if plot_type == "csld":
+        fills = np.empty((numpart, Ntrode, 3), dtype=object)
+        if plot_type in ["csld", "csld_col"]:
             str_base = pfx + "solid_c_vol{j}_part{i}"
             ylim = (0, 1.01)
         else: # plot_type == "phisld"
@@ -218,18 +223,62 @@ def show_data(indir, plot_type, save_flag):
                 ax[i, j].set_xlim((0, lens[i, j]))
                 line, = ax[i, j].plot(datax, datay)
                 lines[i, j] = line
+                if plot_type == "csld_col":
+                    fill1 = ax[i, j].fill_between(datax, ylim[0],
+                            ylim[1], facecolor='red', alpha=0.9,
+                            where=datay>to_red)
+                    fill2 = ax[i, j].fill_between(datax, ylim[0],
+                            ylim[1], facecolor='yellow', alpha=0.9,
+                            where=((datay<to_red) & (datay>to_yellow)))
+                    fill3 = ax[i, j].fill_between(datax, ylim[0],
+                            ylim[1], facecolor='green', alpha=0.9,
+                            where=datay<to_yellow)
+                    fills[i, j, :] = [fill1, fill2, fill3]
         def init():
             for i in range(numpart):
                 for j in range(Ntrode):
                     datax = np.zeros(data[sol[i, j]][0].shape)
                     lines[i, j].set_ydata(np.ma.array(datax, mask=True))
-            return tuple(lines.reshape(-1))
+                    if plot_type == "csld_col":
+                        fill1 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='red', alpha=0.0)
+#                                where=datay>to_red)
+                        fill2 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='yellow', alpha=0.0)
+#                                where=((datay<to_red) & (datay>to_yellow)))
+                        fill3 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='green', alpha=0.0)
+#                                where=datay<to_yellow)
+                        fills[i, j, :] = [fill1, fill2, fill3]
+            if plot_type == "csld_col":
+#                collection = mcollect.PatchCollection(fills.reshape(-1))
+#                return tuple(collection)
+                return tuple(fills.reshape(-1))
+            else:
+                return tuple(lines.reshape(-1))
         def animate(tind):
             for i in range(numpart):
                 for j in range(Ntrode):
                     datay = data[sol[i, j]][tind]
                     lines[i, j].set_ydata(datay)
-            return tuple(lines.reshape(-1))
+                    datax = lines[i, j].get_xdata()
+                    if plot_type == "csld_col":
+                        fill1 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='red', alpha=0.9,
+                                where=datay>to_red)
+                        fill2 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='yellow', alpha=0.9,
+                                where=((datay<to_red) & (datay>to_yellow)))
+                        fill3 = ax[i, j].fill_between(datax, ylim[0],
+                                ylim[1], facecolor='green', alpha=0.9,
+                                where=datay<to_yellow)
+                        fills[i, j, :] = [fill1, fill2, fill3]
+            if plot_type == "csld_col":
+#                collection = mcollect.PatchCollection(fills.reshape(-1))
+#                return tuple(collection)
+                return tuple(fills.reshape(-1))
+            else:
+                return tuple(lines.reshape(-1))
 
     # Plot average solid concentrations
     elif plot_type == "cbar":
@@ -239,8 +288,6 @@ def show_data(indir, plot_type, save_flag):
         color_changes = "discrete"
         # Discrete color changes:
         if color_changes == "discrete":
-            to_yellow = 0.4
-            to_red = 0.6
             # Make a discrete colormap that goes from green to yellow
             # to red instantaneously
             cdict = {
