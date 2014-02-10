@@ -388,7 +388,10 @@ class modMPET(daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            eq.Residual = self.current() - self.currset()
+#            eq.Residual = self.current() - self.currset()
+            timeHorizon = 1./self.currset()
+            eq.Residual = self.current() - self.currset()*(1 -
+                    np.exp(-Time()/(timeHorizon*1e-3)))
             eq.CheckUnitsConsistency = False
         elif self.profileType == "CV":
             # Keep applied potential constant
