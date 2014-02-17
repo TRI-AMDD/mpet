@@ -1007,7 +1007,10 @@ def consoleRun(D):
     Damb = ((zp+zm)*dim_Dp*dim_Dm)/(zp*dim_Dp+zm*dim_Dm)
     td = D['Ltrode']**2 / Damb
     currset = D['dim_crate'] * td/3600.
-    simulation.TimeHorizon = abs((D['ffend']-D['cs0'])/currset)
+    if D['profileType'] == "CC":
+        simulation.TimeHorizon = abs((D['ffend']-D['cs0'])/currset)
+    else: # CV simulation
+        simulation.TimeHorizon = D['tend']/td
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
 
     # Connect data reporter
