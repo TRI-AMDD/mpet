@@ -389,7 +389,7 @@ class modMPET(daeModel):
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
 #            eq.Residual = self.current() - self.currset()
-            timeHorizon = 1./self.currset()
+            timeHorizon = 1./Abs(self.currset())
             eq.Residual = self.current() - self.currset()*(1 -
                     np.exp(-Time()/(timeHorizon*1e-3)))
             eq.CheckUnitsConsistency = False
@@ -600,7 +600,8 @@ class modMPET(daeModel):
     def R_Marcus(self, k0, lmbda, c_lyte, c_sld, eta, T):
         alpha = 0.5*(1 + (T/lmbda) * np.log(c_lyte/c_sld))
         # We'll assume c_e = 1 (at the standard state for electrons)
-        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
+#        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
+        ecd = ( k0 *
                 c_lyte**((3-2*alpha)/4.) *
                 c_sld**((1+2*alpha)/4.) )
         Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
