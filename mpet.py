@@ -24,6 +24,8 @@ from pyUnits import s
 import mpet_params_IO
 import delta_phi_fits
 
+eps = 1e-12
+
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
         lowerBound=0, upperBound=1, initialGuess=0.25,
@@ -463,7 +465,7 @@ class modMPET(daeModel):
             act_R = np.exp(mu_R)
             # Assume dilute electrolyte
             act_O = c_lyte
-            mu_O = np.log(act_O)
+            mu_O = np.log(Max(eps, act_O))
             # eta = electrochem pot_R - electrochem pot_O
             # eta = (mu_R + phi_R) - (mu_O + phi_O)
             eta = (mu_R + phi_m) - (mu_O + phi_lyte)
@@ -505,7 +507,7 @@ class modMPET(daeModel):
                 phifunc = fits.materialData[material]
                 delta_phi_eq = phifunc(c_surf, self.dphi_eq_ref())
             else:
-                delta_phi_eq = T*np.log(c_lyte/c_surf)
+                delta_phi_eq = T*np.log(Max(eps, c_lyte)/Max(eps, c_surf))
             eta = delta_phi - delta_phi_eq
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
@@ -586,7 +588,9 @@ class modMPET(daeModel):
 
     def mu_reg_sln(self, c, a):
         return np.array([ a*(1-2*c[i])
-                + self.T()*Log(c[i]/(1-c[i]))
+#                + self.T()*Log(c[i]/(1-c[i]))
+#                + self.T()*Log((c[i]+eps)/(1-c[i]+eps))
+                + self.T()*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
                 for i in range(len(c)) ])
 
     def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
@@ -598,7 +602,10 @@ class modMPET(daeModel):
         return Rate
 
     def R_Marcus(self, k0, lmbda, c_lyte, c_sld, eta, T):
-        alpha = 0.5*(1 + (T/lmbda) * np.log(c_lyte/c_sld))
+        c_sld = np.array([Max(eps, c_sld[i]) for i in
+            range(len(c_sld))])
+#        alpha = 0.5*(1 + (T/lmbda) * np.log(Max(eps, c_lyte)/Max(eps, c_sld)))
+        alpha = 0.5*(1 + (T/lmbda) * np.log(Max(eps, c_lyte)/c_sld))
         # We'll assume c_e = 1 (at the standard state for electrons)
 #        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
         ecd = ( k0 *
