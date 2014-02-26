@@ -94,6 +94,7 @@ def show_data(indir, plot_type, save_flag):
     if plot_type == "v":
         fig, ax = plt.subplots()
         voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+#        voltage = -data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_cathode'][0]
         ax.plot(ffvec, voltage)
 #        xmin = np.min(ffvec)
@@ -102,7 +103,8 @@ def show_data(indir, plot_type, save_flag):
         xmax = 1.
         ax.set_xlim((xmin, xmax))
         if not D['etaFit']:
-            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+#            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+            ax.axhline(y=Vstd_c, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
@@ -127,6 +129,78 @@ def show_data(indir, plot_type, save_flag):
 #                fits = delta_phi_fits.DPhiFits()
 #                datay = fits.LiMn2O4(datay, 298)
                 line, = ax[i, j].plot(times, datay)
+        return fig, ax
+
+    # Plot misc stuff about reactions
+    if plot_type == "rxnp":
+        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+                sharey=True)
+        lmbda = data[pfx + "lambda_c"][0][0]
+        k0 = D['dim_k0']
+        sol_c_str_base = pfx + "solid_c_vol{j}_part{i}"
+        sol_p_str = pfx + "phi_cath"
+        lyte_c_str = pfx + "c_lyte_trode"
+        lyte_p_str = pfx + "phi_lyte_trode"
+        ylim = (0, 1.01)
+        ffvec = data[pfx + 'ffrac_cathode'][0]
+        datax = times
+        datax = ffvec
+        for i in range(numpart):
+            for j in range(Ntrode):
+                sol_str = sol_c_str_base.format(i=i, j=j)
+                # Remove axis ticks
+#                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                csld = data[sol_str][:,-1]
+                c_lyte = data[lyte_c_str][:,j]
+                phi_lyte = data[lyte_p_str][:,j]
+                phi_m = data[sol_p_str][j]
+                csld = 0.9
+                c_lyte = 1.0
+                # XXX -- only for homog particles
+                a = data[pfx + "a"][0][0]
+                mu_R = a*(1-2*csld) + 1*np.log(csld/(1-csld))
+                act_O = c_lyte
+                mu_O = np.log(act_O)
+                act_R = np.exp(mu_R)
+                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
+                eta = np.linspace(-20, 20, 70)
+                BValpha = D['alpha']
+                BVgamma_ts = 1./(1-csld)
+                BVecd = ( k0 * act_O**(1-BValpha)
+                    * act_R**(BValpha) / BVgamma_ts )
+                BVrate = ( BVecd *
+                    (np.exp(-BValpha*eta/1) - np.exp((1-BValpha)*eta/1)) )
+                Malpha = 0.5*(1 + (1/lmbda) * np.log(c_lyte/csld))
+                Mecd = ( k0 *
+                    c_lyte**((3-2*Malpha)/4.) *
+                    csld**((1+2*Malpha)/4.) )
+                Meta2 = np.exp(-eta**2/(4.*1*lmbda))
+                Mrate = ( Mecd * np.exp(-eta**2/(4.*1*lmbda)) *
+                    (np.exp(-Malpha*eta/1) - np.exp((1-Malpha)*eta/1)) )
+#                line, = ax[i, j].plot(datax, eta)
+#                line, = ax[i, j].plot(datax, Meta2)
+#                line, = ax[i, j].plot(datax, mu_R)
+#                line, = ax[i, j].plot(datax, Mecd)
+                line, = ax[i, j].plot(eta, Mrate)
+#                ax[i, j].set_xlabel("filling fraction")
+                ax[i, j].set_xlabel("overpotential, eta")
+                ax[i, j].set_ylabel("Marcus Reaction Rate")
+        if save_flag:
+            fig.savefig("Rxn_out.png")
+        return fig, ax
+
+    # Plot SoC profile
+    if plot_type == "soc":
+        fig, ax = plt.subplots()
+        ffvec = data[pfx + 'ffrac_cathode'][0]
+        ax.plot(times*td, ffvec)
+        xmin = np.min(ffvec)
+        xmax = np.max(ffvec)
+        ax.set_ylim((0, 1.05))
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Filling Fraciton [dimless]")
+        if save_flag:
+            fig.savefig("mpet_soc.png")
         return fig, ax
 
     # Plot current profile
@@ -179,7 +253,8 @@ def show_data(indir, plot_type, save_flag):
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay)
-        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
+#        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
+        ax.axvline(x=Lsep, linestyle='--', color='g')
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
             ttl.set_text('')
