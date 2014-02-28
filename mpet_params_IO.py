@@ -49,8 +49,8 @@ class mpetIO():
         D["simBulkCond_a"] = P.getboolean('Conductivity', 'simBulkCond_a')
         D["mcond_c"] = P.getfloat('Conductivity', 'mcond_c')
         D["mcond_a"] = P.getfloat('Conductivity', 'mcond_a')
-        D["simSurfCond_c"] = P.getboolean('Conductivity', 'simSurCathCond_c')
-        D["simSurfCond_a"] = P.getboolean('Conductivity', 'simSurCathCond_a')
+        D["simSurfCond_c"] = P.getboolean('Conductivity', 'simSurfCond_c')
+        D["simSurfCond_a"] = P.getboolean('Conductivity', 'simSurfCond_a')
         D["scond_c"] = P.getfloat('Conductivity', 'scond_c')
         D["scond_a"] = P.getfloat('Conductivity', 'scond_a')
 
@@ -86,8 +86,8 @@ class mpetIO():
         D["L_c"] = P.getfloat('Geometry', 'L_c')
         D["L_a"] = P.getfloat('Geometry', 'L_a')
         D["L_s"] = P.getfloat('Geometry', 'L_s')
-        D["PL_c"] = P.getfloat('Geometry', 'Lp_c')
-        D["PL_a"] = P.getfloat('Geometry', 'Lp_a')
+        D["PL_c"] = P.getfloat('Geometry', 'PL_c')
+        D["PL_a"] = P.getfloat('Geometry', 'PL_a')
         D["poros_c"] = P.getfloat('Geometry', 'poros_c')
         D["poros_a"] = P.getfloat('Geometry', 'poros_a')
 

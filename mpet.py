@@ -45,20 +45,26 @@ class modMPET(daeModel):
             raise Exception("Need particle size distr. as input")
         self.D = D
         self.profileType = D['profileType']
-        Ntrode = D['Ntrode']
-        numpart = D['numpart']
+        Nvol_c = D['Nvol_c']
+        Nvol_s = D['Nvol_s']
+        Nvol_a = D['Nvol_a']
+        Npart_c = D['Npart_c']
+        Npart_a = D['Npart_a']
 
         # Domains where variables are distributed
-        if Ntrode > 1: # If we have a separator
-            self.Nsep = daeDomain("Nsep", self, unit(),
+        if Nvol_s >= 1: # If we have a separator
+            self.Nvol_s = daeDomain("Nvol_s", self, unit(),
                     "Number of control volumes in the separator")
-        self.Ntrode = daeDomain("Ntrode", self, unit(),
+#        if Nvol_a >= 1: # If we have an full anode
+#            self.Nsep = daeDomain("Nsep", self, unit(),
+#                    "Number of control volumes in the separator")
+        self.Nvol_c = daeDomain("Nvol_c", self, unit(),
                 "Number of control volumes in the electrode")
-        self.numpart = daeDomain("numpart", self, unit(),
+        self.Npart_c = daeDomain("Npart_c", self, unit(),
                 "Number of particles sampled per electrode control volume")
-        self.Nsld_mat = np.empty((Ntrode, numpart), dtype=object)
-        for i in range(Ntrode):
-            for j in range(numpart):
+        self.Nsld_mat = np.empty((Nvol_c, Npart_c), dtype=object)
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 self.Nsld_mat[i, j] = daeDomain("vol{i}_part{j}".format(
                     i=i, j=j), self, unit(),
                     "Number of discretizations for particle "
@@ -67,57 +73,57 @@ class modMPET(daeModel):
         # Variables
         self.c_lyte_trode = daeVariable("c_lyte_trode", mole_frac_t, self,
                 "Concentration in the electrolyte in the electrode",
-                [self.Ntrode])
+                [self.Nvol_c])
         self.phi_lyte_trode = daeVariable("phi_lyte_trode", elec_pot_t, self,
                 "Electrostatic potential in electrolyte in electrode",
-                [self.Ntrode])
-        if Ntrode > 1: # If we have a separator
+                [self.Nvol_c])
+        if Nvol_c > 1: # If we have a separator
             self.c_lyte_sep = daeVariable("c_lyte_sep", mole_frac_t, self,
                     "Concentration in the electrolyte in the separator",
-                    [self.Nsep])
+                    [self.Nvol_s])
             self.phi_lyte_sep = daeVariable("phi_lyte_sep", elec_pot_t, self,
                     "Electrostatic potential in electrolyte in separator",
-                    [self.Nsep])
+                    [self.Nvol_s])
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
-        self.c_sld = np.empty((Ntrode, numpart), dtype=object)
-        for i in range(Ntrode):
-            for j in range(numpart):
+        self.c_sld = np.empty((Nvol_c, Npart_c), dtype=object)
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 self.c_sld[i, j] = daeVariable("solid_c_vol{i}_part{j}".format(
                     i=i, j=j), mole_frac_t, self,
                     "Concentration in each solid particle",
                     [self.Nsld_mat[i, j]])
         # Only make a variable of this if we have to -- it's a lot of
         # equations to keep track of for nothing if we don't need it.
-        if D['simSurfCathCond']:
-            self.phi_sld = np.empty((Ntrode, numpart), dtype=object)
-            for i in range(Ntrode):
-                for j in range(numpart):
+        if D['simSurfCond_c']:
+            self.phi_sld = np.empty((Nvol_c, Npart_c), dtype=object)
+            for i in range(Nvol_c):
+                for j in range(Npart_c):
                     self.phi_sld[i, j] = daeVariable("solid_p_vol{i}_part{j}".format(
                         i=i, j=j), elec_pot_t, self,
                         "Electrostatic potential in each solid particle",
                         [self.Nsld_mat[i, j]])
         self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
                 "Average concentration in each particle",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.phi_c = daeVariable("phi_cath", elec_pot_t, self,
                 "Electrostatic potential in the solid",
-                [self.Ntrode])
+                [self.Nvol_c])
         self.j_plus = daeVariable("j_plus", no_t, self,
                 "Rate of reaction of positives per solid volume",
-                [self.Ntrode])
+                [self.Nvol_c])
         self.ffrac_cathode = daeVariable("ffrac_cathode",
                 mole_frac_t, self,
                 "Overall filling fraction of solids in cathode")
 
         # Parameters
-        self.NumTrode = daeParameter("NumTrode", unit(), self,
+        self.NumVol_c = daeParameter("NumVol_c", unit(), self,
                 "Number of volumes in the electrode")
-        self.NumPart = daeParameter("NumPart", unit(), self,
+        self.NumPart_c = daeParameter("NumPart_c", unit(), self,
                 "Number of particles in each electrode volume")
-        self.NumSep = daeParameter("NumSep", unit(), self,
+        self.NumVol_s = daeParameter("NumVol_s", unit(), self,
                 "Number of volumes in the electrolyte")
         self.epsbeta = daeParameter("epsbeta", unit(), self,
                 "porosity times beta")
@@ -127,9 +133,9 @@ class modMPET(daeModel):
                 "anion charge number")
         self.tp = daeParameter("tp", unit(), self,
                 "positive transference number")
-        self.poros_sep = daeParameter("poros_sep", unit(), self,
+        self.poros_s = daeParameter("poros_s", unit(), self,
                 "porosity in separator")
-        self.poros_trode = daeParameter("poros_trode", unit(), self,
+        self.poros_c = daeParameter("poros_c", unit(), self,
                 "porosity in electrode")
         self.phi_cathode = daeParameter("phi_cathode", unit(), self,
                 "potential at the cathode (phi_applied is relative to this)")
@@ -137,7 +143,7 @@ class modMPET(daeModel):
                 "Diffusive time [s]")
         self.dim_Damb = daeParameter("dim_Damb", unit(), self,
                 "ambipolar diffusivity [m^2/s]")
-        self.csmax = daeParameter("csmax", unit(), self,
+        self.dim_csmax_c = daeParameter("dim_csmax_c", unit(), self,
                 "maximum lithium concentration in solid [mol/m^3]")
         self.Dp = daeParameter("Dp", unit(), self,
                 "non-dimensional diffusivity of positive ions")
@@ -145,7 +151,7 @@ class modMPET(daeModel):
                 "non-dimensional diffusivity of negative ions")
         self.Dsld_c = daeParameter("Dsld_c", unit(), self,
                 "Diffusivity in cathode solid particles",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.alpha = daeParameter("alpha", unit(), self,
                 " Charge transfer coefficient")
         self.T = daeParameter("T", unit(), self,
@@ -155,7 +161,7 @@ class modMPET(daeModel):
         self.Vset = daeParameter("Vset", unit(), self,
                 "dimensionless applied voltage (relative to " +
                 "Delta V OCV of the  cell)")
-        if self.D['etaFit']:
+        if self.D['etaFit_c']:
             self.dphi_eq_ref = daeParameter("dphi_eq_ref", unit(), self,
                     "dimensionless potential offset in referencing fit " +
                     "delta_phi_eq curves")
@@ -163,58 +169,58 @@ class modMPET(daeModel):
                 "Wetted surface concentration")
         self.kappa = daeParameter("kappa", unit(), self,
                 "kappa for each particle",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.a = daeParameter("a", unit(), self,
                 "regular solution parameter for each particle [J]",
-                [self.Ntrode, self.numpart])
-        self.b = daeParameter("b", unit(), self,
+                [self.Nvol_c, self.Npart_c])
+        self.B = daeParameter("b", unit(), self,
                 "Stress coefficient for each particle")
         self.k0 = daeParameter("k0", unit(), self,
                 "exchange current density rate constant for each particle",
-                [self.Ntrode, self.numpart])
-        self.lambda_c = daeParameter("lambda_c", unit(), self,
+                [self.Nvol_c, self.Npart_c])
+        self.lmbda = daeParameter("lmbda", unit(), self,
                 "Marcus reorganizational energy")
         self.mcond = daeParameter("mcond", unit(), self,
                 "conductivity of cathode")
         self.scond = daeParameter("scond", unit(), self,
                 "surface conductivity of particles",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.psd_num = daeParameter("psd_numVols", unit(), self,
                 "Particle numbers of discretizations",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.psd_len = daeParameter("psd_lengths", unit(), self,
                 "Particle lengths [nm]",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.psd_area = daeParameter("psd_active_areas", unit(), self,
                 "Particle active areas [nm^2]",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
         self.psd_vol = daeParameter("psd_volumes", unit(), self,
                 "Particle volumes [nm^3]",
-                [self.Ntrode, self.numpart])
+                [self.Nvol_c, self.Npart_c])
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
-        Ntrode = self.Ntrode.NumberOfPoints
-        if Ntrode > 1:
-            Nsep = self.Nsep.NumberOfPoints
+        Nvol_c = self.Nvol_c.NumberOfPoints
+        if Nvol_c > 1:
+            Nvol_s = self.Nvol_s.NumberOfPoints
         else:
-            Nsep = 0
-        Nlyte = Nsep + Ntrode
-        numpart = self.numpart.NumberOfPoints
-        Nsld_mat = np.zeros((Ntrode, numpart), dtype=np.integer)
-        for i in range(Ntrode):
-            for j in range(numpart):
+            Nvol_s = 0
+        Nlyte = Nvol_s + Nvol_c
+        Npart_c = self.Npart_c.NumberOfPoints
+        Nsld_mat = np.zeros((Nvol_c, Npart_c), dtype=np.integer)
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 Nsld_mat[i, j] = self.Nsld_mat[i, j].NumberOfPoints
 
         # The porosity vector
         porosvec = np.empty(Nlyte + 1, dtype=object)
         # Use the Bruggeman relationship to approximate an effective
         # effect on the transport.
-        porosvec[0:Nsep] = [self.poros_sep()**(3./2) for i in range(Nsep)]
-        porosvec[Nsep:Nlyte+1] = [self.poros_trode()**(3./2) for i in
-                range(Ntrode+1)]
+        porosvec[0:Nvol_s] = [self.poros_s()**(3./2) for i in range(Nvol_s)]
+        porosvec[Nvol_s:Nlyte+1] = [self.poros_c()**(3./2) for i in
+                range(Nvol_c+1)]
 
 #        # Prepare the noise
 #        # maybe "numnoise" should be a parameter?
@@ -233,8 +239,8 @@ class modMPET(daeModel):
 
         # Define the average concentration in each particle (algebraic
         # equations)
-        for i in range(Ntrode):
-            for j in range(numpart):
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 eq = self.CreateEquation("cbar_vol{i}_part{j}".format(i=i,j=j))
                 eq.Residual = (self.cbar_sld(i, j) -
                         Sum(self.c_sld[i, j].array([])) / Nsld_mat[i, j]
@@ -246,21 +252,21 @@ class modMPET(daeModel):
         eq = self.CreateEquation("ffrac_cathode")
         eq.Residual = self.ffrac_cathode()
         numpartvol_tot = float(np.sum(Nsld_mat))
-        for i in range(Ntrode):
-            for j in range(numpart):
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 eq.Residual -= (self.cbar_sld(i, j) *
                         (Nsld_mat[i, j]/numpartvol_tot))
         eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each volume
-        for i in range(Ntrode):
+        for i in range(Nvol_c):
             eq = self.CreateEquation("j_plus_vol{i}".format(i=i))
             # Start with no reaction, then add reactions for each
             # particle in the volume.
             res = 0
             # sum over particle volumes in given electrode volume
             Vu = Sum(self.psd_vol.array(i, []))
-            for  j in range(numpart):
+            for  j in range(Npart_c):
                 # The volume of this particular particle
                 Vj = self.psd_vol(i, j)
                 res += (Vj/Vu)*(Sum(self.c_sld[i, j].dt_array([])) /
@@ -270,8 +276,8 @@ class modMPET(daeModel):
 
         # Calculate the solid concentration rates of change
         # (differential equations)
-        for i in range(Ntrode):
-            for j in range(numpart):
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
                 # Prepare the RHS function
                 Nij = Nsld_mat[i, j]
                 (Mmat, RHS_c_sld_ij) = self.calc_sld_dcs_dt(i, j)
@@ -289,7 +295,7 @@ class modMPET(daeModel):
 
                 # Also calculate the potential drop along cathode
                 # particle surfaces, if desired
-                simSurfCathCond = self.D['simSurfCathCond']
+                simSurfCathCond = self.D['simSurfCond_c']
                 if simSurfCathCond:
                     # Conservation of charge in the solid particles with
                     # Ohm's Law
@@ -305,19 +311,19 @@ class modMPET(daeModel):
 
         # Simulate the potential drop along the macroscopic-scale
         # cathode solid phase
-        simBulkCathCond = self.D['simBulkCathCond']
+        simBulkCathCond = self.D['simBulkCond_c']
         if simBulkCathCond:
             # Calculate the RHS for cathode conductivity
-            phi_c = np.empty(Ntrode+2, dtype=object)
-            phi_c[1:-1] = [self.phi_c(i) for i in range(Ntrode)]
+            phi_c = np.empty(Nvol_c+2, dtype=object)
+            phi_c[1:-1] = [self.phi_c(i) for i in range(Nvol_c)]
             # No current passes into the electrolyte
             phi_c[0] = phi_c[1]
             # Potential at the current collector is set as a parameter
             phi_c[-1] = self.phi_cathode()
-            dx = 1./Ntrode
+            dx = 1./Nvol_c
             RHS_phi_c = -np.diff(-self.mcond()*np.diff(phi_c)/dx)/dx
         # Actually set up the equations for phi_c
-        for i in range(Ntrode):
+        for i in range(Nvol_c):
             eq = self.CreateEquation("phi_c{i}".format(i=i))
             if simBulkCathCond:
                 eq.Residual = (-self.epsbeta()*self.j_plus(i) -
@@ -327,7 +333,7 @@ class modMPET(daeModel):
 
         # If we only have a single volume, electrolyte equations are
         # simple
-        if Ntrode == 1:
+        if Nvol_c == 1:
             eq = self.CreateEquation("c_lyte")
             eq.Residual = self.c_lyte_trode.dt(0) - 0
             eq.CheckUnitsConsistency = False
@@ -336,24 +342,24 @@ class modMPET(daeModel):
             eq.CheckUnitsConsistency = False
         else:
             # Calculate RHS for electrolyte equations
-            Nlyte = Nsep + Ntrode
+            Nlyte = Nvol_s + Nvol_c
             c_lyte = np.empty(Nlyte, dtype=object)
-            c_lyte[0:Nsep] = [self.c_lyte_sep(i) for i in range(Nsep)]
-            c_lyte[Nsep:Nlyte] = [self.c_lyte_trode(i) for i in
-                    range(Ntrode)]
+            c_lyte[0:Nvol_s] = [self.c_lyte_sep(i) for i in range(Nvol_s)]
+            c_lyte[Nvol_s:Nlyte] = [self.c_lyte_trode(i) for i in
+                    range(Nvol_c)]
             phi_lyte = np.empty(Nlyte, dtype=object)
-            phi_lyte[0:Nsep] = [self.phi_lyte_sep(i) for i in range(Nsep)]
-            phi_lyte[Nsep:Nlyte] = [self.phi_lyte_trode(i) for i in
-                    range(Ntrode)]
+            phi_lyte[0:Nvol_s] = [self.phi_lyte_sep(i) for i in range(Nvol_s)]
+            phi_lyte[Nvol_s:Nlyte] = [self.phi_lyte_trode(i) for i in
+                    range(Nvol_c)]
             (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte, Nlyte,
                     porosvec)
 
             # Equations governing the electrolyte in the separator
-            for i in range(Nsep):
+            for i in range(Nvol_s):
                 # Mass Conservation
                 eq = self.CreateEquation(
                         "sep_lyte_mass_cons_vol{i}".format(i=i))
-                eq.Residual = (self.poros_sep()*self.c_lyte_sep.dt(i) -
+                eq.Residual = (self.poros_s()*self.c_lyte_sep.dt(i) -
                         RHS_c[i])
                 eq.CheckUnitsConsistency = False
                 # Charge Conservation
@@ -364,26 +370,26 @@ class modMPET(daeModel):
             # Equations governing the electrolyte in the electrode.
             # Here, we are coupled to the total reaction rates in the
             # solids.
-            for i in range(Ntrode):
+            for i in range(Nvol_c):
                 # Mass Conservation
                 eq = self.CreateEquation(
                         "trode_lyte_mass_cons_vol{i}".format(i=i))
-                eq.Residual = (self.poros_trode()*self.c_lyte_trode.dt(i) +
+                eq.Residual = (self.poros_c()*self.c_lyte_trode.dt(i) +
                         self.epsbeta()*(1-self.tp())*self.j_plus(i) -
-                        RHS_c[Nsep + i])
+                        RHS_c[Nvol_s + i])
                 eq.CheckUnitsConsistency = False
                 # Charge Conservation
                 eq = self.CreateEquation(
                         "trode_lyte_charge_cons_vol{i}".format(i=i))
                 eq.Residual = (self.epsbeta()*self.j_plus(i) -
-                        RHS_phi[Nsep + i])
+                        RHS_phi[Nvol_s + i])
                 eq.CheckUnitsConsistency = False
 
         # Define the total current
         eq = self.CreateEquation("Total_Current")
         eq.Residual = self.current()
-        dx = 1./Ntrode
-        for i in range(Ntrode):
+        dx = 1./Nvol_c
+        for i in range(Nvol_c):
             eq.Residual -= dx*self.j_plus(i)
         eq.CheckUnitsConsistency = False
 
@@ -413,11 +419,11 @@ class modMPET(daeModel):
 
     def calc_sld_dcs_dt(self, vol_indx, part_indx):
         # Get some useful information
-        simSurfCathCond = self.D['simSurfCathCond']
-        solidType = self.D['solidType']
-        solidShape = self.D['solidShape']
+        simSurfCathCond = self.D['simSurfCond_c']
+        solidType_c = self.D['solidType_c']
+        solidShape = self.D['solidShape_c']
         rxnType = self.D['rxnType_c']
-        etaFit = self.D['etaFit']
+        etaFit = self.D['etaFit_c']
         # shorthand
         i = vol_indx
         j = part_indx
@@ -429,7 +435,7 @@ class modMPET(daeModel):
         k0 = self.k0(i, j)
         kappa = self.kappa(i, j) # only used for ACR
         cbar = self.cbar_sld(i, j) # only used for ACR
-        lmbda = self.lambda_c() # Only used for Marcus
+        lmbda = self.lmbda() # Only used for Marcus
         alpha = self.alpha() # Only used for BV
         a = self.a(i, j)
         Ds = self.Dsld_c(i, j) # Only used for "diffn"
@@ -443,8 +449,8 @@ class modMPET(daeModel):
         c_sld[:] = [self.c_sld[i, j](k) for k in range(Nij)]
         # Calculate chemical potential of reduced state
 
-        if solidType in ["ACR", "homog", "homog_sdn"]:
-            if solidType == "ACR":
+        if solidType_c in ["ACR", "homog", "homog_sdn"]:
+            if solidType_c == "ACR":
                 # Make a blank array to allow for boundary conditions
                 cstmp = np.empty(Nij+2, dtype=object)
                 cstmp[1:-1] = c_sld
@@ -453,13 +459,13 @@ class modMPET(daeModel):
                 dxs = 1./Nij
                 curv = np.diff(cstmp, 2)/(dxs**2)
                 mu_R = ( self.mu_reg_sln(c_sld, a) - kappa*curv
-                        + self.b()*(c_sld - cbar) )
+                        + self.B()*(c_sld - cbar) )
                 # If we're also simulating potential drop along the solid,
                 # use that instead of self.phi_c(i)
                 if simSurfCathCond:
                     phi_m = np.empty(Nij, dtype=object)
                     phi_m[:] = [self.phi_sld[i, j](k) for k in range(Nij)]
-            elif solidType == "homog" or solidType == "homog_sdn":
+            elif solidType_c == "homog" or solidType_c == "homog_sdn":
                 mu_R = self.mu_reg_sln(c_sld, a)
             # XXX -- Temp dependence!
             act_R = np.exp(mu_R)
@@ -476,7 +482,7 @@ class modMPET(daeModel):
             M = sprs.eye(Nij, format="csr")
             return (M, Rate)
 
-        elif solidType in ["diffn"] and solidShape == "sphere":
+        elif solidType_c in ["diffn"] and solidShape == "sphere":
             # For discretization background, see Zeng & Bazant 2013
             Rs = 1.
             dr = Rs/(Nij - 1)
@@ -519,14 +525,14 @@ class modMPET(daeModel):
             RHS[-1] = (Rs**2 * Rxn -
                     Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             return (M, RHS)
-        elif solidType in ["diffn"] and solidShape == "C3":
+        elif solidType_c in ["diffn"] and solidShape == "C3":
             # TODO -- Implement
             raise
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nlyte, porosvec):
         # The lengths are nondimensionalized by the electrode length
-        dx = 1./self.Ntrode.NumberOfPoints
+        dx = 1./self.Nvol_c.NumberOfPoints
         # Mass conservation equations
         ctmp = np.empty(Nlyte + 2, dtype=object)
         ctmp[1:-1] = cvec
@@ -641,55 +647,53 @@ class simMPET(daeSimulation):
             raise Exception("Need parameters input")
         self.D = D
         self.test_input(D)
-        mean = D['mean']
-        stddev = D['stddev']
-        Ntrode = D['Ntrode']
-        numpart = D['numpart']
-        solidType = D['solidType']
+        mean_c = D['mean_c']
+        stddev_c = D['stddev_c']
+        Nvol_c = D['Nvol_c']
+        Npart_c = D['Npart_c']
+        solidType_c = D['solidType_c']
         # Make a length-sampled particle size distribution
-#        # Normally distributed
-#        psd_raw = np.abs(stddev*np.random.randn(Ntrode, numpart) + mean)
         # Log-normally distributed
-        if stddev == 0:
-            psd_raw = mean*np.ones((Ntrode, numpart))
+        if stddev_c == 0:
+            psd_raw_c = mean*np.ones((Nvol_c, Npart_c))
         else:
-            var = stddev**2
-            mu = np.log((mean**2)/np.sqrt(var+mean**2))
-            sigma = np.sqrt(np.log(var/(mean**2)+1))
-            psd_raw = np.random.lognormal(mu, sigma,
-                    size=(Ntrode, numpart))
+            var = stddev_c**2
+            mu = np.log((mean_c**2)/np.sqrt(var+mean_c**2))
+            sigma = np.sqrt(np.log(var/(mean_c**2)+1))
+            psd_raw_c = np.random.lognormal(mu, sigma,
+                    size=(Nvol_c, Npart_c))
         # For particles with internal profiles, convert psd to
         # integers -- number of steps
-        if solidType in ["ACR", "diffn"]:
-            solid_disc = D['solid_disc']
-            self.psd_num = np.ceil(psd_raw/solid_disc).astype(np.integer)
-            self.psd_len = solid_disc*self.psd_num
+        if solidType_c in ["ACR", "diffn"]:
+            solidDisc_c = D['solidDisc_c']
+            self.psd_num_c = np.ceil(psd_raw_c/solidDisc_c).astype(np.integer)
+            self.psd_len_c = solidDisc_c*self.psd_num_c
         # For homogeneous particles (only one "volume" per particle)
-        elif solidType in ["homog", "homog_sdn"]:
+        elif solidType_c in ["homog", "homog_sdn"]:
             # Each particle is only one volume
-            self.psd_num = np.ones(psd_raw.shape).astype(np.integer)
+            self.psd_num_c = np.ones(psd_raw_c.shape).astype(np.integer)
             # The lengths are given by the original length distr.
-            self.psd_len = psd_raw
+            self.psd_len_c = psd_raw_c
         # General parameters
-        self.psd_mean = mean
-        self.psd_stddev = stddev
+#        self.psd_mean = mean_c
+#        self.psd_stddev = stddev_c
         self.m = modMPET("mpet", D=D)
 
     def SetUpParametersAndDomains(self):
         # Extract info from the config file
         # Simulation
         D = self.D
-        Ntrode = D['Ntrode']
-        numpart = D['numpart']
-        solidType = D['solidType']
-        solidShape = D['solidShape']
+        Nvol_c = D['Nvol_c']
+        Npart_c = D['Npart_c']
+        solidType_c = D['solidType_c']
+        solidShape_c = D['solidShape_c']
         # Geometry
-        Ltrode = D['Ltrode']
+        L_c = D['L_c']
         # Electrolyte
         zp = D['zp']
         zm = D['zm']
-        dim_Dp = D['dim_Dp']
-        dim_Dm = D['dim_Dm']
+        Dp = D['Dp']
+        Dm = D['Dm']
         # Cathode Material Properties
         # Cathode reaction
         # ACR info
@@ -702,130 +706,130 @@ class simMPET(daeSimulation):
         # Faraday's number
         F = e*N_A
         # maximum concentration in cathode solid, mol/m^3
-        csmax = D['rhos']/N_A
+        csmax_c = D['rhos_c']/N_A
         # Ambipolar diffusivity
-        Damb = ((zp+zm)*dim_Dp*dim_Dm)/(zp*dim_Dp+zm*dim_Dm)
+        Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
         # Cation transference number
-        tp = zp*dim_Dp / (zp*dim_Dp + zm*dim_Dm)
+        tp = zp*Dp / (zp*Dp + zm*Dm)
         # Diffusive time scale
-        td = Ltrode**2 / Damb
-        # Temperature
+        td = L_c**2 / Damb
+        # Nondimensional Temperature
         T = float(D['Tabs'])/Tref
 
         # Domains
-        self.m.Ntrode.CreateArray(Ntrode)
-        sep_frac = float(D['Lsep'])/Ltrode
-        Nsep = int(np.ceil(sep_frac*Ntrode))
-        if Ntrode == 1:
-            Nsep = 0
+        self.m.Nvol_c.CreateArray(Nvol_c)
+        sep_frac = float(D['L_s'])/L_c
+        Nvol_s = int(np.ceil(sep_frac*Nvol_c))
+        if Nvol_c == 1:
+            Nvol_s = 0
             sep_frac = 0
         else:
-            sep_frac = float(D['Lsep'])/Ltrode
-            Nsep = int(np.ceil(sep_frac*Ntrode))
-            self.m.Nsep.CreateArray(Nsep)
-        self.m.numpart.CreateArray(numpart)
-        for i in range(self.psd_num.shape[0]):
-            for j in range(self.psd_num.shape[1]):
-                self.m.Nsld_mat[i, j].CreateArray(int(self.psd_num[i, j]))
+            sep_frac = float(D['L_s'])/L_c
+            Nvol_s = int(np.ceil(sep_frac*Nvol_c))
+            self.m.Nvol_s.CreateArray(Nvol_s)
+        self.m.Npart_c.CreateArray(Npart_c)
+        for i in range(self.psd_num_c.shape[0]):
+            for j in range(self.psd_num_c.shape[1]):
+                self.m.Nsld_mat[i, j].CreateArray(int(self.psd_num_c[i, j]))
 
         # Parameters
         self.m.T.SetValue(T)
-        self.m.alpha.SetValue(D['alpha'])
-        self.m.NumTrode.SetValue(Ntrode)
-        self.m.NumSep.SetValue(Nsep)
-        self.m.NumPart.SetValue(numpart)
+        self.m.alpha.SetValue(D['alpha_c'])
+        self.m.NumVol_c.SetValue(Nvol_c)
+        self.m.NumVol_s.SetValue(Nvol_s)
+        self.m.NumPart_c.SetValue(Npart_c)
         self.m.td.SetValue(td)
         self.m.zp.SetValue(zp)
         self.m.zm.SetValue(zm)
         self.m.tp.SetValue(tp)
-        self.m.csmax.SetValue(csmax)
+        self.m.dim_csmax_c.SetValue(csmax_c)
         self.m.dim_Damb.SetValue(Damb)
-        self.m.Dp.SetValue(dim_Dp / Damb)
-        self.m.Dm.SetValue(dim_Dm / Damb)
-        self.m.mcond.SetValue(D['dim_mcond'] * (td * k * N_A * Tref) /
-                (Ltrode**2 * F**2 *D['dim_c0']))
-        self.m.poros_sep.SetValue(1.)
-        self.m.poros_trode.SetValue(D['poros'])
-        self.m.epsbeta.SetValue((1-D['poros'])*D['Lp']*csmax/D['dim_c0'])
+        self.m.Dp.SetValue(Dp / Damb)
+        self.m.Dm.SetValue(Dm / Damb)
+        self.m.mcond.SetValue(D['mcond_c'] * (td * k * N_A * Tref) /
+                (L_c**2 * F**2 *D['c0']))
+        self.m.poros_s.SetValue(1.)
+        self.m.poros_c.SetValue(D['poros_c'])
+        self.m.epsbeta.SetValue((1-D['poros_c'])*D['PL_c']*csmax_c/D['c0'])
         self.m.phi_cathode.SetValue(0.)
-        self.m.currset.SetValue(D['dim_crate']*td/3600)
-        self.m.Vset.SetValue(D['dim_Vset']*e/(k*Tref))
-        if self.D['etaFit']:
+        self.m.currset.SetValue(D['Crate']*td/3600)
+        self.m.Vset.SetValue(D['Vset']*e/(k*Tref))
+        if self.D['etaFit_c']:
             material = self.D['material_c']
             fits = delta_phi_fits.DPhiFits(self.D)
             phifunc = fits.materialData[material]
-            self.m.dphi_eq_ref.SetValue(phifunc(self.D['cs0'], 0))
-        self.m.lambda_c.SetValue(D['dim_lambda_c']/(k*Tref))
-        self.m.b.SetValue(D['dim_b']/(k*Tref*D['rhos']))
-        for i in range(Ntrode):
-            for j in range(numpart):
-                p_num = float(self.psd_num[i, j])
-                p_len = self.psd_len[i, j]
+            self.m.dphi_eq_ref.SetValue(phifunc(self.D['cs0_c'], 0))
+        self.m.lmbda.SetValue(D['lambda_c']/(k*Tref))
+        self.m.B.SetValue(D['B_c']/(k*Tref*D['rhos_c']))
+        for i in range(Nvol_c):
+            for j in range(Npart_c):
+                p_num = float(self.psd_num_c[i, j])
+                p_len = self.psd_len_c[i, j]
                 # k0 is based on the _active_ area per volume for the region
                 # of the solid of interest.
-                if solidShape == "sphere":
+                if solidShape_c == "sphere":
                     # Spherical particles
                     p_area = (4*np.pi)*p_len**2
                     p_vol = (4./3)*np.pi*p_len**3
-                elif solidShape == "C3":
+                elif solidShape_c == "C3":
                     # C3 particles
                     p_area = 2 * 1.2263 * p_len**2
-                    p_vol = 1.2263 * p_len**2 * D['part_thick']
+                    p_vol = 1.2263 * p_len**2 * D['partThick_c']
                 self.m.psd_num.SetValue(i, j, p_num)
                 self.m.psd_len.SetValue(i, j, p_len)
                 self.m.psd_area.SetValue(i, j, p_area)
                 self.m.psd_vol.SetValue(i, j, p_vol)
                 self.m.kappa.SetValue(i, j,
-                        D['dim_kappa']/(k*Tref*D['rhos']*p_len**2))
+                        D['kappa_c']/(k*Tref*D['rhos_c']*p_len**2))
                 self.m.k0.SetValue(i, j,
-                        ((p_area/p_vol)*D['dim_k0']*td)/(F*csmax))
+                        ((p_area/p_vol)*D['k0_c']*td)/(F*csmax_c))
                 self.m.scond.SetValue(i, j,
-                        D['dim_scond'] * (k*Tref)/(D['dim_k0']*e*p_len**2))
+                        D['scond_c'] * (k*Tref)/(D['k0_c']*e*p_len**2))
                 self.m.Dsld_c.SetValue(i, j,
                         D['Dsld_c']*(p_area/p_vol)*td/p_len)
-                if solidType in ["homog", "ACR",  "diffn"]:
-                    self.m.a.SetValue(i, j, D['Omega_a']/(k*Tref))
-                elif solidType == "homog_sdn":
+                if solidType_c in ["homog", "ACR",  "diffn"]:
+                    self.m.a.SetValue(i, j, D['Omega_a_c']/(k*Tref))
+                elif solidType_c == "homog_sdn":
                     # Not sure about factor of nondimensional T. Thus,
                     # only use this when T = 1, Tabs = Tref = 298
                     self.m.a.SetValue(i, j, T*self.size2regsln(p_len))
-        self.m.cwet.SetValue(D['cwet'])
+        self.m.cwet.SetValue(D['cwet_c'])
 
     def SetUpVariables(self):
-        Ntrode = self.m.Ntrode.NumberOfPoints
-        if Ntrode > 1:
-            Nsep = self.m.Nsep.NumberOfPoints
+        Nvol_c = self.m.Nvol_c.NumberOfPoints
+        if Nvol_c > 1:
+            Nvol_s = self.m.Nvol_s.NumberOfPoints
         else:
-            Nsep = 0
-        Nlyte = Nsep + Ntrode
-        numpart = self.m.numpart.NumberOfPoints
+            Nvol_s = 0
+        Nlyte = Nvol_s + Nvol_c
+        Npart_c = self.m.Npart_c.NumberOfPoints
         phi_cathode = self.m.phi_cathode.GetValue()
         # Set/guess values
-        cs0 = self.D['cs0']
-        for i in range(Ntrode):
+        cs0_c = self.D['cs0_c']
+        for i in range(Nvol_c):
             # Guess initial volumetric reaction rates
             self.m.j_plus.SetInitialGuess(i, 0.0)
             # Guess initial value for the potential of the
             # cathode
             self.m.phi_c.SetInitialGuess(i, phi_cathode)
-            for j in range(numpart):
+            for j in range(Npart_c):
                 # Guess initial value for the average solid concentrations
-                self.m.cbar_sld.SetInitialGuess(i, j, cs0)
+                self.m.cbar_sld.SetInitialGuess(i, j, cs0_c)
                 # Set initial solid concentration values
                 Nij = self.m.Nsld_mat[i, j].NumberOfPoints
                 for k in range(Nij):
-                    self.m.c_sld[i, j].SetInitialCondition(k, cs0)
+                    self.m.c_sld[i, j].SetInitialCondition(k, cs0_c)
         # Set initial electrolyte concentration conditions
         c_lyte_init = 1.
         phi_guess = 0.
-        for i in range(Nsep):
+        for i in range(Nvol_s):
             self.m.c_lyte_sep.SetInitialCondition(i, c_lyte_init)
             self.m.phi_lyte_sep.SetInitialGuess(i, phi_guess)
-        for i in range(Ntrode):
+        for i in range(Nvol_c):
             self.m.c_lyte_trode.SetInitialCondition(i, c_lyte_init)
             self.m.phi_lyte_trode.SetInitialGuess(i, phi_guess)
         # Guess initial filling fraction
-        self.m.ffrac_cathode.SetInitialGuess(cs0)
+        self.m.ffrac_cathode.SetInitialGuess(cs0_c)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
 
@@ -861,23 +865,25 @@ class simMPET(daeSimulation):
         return param
 
     def test_input(self, D):
-        solidType = D['solidType']
-        solidShape = D['solidShape']
-        if D['simSurfCathCond'] and solidType != "ACR":
-            raise Exception("simSurfCathCond req. ACR")
-        if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
+        solidType_c = D['solidType_c']
+        solidShape_c = D['solidShape_c']
+        if D['Tabs'] != 298:
+            raise Exception("Temp dependence not implemented")
+        if D['simSurfCond_c'] and solidType_c != "ACR":
+            raise Exception("simSurfCond req. ACR")
+        if solidType_c in ["ACR", "homog_sdn"] and solidShape_c != "C3":
             raise Exception("ACR and homog_sdn req. C3 shape")
-        if solidType not in ["ACR", "homog", "homog_sdn", "diffn"]:
-            raise NotImplementedError("Input solidType not defined")
-        if solidShape not in ["C3", "sphere"]:
-            raise NotImplementedError("Input solidShape not defined")
-        if solidType == "homog_sdn" and (D['Tabs'] != 298 or
+        if solidType_c not in ["ACR", "homog", "homog_sdn", "diffn"]:
+            raise NotImplementedError("Input solidType_c not defined")
+        if solidShape_c not in ["C3", "sphere"]:
+            raise NotImplementedError("Input solidShape_c not defined")
+        if solidType_c == "homog_sdn" and (D['Tabs'] != 298 or
                 D['Tref'] != 298):
             raise NotImplementedError("homog_snd req. Tref=Tabs=298")
-        if solidType in ["diffn"] and solidShape != "sphere":
+        if solidType_c in ["diffn"] and solidShape_c != "sphere":
             raise NotImplementedError("diffn currently req. sphere")
-        if D['etaFit'] and solidType != "diffn":
-            raise NotImplementedError("etafit req. solidType = diffn")
+        if D['etaFit_c'] and solidType_c != "diffn":
+            raise NotImplementedError("etafit req. solidType_c = diffn")
         return
 
 #    def Run(self):
@@ -1007,15 +1013,15 @@ def consoleRun(D):
     # Set the time horizon and the reporting interval
     # We need to get info about the system to figure out the
     # simulation time horizon
-    dim_Dp = D['dim_Dp']
-    dim_Dm = D['dim_Dm']
+    Dp = D['Dp']
+    Dm = D['Dm']
     zp = D['zp']
     zm = D['zm']
-    Damb = ((zp+zm)*dim_Dp*dim_Dm)/(zp*dim_Dp+zm*dim_Dm)
-    td = D['Ltrode']**2 / Damb
-    currset = D['dim_crate'] * td/3600.
+    Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+    td = D['L_c']**2 / Damb
+    currset = D['Crate'] * td/3600.
     if D['profileType'] == "CC":
-        simulation.TimeHorizon = abs((D['ffend']-D['cs0'])/currset)
+        simulation.TimeHorizon = D['capFrac']/currset
     else: # CV simulation
         simulation.TimeHorizon = D['tend']/td
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']

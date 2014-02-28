@@ -9,6 +9,7 @@ params.m
 params.cfg
 sim_output
 archive
+bai_LFP_data
 
 py_mat_compare
 data_capacity.txt
