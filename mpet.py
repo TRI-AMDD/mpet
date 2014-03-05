@@ -179,6 +179,8 @@ class modMPET(daeModel):
 #                "Overall filling fraction of solids in cathode")
 
         # Parameters
+        self.NumTrode = daeParameter("NumTrode", unit(), self,
+                "Number of electroes simulated (1 or 0)")
         self.NumVol_ac = daeParameter("NumVol_ac", unit(), self,
                 "Number of volumes in the electrode",
                 [self.Ntrode])
@@ -631,10 +633,10 @@ class modMPET(daeModel):
             # Overpotential
             delta_phi = phi_m - phi_lyte
             if etaFit:
-                material = self.D['material'][l]
+                material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
-                delta_phi_eq = phifunc(c_surf, self.dphi_eq_ref())
+                delta_phi_eq = phifunc(c_surf, self.dphi_eq_ref_ac(l))
             else:
                 delta_phi_eq = T*np.log(Max(eps, c_lyte)/Max(eps, c_surf))
             eta = delta_phi - delta_phi_eq
@@ -915,6 +917,7 @@ class simMPET(daeSimulation):
 
         # Parameters
         self.m.T.SetValue(T)
+        self.m.NumTrode.SetValue(self.Ntrode)
         for l in range(self.Ntrode):
             self.m.alpha_ac.SetValue(l, D['alpha_ac'][l])
             self.m.NumVol_ac.SetValue(l, self.Nvol_ac[l])
@@ -933,7 +936,7 @@ class simMPET(daeSimulation):
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
-                self.m.dphi_eq_ref.SetValue(l,
+                self.m.dphi_eq_ref_ac.SetValue(l,
                         phifunc(self.D['cs0_ac'][l], 0))
             else:
                 self.m.dphi_eq_ref_ac.SetValue(l,
