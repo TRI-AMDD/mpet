@@ -25,86 +25,111 @@ def show_data(indir, plot_type, save_flag):
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramFile)
     D = IO.getDictFromConfig(P)
-    # Pick out some useful parameters
-    Vstd_c = D['Vstd_c']            # Standard potential of cathode, V
+    # Number of electrodes
+    Ntrode = data[pfx + 'NumTrode']
+    # Pick out some useful constants/calculated values
     k = D['k']                      # Boltzmann constant, J/(K Li)
     Tref = D['Tref']                # Temp, K
     e = D['e']                      # Charge of proton, C
     td = data[pfx + 'td'][0][0]     # diffusive time
-    # Replace the standard potential is a fit voltage curve was used.
-    # Use the value that the simulation used in initialization.
-    if D['etaFit']:
-        Vstd_c = data[pfx + 'dphi_eq_ref'][0]*(k*Tref/e)
-    # Discretization info
-    Ntrode = D['Ntrode']
-    numpart = D['numpart']
-    Nsep = int(data[pfx + 'NumSep'][0][0])
+    Vstd_ac = np.zeros(Ntrode)
+    Nvol_ac = np.zeros(Ntrode, dtype=np.integer)
+    Npart_ac = np.zeros(Ntrode, dtype=np.integer)
+    solidType_ac = np.empty(Ntrode, dtype=object)
+    solidShape_ac = np.empty(Ntrode, dtype=object)
+    rxnType_ac = np.empty(Ntrode, dtype=object)
+    psd_len_ac = np.empty(Ntrode, dtype=object)
+    for l in range(Ntrode):
+#        print l
+#        print D['Vstd_ac'][l]
+        Vstd_ac[l] = D['Vstd_ac'][l]
+        # Replace the standard potential if a fit voltage curve was used.
+        # Use the value that the simulation used in initialization.
+        if D['etaFit_ac'][l]:
+            Vstd_ac[l] = data[pfx + 'dphi_eq_ref_ac'][0][l]*(k*Tref/e)
+        Nvol_ac[l] = D['Nvol_ac'][l]
+        Npart_ac[l] = D['Npart_ac'][l]
+        # Simulation type
+        solidType_ac[l] = D['solidType_ac'][l]
+        solidShape_ac[l] = D['solidShape_ac'][l]
+        rxnType_ac[l] = D['rxnType_ac'][l]
+        psd_len_ac[l] = data[pfx + "psd_lengths_{l}".format(l=l)]
+    Vstd = Vstd_ac[1] - Vstd_ac[0]
+    Nvol_s = D['Nvol_s']
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
     # Simulation type
-    solidType = D['solidType']
-    solidShape = D['solidShape']
-    rxnType_c = D['rxnType_c']
+    profileType = D['profileType']
+#    solidType = D['solidType']
+#    solidShape = D['solidShape']
+#    rxnType_c = D['rxnType_c']
     # Colors for plotting concentrations
     to_yellow = 0.4
     to_red = 0.6
 
     # Print relevant simulation info
-    print "solidType:", solidType
-    print "solidShape", solidShape
-    print "rxnType_c:", rxnType_c
-    print "C_rate:", D['dim_crate']
-    print "Specified psd_mean [nm]:", D['mean']*1e9
-    print "Specified psd_stddev [nm]:", D['stddev']*1e9
-    psd_len = data[pfx + "psd_lengths"][0]*1e9
-#    print "PSD:"
-#    print psd_len.transpose()
+    print "profileType:", profileType
+    print "solidType:", solidType_ac
+    print "solidShape", solidShape_ac
+    print "rxnType:", rxnType_ac
+    if profileType == "CC":
+        print "C_rate:", D['Crate']
+    else: # CV
+        print "Vset:", D['Vset']
+#    print "Specified psd_mean [nm]:", D['mean_ac']
+    print "Specified psd_mean [nm]:", np.array(D['mean_ac'])*1e9
+    print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])*1e9
+    psd_len = data[pfx + "psd_lengths_0"][0]*1e9
+    print "PSD:"
+    print psd_len_ac[1][0].transpose()
 #    print "reg sln params:"
 #    print data[pfx + "a"][0]
-    print "Actual psd_mean [nm]:", np.mean(psd_len)
-    print "Actual psd_stddev [nm]:", np.std(psd_len)
-    print "Nsep:", Nsep
-    print "Ntrode:", Ntrode
-    print "Npart:", numpart
-    print "dim_Dp [m^2/s]:", D['dim_Dp']
-    print "dim_Dm [m^2/s]:", D['dim_Dm']
-    print "dim_Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
+#    print "Actual psd_mean [nm]:", np.mean(psd_len)
+#    print "Actual psd_stddev [nm]:", np.std(psd_len)
+    print "Nvol_s:", Nvol_s
+    print "Nvol_c:", Nvol_ac[1]
+    print "Nvol_a:", Nvol_ac[0]
+    print "Npart_c:", Npart_ac[1]
+    print "Npart_a:", Npart_ac[0]
+    print "Dp [m^2/s]:", D['Dp']
+    print "Dm [m^2/s]:", D['Dm']
+    print "Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
     print "td [s]:", data[pfx + "td"][0][0]
-    if rxnType_c == "BV":
-        print "alpha:", D['alpha']
-    elif rxnType_c == "Marcus":
+    if rxnType_ac[0] == "BV":
+        print "alpha:", D['alpha_ac']
+    elif rxnType_ac[0] == "Marcus":
 #        print "dimensional lambda:", D['dim_lambda_c']
-        print "lambda/(kTref):", data[pfx + "lambda_c"][0][0]
-    print "dim_k0 [A/m^2]:", D['dim_k0']
-    if D['simBulkCathCond']:
+        print "lambda/(kTref):", data[pfx + "lambda_ac"][0][0]
+    print "k0 [A/m^2]:", D['k0_ac']
+    if D['simBulkCond_ac']:
         print ("cathode bulk conductivity loss: Yes -- " +
-                "dim_mcond [S/m]: " + str(D['dim_mcond']))
+                "dim_mcond [S/m]: " + str(D['mcond_ac']))
     else:
         print "cathode bulk conductivity loss: No"
-    if D['simSurfCathCond']:
+    if D['simSurfCond_ac']:
         print ("cathode surface conductivity loss: Yes -- " +
-                "dim_scond [S]: " + str(D['dim_scond']))
+                "dim_scond [S]: " + str(D['scond_ac']))
     else:
         print "cathode surface conductivity loss: No"
 
     # Plot voltage profile
     if plot_type == "v":
         fig, ax = plt.subplots()
-        voltage = Vstd_c - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
 #        voltage = -data[pfx + 'phi_applied'][0]
-        ffvec = data[pfx + 'ffrac_cathode'][0]
+        ffvec = data[pfx + 'ffrac_ac'][:, 1]
         ax.plot(ffvec, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
         xmin = 0.
         xmax = 1.
         ax.set_xlim((xmin, xmax))
-        if not D['etaFit']:
-#            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
-            ax.axhline(y=Vstd_c, linestyle='--', color='g')
+#        if not D['etaFit']:
+##            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+#            ax.axhline(y=Vstd_c, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
@@ -207,7 +232,7 @@ def show_data(indir, plot_type, save_flag):
     if plot_type == "curr":
         fig, ax = plt.subplots()
         current = data[pfx + "current"][0] * 3600/td
-        ffvec = data[pfx + 'ffrac_cathode'][0]
+        ffvec = data[pfx + 'ffrac_ac'][:,1]
 #        ax.plot(ffvec, current)
         ax.plot(times*td, current)
         xmin = np.min(ffvec)
@@ -228,41 +253,47 @@ def show_data(indir, plot_type, save_flag):
             ymin = 0
             ymax = 1.5
             ax.set_ylabel('Concentration of electrolyte [nondim]')
-            sep = pfx + 'c_lyte_sep'
-            trode = pfx + 'c_lyte_trode'
+            sep = pfx + 'c_lyte_s'
+            anode = pfx + 'c_lyte_0'
+            cath = pfx + 'c_lyte_1'
         elif plot_type == "elytep":
             ymin = -5
             ymax = 5
             ax.set_ylabel('Potential of electrolyte [nondim]')
-            sep = pfx + 'phi_lyte_sep'
-            trode = pfx + 'phi_lyte_trode'
+            sep = pfx + 'phi_lyte_s'
+            anode = pfx + 'phi_lyte_0'
+            cath = pfx + 'phi_lyte_1'
         ax.set_xlabel('Battery Position [um]')
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        datay_sep = data[sep][0]
-        datay_trode = data[trode][0]
-        Lsep = D['Lsep'] * 1e6
-        Ltrode = D['Ltrode'] * 1e6
-        datay = np.hstack((datay_sep, datay_trode))
+        datay_a = data[anode][0]
+        datay_s = data[sep][0]
+        datay_c = data[cath][0]
+        L_s = D['L_s'] * 1e6
+        L_a = D['L_ac'][0] * 1e6
+        L_c = D['L_ac'][1] * 1e6
+        datay = np.hstack((datay_a, datay_s, datay_c))
         numy = len(datay)
         xmin = 0
-        xmax = Lsep + Ltrode
+        xmax = L_a + L_s + L_c
         datax = np.linspace(xmin, xmax, numy)
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay)
 #        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
-        ax.axvline(x=Lsep, linestyle='--', color='g')
+        ax.axvline(x=L_a, linestyle='--', color='g')
+        ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
             ttl.set_text('')
             return line1, ttl
         def animate(tind):
-            datay_sep = data[sep][tind]
-            datay_trode = data[trode][tind]
-            datay = np.hstack((datay_sep, datay_trode))
+            datay_a = data[anode][tind]
+            datay_s = data[sep][tind]
+            datay_c = data[cath][tind]
+            datay = np.hstack((datay_a, datay_s, datay_c))
             line1.set_ydata(datay)
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
@@ -271,23 +302,54 @@ def show_data(indir, plot_type, save_flag):
 
     # Plot all solid concentrations or potentials
 #    elif (plot_type == "csld") or (plot_type == "phisld"):
-    elif plot_type in ["csld", "phisld", "csld_col"]:
-        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+    elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
+            "csld_col_c", "csld_col_a"]:
+        if plot_type[-1] == "a":
+            l = 0
+        else: # cathode
+            l = 1
+#        fig = plt.figure()
+#        Nvol_a = Nvol_ac[0]
+#        Nvol_c = Nvol_ac[1]
+#        Npart_a = Npart_ac[0]
+#        Npart_c = Npart_ac[1]
+#        Nvol_tot = Nvol_a + Nvol_c + 1 # add one for separator
+#        ax_a = np.empty((Npart_a, Nvol_a)), dtype=object)
+#        ax_c = np.empty((Npart_c, Nvol_c)), dtype=object)
+#        # Anode axes (if any exist)
+#        for i in range(Nvol_a):
+#            for j in range(Npart_a):
+#                plt_indx = Nvol_tot*j + i + 1
+#                ax_a[j, i] = plt.subplot(Npart_a, Nvol_tot, plt_indx)
+#        # Separator axes
+#        ax_s = plt.subplot(1, Nvol_tot, Nvol_a + 1)
+#        # Cathode axes
+#        for i in range(Nvol_c):
+#            for j in range(Npart_c):
+#                plt_indx = Nvol_tot*j + i + 1 + (Nvol_c + 1)
+#                ax_c[j, i] = plt.subplot(Npart_c, Nvol_tot, plt_indx)
+        fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
-        sol = np.empty((numpart, Ntrode), dtype=object)
-        lens = np.zeros((numpart, Ntrode))
-        lines = np.empty((numpart, Ntrode), dtype=object)
-        fills = np.empty((numpart, Ntrode, 3), dtype=object)
-        if plot_type in ["csld", "csld_col"]:
-            str_base = pfx + "solid_c_vol{j}_part{i}"
+        sol = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
+        lens = np.zeros((Npart_ac[l], Nvol_ac[l]))
+        lines = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
+        fills = np.empty((Npart_ac[l], Nvol_ac[l], 3), dtype=object)
+        if plot_type in ["csld_a", "csld_col_a"]:
+            str_base = pfx + "c_sld_trode0vol{j}part{i}"
             ylim = (0, 1.01)
-        else: # plot_type == "phisld"
-            str_base = pfx + "solid_p_vol{j}_part{i}"
+        elif plot_type in ["csld_c", "csld_col_c"]:
+            str_base = pfx + "c_sld_trode1vol{j}part{i}"
+            ylim = (0, 1.01)
+        elif plot_type == "phisld_a": # plot_type == "phisld"
+            str_base = pfx + "p_sld_trode0vol{j}part{i}"
             ylim = (-10, 20)
-        for i in range(numpart):
-            for j in range(Ntrode):
+        elif plot_type == "phisld_c":
+            str_base = pfx + "p_sld_trode1vol{j}part{i}"
+            ylim = (-10, 20)
+        for i in range(Npart_ac[l]):
+            for j in range(Nvol_ac[l]):
                 sol[i, j] = str_base.format(i=i, j=j)
-                lens[i, j] = psd_len[j, i]
+                lens[i, j] = psd_len_ac[l][0][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
 #                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
@@ -310,20 +372,17 @@ def show_data(indir, plot_type, save_flag):
                             where=datay<to_yellow)
                     fills[i, j, :] = [fill1, fill2, fill3]
         def init():
-            for i in range(numpart):
-                for j in range(Ntrode):
+            for i in range(Npart_ac[l]):
+                for j in range(Nvol_ac[l]):
                     datax = np.zeros(data[sol[i, j]][0].shape)
                     lines[i, j].set_ydata(np.ma.array(datax, mask=True))
                     if plot_type == "csld_col":
                         fill1 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='red', alpha=0.0)
-#                                where=datay>to_red)
                         fill2 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='yellow', alpha=0.0)
-#                                where=((datay<to_red) & (datay>to_yellow)))
                         fill3 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='green', alpha=0.0)
-#                                where=datay<to_yellow)
                         fills[i, j, :] = [fill1, fill2, fill3]
             if plot_type == "csld_col":
 #                collection = mcollect.PatchCollection(fills.reshape(-1))
@@ -332,8 +391,8 @@ def show_data(indir, plot_type, save_flag):
             else:
                 return tuple(lines.reshape(-1))
         def animate(tind):
-            for i in range(numpart):
-                for j in range(Ntrode):
+            for i in range(Npart_ac[l]):
+                for j in range(Nvol_ac[l]):
                     datay = data[sol[i, j]][tind]
                     lines[i, j].set_ydata(datay)
                     datax = lines[i, j].get_xdata()
