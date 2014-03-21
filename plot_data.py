@@ -83,7 +83,9 @@ def show_data(indir, plot_type, save_flag):
     print "Specified psd_mean [nm]:", np.array(D['mean_ac'])*1e9
     print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])*1e9
     psd_len = data[pfx + "psd_lengths_0"][0]*1e9
-    print "PSD:"
+    print "PSD_a:"
+    print psd_len_ac[0][0].transpose()
+    print "PSD_c:"
     print psd_len_ac[1][0].transpose()
 #    print "reg sln params:"
 #    print data[pfx + "a"][0]
@@ -138,18 +140,23 @@ def show_data(indir, plot_type, save_flag):
         return fig, ax
 
     # Plot surface conc.
-    if plot_type == "surf":
-        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+    if plot_type in ["surf_c", "surf_a"]:
+        if plot_type[-1] == "a":
+            l = 0
+        else: # cathode
+            l = 1
+        fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
-        str_base = pfx + "solid_c_vol{j}_part{i}"
+        str_base = pfx + "c_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
         ylim = (0, 1.01)
         datax = times
-        for i in range(numpart):
-            for j in range(Ntrode):
+        for i in range(Npart_ac[l]):
+            for j in range(Nvol_ac[l]):
                 sol_str = str_base.format(i=i, j=j)
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
                 datay = data[sol_str][:,-1]
+#                print datay
 #                import delta_phi_fits
 #                fits = delta_phi_fits.DPhiFits()
 #                datay = fits.LiMn2O4(datay, 298)
@@ -157,59 +164,99 @@ def show_data(indir, plot_type, save_flag):
         return fig, ax
 
     # Plot misc stuff about reactions
-    if plot_type == "rxnp":
-        fig, ax = plt.subplots(numpart, Ntrode, squeeze=False,
+    if plot_type in ["rxnp_c", "rxnp_a"]:
+        if plot_type[-1] == "a":
+            l = 0
+        else: # cathode
+            l = 1
+        fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
-        lmbda = data[pfx + "lambda_c"][0][0]
-        k0 = D['dim_k0']
-        sol_c_str_base = pfx + "solid_c_vol{j}_part{i}"
-        sol_p_str = pfx + "phi_cath"
-        lyte_c_str = pfx + "c_lyte_trode"
-        lyte_p_str = pfx + "phi_lyte_trode"
+#        lmbda = data[pfx + "lambda_ac"][0][l]
+        k0 = D['k0_ac'][l]
+        sol_c_str_base = pfx + "c_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
+        sol_p_str = pfx + "phi_{l}".format(l=l)
+        lyte_c_str = pfx + "c_lyte_{l}".format(l=l)
+        lyte_p_str = pfx + "phi_lyte_{l}".format(l=l)
         ylim = (0, 1.01)
-        ffvec = data[pfx + 'ffrac_cathode'][0]
+        ffvec = data[pfx + 'ffrac_ac'][:,l]
         datax = times
-        datax = ffvec
-        for i in range(numpart):
-            for j in range(Ntrode):
+#        datax = ffvec
+        for i in range(Npart_ac[l]):
+            for j in range(Nvol_ac[l]):
                 sol_str = sol_c_str_base.format(i=i, j=j)
                 # Remove axis ticks
 #                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-                csld = data[sol_str][:,-1]
+                csld = data[sol_str]
                 c_lyte = data[lyte_c_str][:,j]
                 phi_lyte = data[lyte_p_str][:,j]
-                phi_m = data[sol_p_str][j]
-                csld = 0.9
-                c_lyte = 1.0
-                # XXX -- only for homog particles
-                a = data[pfx + "a"][0][0]
-                mu_R = a*(1-2*csld) + 1*np.log(csld/(1-csld))
+                phi_m = data[sol_p_str][:,j]
+#                csld = csld[:, 50]
+                Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
+                def mu_reg_sln(csld, Omga):
+                    return Omga*(1-2*csld) + np.log(csld/(1-csld))
+#                # homog particles
+#                mu_R = Omga*(1-2*csld) + 1*np.log(csld/(1-csld))
+#                # ACR particles
+#                sld_pt_indx = 50
+#                Nij = csld.shape[1]
+#                cbar = np.tile(np.sum(csld, axis=1)/Nij, [Nij, 1]).transpose()
+#                cstmp = np.zeros((len(datax), Nij + 2))
+#                cstmp[:, 1:-1] = csld
+#                cstmp[0] = D['cwet_ac'][l]
+#                cstmp[-1] = D['cwet_ac'][l]
+#                dxs = 1./Nij
+#                curv = np.diff(cstmp,2)/(dxs**2)
+#                kappa = data[pfx + "kappa_{l}".format(l=l)][i, j]
+#                B = data[pfx + "B_ac"][0][l]
+#                mu_R = ( mu_reg_sln(csld, Omga) - kappa*curv
+#                    + B*(csld - cbar) )
+#                mu_R = mu_R[:, sld_pt_indx]
+#                act_R = np.exp(mu_R)
+#                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
+#                BVgamma_ts = 1./(1-csld[:, sld_pt_indx])
+                # diffn with etaFit
+                csurf = csld[:,-1]
+                import delta_phi_fits
+                dphi_eq_ref = data[pfx + "dphi_eq_ref_ac"][0][l]
+                fits = delta_phi_fits.DPhiFits(D)
+                phifunc = fits.materialData[D["material_ac"][l]]
+                dphi_eq = phifunc(csurf, dphi_eq_ref)
+                eta = phi_m - phi_lyte - dphi_eq
+                act_R = csurf
+                BVgamma_ts = 1./(1-csurf)
+                # General
                 act_O = c_lyte
                 mu_O = np.log(act_O)
-                act_R = np.exp(mu_R)
-                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-                eta = np.linspace(-20, 20, 70)
-                BValpha = D['alpha']
-                BVgamma_ts = 1./(1-csld)
+#                print act_O
+#                print phi_m - phi_lyte
+#                print dphi_eq
+#                print phi_m
+#                print phi_lyte
+#                print eta
+#                eta = np.linspace(-20, 20, 70)
+                BValpha = D['alpha_ac'][l]
                 BVecd = ( k0 * act_O**(1-BValpha)
                     * act_R**(BValpha) / BVgamma_ts )
+#                print eta
                 BVrate = ( BVecd *
                     (np.exp(-BValpha*eta/1) - np.exp((1-BValpha)*eta/1)) )
-                Malpha = 0.5*(1 + (1/lmbda) * np.log(c_lyte/csld))
-                Mecd = ( k0 *
-                    c_lyte**((3-2*Malpha)/4.) *
-                    csld**((1+2*Malpha)/4.) )
-                Meta2 = np.exp(-eta**2/(4.*1*lmbda))
-                Mrate = ( Mecd * np.exp(-eta**2/(4.*1*lmbda)) *
-                    (np.exp(-Malpha*eta/1) - np.exp((1-Malpha)*eta/1)) )
-#                line, = ax[i, j].plot(datax, eta)
+#                Malpha = 0.5*(1 + (1/lmbda) * np.log(c_lyte/csld))
+#                Mecd = ( k0 *
+#                    c_lyte**((3-2*Malpha)/4.) *
+#                    csld**((1+2*Malpha)/4.) )
+#                Meta2 = np.exp(-eta**2/(4.*1*lmbda))
+#                Mrate = ( Mecd * np.exp(-eta**2/(4.*1*lmbda)) *
+#                    (np.exp(-Malpha*eta/1) - np.exp((1-Malpha)*eta/1)) )
+                line, = ax[i, j].plot(datax, BVecd)
 #                line, = ax[i, j].plot(datax, Meta2)
 #                line, = ax[i, j].plot(datax, mu_R)
 #                line, = ax[i, j].plot(datax, Mecd)
-                line, = ax[i, j].plot(eta, Mrate)
+#                line, = ax[i, j].plot(eta, BVrate)
 #                ax[i, j].set_xlabel("filling fraction")
-                ax[i, j].set_xlabel("overpotential, eta")
-                ax[i, j].set_ylabel("Marcus Reaction Rate")
+#                ax[i, j].set_xlabel("overpotential, eta")
+#                ax[i, j].set_ylabel("Marcus Reaction Rate")
+#                eps = 1e1
+#                ax[i, j].set_ylim((0-eps, 0))
         if save_flag:
             fig.savefig("Rxn_out.png")
         return fig, ax
@@ -359,6 +406,8 @@ def show_data(indir, plot_type, save_flag):
                 ax[i, j].set_ylim(ylim)
                 ax[i, j].set_xlim((0, lens[i, j]))
                 line, = ax[i, j].plot(datax, datay)
+#                ylim = (1e-1, 1)
+#                ax[i, j].set_yscale('log')
                 lines[i, j] = line
                 if plot_type == "csld_col":
                     fill1 = ax[i, j].fill_between(datax, ylim[0],
@@ -593,15 +642,24 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join(os.getcwd(), indir)):
         raise Exception("Input file doesn't exist")
     # Get plot type from script parameters
+    plots = []
     if len(sys.argv) > 2:
-        plot_type = sys.argv[2]
+#        plot_type = sys.argv[2]
+        plots.append(sys.argv[2])
     else:
-        plot_type = "v"
+#        plot_type = "v"
+        plots.append("v")
     # Save the plot instead of showing on screen?
     # Get from script parameters
     save_flag = False
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
-    out = show_data(indir, plot_type, save_flag)
+        else:
+            for i in range(3, len(sys.argv)):
+                plots.append(sys.argv[i])
+    out = []
+    for plot_type in plots:
+#        out = show_data(indir, plot_type, save_flag)
+        out.append(show_data(indir, plot_type, save_flag))
     plt.show()
