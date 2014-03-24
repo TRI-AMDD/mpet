@@ -25,8 +25,14 @@ def show_data(indir, plot_type, save_flag):
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramFile)
     D = IO.getDictFromConfig(P)
-    # Number of electrodes
-    Ntrode = data[pfx + 'NumTrode']
+    # simulated (porous) electrodes
+    Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
+    if Nvol_ac[0] >= 1: # If porous anode
+        trodes = [0, 1]
+    else:
+        trodes = [1]
+#    Ntrode = data[pfx + 'NumTrode']
+    Ntrode = 2
     # Pick out some useful constants/calculated values
     k = D['k']                      # Boltzmann constant, J/(K Li)
     Tref = D['Tref']                # Temp, K
@@ -39,7 +45,7 @@ def show_data(indir, plot_type, save_flag):
     solidShape_ac = np.empty(Ntrode, dtype=object)
     rxnType_ac = np.empty(Ntrode, dtype=object)
     psd_len_ac = np.empty(Ntrode, dtype=object)
-    for l in range(Ntrode):
+    for l in trodes:
 #        print l
 #        print D['Vstd_ac'][l]
         Vstd_ac[l] = D['Vstd_ac'][l]
@@ -82,11 +88,12 @@ def show_data(indir, plot_type, save_flag):
 #    print "Specified psd_mean [nm]:", D['mean_ac']
     print "Specified psd_mean [nm]:", np.array(D['mean_ac'])*1e9
     print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])*1e9
-    psd_len = data[pfx + "psd_lengths_0"][0]*1e9
-    print "PSD_a:"
-    print psd_len_ac[0][0].transpose()
-    print "PSD_c:"
-    print psd_len_ac[1][0].transpose()
+#    psd_len = data[pfx + "psd_lengths_0"][0]*1e9
+    for i in trodes:
+        print "PSD_{l}:".format(l=l)
+        print psd_len_ac[l][0].transpose()
+#    print "PSD_c:"
+#        print psd_len_ac[1][0].transpose()
 #    print "reg sln params:"
 #    print data[pfx + "a"][0]
 #    print "Actual psd_mean [nm]:", np.mean(psd_len)
@@ -122,7 +129,7 @@ def show_data(indir, plot_type, save_flag):
         fig, ax = plt.subplots()
         voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
 #        voltage = -data[pfx + 'phi_applied'][0]
-        ffvec = data[pfx + 'ffrac_ac'][:, 1]
+        ffvec = data[pfx + 'ffrac_1'][0]
         ax.plot(ffvec, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
@@ -178,7 +185,7 @@ def show_data(indir, plot_type, save_flag):
         lyte_c_str = pfx + "c_lyte_{l}".format(l=l)
         lyte_p_str = pfx + "phi_lyte_{l}".format(l=l)
         ylim = (0, 1.01)
-        ffvec = data[pfx + 'ffrac_ac'][:,l]
+        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
         datax = times
 #        datax = ffvec
         for i in range(Npart_ac[l]):
@@ -279,7 +286,7 @@ def show_data(indir, plot_type, save_flag):
     if plot_type == "curr":
         fig, ax = plt.subplots()
         current = data[pfx + "current"][0] * 3600/td
-        ffvec = data[pfx + 'ffrac_ac'][:,1]
+        ffvec = data[pfx + 'ffrac_1'][0]
 #        ax.plot(ffvec, current)
         ax.plot(times*td, current)
         xmin = np.min(ffvec)
@@ -314,33 +321,45 @@ def show_data(indir, plot_type, save_flag):
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        datay_a = data[anode][0]
+        if 0 in trodes:
+            datay_a = data[anode][0]
+            L_a = D['L_ac'][0] * 1e6
         datay_s = data[sep][0]
         datay_c = data[cath][0]
         L_s = D['L_s'] * 1e6
-        L_a = D['L_ac'][0] * 1e6
         L_c = D['L_ac'][1] * 1e6
-        datay = np.hstack((datay_a, datay_s, datay_c))
+        if 0 in trodes:
+            datay = np.hstack((datay_a, datay_s, datay_c))
+            xmax = L_a + L_s + L_c
+        else:
+            datay = np.hstack((datay_s, datay_c))
+            xmax = L_s + L_c
         numy = len(datay)
         xmin = 0
-        xmax = L_a + L_s + L_c
+#        xmax = L_a + L_s + L_c
         datax = np.linspace(xmin, xmax, numy)
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay)
 #        ax.axvline(x=Lsep, ymin=ymin, ymax=ymax, linestyle='--', color='g')
-        ax.axvline(x=L_a, linestyle='--', color='g')
-        ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
+        if 0 in trodes:
+            ax.axvline(x=L_a, linestyle='--', color='g')
+            ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
+        else:
+            ax.axvline(x=L_s, linestyle='--', color='g')
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
             ttl.set_text('')
             return line1, ttl
         def animate(tind):
-            datay_a = data[anode][tind]
             datay_s = data[sep][tind]
             datay_c = data[cath][tind]
-            datay = np.hstack((datay_a, datay_s, datay_c))
+            if 0 in trodes:
+                datay_a = data[anode][tind]
+                datay = np.hstack((datay_a, datay_s, datay_c))
+            else:
+                datay = np.hstack((datay_s, datay_c))
             line1.set_ydata(datay)
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
