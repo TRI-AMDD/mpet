@@ -28,7 +28,7 @@ class mpetIO():
                          P.getint('Sim Params', 'Npart_c')]
 #        D["Npart_c"] = P.getint('Sim Params', 'Npart_c')
 #        D["Npart_a"] = P.getint('Sim Params', 'Npart_a')
-        D["z"] = P.getfloat('Sim Params', 'z')
+#        D["z"] = P.getfloat('Sim Params', 'z')
 
         # Particle info
         D["mean_ac"] = [P.getfloat('Particles', 'mean_a'),

@@ -370,7 +370,7 @@ class modMPET(daeModel):
                 res = 0
                 # sum over particle volumes in given electrode volume
                 Vu = Sum(self.psd_vol_ac[l].array(i, []))
-                for  j in range(Npart_ac[l]):
+                for j in range(Npart_ac[l]):
                     # The volume of this particular particle
                     Vj = self.psd_vol_ac[l](i, j)
                     res += (Vj/Vu)*(Sum(self.c_sld_ac[l][i, j].dt_array([])) /
