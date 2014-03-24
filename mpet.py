@@ -55,9 +55,12 @@ class modMPET(daeModel):
 #        Npart_ac = np.array([D['Npart_a'], D['Npart_c']])
         Npart_ac = np.array([D['Npart_ac'][0], D['Npart_ac'][1]])
         if Nvol_ac[0] >= 1: # If we have a full anode
-            Ntrode = 2
+#            Ntrode = 2
+            trodes = [0, 1]
         else:
-            Ntrode = 1
+#            Ntrode = 1
+            trodes = [1]
+        self.trodes = trodes
 
         # Domains where variables are distributed
         self.Ntrode = daeDomain("Ntrode", self, unit(),
@@ -65,10 +68,10 @@ class modMPET(daeModel):
         if Nvol_s >= 1: # If we have a separator
             self.Nvol_s = daeDomain("Nvol_s", self, unit(),
                     "Number of control volumes in the separator")
-        self.Nvol_ac = np.empty(Ntrode, dtype=object)
-        self.Npart_ac = np.empty(Ntrode, dtype=object)
-        self.Nsld_mat_ac = np.empty(Ntrode, dtype=object)
-        for l in range(Ntrode):
+        self.Nvol_ac = np.empty(2, dtype=object)
+        self.Npart_ac = np.empty(2, dtype=object)
+        self.Nsld_mat_ac = np.empty(2, dtype=object)
+        for l in trodes:
             self.Nvol_ac[l] = daeDomain("Nvol_{l}".format(l=l),
                     self, unit(),
                     "Number of control volumes in the electrode " +
@@ -89,15 +92,15 @@ class modMPET(daeModel):
             self.Nsld_mat_ac[l] = Nsld_mat
 
         # Variables
-        self.c_lyte_ac = np.empty(Ntrode, dtype=object)
-        self.phi_lyte_ac = np.empty(Ntrode, dtype=object)
-        self.c_sld_ac = np.empty(Ntrode, dtype=object)
-        self.phi_sld_ac = np.empty(Ntrode, dtype=object)
-        self.cbar_sld_ac = np.empty(Ntrode, dtype=object)
-        self.phi_ac = np.empty(Ntrode, dtype=object)
-        self.j_plus_ac = np.empty(Ntrode, dtype=object)
-#        self.ffrac_ac = np.empty(Ntrode, dtype=object)
-        for l in range(Ntrode):
+        self.c_lyte_ac = np.empty(2, dtype=object)
+        self.phi_lyte_ac = np.empty(2, dtype=object)
+        self.c_sld_ac = np.empty(2, dtype=object)
+        self.phi_sld_ac = np.empty(2, dtype=object)
+        self.cbar_sld_ac = np.empty(2, dtype=object)
+        self.phi_ac = np.empty(2, dtype=object)
+        self.j_plus_ac = np.empty(2, dtype=object)
+        self.ffrac_ac = np.empty(2, dtype=object)
+        for l in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte_ac[l] = daeVariable("c_lyte_{l}".format(l=l),
                     mole_frac_t, self,
@@ -148,10 +151,10 @@ class modMPET(daeModel):
                     no_t, self,
                     "Rate of reaction of positives per solid volume",
                     [self.Nvol_ac[l]])
-#            self.ffrac_ac[l] = daeVariable("ffrac_{l}".format(l=l),
-#                mole_frac_t, self,
-#                "Overall filling fraction of solids in electrodes")
-        if Nvol_s > 1: # If we have a separator
+            self.ffrac_ac[l] = daeVariable("ffrac_{l}".format(l=l),
+                mole_frac_t, self,
+                "Overall filling fraction of solids in electrodes")
+        if Nvol_s >= 1: # If we have a separator
             self.c_lyte_s = daeVariable("c_lyte_s", mole_frac_t, self,
                     "Concentration in the electrolyte in the separator",
                     [self.Nvol_s])
@@ -162,9 +165,9 @@ class modMPET(daeModel):
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
-        self.ffrac_ac = daeVariable("ffrac_ac", mole_frac_t, self,
-                "Overall filling fraction of solids in electrodes",
-                [self.Ntrode])
+#        self.ffrac_ac = daeVariable("ffrac_ac", mole_frac_t, self,
+#                "Overall filling fraction of solids in electrodes",
+#                [self.Ntrode])
 #        self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
 #                "Average concentration in each particle",
 #                [self.Nvol_c, self.Npart_c])
@@ -219,16 +222,16 @@ class modMPET(daeModel):
                 "non-dimensional diffusivity of positive ions")
         self.Dm = daeParameter("Dm", unit(), self,
                 "non-dimensional diffusivity of negative ions")
-        self.Dsld_ac = np.empty(Ntrode, dtype=object)
-        self.kappa_ac = np.empty(Ntrode, dtype=object)
-        self.Omga_ac = np.empty(Ntrode, dtype=object)
-        self.k0_ac = np.empty(Ntrode, dtype=object)
-        self.scond_ac = np.empty(Ntrode, dtype=object)
-        self.psd_num_ac = np.empty(Ntrode, dtype=object)
-        self.psd_len_ac = np.empty(Ntrode, dtype=object)
-        self.psd_area_ac = np.empty(Ntrode, dtype=object)
-        self.psd_vol_ac = np.empty(Ntrode, dtype=object)
-        for l in range(Ntrode):
+        self.Dsld_ac = np.empty(2, dtype=object)
+        self.kappa_ac = np.empty(2, dtype=object)
+        self.Omga_ac = np.empty(2, dtype=object)
+        self.k0_ac = np.empty(2, dtype=object)
+        self.scond_ac = np.empty(2, dtype=object)
+        self.psd_num_ac = np.empty(2, dtype=object)
+        self.psd_len_ac = np.empty(2, dtype=object)
+        self.psd_area_ac = np.empty(2, dtype=object)
+        self.psd_vol_ac = np.empty(2, dtype=object)
+        for l in trodes:
             self.Dsld_ac[l] = daeParameter("Dsld_{l}".format(l=l),
                     unit(), self,
                     "Diffusivity in electrode active particles",
@@ -300,10 +303,11 @@ class modMPET(daeModel):
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
-        Ntrode = self.Ntrode.NumberOfPoints
-        Nvol_ac = np.zeros(Ntrode, dtype=np.integer)
-        Npart_ac = np.zeros(Ntrode, dtype=np.integer)
-        for l in range(Ntrode):
+#        Ntrode = self.Ntrode.NumberOfPoints
+        trodes = self.trodes
+        Nvol_ac = np.zeros(2, dtype=np.integer)
+        Npart_ac = np.zeros(2, dtype=np.integer)
+        for l in trodes:
             Nvol_ac[l] = self.Nvol_ac[l].NumberOfPoints
             Npart_ac[l] = self.Npart_ac[l].NumberOfPoints
         if self.D['Nvol_s'] >= 1: # if we have a separator
@@ -312,8 +316,8 @@ class modMPET(daeModel):
             Nvol_s = 0
         Nlyte = Nvol_s + np.sum(Nvol_ac)
 #        Npart_c = self.Npart_c.NumberOfPoints
-        Nsld_mat_ac = np.empty(Ntrode, dtype=object)
-        for l in range(Ntrode):
+        Nsld_mat_ac = np.empty(2, dtype=object)
+        for l in trodes:
             Nsld_mat_ac[l] = np.zeros((Nvol_ac[l], Npart_ac[l]), dtype=np.integer)
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
@@ -336,7 +340,7 @@ class modMPET(daeModel):
 
         # Define the average concentration in each particle (algebraic
         # equations)
-        for l in range(Ntrode):
+        for l in trodes:
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
                     eq = self.CreateEquation("cbar_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
@@ -347,9 +351,9 @@ class modMPET(daeModel):
                     eq.CheckUnitsConsistency = False
 
         # Define the overall filling fraction in the electrodes
-        for l in range(Ntrode):
+        for l in trodes:
             eq = self.CreateEquation("ffrac_{l}".format(l=l))
-            eq.Residual = self.ffrac_ac(l)
+            eq.Residual = self.ffrac_ac[l]()
             numpartvol_tot = float(np.sum(Nsld_mat_ac[l]))
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
@@ -358,7 +362,7 @@ class modMPET(daeModel):
             eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each electrode volume
-        for l in range(Ntrode):
+        for l in trodes:
             for i in range(Nvol_ac[l]):
                 eq = self.CreateEquation("j_plus_trode{l}vol{i}".format(i=i,l=l))
                 # Start with no reaction, then add reactions for each
@@ -376,7 +380,7 @@ class modMPET(daeModel):
 
         # Solid active particle concentrations, potential, and bulk
         # solid potential
-        for l in range(Ntrode):
+        for l in trodes:
             # Solid active particles concentration/potential
             for i in range(Nvol_ac[l]):
                 # Calculate the solid concentration rates of change
@@ -449,10 +453,10 @@ class modMPET(daeModel):
         # electrolyte equations are simple
         if Nvol_ac[0] == 0 and Nvol_s == 0 and Nvol_ac[1] == 1:
             eq = self.CreateEquation("c_lyte")
-            eq.Residual = self.c_lyte_ac[0].dt(0) - 0
+            eq.Residual = self.c_lyte_ac[1].dt(0) - 0
             eq.CheckUnitsConsistency = False
             eq = self.CreateEquation("phi_lyte")
-            eq.Residual = self.phi_lyte_ac[0](0) - self.phi_applied()
+            eq.Residual = self.phi_lyte_ac[1](0) - self.phi_applied()
             eq.CheckUnitsConsistency = False
         else:
             # Calculate RHS for electrolyte equations
@@ -489,7 +493,7 @@ class modMPET(daeModel):
             # Equations governing the electrolyte in the electrodes.
             # Here, we are coupled to the total reaction rates in the
             # solids.
-            for l in range(Ntrode):
+            for l in trodes:
                 if l == 0: # anode
                     offset = 0
                 else: # cathode
@@ -590,7 +594,7 @@ class modMPET(daeModel):
                 if simSurfCond:
                     phi_m = np.empty(Nij, dtype=object)
                     phi_m[:] = [self.phi_sld_ac[l][i, j](k) for k in range(Nij)]
-            elif solidType_c == "homog" or solidType_c == "homog_sdn":
+            elif solidType in ["homog", "homog_sdn"]:
                 mu_R = self.mu_reg_sln(c_sld, Omga)
             # XXX -- Temp dependence!
             act_R = np.exp(mu_R)
@@ -666,11 +670,15 @@ class modMPET(daeModel):
 #        else:
 #            Nvol_s = 0
         # The lengths are nondimensionalized by the cathode length
-        dxa = np.array([self.L_ac(0)/Nvol_ac[0] for i in range(Nvol_ac[0]+1)])
-        dxc = np.array([self.L_ac(1)/Nvol_ac[1] for i in range(Nvol_ac[1]+1)])
-        dxs = np.array([self.L_s()/Nvol_s for i in range(Nvol_s)])
+        dxvec = np.empty(np.sum(Nvol_ac) + Nvol_s + 2, dtype=object)
+        dxa = np.array(Nvol_ac[0] * [self.L_ac(0)/Nvol_ac[0]])
+        dxc = np.array(Nvol_ac[1] * [self.L_ac(1)/Nvol_ac[1]])
+        dxs = np.array(Nvol_s * [self.L_s()/Nvol_s])
         dxtmp = np.hstack((dxa, dxs, dxc))
-        dxd1 = (dxtmp[0:-1] + dxtmp[1:]) / 2.
+        dxvec[1:-1] = dxtmp
+        dxvec[0] = dxvec[1]
+        dxvec[-1] = dxvec[-2]
+        dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
         dxd2 = (dxd1[0:-1] + dxd1[1:]) / 2.
 
         # The porosity vector
@@ -691,7 +699,7 @@ class modMPET(daeModel):
         # into the electrolyte is set
         if Nvol_ac[0] == 0:
             ctmp[0] = (ctmp[1] +
-                    self.current()*self.epsbeta()*(1-self.tp())*dx
+                    self.current()*self.epsbeta_ac(1)*(1-self.tp())*dxvec[0]
                     )
         else: # porous anode -- no elyte flux at anode current collector
             ctmp[0] = ctmp[1]
@@ -817,15 +825,17 @@ class simMPET(daeSimulation):
         self.Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
         self.Npart_ac = np.array([D['Npart_ac'][0], D['Npart_ac'][1]])
         if self.Nvol_ac[0] >= 1: # If we have a full anode
-            self.Ntrode = 2
+#            self.Ntrode = 2
+            self.trodes = [0, 1]
         else:
-            self.Ntrode = 1
+#            self.Ntrode = 1
+            self.trodes = [1]
         self.test_input(D)
 
         # Generate psd
-        self.psd_num = np.empty(self.Ntrode, dtype=object)
-        self.psd_len = np.empty(self.Ntrode, dtype=object)
-        for l in range(self.Ntrode):
+        self.psd_num = np.empty(2, dtype=object)
+        self.psd_len = np.empty(2, dtype=object)
+        for l in self.trodes:
             mean = D['mean_ac'][l]
             stddev = D['stddev_ac'][l]
             Nvol = self.Nvol_ac[l]
@@ -895,10 +905,10 @@ class simMPET(daeSimulation):
         T = float(D['Tabs'])/Tref
 
         # Domains
-        self.m.Ntrode.CreateArray(self.Ntrode)
+        self.m.Ntrode.CreateArray(2)
         if self.Nvol_s >= 1:
             self.m.Nvol_s.CreateArray(self.Nvol_s)
-        for l in range(self.Ntrode):
+        for l in self.trodes:
             self.m.Nvol_ac[l].CreateArray(self.Nvol_ac[l])
 #        sep_frac = float(D['L_s'])/L_c
 #        Nvol_s = int(np.ceil(sep_frac*Nvol_c))
@@ -917,8 +927,8 @@ class simMPET(daeSimulation):
 
         # Parameters
         self.m.T.SetValue(T)
-        self.m.NumTrode.SetValue(self.Ntrode)
-        for l in range(self.Ntrode):
+        self.m.NumTrode.SetValue(len(self.trodes))
+        for l in self.trodes:
             self.m.alpha_ac.SetValue(l, D['alpha_ac'][l])
             self.m.NumVol_ac.SetValue(l, self.Nvol_ac[l])
             self.m.NumPart_ac.SetValue(l, self.Npart_ac[l])
@@ -1007,10 +1017,10 @@ class simMPET(daeSimulation):
 #        Npart_c = self.m.Npart_c.NumberOfPoints
         phi_cathode = self.m.phi_cathode.GetValue()
         # Solids
-        for l in range(self.Ntrode):
+        for l in self.trodes:
             cs0 = self.D['cs0_ac'][l]
             # Guess initial filling fractions
-            self.m.ffrac_ac.SetInitialGuess(l, cs0)
+            self.m.ffrac_ac[l].SetInitialGuess(cs0)
             for i in range(self.Nvol_ac[l]):
                 # Guess initial volumetric reaction rates
                 self.m.j_plus_ac[l].SetInitialGuess(i, 0.0)
@@ -1033,7 +1043,7 @@ class simMPET(daeSimulation):
         for i in range(self.Nvol_s):
             self.m.c_lyte_s.SetInitialCondition(i, c_lyte_init)
             self.m.phi_lyte_s.SetInitialGuess(i, phi_guess)
-        for l in range(self.Ntrode):
+        for l in self.trodes:
             for i in range(self.Nvol_ac[l]):
                 self.m.c_lyte_ac[l].SetInitialCondition(i, c_lyte_init)
                 self.m.phi_lyte_ac[l].SetInitialGuess(i, phi_guess)
@@ -1078,7 +1088,7 @@ class simMPET(daeSimulation):
             raise Exception("Temp dependence not implemented")
         if D['Nvol_ac'][1] < 1:
             raise Exception("Must have a cathode")
-        for l in range(self.Ntrode):
+        for l in self.trodes:
             solidType = D['solidType_ac'][l]
             solidShape = D['solidShape_ac'][l]
             if D['simSurfCond_ac'][l] and solidType != "ACR":
