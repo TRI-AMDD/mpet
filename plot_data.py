@@ -62,6 +62,33 @@ def show_data(indir, plot_type, save_flag):
         psd_len_ac[l] = data[pfx + "psd_lengths_{l}".format(l=l)]
     Vstd = Vstd_ac[1] - Vstd_ac[0]
     Nvol_s = D['Nvol_s']
+    # Discretization (and associated porosity)
+    dxc = data[pfx + "L_ac"][0][1]/Nvol_ac[1]
+    dxvec = np.array(Nvol_ac[1] * [dxc])
+    porosvec = np.array(Nvol_ac[1] * [data[pfx + "poros_ac"][0][1]])
+    L_c = D['L_ac'][1] * 1e6
+    cellsvec = dxc*np.arange(Nvol_ac[1]) + dxc/2.
+    if Nvol_s:
+        dxs = data[pfx + "L_s"][0][0]/Nvol_s
+        dxvec_s = np.array(Nvol_s * [dxs])
+        dxvec = np.hstack((dxvec_s, dxvec))
+        poros_s = np.array(Nvol_s * [data[pfx + "poros_s"][0][0]])
+        porosvec = np.hstack((poros_s, porosvec))
+        L_s = D['L_s'] * 1e6
+        cellsvec += L_s/L_c
+        cellsvec_s = dxs*np.arange(Nvol_s) + dxs/2.
+        cellsvec = np.hstack((cellsvec_s, cellsvec))
+    if 0 in trodes:
+        dxa = data[pfx + "L_ac"][0][0]/Nvol_ac[0]
+        dxvec_a = np.array(Nvol_ac[0] * [dxa])
+        dxvec = np.hstack((dxvec_a, dxvec))
+        poros_a = np.array(Nvol_ac[0] * [data[pfx + "poros_ac"][0][0]])
+        porosvec = np.hstack((poros_a, porosvec))
+        L_a = D['L_ac'][0] * 1e6
+        cellsvec += L_a/L_c
+        cellsvec_a = dxa*np.arange(Nvol_ac[0]) + dxa/2.
+        cellsvec = np.hstack((cellsvec_a, cellsvec))
+    cellsvec *= L_c
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
@@ -263,35 +290,22 @@ def show_data(indir, plot_type, save_flag):
     # Check to make sure mass is conserved in elyte
     if plot_type == "elytecons":
         fig, ax = plt.subplots()
-        eps = 1e-9
+        eps = 1e-2
         ymin = 1-eps
         ymax = 1+eps
-        ax.set_ylim((ymin, ymax))
+#        ax.set_ylim((ymin, ymax))
         ax.set_ylabel('Avg. Concentration of electrolyte [nondim]')
         sep = pfx + 'c_lyte_s'
         anode = pfx + 'c_lyte_0'
         cath = pfx + 'c_lyte_1'
         ax.set_xlabel('Battery Position [um]')
         cvec = data[cath]
-        dxvec = np.array(Nvol_ac[1] * [data[pfx + "L_ac"][0][1]/Nvol_ac[1]])
-        porosvec = np.array(Nvol_ac[1] * [data[pfx + "poros_ac"][0][1]])
-        L_c = D['L_ac'][1] * 1e6
         if Nvol_s:
             cvec_s = data[sep]
             cvec = np.hstack((cvec_s, cvec))
-            dx_s = np.array(Nvol_s * [data[pfx + "L_s"][0][0]/Nvol_s])
-            dxvec = np.hstack((dx_s, dxvec))
-            poros_s = np.array(Nvol_s * [data[pfx + "poros_s"][0][0]])
-            porosvec = np.hstack((poros_s, porosvec))
-            L_s = D['L_s'] * 1e6
         if 0 in trodes:
             cvec_a = data[anode]
             cvec = np.hstack((cvec_a, cvec))
-            dx_a = np.array(Nvol_ac[0] * [data[pfx + "L_ac"][0][0]/Nvol_ac[0]])
-            dxvec = np.hstack((dx_a, dxvec))
-            poros_a = np.array(Nvol_ac[0] * [data[pfx + "poros_ac"][0][0]])
-            porosvec = np.hstack((poros_a, porosvec))
-            L_a = D['L_ac'][0] * 1e6
         cavg = np.sum(porosvec*dxvec*cvec,
                 axis=1)/np.sum(porosvec*dxvec)
         np.set_printoptions(precision=8)
@@ -355,11 +369,12 @@ def show_data(indir, plot_type, save_flag):
         numy = len(datay)
         xmin = 0
         xmax = Ltot
-        datax = np.linspace(xmin, xmax, numy)
+        datax = cellsvec
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay)
+#        line1, = ax.plot(datax, datay)
+        line1, = ax.plot(datax, datay, '*')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         def init():
@@ -611,7 +626,7 @@ def show_data(indir, plot_type, save_flag):
     else:
         raise Exception("Unexpected plot type argument. " +
                 "Try 'v', 'curr', 'elytec', 'elytep', " +
-                "'cbar_a/c', 'csld_ac', 'phisld_a/c', " +
+                "'cbar_a/c', 'csld_a/c', 'phisld_a/c', " +
                 "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
