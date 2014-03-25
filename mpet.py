@@ -45,20 +45,12 @@ class modMPET(daeModel):
             raise Exception("Need particle size distr. as input")
         self.D = D
         self.profileType = D['profileType']
-#        Nvol_c = D['Nvol_c']
-#        Nvol_a = D['Nvol_a']
         Nvol_s = D['Nvol_s']
-#        Nvol_ac = np.array([D['Nvol_a'], D['Nvol_c']])
         Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
-#        Npart_c = D['Npart_c']
-#        Npart_a = D['Npart_a']
-#        Npart_ac = np.array([D['Npart_a'], D['Npart_c']])
         Npart_ac = np.array([D['Npart_ac'][0], D['Npart_ac'][1]])
         if Nvol_ac[0] >= 1: # If we have a full anode
-#            Ntrode = 2
             trodes = [0, 1]
         else:
-#            Ntrode = 1
             trodes = [1]
         self.trodes = trodes
 
@@ -165,21 +157,6 @@ class modMPET(daeModel):
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
-#        self.ffrac_ac = daeVariable("ffrac_ac", mole_frac_t, self,
-#                "Overall filling fraction of solids in electrodes",
-#                [self.Ntrode])
-#        self.cbar_sld = daeVariable("cbar_sld", mole_frac_t, self,
-#                "Average concentration in each particle",
-#                [self.Nvol_c, self.Npart_c])
-#        self.phi_c = daeVariable("phi_cath", elec_pot_t, self,
-#                "Electrostatic potential in the solid",
-#                [self.Nvol_c])
-#        self.j_plus = daeVariable("j_plus", no_t, self,
-#                "Rate of reaction of positives per solid volume",
-#                [self.Nvol_c])
-#        self.ffrac_cathode = daeVariable("ffrac_cathode",
-#                mole_frac_t, self,
-#                "Overall filling fraction of solids in cathode")
 
         # Parameters
         self.NumTrode = daeParameter("NumTrode", unit(), self,
@@ -305,7 +282,6 @@ class modMPET(daeModel):
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
-#        Ntrode = self.Ntrode.NumberOfPoints
         trodes = self.trodes
         Nvol_ac = np.zeros(2, dtype=np.integer)
         Npart_ac = np.zeros(2, dtype=np.integer)
@@ -317,7 +293,6 @@ class modMPET(daeModel):
         else:
             Nvol_s = 0
         Nlyte = Nvol_s + np.sum(Nvol_ac)
-#        Npart_c = self.Npart_c.NumberOfPoints
         Nsld_mat_ac = np.empty(2, dtype=object)
         for l in trodes:
             Nsld_mat_ac[l] = np.zeros((Nvol_ac[l], Npart_ac[l]), dtype=np.integer)
@@ -665,14 +640,6 @@ class modMPET(daeModel):
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
         # Discretization
-#        Nvol_ac = np.zeros(Ntrode)
-#        for l in range(Ntrode):
-#            Nvol_ac[l] = self.Nvol_ac[l].NumberOfPoints
-#            Npart_ac[l] = self.Npart_ac[l].NumberOfPoints
-#        if self.D['Nvol_s'] >= 1: # if we have a separator
-#            Nvol_s = self.Nvol_s.NumberOfPoints
-#        else:
-#            Nvol_s = 0
         # The lengths are nondimensionalized by the cathode length
         dxvec = np.empty(np.sum(Nvol_ac) + Nvol_s + 2, dtype=object)
         dxa = np.array(Nvol_ac[0] * [self.L_ac(0)/Nvol_ac[0]])
@@ -766,8 +733,6 @@ class modMPET(daeModel):
 
     def mu_reg_sln(self, c, Omga):
         return np.array([ Omga*(1-2*c[i])
-#                + self.T()*Log(c[i]/(1-c[i]))
-#                + self.T()*Log((c[i]+eps)/(1-c[i]+eps))
                 + self.T()*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
                 for i in range(len(c)) ])
 
@@ -819,15 +784,11 @@ class simMPET(daeSimulation):
         self.D = D
         # TODO -- why is psd generation in __init__??
         self.Nvol_s = D['Nvol_s']
-#        Nvol_ac = np.array([D['Nvol_a'], D['Nvol_c']])
-#        Npart_ac = np.array([D['Npart_a'], D['Npart_c']])
         self.Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
         self.Npart_ac = np.array([D['Npart_ac'][0], D['Npart_ac'][1]])
         if self.Nvol_ac[0] >= 1: # If we have a full anode
-#            self.Ntrode = 2
             self.trodes = [0, 1]
         else:
-#            self.Ntrode = 1
             self.trodes = [1]
         self.test_input(D)
 
@@ -870,10 +831,6 @@ class simMPET(daeSimulation):
         # Extract info from the config file
         # Simulation
         D = self.D
-#        Nvol_c = D['Nvol_c']
-#        Npart_c = D['Npart_c']
-#        solidType_c = D['solidType_c']
-#        solidShape_c = D['solidShape_c']
         # Geometry
         L_ref = D['L_ac'][1]
         # Electrolyte
@@ -920,15 +877,6 @@ class simMPET(daeSimulation):
             self.m.Nvol_s.CreateArray(self.Nvol_s)
         for l in self.trodes:
             self.m.Nvol_ac[l].CreateArray(self.Nvol_ac[l])
-#        sep_frac = float(D['L_s'])/L_c
-#        Nvol_s = int(np.ceil(sep_frac*Nvol_c))
-#        if Nvol_c == 1:
-#            Nvol_s = 0
-#            sep_frac = 0
-#        else:
-#            sep_frac = float(D['L_s'])/L_c
-#            Nvol_s = int(np.ceil(sep_frac*Nvol_c))
-#            self.m.Nvol_s.CreateArray(Nvol_s)
             self.m.Npart_ac[l].CreateArray(self.Npart_ac[l])
             for i in range(self.psd_num[l].shape[0]):
                 for j in range(self.psd_num[l].shape[1]):
@@ -943,7 +891,6 @@ class simMPET(daeSimulation):
             self.m.NumVol_ac.SetValue(l, self.Nvol_ac[l])
             self.m.NumPart_ac.SetValue(l, self.Npart_ac[l])
             self.m.L_ac.SetValue(l, D['L_ac'][l]/L_ref)
-#            self.m.dim_csmax_ac.SetValue(D['rhos_ac'][l]/N_A)
             self.m.dim_csmax_ac.SetValue(l, csmax_ac[l])
             self.m.poros_ac.SetValue(l, D['poros_ac'][l])
             self.m.epsbeta_ac.SetValue(l,
@@ -1019,13 +966,7 @@ class simMPET(daeSimulation):
         self.m.z.SetValue(z)
 
     def SetUpVariables(self):
-#        Nvol_c = self.m.Nvol_c.NumberOfPoints
-#        if Nvol_c > 1:
-#            Nvol_s = self.m.Nvol_s.NumberOfPoints
-#        else:
-#            Nvol_s = 0
         Nlyte = self.Nvol_s + np.sum(self.Nvol_ac)
-#        Npart_c = self.m.Npart_c.NumberOfPoints
         phi_cathode = self.m.phi_cathode.GetValue()
         # Solids
         for l in self.trodes:
@@ -1058,8 +999,6 @@ class simMPET(daeSimulation):
             for i in range(self.Nvol_ac[l]):
                 self.m.c_lyte_ac[l].SetInitialCondition(i, c_lyte_init)
                 self.m.phi_lyte_ac[l].SetInitialGuess(i, phi_guess)
-#        for l in range(self.Ntrode):
-#            self.m.ffrac_ac[l].SetInitialGuess(cs0_c)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
 
@@ -1090,8 +1029,6 @@ class simMPET(daeSimulation):
         param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
         if param < 2:
             param = 2
-#        param = [param[i] if param[i] >= 2 else 2 for i in
-#                range(len(param))]
         return param
 
     def test_input(self, D):
@@ -1277,7 +1214,6 @@ def consoleRun(D):
     # Run
     try:
         simulation.Run()
-#    except Exception as e:
     except Exception as e:
         print str(e)
         simulation.ReportData(simulation.CurrentTime)
