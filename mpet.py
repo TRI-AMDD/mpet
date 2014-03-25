@@ -698,9 +698,8 @@ class modMPET(daeModel):
         # If we don't have a real anode, the total current flowing
         # into the electrolyte is set
         if Nvol_ac[0] == 0:
-            ctmp[0] = (ctmp[1] +
-                    self.current()*self.epsbeta_ac(1)*(1-self.tp())*dxvec[0]
-                    )
+            ctmp[0] = ( ctmp[1] + (self.current() * self.epsbeta_ac(1) *
+                    (1-self.tp())*dxvec[0])/porosvec[0] )
         else: # porous anode -- no elyte flux at anode current collector
             ctmp[0] = ctmp[1]
         # No electrolyte flux at the cathode current collector
