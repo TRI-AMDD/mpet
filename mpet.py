@@ -298,6 +298,8 @@ class modMPET(daeModel):
         self.mcond_ac = daeParameter("mcond_ac", unit(), self,
                 "conductivity of cathode",
                 [self.Ntrode])
+        self.z = daeParameter("z", unit(), self,
+                "capacity ratio of cathode:anode")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -517,9 +519,11 @@ class modMPET(daeModel):
         # or cathode equivalently.
         eq = self.CreateEquation("Total_Current")
         eq.Residual = self.current()
-        dx = 1./Nvol_ac[1]
-        for i in range(Nvol_ac[1]):
-            eq.Residual -= dx*self.j_plus_ac[1](i)
+        limtrode = (1 if self.z.GetValue() < 1 else 0)
+        dx = 1./Nvol_ac[limtrode]
+        for i in range(Nvol_ac[limtrode]):
+            # Factor of -1 is to get sign right if referencing anode
+            eq.Residual -= dx * (-1)**(1-limtrode) * self.j_plus_ac[limtrode](i)
         eq.CheckUnitsConsistency = False
 
         if self.profileType == "CC":
@@ -697,20 +701,16 @@ class modMPET(daeModel):
         ctmp[1:-1] = cvec
         # If we don't have a real anode, the total current flowing
         # into the electrolyte is set
+        limtrode = (1 if self.z.GetValue() < 1 else 0)
         if Nvol_ac[0] == 0:
-            ctmp[0] = ( ctmp[1] + (self.current() * self.epsbeta_ac(1) *
-                    (1-self.tp())*dxvec[0])/porosvec[0] )
+            ctmp[0] = ( ctmp[1] + (self.current() *
+                self.epsbeta_ac(limtrode) *
+                (1-self.tp())*dxvec[0])/porosvec[0] )
         else: # porous anode -- no elyte flux at anode current collector
             ctmp[0] = ctmp[1]
         # No electrolyte flux at the cathode current collector
         ctmp[-1] = ctmp[-2]
         # Diffusive flux in the electrolyte
-#        print
-#        print Nlyte
-#        print porosvec.shape
-#        print np.diff(ctmp).shape
-#        print dxd1.shape
-#        print
         cflux = -porosvec*np.diff(ctmp)/dxd1
         # Divergence of the flux
         RHS_c = -np.diff(cflux)/dxd2
@@ -902,6 +902,17 @@ class simMPET(daeSimulation):
         td = L_ref**2 / Damb
         # Nondimensional Temperature
         T = float(D['Tabs'])/Tref
+        # Electrode capacity ratio
+        cap_c = (D['L_ac'][1] * (1-D['poros_ac'][1]) *
+                D['P_L_ac'][1] * D['rhos_ac'][1])
+        if D['Nvol_ac'][0]:
+            # full porous anode with finite capacity
+            cap_a = (D['L_ac'][0] * (1-D['poros_ac'][0]) *
+                    D['P_L_ac'][0] * D['rhos_ac'][0])
+            z = cap_c / cap_a
+        else:
+            # flat plate anode with assumed infinite supply of metal
+            z = 0
 
         # Domains
         self.m.Ntrode.CreateArray(2)
@@ -1005,6 +1016,7 @@ class simMPET(daeSimulation):
         self.m.phi_cathode.SetValue(0.)
         self.m.currset.SetValue(D['Crate']*td/3600)
         self.m.Vset.SetValue(D['Vset']*e/(k*Tref))
+        self.m.z.SetValue(z)
 
     def SetUpVariables(self):
 #        Nvol_c = self.m.Nvol_c.NumberOfPoints

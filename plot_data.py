@@ -46,8 +46,6 @@ def show_data(indir, plot_type, save_flag):
     rxnType_ac = np.empty(Ntrode, dtype=object)
     psd_len_ac = np.empty(Ntrode, dtype=object)
     for l in trodes:
-#        print l
-#        print D['Vstd_ac'][l]
         Vstd_ac[l] = D['Vstd_ac'][l]
         # Replace the standard potential if a fit voltage curve was used.
         # Use the value that the simulation used in initialization.
@@ -106,11 +104,7 @@ def show_data(indir, plot_type, save_flag):
     print (("porous anode | " if Nvol_ac[0] else "flat anode | ")
             + ("sep | " if Nvol_s else "") + "porous cathode")
     if Nvol_ac[0]:
-        cap_c = ( D['L_ac'][1] * (1-D['poros_ac'][1]) * D['P_L_ac'][1] *
-                  D['rhos_ac'][1])
-        cap_a = ( D['L_ac'][0] * (1-D['poros_ac'][0]) * D['P_L_ac'][0] *
-                  D['rhos_ac'][0])
-        print "capacity ratio cathode:anode, 'z':", cap_c/cap_a
+        print "capacity ratio cathode:anode, 'z':", data[pfx + 'z'][0][0]
     print "solidType:", solidType_ac[trodes]
     print "solidShape", solidShape_ac[trodes]
     print "rxnType:", rxnType_ac[trodes]
