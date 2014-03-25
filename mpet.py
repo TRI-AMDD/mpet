@@ -679,7 +679,7 @@ class modMPET(daeModel):
         dxvec[0] = dxvec[1]
         dxvec[-1] = dxvec[-2]
         dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
-        dxd2 = (dxd1[0:-1] + dxd1[1:]) / 2.
+        dxd2 = dxtmp
 
         # The porosity vector
         porosvec = np.empty(Nlyte + 1, dtype=object)
