@@ -136,7 +136,7 @@ def show_data(indir, plot_type, save_flag):
         if rxnType_ac[l] == "BV":
             print "alpha_" + trode + ":", D['alpha_ac'][l]
         elif rxnType_ac[l] == "Marcus":
-            print "lambda_" + trode + "/(kTref):", data[pfx + "lambda_ac"][0][l]
+            print "lambda_" + trode + "/(kTref):", data[pfx + "lmbda_ac"][0][l]
         if D['simBulkCond_ac'][l]:
             print (trode + " bulk conductivity loss: Yes -- " +
                     "dim_mcond [S/m]: " + str(D['mcond_ac'][l]))
