@@ -9,6 +9,7 @@ import time
 
 import numpy as np
 import scipy.sparse as sprs
+import scipy.special as spcl
 #import scipy.interpolate as sint
 #import scipy.io as sio
 
@@ -203,6 +204,7 @@ class modMPET(daeModel):
         self.kappa_ac = np.empty(2, dtype=object)
         self.Omga_ac = np.empty(2, dtype=object)
         self.k0_ac = np.empty(2, dtype=object)
+        self.MHC_Aa_ac = np.empty(2, dtype=object)
         self.scond_ac = np.empty(2, dtype=object)
         self.psd_num_ac = np.empty(2, dtype=object)
         self.psd_len_ac = np.empty(2, dtype=object)
@@ -224,6 +226,11 @@ class modMPET(daeModel):
             self.k0_ac[l] = daeParameter("k0_{l}".format(l=l),
                     unit(), self,
                     "exchange current density rate constant for each particle",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.MHC_Aa_ac[l] = daeParameter("MHC_Aa_{l}".format(l=l),
+                    unit(), self,
+                    "MHC factor for erf approximation parameter",
+#                    [self.Ntrode])
                     [self.Nvol_ac[l], self.Npart_ac[l]])
             self.scond_ac[l] = daeParameter("scond_{l}".format(l=l),
                     unit(), self,
@@ -255,6 +262,9 @@ class modMPET(daeModel):
                 [self.Ntrode])
         self.dim_csmax_ac = daeParameter("dim_csmax_ac", unit(), self,
                 "maximum lithium concentration in solid [mol/m^3]",
+                [self.Ntrode])
+        self.MHC_erfstretch_ac = daeParameter("MHC_b_ac", unit(), self,
+                "MHC factor for erf approximation parameter",
                 [self.Ntrode])
         self.T = daeParameter("T", unit(), self,
                 "Non dimensional temperature")
@@ -298,7 +308,13 @@ class modMPET(daeModel):
             Nsld_mat_ac[l] = np.zeros((Nvol_ac[l], Npart_ac[l]), dtype=np.integer)
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
-                    Nsld_mat_ac[l][i, j] = self.Nsld_mat_ac[l][i, j].NumberOfPoints
+                    Nptsij = self.Nsld_mat_ac[l][i, j].NumberOfPoints
+                    Nsld_mat_ac[l][i, j] = Nptsij
+        # External function -- erf -- prepare to store external
+        # function objects. For some reason, each external function
+        # object that gets created has to stay 'alive' as an attribute
+        # of the model, but we won't have to keep track of indexing.
+        self.erfvec = []
 
 #        # Prepare the noise
 #        # maybe "numnoise" should be a parameter?
@@ -543,7 +559,9 @@ class modMPET(daeModel):
         k0 = self.k0_ac[l](i, j)
         kappa = self.kappa_ac[l](i, j) # only used for ACR
         cbar = self.cbar_sld_ac[l](i, j) # only used for ACR
-        lmbda = self.lmbda_ac(l) # Only used for Marcus
+        lmbda = self.lmbda_ac(l) # Only used for Marcus/MHC
+        Aa = self.MHC_Aa_ac[l](i, j) # Only used for MHC
+        b = self.MHC_erfstretch_ac(l) # Only used for MHC
         alpha = self.alpha_ac(l) # Only used for BV
         Omga = self.Omga_ac[l](i, j)
         Ds = self.Dsld_ac[l](i, j) # Only used for "diffn"
@@ -587,6 +605,8 @@ class modMPET(daeModel):
                 Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
             elif rxnType == "BV":
                 Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
+            elif rxnType == "MHC":
+                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
             M = sprs.eye(Nij, format="csr")
             return (M, Rate)
 
@@ -757,6 +777,27 @@ class modMPET(daeModel):
             (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         return Rate
 
+    def R_MHC(self, k0, lmbda, eta, Aa, b, T):
+        def knet(eta, lmbda, b):
+            argox = (eta - lmbda)/b
+            argrd = (-eta - lmbda)/b
+            erfox = ERF("erf", self, unit(), argox)
+            erfrd = ERF("erf", self, unit(), argrd)
+            self.erfvec.append([erfox, erfrd])
+            kox = Aa*(erfox() + 1)
+            krd = Aa*(erfrd() + 1)
+#            k = krd - kox
+            k = kox - krd
+            return k
+        if type(eta) == np.ndarray:
+            neta = len(eta)
+            Rate = np.empty(neta, dtype=object)
+            for i, etaval in enumerate(eta):
+                Rate[i] = knet(etaval, lmbda, b)
+        else:
+            Rate = knet(eta, lmbda, b)
+        return Rate
+
     def MX(self, mat, objvec):
         if type(mat) is not sprs.csr.csr_matrix:
             raise Exception("MX function designed for csr mult")
@@ -910,7 +951,12 @@ class simMPET(daeSimulation):
                         0.0)
 #                        -self.m.mu_reg_sln(D['cs0_ac'][l],
 #                            D['Omga_ac'][l]/(k*Tref)))
-            self.m.lmbda_ac.SetValue(l, D['lambda_ac'][l]/(k*Tref))
+            lmbda = D['lambda_ac'][l]/(k*Tref)
+            self.m.lmbda_ac.SetValue(l, lmbda)
+#            MHC_b = 2*np.sqrt(self.m.lmbda_ac.GetValue(l))
+            MHC_erf_b = 2*np.sqrt(lmbda)
+            self.m.MHC_erfstretch_ac.SetValue(l, MHC_erf_b)
+#            self.m.MHC_Aa_ac.SetValue(l, )
             self.m.B_ac.SetValue(l,
                     D['B_ac'][l]/(k*Tref*D['rhos_ac'][l]))
             self.m.cwet_ac.SetValue(l, D['cwet_ac'][l])
@@ -936,8 +982,11 @@ class simMPET(daeSimulation):
                     self.m.psd_vol_ac[l].SetValue(i, j, p_vol)
                     self.m.kappa_ac[l].SetValue(i, j,
                             D['kappa_ac'][l]/(k*Tref*D['rhos_ac'][l]*p_len**2))
-                    self.m.k0_ac[l].SetValue(i, j,
-                            ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l]))
+                    k0tmp = ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l])
+                    self.m.k0_ac[l].SetValue(i, j, k0tmp)
+#                            ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l]))
+                    self.m.MHC_Aa_ac[l].SetValue(i, j,
+                            k0tmp / spcl.erf(-lmbda/MHC_erf_b))
                     self.m.scond_ac[l].SetValue(i, j,
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
@@ -1074,6 +1123,23 @@ class simMPET(daeSimulation):
 #                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
 #                self.Log.Message('Stopping the simulation...', 0)
 #                return
+
+class ERF(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, z):
+        arguments = {}
+        arguments["z"] = z
+        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
+    def Calculate(self, values):
+        z = values["z"]
+        zval = z.Value
+        res = adouble(spcl.erf(z.Value))
+        # Awkwardly, this same function is called when a derivative is
+        # requested for the Jacobian. We can figure this out because
+        # the Derivative attribute of z will be non-zero. In that
+        # case, return the derivative.
+        if z.Derivative != 0:
+            res.Derivative = (2./np.sqrt(np.pi)) * np.exp(-zval**2)
+        return res
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
