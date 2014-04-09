@@ -12,7 +12,7 @@ import matplotlib.collections as mcollect
 
 import mpet_params_IO
 
-def show_data(indir, plot_type, save_flag):
+def show_data(indir, plot_type, print_flag, save_flag):
     pfx = 'mpet.'
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
@@ -95,58 +95,59 @@ def show_data(indir, plot_type, save_flag):
     # Simulation type
     profileType = D['profileType']
     # Colors for plotting concentrations
-    to_yellow = 0.4
-    to_red = 0.6
+    to_yellow = 0.3
+    to_red = 0.7
 
     # Print relevant simulation info
-    print "profileType:", profileType
-    print "Cell structure:"
-    print (("porous anode | " if Nvol_ac[0] else "flat anode | ")
-            + ("sep | " if Nvol_s else "") + "porous cathode")
-    if Nvol_ac[0]:
-        print "capacity ratio cathode:anode, 'z':", data[pfx + 'z'][0][0]
-    print "solidType:", solidType_ac[trodes]
-    print "solidShape", solidShape_ac[trodes]
-    print "rxnType:", rxnType_ac[trodes]
-    if profileType == "CC":
-        print "C_rate:", D['Crate']
-    else: # CV
-        print "Vset:", D['Vset']
-    print "Specified psd_mean [nm]:", np.array(D['mean_ac'])[trodes]*1e9
-    print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])[trodes]*1e9
-    for i in trodes:
-        print "PSD_{l}:".format(l=l)
-        print psd_len_ac[l][0].transpose()
-#    print "reg sln params:"
-#    print data[pfx + "a"][0]
-        print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
-        print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
-    if Nvol_s: print "Nvol_s:", Nvol_s
-    print "Nvol_c:", Nvol_ac[1]
-    if Nvol_ac[0]: print "Nvol_a:", Nvol_ac[0]
-    print "Npart_c:", Npart_ac[1]
-    if Nvol_ac[0]: print "Npart_a:", Npart_ac[0]
-    print "Dp [m^2/s]:", D['Dp']
-    print "Dm [m^2/s]:", D['Dm']
-    print "Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
-    print "td [s]:", data[pfx + "td"][0][0]
-    print "k0 [A/m^2]:", np.array(D['k0_ac'])[trodes]
-    for l in trodes:
-        trode = ("a" if l == 0 else "c")
-        if rxnType_ac[l] == "BV":
-            print "alpha_" + trode + ":", D['alpha_ac'][l]
-        elif rxnType_ac[l] == "Marcus":
-            print "lambda_" + trode + "/(kTref):", data[pfx + "lmbda_ac"][0][l]
-        if D['simBulkCond_ac'][l]:
-            print (trode + " bulk conductivity loss: Yes -- " +
-                    "dim_mcond [S/m]: " + str(D['mcond_ac'][l]))
-        else:
-            print trode + " bulk conductivity loss: No"
-        if D['simSurfCond_ac'][l]:
-            print (trode + " surface conductivity loss: Yes -- " +
-                    "dim_scond [S]: " + str(D['scond_ac'][l]))
-        else:
-            print trode + " surface conductivity loss: No"
+    if print_flag:
+        print "profileType:", profileType
+        print "Cell structure:"
+        print (("porous anode | " if Nvol_ac[0] else "flat anode | ")
+                + ("sep | " if Nvol_s else "") + "porous cathode")
+        if Nvol_ac[0]:
+            print "capacity ratio cathode:anode, 'z':", data[pfx + 'z'][0][0]
+        print "solidType:", solidType_ac[trodes]
+        print "solidShape", solidShape_ac[trodes]
+        print "rxnType:", rxnType_ac[trodes]
+        if profileType == "CC":
+            print "C_rate:", D['Crate']
+        else: # CV
+            print "Vset:", D['Vset']
+        print "Specified psd_mean [nm]:", np.array(D['mean_ac'])[trodes]*1e9
+        print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])[trodes]*1e9
+        for i in trodes:
+            print "PSD_{l}:".format(l=l)
+            print psd_len_ac[l][0].transpose()
+#        print "reg sln params:"
+#        print data[pfx + "a"][0]
+            print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
+            print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
+        if Nvol_s: print "Nvol_s:", Nvol_s
+        print "Nvol_c:", Nvol_ac[1]
+        if Nvol_ac[0]: print "Nvol_a:", Nvol_ac[0]
+        print "Npart_c:", Npart_ac[1]
+        if Nvol_ac[0]: print "Npart_a:", Npart_ac[0]
+        print "Dp [m^2/s]:", D['Dp']
+        print "Dm [m^2/s]:", D['Dm']
+        print "Damb [m^2/s]:", data[pfx + "dim_Damb"][0][0]
+        print "td [s]:", data[pfx + "td"][0][0]
+        print "k0 [A/m^2]:", np.array(D['k0_ac'])[trodes]
+        for l in trodes:
+            trode = ("a" if l == 0 else "c")
+            if rxnType_ac[l] == "BV":
+                print "alpha_" + trode + ":", D['alpha_ac'][l]
+            elif rxnType_ac[l] == "Marcus":
+                print "lambda_" + trode + "/(kTref):", data[pfx + "lmbda_ac"][0][l]
+            if D['simBulkCond_ac'][l]:
+                print (trode + " bulk conductivity loss: Yes -- " +
+                        "dim_mcond [S/m]: " + str(D['mcond_ac'][l]))
+            else:
+                print trode + " bulk conductivity loss: No"
+            if D['simSurfCond_ac'][l]:
+                print (trode + " surface conductivity loss: Yes -- " +
+                        "dim_scond [S]: " + str(D['scond_ac'][l]))
+            else:
+                print trode + " surface conductivity loss: No"
 
     # Plot voltage profile
     if plot_type == "v":
@@ -516,7 +517,7 @@ def show_data(indir, plot_type, save_flag):
         # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
         # Get particle sizes (and max size) (length-based)
-        psd_len = psd_len_ac[l]
+        psd_len = psd_len_ac[l][0]
         len_max = np.max(psd_len)
         len_min = np.min(psd_len)
         size_frac_min = 0.10
@@ -673,6 +674,7 @@ if __name__ == "__main__":
     # Save the plot instead of showing on screen?
     # Get from script parameters
     save_flag = False
+    print_flag = True
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
@@ -682,5 +684,5 @@ if __name__ == "__main__":
     out = []
     for plot_type in plots:
 #        out = show_data(indir, plot_type, save_flag)
-        out.append(show_data(indir, plot_type, save_flag))
+        out.append(show_data(indir, plot_type, print_flag, save_flag))
     plt.show()
