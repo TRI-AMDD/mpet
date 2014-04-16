@@ -427,9 +427,9 @@ class modMPET(daeModel):
                     phi_tmp[0] = phi_tmp[1]
                     # Potential at current at current collector is
                     # reference (set)
-                    phi_c[-1] = self.phi_cathode()
+                    phi_tmp[-1] = self.phi_cathode()
                 dx = 1./Nvol_ac[l]
-                RHS_phi_tmp = -np.diff(-self.mcond()*np.diff(phi_tmp)/dx)/dx
+                RHS_phi_tmp = -np.diff(-self.mcond_ac(l)*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for i in range(Nvol_ac[l]):
                 eq = self.CreateEquation("phi_ac_trode{l}vol{i}".format(i=i,l=l))
