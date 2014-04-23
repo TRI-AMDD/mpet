@@ -781,17 +781,19 @@ class modMPET(daeModel):
         def knet(eta, lmbda, b):
             argox = (eta - lmbda)/b
             argrd = (-eta - lmbda)/b
-            erfox = ERF("erf", self, unit(), argox)
-            erfrd = ERF("erf", self, unit(), argrd)
-            self.erfvec.append([erfox, erfrd])
-            kox = Aa*(erfox() + 1)
-            krd = Aa*(erfrd() + 1)
-#            k = krd - kox
-            k = kox - krd
+#            # MHCerf
+#            erfox = ERF("erf", self, unit(), argox)
+#            erfrd = ERF("erf", self, unit(), argrd)
+#            self.erfvec.append([erfox, erfrd])
+#            kox = Aa*(erfox() + 1)
+#            krd = Aa*(erfrd() + 1)
+            # MHCtanh
+            kox = Aa*(self.TANH(argox) + 1)
+            krd = Aa*(self.TANH(argrd) + 1)
+            k = krd - kox
             return k
         if type(eta) == np.ndarray:
-            neta = len(eta)
-            Rate = np.empty(neta, dtype=object)
+            Rate = np.empty(len(eta), dtype=object)
             for i, etaval in enumerate(eta):
                 Rate[i] = knet(etaval, lmbda, b)
         else:
@@ -816,6 +818,9 @@ class modMPET(daeModel):
             else:
                 out[i] = 0.0
         return out
+
+    def TANH(self, z):
+        return ( (Exp(z) - Exp(-z)) / (Exp(z) + Exp(-z)) )
 
 class simMPET(daeSimulation):
     def __init__(self, D=None):
@@ -954,7 +959,8 @@ class simMPET(daeSimulation):
             lmbda = D['lambda_ac'][l]/(k*Tref)
             self.m.lmbda_ac.SetValue(l, lmbda)
 #            MHC_b = 2*np.sqrt(self.m.lmbda_ac.GetValue(l))
-            MHC_erf_b = 2*np.sqrt(lmbda)
+#            MHC_erf_b = 2*np.sqrt(lmbda) # MHCerf
+            MHC_erf_b = np.sqrt(lmbda*np.pi) # MHCtanh
             self.m.MHC_erfstretch_ac.SetValue(l, MHC_erf_b)
 #            self.m.MHC_Aa_ac.SetValue(l, )
             self.m.B_ac.SetValue(l,
@@ -985,8 +991,10 @@ class simMPET(daeSimulation):
                     k0tmp = ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l])
                     self.m.k0_ac[l].SetValue(i, j, k0tmp)
 #                            ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l]))
-                    self.m.MHC_Aa_ac[l].SetValue(i, j,
-                            k0tmp / spcl.erf(-lmbda/MHC_erf_b))
+#                    self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCerf
+#                            k0tmp / (spcl.erf(-lmbda/MHC_erf_b) + 1))
+                    self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCtanh
+                            k0tmp / (np.tanh(-lmbda/MHC_erf_b) + 1))
                     self.m.scond_ac[l].SetValue(i, j,
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
@@ -1132,7 +1140,7 @@ class ERF(daeScalarExternalFunction):
     def Calculate(self, values):
         z = values["z"]
         zval = z.Value
-        res = adouble(spcl.erf(z.Value))
+        res = adouble(spcl.erf(zval))
         # Awkwardly, this same function is called when a derivative is
         # requested for the Jacobian. We can figure this out because
         # the Derivative attribute of z will be non-zero. In that
