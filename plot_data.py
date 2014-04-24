@@ -138,6 +138,10 @@ def show_data(indir, plot_type, print_flag, save_flag):
                 print "alpha_" + trode + ":", D['alpha_ac'][l]
             elif rxnType_ac[l] == "Marcus":
                 print "lambda_" + trode + "/(kTref):", data[pfx + "lmbda_ac"][0][l]
+            elif rxnType_ac[l] == "MHC":
+                print "MHC_Aa_" + trode + ":", data[pfx +
+                        "MHC_Aa_{l}".format(l=l)][0][0]
+                print "b_" + trode + ":", data[pfx + "MHC_b_ac"][0][l]
             if D['simBulkCond_ac'][l]:
                 print (trode + " bulk conductivity loss: Yes -- " +
                         "dim_mcond [S/m]: " + str(D['mcond_ac'][l]))
@@ -489,6 +493,7 @@ def show_data(indir, plot_type, print_flag, save_flag):
         # Define if you want smooth or discrete color changes
         # Option: "smooth" or "discrete"
         color_changes = "discrete"
+#        color_changes = "smooth"
         # Discrete color changes:
         if color_changes == "discrete":
             # Make a discrete colormap that goes from green to yellow
