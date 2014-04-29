@@ -805,7 +805,7 @@ class modMPET(daeModel):
             for i, etaval in enumerate(eta):
                 Rate[i] = knet(etaval, lmbda, b)
         else:
-            Rate = knet(eta, lmbda, b)
+            Rate = np.array([knet(eta, lmbda, b)])
         return Rate
 
     def MX(self, mat, objvec):
@@ -1273,7 +1273,7 @@ def consoleRun(D):
     td = D['L_ac'][1]**2 / Damb
     currset = D['Crate'] * td/3600.
     if D['profileType'] == "CC":
-        simulation.TimeHorizon = D['capFrac']/currset
+        simulation.TimeHorizon = np.abs(D['capFrac']/currset)
     else: # CV simulation
         simulation.TimeHorizon = D['tend']/td
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
@@ -1288,7 +1288,7 @@ def consoleRun(D):
     simulation.Initialize(daesolver, datareporter, log)
 
 #    # Save model report
-#    simulation.m.SaveModelReport(simulation.m.Name + ".xml")
+#    simulation.m.SaveModelReport("report_mpet.xml")
 
     # Solve at time=0 (initialization)
     simulation.SolveInitial()
