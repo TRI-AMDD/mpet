@@ -527,7 +527,15 @@ class modMPET(daeModel):
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            eq.Residual = self.phi_applied() - self.Vset()
+            Dp = self.D['Dp']
+            Dm = self.D['Dm']
+            zp = self.D['zp']
+            zm = self.D['zm']
+            Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+            td = self.D['L_ac'][1]**2 / Damb
+            timeHorizon = self.D['tend']/td
+            eq.Residual = self.phi_applied() - self.Vset()*(1 -
+                    np.exp(-Time()/(timeHorizon*1e-3)))
             eq.CheckUnitsConsistency = False
 
 #        self.action = doNothingAction()
