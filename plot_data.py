@@ -12,7 +12,7 @@ import matplotlib.collections as mcollect
 
 import mpet_params_IO
 
-def show_data(indir, plot_type, print_flag, save_flag):
+def show_data(indir, plot_type, print_flag, save_flag, data_only):
     pfx = 'mpet.'
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
@@ -100,6 +100,11 @@ def show_data(indir, plot_type, print_flag, save_flag):
 
     # Print relevant simulation info
     if print_flag:
+        for i in trodes:
+            print "PSD_{l}:".format(l=l)
+            print psd_len_ac[l][0].transpose()
+            print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
+            print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
         print "profileType:", profileType
         print "Cell structure:"
         print (("porous anode | " if Nvol_ac[0] else "flat anode | ")
@@ -115,13 +120,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
             print "Vset:", D['Vset']
         print "Specified psd_mean [nm]:", np.array(D['mean_ac'])[trodes]*1e9
         print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])[trodes]*1e9
-        for i in trodes:
-            print "PSD_{l}:".format(l=l)
-            print psd_len_ac[l][0].transpose()
 #        print "reg sln params:"
 #        print data[pfx + "a"][0]
-            print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
-            print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
         if Nvol_s: print "Nvol_s:", Nvol_s
         print "Nvol_c:", Nvol_ac[1]
         if Nvol_ac[0]: print "Nvol_a:", Nvol_ac[0]
@@ -155,10 +155,12 @@ def show_data(indir, plot_type, print_flag, save_flag):
 
     # Plot voltage profile
     if plot_type == "v":
-        fig, ax = plt.subplots()
         voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
 #        voltage = -data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_1'][0]
+        if data_only:
+            return ffvec, voltage
+        fig, ax = plt.subplots()
         ax.plot(ffvec, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
@@ -178,6 +180,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot surface conc.
     if plot_type in ["surf_c", "surf_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for surf")
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
         str_base = pfx + "c_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
@@ -195,6 +199,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot misc stuff about reactions
     if plot_type in ["rxnp_c", "rxnp_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for rxnp")
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
 #        lmbda = data[pfx + "lambda_ac"][0][l]
@@ -274,8 +280,11 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot SoC profile
     if plot_type in ["soc_c", "soc_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
-        fig, ax = plt.subplots()
         ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+        if data_only:
+            return times*td, ffvec
+        fig, ax = plt.subplots()
+        print ffvec[-1]
         ax.plot(times*td, ffvec)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
@@ -288,6 +297,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
 
     # Check to make sure mass is conserved in elyte
     if plot_type == "elytecons":
+        if data_only:
+            raise NotImplemented("no data-only output for elytecons")
         fig, ax = plt.subplots()
         eps = 1e-2
         ymin = 1-eps
@@ -314,9 +325,12 @@ def show_data(indir, plot_type, print_flag, save_flag):
 
     # Plot current profile
     if plot_type == "curr":
-        fig, ax = plt.subplots()
         current = data[pfx + "current"][0] * 3600/td
         ffvec = data[pfx + 'ffrac_1'][0]
+        if data_only:
+            return times*td, current
+#        print times*td, current
+        fig, ax = plt.subplots()
         ax.plot(times*td, current)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
@@ -329,6 +343,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot electrolyte concentration or potential
     elif plot_type == "elytec" or plot_type == "elytep":
         matplotlib.animation.Animation._blit_draw = _blit_draw
+        if data_only:
+            raise NotImplemented("no data-only output for elytec/p")
         fig, ax = plt.subplots()
         if plot_type == "elytec":
             ymin = 0
@@ -338,8 +354,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
             anode = pfx + 'c_lyte_0'
             cath = pfx + 'c_lyte_1'
         elif plot_type == "elytep":
-            ymin = -5
-            ymax = 5
+            ymin = -50
+            ymax = 50
             ax.set_ylabel('Potential of electrolyte [nondim]')
             sep = pfx + 'phi_lyte_s'
             anode = pfx + 'phi_lyte_0'
@@ -398,6 +414,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
             "csld_col_c", "csld_col_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
         sol = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
@@ -489,6 +507,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for cbar")
         # Set up colors.
         # Define if you want smooth or discrete color changes
         # Option: "smooth" or "discrete"
@@ -591,6 +611,8 @@ def show_data(indir, plot_type, print_flag, save_flag):
     # Plot cathode potential
     elif plot_type in ["bulkp_c", "bulkp_a"]:
         l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for bulkp")
         matplotlib.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
         ymin = -1
@@ -626,6 +648,7 @@ def show_data(indir, plot_type, print_flag, save_flag):
     else:
         raise Exception("Unexpected plot type argument. " +
                 "Try 'v', 'curr', 'elytec', 'elytep', " +
+                "'soc_a/c', " +
                 "'cbar_a/c', 'csld_a/c', 'phisld_a/c', " +
                 "'bulkp_a/c', 'surf_a/c'.")
 
@@ -680,6 +703,7 @@ if __name__ == "__main__":
     # Get from script parameters
     save_flag = False
     print_flag = True
+    data_only = False
     if len(sys.argv) > 3:
         if sys.argv[3] == "save":
             save_flag = True
@@ -689,5 +713,6 @@ if __name__ == "__main__":
     out = []
     for plot_type in plots:
 #        out = show_data(indir, plot_type, save_flag)
-        out.append(show_data(indir, plot_type, print_flag, save_flag))
+        out.append(show_data(indir, plot_type, print_flag, save_flag,
+            data_only))
     plt.show()
