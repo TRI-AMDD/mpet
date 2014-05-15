@@ -318,18 +318,25 @@ class modMPET(daeModel):
 
 #        # Prepare the noise
 #        # maybe "numnoise" should be a parameter?
-#        numnoise = tsteps/10
-#        noise_prefac = 1e-3
-#        noise_data = noise_prefac*np.random.randn(numnoise, Nsld)
+#        numnoise = 200/10.
+#        noise_prefac = 2e-4
 #        # a vector going from 0 to the max simulation time.
 #        time_vec = np.linspace(0, (1./self.currset.GetValue()), numnoise)
-#        # Previous_output is common for all external functions
-#        previous_output = []
 #        # daeScalarExternalFunction (noise interpolation done as vector)
-#        self.noise_local = np.empty(Nsld, dtype=object)
-#        self.noise_local[:] = [noise("Noise", self, unit(), Time(),
-#                                     time_vec, noise_data, previous_output, _position_)
-#                               for _position_ in range(Nsld)]
+#        self.noise_local = np.empty(2, dtype=object)
+#        for l in trodes:
+#            self.noise_local[l] = np.empty((Nvol_ac[l], Npart_ac[l]),
+#                    dtype=object)
+#            for i in range(Nvol_ac[l]):
+#                for j in range(Npart_ac[l]):
+#                    Nsld = Nsld_mat_ac[l][i, j]
+#                    noise_data = noise_prefac*np.random.randn(numnoise, Nsld)
+#                    # Previous_output is common for all external functions
+#                    previous_output = []
+#                    self.noise_local[l][i, j] = [noise("Noise{l}{i}{j}".format(l=l,i=i,j=j), self,
+#                        unit(), Time(), time_vec, noise_data,
+#                        previous_output, _position_) for _position_
+#                        in range(Nsld)]
 
         # Define the average concentration in each particle (algebraic
         # equations)
@@ -385,6 +392,7 @@ class modMPET(daeModel):
                     dcdt_vec = np.empty(Nij, dtype=object)
                     dcdt_vec[0:Nij] = [self.c_sld_ac[l][i, j].dt(k) for k in range(Nij)]
                     LHS_vec = self.MX(Mmat, dcdt_vec)
+#                    noisevec = self.noise_local[l][i, j] # NOISE
                     # Set up equations: Mmat*dcdt = RHS
                     for k in range(Nij):
                         eq = self.CreateEquation(
@@ -392,6 +400,8 @@ class modMPET(daeModel):
                                     i=i,j=j,k=k,l=l))
 #                        eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
                         eq.Residual = LHS_vec[k] - RHS_c_sld_ij[k]
+#                        eq.Residual = (LHS_vec[k] - RHS_c_sld_ij[k] +
+#                                noisevec[k]()) # NOISE
                         eq.CheckUnitsConsistency = False
 
                 # Also calculate the potential drop along cathode
