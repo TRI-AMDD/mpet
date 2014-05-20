@@ -10,7 +10,7 @@ import time
 import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
-#import scipy.interpolate as sint
+import scipy.interpolate as sint
 #import scipy.io as sio
 
 from daetools.pyDAE import *
@@ -624,7 +624,8 @@ class modMPET(daeModel):
             elif rxnType == "BV":
                 Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
             elif rxnType == "MHC":
-                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
+#                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
+                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_sld)
             M = sprs.eye(Nij, format="csr")
             return (M, Rate)
 
@@ -788,14 +789,16 @@ class modMPET(daeModel):
         alpha = 0.5*(1 + (T/lmbda) * np.log(Max(eps, c_lyte)/c_sld))
         # We'll assume c_e = 1 (at the standard state for electrons)
 #        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
-        ecd = ( k0 *
+#        ecd = ( k0 *
+        ecd = ( k0 * (1-c_sld) *
                 c_lyte**((3-2*alpha)/4.) *
                 c_sld**((1+2*alpha)/4.) )
         Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
             (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         return Rate
 
-    def R_MHC(self, k0, lmbda, eta, Aa, b, T):
+#    def R_MHC(self, k0, lmbda, eta, Aa, b, T):
+    def R_MHC(self, k0, lmbda, eta, Aa, b, T, c_sld):
         def knet(eta, lmbda, b):
             argox = (eta - lmbda)/b
             argrd = (-eta - lmbda)/b
@@ -809,13 +812,16 @@ class modMPET(daeModel):
 #            kox = Aa*(self.TANH(argox) + 1)
 #            krd = Aa*(self.TANH(argrd) + 1)
             k = krd - kox
+#            k = Aa*((Erf(argrd) + 1) - (Erf(argox) +1))
             return k
         if type(eta) == np.ndarray:
             Rate = np.empty(len(eta), dtype=object)
             for i, etaval in enumerate(eta):
-                Rate[i] = knet(etaval, lmbda, b)
+#                Rate[i] = knet(etaval, lmbda, b)
+                Rate[i] = (1-c_sld[i])*knet(etaval, lmbda, b)
         else:
-            Rate = np.array([knet(eta, lmbda, b)])
+#            Rate = np.array([knet(eta, lmbda, b)])
+            Rate = np.array([(1-c_sld)*knet(eta, lmbda, b)])
         return Rate
 
     def MX(self, mat, objvec):
@@ -1176,9 +1182,10 @@ class noise(daeScalarExternalFunction):
         self.previous_output = previous_output
         self.time_vec = time_vec
         self.noise_data = noise_data
-        self.tlo = time_vec[0]
-        self.thi = time_vec[-1]
-        self.numnoise = len(time_vec)
+        self.interp = sint.interp1d(time_vec, noise_data, axis=0)
+#        self.tlo = time_vec[0]
+#        self.thi = time_vec[-1]
+#        self.numnoise = len(time_vec)
         arguments["time"] = time
         self.position = position
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
@@ -1193,25 +1200,29 @@ class noise(daeScalarExternalFunction):
         if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
             self.saved += 1
             return adouble(float(self.previous_output[1][self.position]))
-        indx = (float(time.Value - self.tlo)/(self.thi-self.tlo) *
-                (self.numnoise - 1))
-        ilo = np.floor(indx)
-        ihi = np.ceil(indx)
-        # If we're exactly at a time in time_vec
-        if ilo == ihi:
-            noise_vec = self.noise_data[ilo, :]
-        else:
-            noise_vec = (self.noise_data[ilo, :] +
-                    (time.Value - self.time_vec[ilo]) /
-                    (self.time_vec[ihi] - self.time_vec[ilo]) *
-                    (self.noise_data[ihi, :] - self.noise_data[ilo, :])
-                    )
-        # previous_output is a reference to a common object and must
-        # be updated here - not deleted.  using self.previous_output = []
-        # it will delete the common object and create a new one
+        noise_vec = self.interp(time.Value)
         self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
         self.counter += 1
-        return adouble(float(noise_vec[self.position]))
+        return adouble(noise_vec[self.position])
+#        indx = (float(time.Value - self.tlo)/(self.thi-self.tlo) *
+#                (self.numnoise - 1))
+#        ilo = np.floor(indx)
+#        ihi = np.ceil(indx)
+#        # If we're exactly at a time in time_vec
+#        if ilo == ihi:
+#            noise_vec = self.noise_data[ilo, :]
+#        else:
+#            noise_vec = (self.noise_data[ilo, :] +
+#                    (time.Value - self.time_vec[ilo]) /
+#                    (self.time_vec[ihi] - self.time_vec[ilo]) *
+#                    (self.noise_data[ihi, :] - self.noise_data[ilo, :])
+#                    )
+#        # previous_output is a reference to a common object and must
+#        # be updated here - not deleted.  using self.previous_output = []
+#        # it will delete the common object and create a new one
+#        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
+#        self.counter += 1
+#        return adouble(float(noise_vec[self.position]))
 
 class doNothingAction(daeAction):
     def __init__(self):
