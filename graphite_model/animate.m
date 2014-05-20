@@ -28,8 +28,8 @@ if fig=='e'
     for i=1:tlen
         hold on
         plot(clv,cpcs(i,1:len),'LineWidth',1)
-        vline(0,'-r');
-        vline(seplen,'r');
+%        vline(0,'-r');
+%        vline(seplen,'r');
         hold off
         axis([clv(1) clv(end) 0 4])
         ylabel('Dimensionless Electrolyte Concentration')
@@ -58,8 +58,8 @@ elseif strcmp(fig,'dseco')
         hold on
         plot(clv,cpcs(i,1:len),'-b','LineWidth',2)
         plot(0,0)
-        vline(0,'r');
-        vline(seplen*dimlen,'r');
+%        vline(0,'r');
+%        vline(seplen*dimlen,'r');
         hold off
         axis([clv(1) clv(end) 0 4])
         ylabel('Dimensionless Electrolyte Concentration','FontSize',14)
@@ -86,8 +86,8 @@ elseif strcmp(fig,'dseco')
         area(plvc(ymax:rmax)*dimlen,ccst(i,ymax:rmax),'FaceColor',[.617 .043 .059],'LineStyle','none')
         area(plvc(rmax:end)*dimlen,ccst(i,rmax:end),'FaceColor',[0 .203 .441],'LineStyle','none')
         plot(clv,cpcs(i,1:len),'--k','LineWidth',2)
-        vline(0,'r');
-        vline(seplen*dimlen,'r');
+%        vline(0,'r');
+%        vline(seplen*dimlen,'r');
         hold off
 %         axis([clv(1) clv(end) 0 1])
         axis([dimlen 3 0 1])
@@ -116,8 +116,8 @@ elseif strcmp(fig,'dse')
         hold on
         plot(clv,cpcs(i,1:len),'-b','LineWidth',2)
         plot(0,0)
-        vline(0,'r');
-        vline(seplen,'r');
+%        vline(0,'r');
+%        vline(seplen,'r');
         hold off
         axis([clv(1) clv(end) 0 4])
         ylabel('Dimensionless Electrolyte Concentration','FontSize',14)
@@ -143,8 +143,8 @@ elseif strcmp(fig,'dse')
         area(plvc(1:ymax),ccst(i,1:ymax),'FaceColor',[.668 .625 0],'LineStyle','none')
         area(plvc(ymax:rmax),ccst(i,ymax:rmax),'FaceColor',[.617 .043 .059],'LineStyle','none')
         area(plvc(rmax:end),ccst(i,rmax:end),'FaceColor',[0 .203 .441],'LineStyle','none')
-        vline(0,'r');
-        vline(seplen,'r');
+%        vline(0,'r');
+%        vline(seplen,'r');
         hold off
 %         axis([clv(1) clv(end) 0 1])
         axis([1 3 0 1])
@@ -165,8 +165,8 @@ elseif fig=='p'
     for i=1:tlen
         hold on
         plot(clv,cpcs(i,len+1:2*len),'LineWidth',1)
-        vline(0,'r');
-        vline(seplen,'r');
+%        vline(0,'r');
+%        vline(seplen,'r');
         hold off
         axis([clv(1) clv(end) 0 4])
         ylabel('Dimensionless Electrolyte Concentration')
@@ -185,8 +185,8 @@ elseif fig=='s'
         hold on
         plot(plvc,ccst(i,:),'LineWidth',1)
         plot(plva,acst(i,:),'LineWidth',1)
-        vline(0,'r');
-        vline(seplen,'r');
+%        vline(0,'r');
+%        vline(seplen,'r');
         hold off
         axis([clv(1) clv(end) 0 1])
         ylabel('Dimensionless Particle Concentration')
@@ -208,6 +208,8 @@ elseif fig=='d'
         subplot(1,2,1)
         plot(ffvec,vvec,'LineWidth',2)
         hold on
+        ffvec
+        vvec
         plot(ffvec(i),vvec(i),'ro','MarkerSize',10','MarkerFaceColor','r')
         xlabel('Filling Fraction')
         ylabel('Voltage')
@@ -217,8 +219,8 @@ elseif fig=='d'
         hold on
         plot(plvc,ccst(i,:),'LineWidth',1)
         plot(plva,acst(i,:),'LineWidth',1)
-        vline(0,'r');
-        vline(seplen,'r');
+%        vline(0,'r');
+%        vline(seplen,'r');
         hold off
         axis([clv(1) clv(end) 0 1])
         ylabel('Dimensionless Particle Concentration')
