@@ -6,11 +6,11 @@
 *.pdf
 *.pyc
 *.csv
-params.m
-params.cfg
+params*
+!params_default.cfg
 sim_output*
-archive
-bai_LFP_data
+archive/
+bai_LFP_data/
 
 py_mat_compare
 data_capacity.txt
