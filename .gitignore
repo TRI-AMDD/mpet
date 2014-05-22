@@ -5,9 +5,10 @@
 *.png
 *.pdf
 *.pyc
+*.csv
 params.m
 params.cfg
-sim_output
+sim_output*
 archive
 bai_LFP_data
 
