@@ -49,7 +49,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         Vstd_ac[l] = D['Vstd_ac'][l]
         # Replace the standard potential if a fit voltage curve was used.
         # Use the value that the simulation used in initialization.
-        if D['etaFit_ac'][l]:
+        if D['delPhiEqFit_ac'][l]:
             Vstd_ac[l] = data[pfx + 'dphi_eq_ref_ac'][0][l]*(k*Tref/e)
         Nvol_ac[l] = D['Nvol_ac'][l]
         Npart_ac[l] = D['Npart_ac'][l]
@@ -167,7 +167,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         xmin = 0.
         xmax = 1.
         ax.set_xlim((xmin, xmax))
-#        if not D['etaFit']:
+#        if not D['delPhiEqFit']:
 ##            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
 #            ax.axhline(y=Vstd_c, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
@@ -246,7 +246,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                act_R = np.exp(mu_R)
 #                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
 #                BVgamma_ts = 1./(1-csld[:, sld_pt_indx])
-                # diffn with etaFit
+                # diffn with delPhiEqFit
                 csurf = csld[:,-1]
                 import delta_phi_fits
                 dphi_eq_ref = data[pfx + "dphi_eq_ref_ac"][0][l]

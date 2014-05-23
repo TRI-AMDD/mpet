@@ -568,7 +568,7 @@ class modMPET(daeModel):
         solidType = self.D['solidType_ac'][l]
         solidShape = self.D['solidShape_ac'][l]
         rxnType = self.D['rxnType_ac'][l]
-        etaFit = self.D['etaFit_ac'][l]
+        delPhiEqFit = self.D['delPhiEqFit_ac'][l]
         # Get variables for this particle/electrode volume
         phi_lyte = self.phi_lyte_ac[l](i)
         phi_m = self.phi_ac[l](i)
@@ -618,7 +618,7 @@ class modMPET(daeModel):
             mu_O = np.log(Max(eps, act_O))
             # eta = electrochem pot_R - electrochem pot_O
             # eta = (mu_R + phi_R) - (mu_O + phi_O)
-            if etaFit:
+            if delPhiEqFit:
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
@@ -661,7 +661,7 @@ class modMPET(daeModel):
             c_surf = c_sld[-1]
             # Overpotential
             delta_phi = phi_m - phi_lyte
-            if etaFit:
+            if delPhiEqFit:
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
@@ -961,7 +961,7 @@ class simMPET(daeSimulation):
             self.m.mcond_ac.SetValue(l,
                     D['mcond_ac'][l] * (td * k * N_A * Tref) /
                     (L_ref**2 * F**2 *D['c0']))
-            if self.D['etaFit_ac'][l]:
+            if self.D['delPhiEqFit_ac'][l]:
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
@@ -1125,8 +1125,8 @@ class simMPET(daeSimulation):
 #                raise NotImplementedError("homog_snd req. Tref=Tabs=298")
             if solidType in ["diffn"] and solidShape != "sphere":
                 raise NotImplementedError("diffn currently req. sphere")
-            if D['etaFit_ac'][l] and solidType not in ["diffn", "homog"]:
-                raise NotImplementedError("etafit req. solidType = diffn or homog")
+            if D['delPhiEqFit_ac'][l] and solidType not in ["diffn", "homog"]:
+                raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
         return
 
 #    def Run(self):
