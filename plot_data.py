@@ -100,11 +100,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Print relevant simulation info
     if print_flag:
-        for i in trodes:
-            print "PSD_{l}:".format(l=l)
-            print psd_len_ac[l][0].transpose()
-            print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
-            print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
+#        for i in trodes:
+#            print "PSD_{l}:".format(l=l)
+#            print psd_len_ac[l][0].transpose()
+#            print "Actual psd_mean [nm]:", np.mean(psd_len_ac[l])
+#            print "Actual psd_stddev [nm]:", np.std(psd_len_ac[l])
         print "profileType:", profileType
         print "Cell structure:"
         print (("porous anode | " if Nvol_ac[0] else "flat anode | ")
@@ -389,7 +389,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
 #        line1, = ax.plot(datax, datay)
-        line1, = ax.plot(datax, datay, '*')
+        line1, = ax.plot(datax, datay, '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         def init():
@@ -505,10 +505,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 return tuple(lines.reshape(-1))
 
     # Plot average solid concentrations
-    elif plot_type in ["cbar_c", "cbar_a"]:
-        l = (0 if plot_type[-1] == "a" else 1)
+    elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
         if data_only:
             raise NotImplemented("no data-only output for cbar")
+        if plot_type[-1] == "l":
+            lvec = [0, 1]
+        elif plot_type[-1] == "a":
+            lvec = [0]
+        else:
+            lvec = [1]
         # Set up colors.
         # Define if you want smooth or discrete color changes
         # Option: "smooth" or "discrete"
@@ -541,72 +546,83 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         # Implement hack to be able to animate title
         matplotlib.animation.Animation._blit_draw = _blit_draw
-        # Get particle sizes (and max size) (length-based)
-        psd_len = psd_len_ac[l][0]
-        len_max = np.max(psd_len)
-        len_min = np.min(psd_len)
         size_frac_min = 0.10
-        fig, ax = plt.subplots()
-        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
-                transform = ax.transAxes, verticalalignment="center",
+        fig, axs = plt.subplots(1, len(lvec), squeeze=False)
+        ttlx = 0.5 if len(lvec) < 2 else 1.1
+        ttl = axs[0,0].text(ttlx, 1.05, ttl_fmt.format(perc=0),
+                transform = axs[0,0].transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        ax.patch.set_facecolor('white')
-        # Don't stretch axes to fit figure -- keep 1:1 x:y ratio.
-        ax.set_aspect('equal', 'box')
-        # Don't show axis ticks
-        ax.xaxis.set_major_locator(plt.NullLocator())
-        ax.yaxis.set_major_locator(plt.NullLocator())
-        ax.set_xlim(0, 1.)
-        ax.set_ylim(0, float(Npart_ac[l])/Nvol_ac[l])
-        # Label parts of the figure
-        ylft = ax.text(-0.07, 0.5, "Separator",
-                transform=ax.transAxes, rotation=90,
-                verticalalignment="center",
-                horizontalalignment="center")
-        yrht = ax.text(1.09, 0.5, "Current Collector",
-                transform=ax.transAxes, rotation=90,
-                verticalalignment="center",
-                horizontalalignment="center")
-        xbtm = ax.text(.50, -0.05, "Electrode Depth -->",
-                transform=ax.transAxes, rotation=0,
-                verticalalignment="center",
-                horizontalalignment="center")
-        # Geometric parameters for placing the rectangles on the axes
-        spacing = 1.0 / Nvol_ac[l]
-        size_fracs = 0.4*np.ones((Nvol_ac[l], Npart_ac[l]))
-        if len_max != len_min:
-            size_fracs = (psd_len - len_min)/(len_max - len_min)
-        sizes = (size_fracs * (1 - size_frac_min) + size_frac_min) / Nvol_ac[l]
-        # Create rectangle "patches" to add to figure axes.
-        rects = np.empty((Nvol_ac[l], Npart_ac[l]), dtype=object)
-        color = 'green' # value is irrelevant -- it will be animated
-        for (i, j), c in np.ndenumerate(sizes):
-            size = sizes[i, j]
-            center = np.array([spacing*(i + 0.5), spacing*(j + 0.5)])
-            bottom_left = center - size / 2
-            rects[i, j] = plt.Rectangle(bottom_left,
-                    size, size, color=color)
-        # Create a group of rectange "patches" from the rects array
-        collection = mcollect.PatchCollection(rects.reshape(-1),
-                animated=True)
-        # Put them on the axes
-        ax.add_collection(collection)
+        collection = np.empty(len(lvec), dtype=object)
+        for indx, l in enumerate(lvec):
+            ax = axs[0, indx]
+            # Get particle sizes (and max size) (length-based)
+            psd_len = psd_len_ac[l][0]
+            len_max = np.max(psd_len)
+            len_min = np.min(psd_len)
+            ax.patch.set_facecolor('white')
+            # Don't stretch axes to fit figure -- keep 1:1 x:y ratio.
+            ax.set_aspect('equal', 'box')
+            # Don't show axis ticks
+            ax.xaxis.set_major_locator(plt.NullLocator())
+            ax.yaxis.set_major_locator(plt.NullLocator())
+            ax.set_xlim(0, 1.)
+            ax.set_ylim(0, float(Npart_ac[l])/Nvol_ac[l])
+            # Label parts of the figure
+#            ylft = ax.text(-0.07, 0.5, "Separator",
+#                    transform=ax.transAxes, rotation=90,
+#                    verticalalignment="center",
+#                    horizontalalignment="center")
+#            yrht = ax.text(1.09, 0.5, "Current Collector",
+#                    transform=ax.transAxes, rotation=90,
+#                    verticalalignment="center",
+#                    horizontalalignment="center")
+#            xbtm = ax.text(.50, -0.05, "Electrode Depth -->",
+#                    transform=ax.transAxes, rotation=0,
+#                    verticalalignment="center",
+#                    horizontalalignment="center")
+            # Geometric parameters for placing the rectangles on the axes
+            spacing = 1.0 / Nvol_ac[l]
+            size_fracs = 0.4*np.ones((Nvol_ac[l], Npart_ac[l]))
+            if len_max != len_min:
+                size_fracs = (psd_len - len_min)/(len_max - len_min)
+            sizes = (size_fracs * (1 - size_frac_min) + size_frac_min) / Nvol_ac[l]
+            # Create rectangle "patches" to add to figure axes.
+            rects = np.empty((Nvol_ac[l], Npart_ac[l]), dtype=object)
+            color = 'green' # value is irrelevant -- it will be animated
+            for (i, j), c in np.ndenumerate(sizes):
+                size = sizes[i, j]
+                center = np.array([spacing*(i + 0.5), spacing*(j + 0.5)])
+                bottom_left = center - size / 2
+                rects[i, j] = plt.Rectangle(bottom_left,
+                        size, size, color=color)
+            # Create a group of rectange "patches" from the rects array
+            collection[indx] = mcollect.PatchCollection(rects.reshape(-1))
+            # Put them on the axes
+            ax.add_collection(collection[indx])
         # Have a "background" image of rectanges representing the
         # initial state of the system.
         def init():
-            cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
-            colors = cmap(cbar_mat.reshape(-1))
-            collection.set_color(colors)
-            ttl.set_text('')
-            return collection, ttl
+            for indx, l in enumerate(lvec):
+                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
+                colors = cmap(cbar_mat.reshape(-1))
+                collection[indx].set_color(colors)
+                ttl.set_text('')
+            out = [collection[i] for i in range(len(collection))]
+            out.append(ttl)
+            out = tuple(out)
+            return out
         def animate(tind):
-            cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
-            colors = cmap(cbar_mat.reshape(-1))
-            collection.set_color(colors)
+            for indx, l in enumerate(lvec):
+                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
+                colors = cmap(cbar_mat.reshape(-1))
+                collection[indx].set_color(colors)
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
             ttl.set_text(ttl_fmt.format(perc=tfrac))
-            return collection, ttl
+            out = [collection[i] for i in range(len(collection))]
+            out.append(ttl)
+            out = tuple(out)
+            return out
 
     # Plot cathode potential
     elif plot_type in ["bulkp_c", "bulkp_a"]:
@@ -694,10 +710,8 @@ if __name__ == "__main__":
     # Get plot type from script parameters
     plots = []
     if len(sys.argv) > 2:
-#        plot_type = sys.argv[2]
         plots.append(sys.argv[2])
     else:
-#        plot_type = "v"
         plots.append("v")
     # Save the plot instead of showing on screen?
     # Get from script parameters
@@ -712,7 +726,6 @@ if __name__ == "__main__":
                 plots.append(sys.argv[i])
     out = []
     for plot_type in plots:
-#        out = show_data(indir, plot_type, save_flag)
         out.append(show_data(indir, plot_type, print_flag, save_flag,
             data_only))
     plt.show()
