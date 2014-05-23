@@ -669,6 +669,8 @@ class modMPET(daeModel):
                 act_O = c_lyte
                 act_R = c_surf
                 Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R, eta, T)
+            elif rxnType == "MHC":
+                Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
             RHS[-1] = (Rs**2 * Rxn -
                     Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             return (M, RHS)
