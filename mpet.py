@@ -802,17 +802,7 @@ class modMPET(daeModel):
         def knet(eta, lmbda, b):
             argox = (eta - lmbda)/b
             argrd = (-eta - lmbda)/b
-            # MHCerf
-            erfox = ERF("erf", self, unit(), argox)
-            erfrd = ERF("erf", self, unit(), argrd)
-            self.erfvec.append([erfox, erfrd])
-            kox = Aa*(erfox() + 1)
-            krd = Aa*(erfrd() + 1)
-#            # MHCtanh
-#            kox = Aa*(self.TANH(argox) + 1)
-#            krd = Aa*(self.TANH(argrd) + 1)
-            k = krd - kox
-#            k = Aa*((Erf(argrd) + 1) - (Erf(argox) +1))
+            k = Aa*((Erf(argrd) + 1) - (Erf(argox) +1))
             return k
         if type(eta) == np.ndarray:
             Rate = np.empty(len(eta), dtype=object)
@@ -842,9 +832,6 @@ class modMPET(daeModel):
             else:
                 out[i] = 0.0
         return out
-
-    def TANH(self, z):
-        return ( (Exp(z) - Exp(-z)) / (Exp(z) + Exp(-z)) )
 
 class simMPET(daeSimulation):
     def __init__(self, D=None):
@@ -1155,23 +1142,6 @@ class simMPET(daeSimulation):
 #                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
 #                self.Log.Message('Stopping the simulation...', 0)
 #                return
-
-class ERF(daeScalarExternalFunction):
-    def __init__(self, Name, Model, units, z):
-        arguments = {}
-        arguments["z"] = z
-        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
-    def Calculate(self, values):
-        z = values["z"]
-        zval = z.Value
-        res = adouble(spcl.erf(zval))
-        # Awkwardly, this same function is called when a derivative is
-        # requested for the Jacobian. We can figure this out because
-        # the Derivative attribute of z will be non-zero. In that
-        # case, return the derivative.
-        if z.Derivative != 0:
-            res.Derivative = z.Derivative*(2./np.sqrt(np.pi)) * np.exp(-zval**2)
-        return res
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
