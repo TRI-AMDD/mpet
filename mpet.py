@@ -618,7 +618,14 @@ class modMPET(daeModel):
             mu_O = np.log(Max(eps, act_O))
             # eta = electrochem pot_R - electrochem pot_O
             # eta = (mu_R + phi_R) - (mu_O + phi_O)
-            eta = (mu_R + phi_m) - (mu_O + phi_lyte)
+            if etaFit:
+                material = self.D['material_ac'][l]
+                fits = delta_phi_fits.DPhiFits(self.D)
+                phifunc = fits.materialData[material]
+                delta_phi_eq = phifunc(c_sld[-1], self.dphi_eq_ref_ac(l))
+                eta = (phi_m - phi_lyte) - delta_phi_eq
+            else:
+                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
             if rxnType == "Marcus":
                 Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
             elif rxnType == "BV":
@@ -673,10 +680,6 @@ class modMPET(daeModel):
                 Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
             RHS[-1] = (Rs**2 * Rxn -
                     Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
-            return (M, RHS)
-        elif solidType_c in ["diffn"] and solidShape == "C3":
-            # TODO -- Implement
-            raise
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -1105,7 +1108,7 @@ class simMPET(daeSimulation):
         if D['Tabs'] != 298 or D['Tref'] != 298:
             raise Exception("Temp dependence not implemented")
         if D['Nvol_ac'][1] < 1:
-            raise Exception("Must have a cathode")
+            raise Exception("Must have at least one porous electrode")
         for l in self.trodes:
             solidType = D['solidType_ac'][l]
             solidShape = D['solidShape_ac'][l]
@@ -1122,8 +1125,8 @@ class simMPET(daeSimulation):
 #                raise NotImplementedError("homog_snd req. Tref=Tabs=298")
             if solidType in ["diffn"] and solidShape != "sphere":
                 raise NotImplementedError("diffn currently req. sphere")
-            if D['etaFit_ac'][l] and solidType != "diffn":
-                raise NotImplementedError("etafit req. solidType = diffn")
+            if D['etaFit_ac'][l] and solidType not in ["diffn", "homog"]:
+                raise NotImplementedError("etafit req. solidType = diffn or homog")
         return
 
 #    def Run(self):
@@ -1254,7 +1257,6 @@ def consoleRun(D):
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
 
-    # TODO -- optionally set the time horizon directly for CV?
     # Set the time horizon and the reporting interval
     # We need to get info about the system to figure out the
     # simulation time horizon
