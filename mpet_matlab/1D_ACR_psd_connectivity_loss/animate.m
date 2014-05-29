@@ -2,7 +2,8 @@ function animate(t,cpcs,ffvec,vvec,disc,part,fig,output)
 
 % close all
 tlen = max(size(t));
-numpart = max(size(part.steps))-1;
+totalpart = max(size(part.steps))-1;
+numpart = disc.numpart;
 
 Nx = disc.Nx;
 Ny = disc.numpart;
@@ -18,15 +19,17 @@ T = 298;
 % First let's break down the cpcs vector
 c = zeros(tlen,ss+Nx);
 phi = zeros(tlen,ss+Nx);
+%phim = zeros(tlen,Nx,numpart);
 for i=1:tlen
-    c(i,:,:) = reshape(cpcs(i,1:ss+steps),1,ss+steps);
-    phi(i,:,:) = reshape(cpcs(i,ss+steps+1:2*(ss+steps)),1,ss+steps);
+    c(i,:) = reshape(cpcs(i,1:ss+steps),1,ss+steps);
+    phi(i,:) = reshape(cpcs(i,ss+steps+1:2*(ss+steps)),1,ss+steps);
+%    phim(i,:,:) = reshape(cpcs(i, disc.sol+disc.ssteps:disc.sol+disc.ssteps+Nx*numpart-1), Nx, numpart);
 end
 
 %phi = zeros(tlen,Ny,ssx+Nx);
-cs = cell(numpart,1);
+cs = cell(totalpart,1);
 % Put each particle in its own entry in a cell array
-for i=1:numpart
+for i=1:totalpart
     % Get the indices
     ind1 = sum(part.steps(1:i))+1;
     ind2 = sum(part.steps(1:i+1));
@@ -43,16 +46,17 @@ if strcmp(fig,'s')
     for i=1:tlen
         for j=1:Nx
             for k=1:Ny
-                ind = (j-1)*Ny+k;
-                subplot(Ny,Nx,ind)
-                sz = size(cs{ind});
-                plot(cs{ind}(i,:))
+                indpart = (j-1)*numpart+k;
+                indplot = (k-1)*Nx + j;
+                subplot(Ny,Nx,indplot)
+                sz = size(cs{indpart});
+                plot(cs{indpart}(i,:))
                 axis([0 sz(2) 0 1])
                 M(i) = getframe(gcf);
             end 
         end
     end   
-    
+
 elseif strcmp(fig,'e')
     figure
     for i=1:tlen
@@ -90,6 +94,19 @@ elseif strcmp(fig,'d')
         plot(ffvec(i),vvec(i),'ro')
         M(i) = getframe(gcf);
         cla
+    end
+
+elseif strcmp(fig,'phim')
+    scrsz = get(0,'ScreenSize');
+    figure('OuterPosition',[3/4 scrsz(4)/2 3*scrsz(3)/4 scrsz(4)/2])
+    for j=1:Nx
+        for k=1:numpart
+            ind = (k-1)*Nx + j;
+            subplot(numpart,Nx,ind)
+            phim = cpcs(:, disc.sol+disc.ssteps+(j-1)*numpart + (k-1));
+            plot(t, phim)
+            axis([0 tlen -1 1])
+        end 
     end
 end
 

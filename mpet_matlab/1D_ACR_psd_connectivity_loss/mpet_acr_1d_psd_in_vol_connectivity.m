@@ -57,11 +57,11 @@ Dp = 2.2e-10;                       % Cation diff, m^2/s, LiPF6 in EC/DMC
 Dm = 2.94e-10;                      % Anion diff, m^2/s, LiPF6 in EC/DMC
 Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm);   % Ambipolar diffusivity
 tp = zp*Dp / (zp*Dp + zm*Dm);       % Cation transference number
-Gsld = 1.0e-20;                     % Conductance between individual solid particles [S]
+Gsld = 1.0e-14;                     % Conductance between individual solid particles [S]
 
 % Particle size distribution
-mean = 160e-9;                      % Average particle size, m
-stddev = 20e-9;                     % Standard deviation, m
+mean = 30e-9;                      % Average particle size, m
+stddev = 0e-9;                     % Standard deviation, m
 
 % Material properties
 dim_a = 1.8560e-20;                 % Regular solution parameter, J
@@ -125,7 +125,7 @@ nDm = Dm / Damb;
 currset = dim_crate * (td/3600);
 
 % scaling of conductance
-nGsld = Gsld * (k*T/e) * (td/(F*csmax*pvolvec));
+nGsld = Gsld .* (k.*T/e) .* (td./(F*csmax.*pvolvec));
 
 if currset ~= 0
     tr = linspace(0,1/abs(currset),tsteps);
@@ -225,7 +225,7 @@ M = genMass(disc,poros,part_steps,Nx,epsbeta,tp,pvolvec);
 options=odeset('Mass',M,'MassSingular','yes','MStateDependence','none','Events',@events);
 disp('Calling ode15s solver...')
 [t,cpcs]=ode15s(@calcRHS,tr,cpcsinit,options,io,currset,kappa,a,b,alpha, ...
-                    cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,porosvec,pvolvec,tr,epsbeta,ffend);
+                    cwet,wet_steps,part_steps,Nx,disc,tp,zp,zm,nDp,nDm,nGsld,porosvec,pvolvec,tr,epsbeta,ffend);
 
 % Now we analyze the results before returning
 disp('Done.')                
@@ -275,7 +275,7 @@ disp('Finished.')
 return;
 
 function val = calcRHS(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,porosvec,pvolvec,tr,epsbeta,ffend)
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,nGsld,porosvec,pvolvec,tr,epsbeta,ffend)
 
 % Initialize output
 val = zeros(max(size(cpcs)),1);             
@@ -349,9 +349,9 @@ for i=1:Nx
     % Get the electrolyte concentration and potential values
     ci = cpcs(disc.ss+i);
     phii = cpcs(2*disc.ss+disc.steps+i);
-    phimi = cpcs(disc.sol+disc.ssteps+i-1);   % ME: check if indices are correct -> should be ok now...
     % Loop through particles in each volume
     for j=0:numpart-1
+        phimi = cpcs(disc.sol+disc.ssteps+(i-1)*numpart + j);
         ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
         csi = cpcs(disc.sol+ind1-1:disc.sol+ind2-1);
@@ -372,43 +372,20 @@ end
 val(disc.sol:disc.sol+disc.ssteps-1) = real(cell2mat(outarr));
 
 % Charge conservation for phim domain
-phimtmp = zeros(Nx*numpart + 1, 1);
-% solid potentials for all the particles in the domain
-phimtmp(1:end-1) = cpcs(disc.sol+disc.ssteps:disc.sol+disc.ssteps+Nx*numpart-1);
-% Impose first-particle potential as an equation
-val(disc.sol+disc.ssteps) = phimtmp(0); % LHS = 0 = RHS = phim(0)
-% Impose no current flowing from final particle in chain within the volume
-phimtmp(end) = phimtmp(end-1);
-val(disc.sol+disc.ssteps+1:disc.sol+disc.ssteps+Nx*numpart-1) = ...
-        -diff(diff(phimtmp));
-
-%% % original setup
-%% %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-%% % Construct our charge conservation the electron conducting phase
-%% phimtmp = zeros(2+disc.steps,1);
-%% phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:end-1);
-%% % No flux condition
-%% phimtmp(1) = phimtmp(2);    
-%% 
-%% % Robin condition - set ground and flux out
-%% phimtmp(end-1) = currset/mcond/Nx; 
-%% %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-%
-%% new test
-%%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-%% Construct our charge conservation the electron conducting phase
-%phimtmp = zeros(2+disc.steps,1);
-%
-%% Robin condition - set ground and flux out
-%% phimtmp(end-1) = currset / mcond / Nx; 
-%
-%phimtmp(2:end-1) = cpcs(disc.sol+disc.ssteps:end-1);
-%
-%% No flux condition
-%phimtmp(1) = phimtmp(2); 
-%%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-%
-%val(disc.sol+disc.ssteps:end-1) = -diff(-mcond.*diff(phimtmp)*Nx).*Nx;
+% Have to do this for each volume.
+for i=1:Nx
+    nGsldvec = nGsld((i-1)*numpart+1:i*numpart-1);
+    phimtmp = zeros(numpart + 1, 1);
+    ind1 = disc.sol+disc.ssteps+(i-1)*numpart;
+    ind2 = disc.sol+disc.ssteps+i*numpart - 1;
+    % solid potentials for all the particles in this volume
+    phimtmp(1:end-1) = cpcs(ind1:ind2);
+    % Impose first-particle potential as an equation
+    val(ind1) = phimtmp(1); % LHS = 0 = RHS = phim(0)
+    % Impose no current flowing from final particle in chain within the volume
+    phimtmp(end) = phimtmp(end-1);
+    val(ind1+1:ind2) = -nGsldvec.*diff(diff(phimtmp));
+end
 
 % Finally the current condition
 val(end) = currset;
@@ -440,7 +417,7 @@ gamma_ts = (1./(1-cs));
 ecd = (io.*ccath^(1-alpha).*act.^(alpha))./gamma_ts;
 mu_O = log(ccath);
 % eta = electrochem potential_R - electrochem potential_O
-eta = (mu + phi_M) - (mu_O + phi);
+eta = (mu + phim) - (mu_O + phi);
 dcsdt = ecd.*(exp(-alpha.*eta)-exp((1-alpha).*eta));
 
 return;
@@ -491,14 +468,13 @@ M(disc.sol:disc.sol+disc.ssteps-1,disc.sol:disc.sol+disc.ssteps-1) = speye(sum(p
 % phim -- charge conservation in current flowing between particles
 % For first particle, it's set to zero (algebraic), so only have mass
 % matrix entries for particles 2...N
+% Equations: nF*R_j = I = G*\Delta phim
 for i=1:Nx
     for j=1:numpart-1
         ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
         ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
-        M(disc.sol+disc.ssteps+i*j, disc.sol+ind1:disc.sol+ind2) = ...
-                1/part_steps((i-1)*numpart+1+j+1) ...
-                * pvolvec((i-1)*numpart+j+1,1) ...
-                / sum(pvolvec((i-1)*numpart+1:i*numpart));
+        M(disc.sol+disc.ssteps+(i-1)*numpart+j, disc.sol+ind1:disc.sol+ind2) = ...
+                1/part_steps((i-1)*numpart+1+j+1);
     end
 end
 
@@ -518,23 +494,10 @@ for i=1:Nx
     end
 end
 
-%% Electric potential
-%for i=1:Nx
-%    % Loop through particles
-%    for j=0:numpart-1
-%        ind1 = sum(part_steps(1:(i-1)*numpart+1+j))+1;
-%        ind2 = sum(part_steps(1:(i-1)*numpart+1+j+1));
-%        M(disc.sol+disc.ssteps+i-1, disc.sol+ind1:disc.sol+ind2) = ...
-%                -epsbeta./part_steps((i-1)*numpart+1+j+1) ...
-%                * pvolvec((i-1)*numpart+j+1,1) ...
-%                / sum(pvolvec((i-1)*numpart+1:i*numpart));      
-%    end
-%end
-%
 return;
 
 function [value, isterminal, direction] = events(t,cpcs,io,currset,kappa,a,b,alpha,cwet,wet_steps,...
-                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,mcond,porosvec,pvolvec,tr,epsbeta,ffend)
+                 part_steps,Nx,disc,tp,zp,zm,nDp,nDm,nGsld,porosvec,pvolvec,tr,epsbeta,ffend)
                         
 value = 0;
 isterminal = 0;
