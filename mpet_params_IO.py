@@ -36,8 +36,6 @@ class mpetIO():
                              P.get('Particles', 'solidType_c')]
         D["solidDisc_ac"] = [P.getfloat('Particles', 'solidDisc_a'),
                              P.getfloat('Particles', 'solidDisc_c')]
-        D["cwet_ac"] = [P.getfloat('Particles', 'cwet_a'),
-                        P.getfloat('Particles', 'cwet_c')]
         D["solidShape_ac"] = [P.get('Particles', 'solidShape_a'),
                               P.get('Particles', 'solidShape_c')]
         D["partThick_ac"] = [P.getfloat('Particles', 'partThick_a'),
@@ -66,6 +64,10 @@ class mpetIO():
                         P.getfloat('Materials', 'Vstd_c')]
         D["Dsld_ac"] = [P.getfloat('Materials', 'Dsld_a'),
                         P.getfloat('Materials', 'Dsld_c')]
+        D["dgammasdc_ac"] = [P.getfloat('Materials', 'dgammasdc_a'),
+                             P.getfloat('Materials', 'dgammasdc_c')]
+        D["cwet_ac"] = [P.getfloat('Materials', 'cwet_a'),
+                        P.getfloat('Materials', 'cwet_c')]
         D["delPhiEqFit_ac"] = [P.getboolean('Materials', 'delPhiEqFit_a'),
                           P.getboolean('Materials', 'delPhiEqFit_c')]
         D["material_ac"] = [P.get('Materials', 'material_a'),

@@ -204,6 +204,8 @@ class modMPET(daeModel):
         self.kappa_ac = np.empty(2, dtype=object)
         self.Omga_ac = np.empty(2, dtype=object)
         self.k0_ac = np.empty(2, dtype=object)
+        self.beta_s_ac = np.empty(2, dtype=object)
+        self.delta_L_ac = np.empty(2, dtype=object)
         self.MHC_Aa_ac = np.empty(2, dtype=object)
         self.scond_ac = np.empty(2, dtype=object)
         self.psd_num_ac = np.empty(2, dtype=object)
@@ -226,6 +228,14 @@ class modMPET(daeModel):
             self.k0_ac[l] = daeParameter("k0_{l}".format(l=l),
                     unit(), self,
                     "exchange current density rate constant for each particle",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.beta_s_ac[l] = daeParameter("beta_s_{l}".format(l=l),
+                    unit(), self,
+                    "surface wetting, nondim: kappa*d(gamma_s)/dc",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.delta_L_ac[l] = daeParameter("delta_L_{l}".format(l=l),
+                    unit(), self,
+                    "Length ratios for particle: Vp/(Ap*Rp)",
                     [self.Nvol_ac[l], self.Npart_ac[l]])
             self.MHC_Aa_ac[l] = daeParameter("MHC_Aa_{l}".format(l=l),
                     unit(), self,
@@ -575,8 +585,8 @@ class modMPET(daeModel):
         c_lyte = self.c_lyte_ac[l](i)
         # Get the relevant parameters for this particle
         k0 = self.k0_ac[l](i, j)
-        kappa = self.kappa_ac[l](i, j) # only used for ACR
-        cbar = self.cbar_sld_ac[l](i, j) # only used for ACR
+        kappa = self.kappa_ac[l](i, j) # only used for ACR/CHR
+        cbar = self.cbar_sld_ac[l](i, j) # only used for ACR/CHR
         lmbda = self.lmbda_ac(l) # Only used for Marcus/MHC
         Aa = self.MHC_Aa_ac[l](i, j) # Only used for MHC
         b = self.MHC_erfstretch_ac(l) # Only used for MHC
@@ -591,6 +601,9 @@ class modMPET(daeModel):
         # Concentration (profile?) in the solid
         c_sld = np.empty(Nij, dtype=object)
         c_sld[:] = [self.c_sld_ac[l][i, j](k) for k in range(Nij)]
+        # Assume dilute electrolyte
+        act_O = c_lyte
+        mu_O = T*np.log(Max(eps, act_O))
         # Calculate chemical potential of reduced state
 
         if solidType in ["ACR", "homog", "homog_sdn"]:
@@ -612,10 +625,7 @@ class modMPET(daeModel):
             elif solidType in ["homog", "homog_sdn"]:
                 mu_R = self.mu_reg_sln(c_sld, Omga)
             # XXX -- Temp dependence!
-            act_R = np.exp(mu_R)
-            # Assume dilute electrolyte
-            act_O = c_lyte
-            mu_O = np.log(Max(eps, act_O))
+            act_R = np.exp(mu_R/T)
             # eta = electrochem pot_R - electrochem pot_O
             # eta = (mu_R + phi_R) - (mu_O + phi_O)
             if delPhiEqFit:
@@ -636,11 +646,12 @@ class modMPET(daeModel):
             M = sprs.eye(Nij, format="csr")
             return (M, Rate)
 
-        elif solidType in ["diffn"] and solidShape == "sphere":
+        elif solidType in ["diffn", "CHR"] and solidShape == "sphere":
             # For discretization background, see Zeng & Bazant 2013
             Rs = 1.
             dr = Rs/(Nij - 1)
             r_vec = np.linspace(0, Rs, Nij)
+            edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
             vol_vec = r_vec**2 * dr + (1./12)*dr**3
             vol_vec[0] = (1./24)*dr**3
             vol_vec[-1] = (1./3)*(Rs**3 - (Rs - dr/2.)**3)
@@ -650,36 +661,65 @@ class modMPET(daeModel):
             M2 = sprs.diags(vol_vec, 0, format="csr")
             M = M1*M2
             RHS = np.empty(Nij, dtype=object)
-            c_diffs = np.diff(c_sld)
-            RHS[1:Nij - 1] = (
-                    Ds*(r_vec[1:Nij - 1] + dr/2)**2*c_diffs[1:]/dr -
-                    Ds*(r_vec[1:Nij - 1] - dr/2)**2*c_diffs[:-1]/dr )
-            RHS[0] = Ds*(dr/2)**2*c_diffs[0]/dr
-            # Figure out reaction rate information, assuming DILUTE
-            # electrolyte AND solid
-            # Take the surface concentration
-            c_surf = c_sld[-1]
-            # Overpotential
-            delta_phi = phi_m - phi_lyte
+            if solidType in ["diffn"]:
+                c_diffs = np.diff(c_sld)
+                RHS[1:Nij - 1] = (
+                        Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
+                        Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
+                RHS[0] = Ds*(dr/2.)**2*c_diffs[0]/dr
+                # Take the surface concentration
+                c_surf = c_sld[-1]
+                # Assuming dilute solid
+                act_R_surf = c_surf
+                mu_R_surf = T*np.log(Max(eps, act_R_surf))
+            elif solidType in ["CHR"]:
+                # mu_R is like for ACR, except kappa*curv term
+                mu_R = ( self.mu_reg_sln(c_sld, Omga) +
+                        self.B_ac(l)*(c_sld - cbar) )
+                mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
+                mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
+#                        np.gradient(c_sld)[1:-1]/(dr*r_vec[1:-1])
+                        (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
+                        )
+                # Surface conc gradient given by natural BC
+                beta_s = self.beta_s_ac[l](i, j)
+                mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
+                        (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
+                        )
+                mu_R_surf = mu_R[-1]
+                # With chem potentials, can now calculate fluxes
+                Flux_vec = np.empty(Nij+1, dtype=object)
+                Flux_vec[0] = 0  # Symmetry at r=0
+                c_edges = (c_sld[0:-1]  + c_sld[1:])/2.
+                Flux_vec[1:Nij] = (Ds * (1 - c_edges) * c_edges *
+                        np.diff(mu_R)/dr)
+                # Take the surface concentration
+                c_surf = c_sld[-1]
+                act_R_surf = np.exp(mu_R_surf/T)
+            # Figure out overpotential
             if delPhiEqFit:
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
                 delta_phi_eq = phifunc(c_surf, self.dphi_eq_ref_ac(l))
+                eta = (phi_m - phi_lyte) - delta_phi_eq
             else:
-                delta_phi_eq = T*np.log(Max(eps, c_lyte)/Max(eps, c_surf))
-            eta = delta_phi - delta_phi_eq
+                eta = (mu_R_surf + phi_m) - (mu_O + phi_lyte)
+            # Calculate reaction rate
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
             elif rxnType == "BV":
-                # Assume dilute electrolyte
-                act_O = c_lyte
-                act_R = c_surf
-                Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R, eta, T)
+                Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R_surf, eta, T)
             elif rxnType == "MHC":
                 Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
-            RHS[-1] = (Rs**2 * Rxn -
-                    Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
+            # Finish up RHS discretization at particle surface
+            if solidType in ["diffn"]:
+                RHS[-1] = (Rs**2 * Rxn -
+                        Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
+            elif solidType in ["CHR"]:
+                Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
+                area_vec = edges**2
+                RHS = np.diff(Flux_vec*area_vec)
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -875,7 +915,7 @@ class simMPET(daeSimulation):
                         size=(Nvol, Npart))
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
-            if solidType in ["ACR", "diffn"]:
+            if solidType in ["ACR", "CHR", "diffn"]:
                 solidDisc = D['solidDisc_ac'][l]
                 self.psd_num[l] = np.ceil(psd_raw/solidDisc).astype(np.integer)
                 self.psd_len[l] = solidDisc*self.psd_num[l]
@@ -885,6 +925,8 @@ class simMPET(daeSimulation):
                 self.psd_num[l] = np.ones(psd_raw.shape).astype(np.integer)
                 # The lengths are given by the original length distr.
                 self.psd_len[l] = psd_raw
+            else:
+                raise NotImplementedError("Solid types missing here")
 
         # Define the model we're going to simulate
         self.m = modMPET("mpet", D=D)
@@ -1002,11 +1044,17 @@ class simMPET(daeSimulation):
                     self.m.psd_len_ac[l].SetValue(i, j, p_len)
                     self.m.psd_area_ac[l].SetValue(i, j, p_area)
                     self.m.psd_vol_ac[l].SetValue(i, j, p_vol)
+#                    kappatmp = D['kappa_ac'][l]/(k*Tref*D['rhos_ac'][l]*p_len**2)
+#                    self.m.kappa_ac[l].SetValue(i, j, kappatmp)
                     self.m.kappa_ac[l].SetValue(i, j,
                             D['kappa_ac'][l]/(k*Tref*D['rhos_ac'][l]*p_len**2))
                     k0tmp = ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l])
                     self.m.k0_ac[l].SetValue(i, j, k0tmp)
 #                            ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l]))
+                    self.m.beta_s_ac[l].SetValue(i, j,
+                            D['dgammasdc_ac'][l]*p_len*D['rhos_ac'][l]/D['kappa_ac'][l])
+                    self.m.delta_L_ac[l].SetValue(i, j,
+                            p_vol/(p_area*p_len))
                     self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCerf
                             k0tmp / (spcl.erf(-lmbda/MHC_erf_b) + 1))
 #                    self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCtanh
@@ -1015,7 +1063,7 @@ class simMPET(daeSimulation):
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
                             D['Dsld_ac'][l]*(p_area/p_vol)*td/p_len)
-                    if solidType in ["homog", "ACR",  "diffn"]:
+                    if solidType in ["homog", "ACR", "CHR", "diffn"]:
                         self.m.Omga_ac[l].SetValue(i, j,
                                 D['Omga_ac'][l]/(k*Tref))
                     elif solidType == "homog_sdn":
@@ -1023,6 +1071,8 @@ class simMPET(daeSimulation):
                         # only use this when T = 1, Tabs = Tref = 298
                         self.m.Omga_ac[l].SetValue(i, j,
                                 T*self.size2regsln(p_len))
+                    else:
+                        raise NotImplementedError("Solid types missing here")
         self.m.NumVol_s.SetValue(self.Nvol_s)
         self.m.L_s.SetValue(D['L_s']/L_ref)
         self.m.td.SetValue(td)
@@ -1116,7 +1166,9 @@ class simMPET(daeSimulation):
                 raise Exception("simSurfCond req. ACR")
             if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
                 raise Exception("ACR and homog_sdn req. C3 shape")
-            if solidType not in ["ACR", "homog", "homog_sdn", "diffn"]:
+            if solidType in ["CHR"] and solidShape not in ["sphere"]:
+                raise NotImplementedError("CHR req. sphere")
+            if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
                 raise NotImplementedError("Input solidType not defined")
             if solidShape not in ["C3", "sphere"]:
                 raise NotImplementedError("Input solidShape not defined")
