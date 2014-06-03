@@ -25,7 +25,7 @@ from daetools.solvers.superlu import pySuperLU
 import mpet_params_IO
 import delta_phi_fits
 
-eps = 1e-12
+eps = -1e-12
 
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
@@ -648,6 +648,7 @@ class modMPET(daeModel):
 
         elif solidType in ["diffn", "CHR"] and solidShape == "sphere":
             # For discretization background, see Zeng & Bazant 2013
+            # Mass matrix is common for spherical shape, diffn or CHR
             Rs = 1.
             dr = Rs/(Nij - 1)
             r_vec = np.linspace(0, Rs, Nij)
@@ -660,8 +661,10 @@ class modMPET(daeModel):
             M1[1, 0] = M1[-2, -1] = 1./4
             M2 = sprs.diags(vol_vec, 0, format="csr")
             M = M1*M2
-            RHS = np.empty(Nij, dtype=object)
+
+            # Diffn
             if solidType in ["diffn"]:
+                RHS = np.empty(Nij, dtype=object)
                 c_diffs = np.diff(c_sld)
                 RHS[1:Nij - 1] = (
                         Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
@@ -672,6 +675,7 @@ class modMPET(daeModel):
                 # Assuming dilute solid
                 act_R_surf = c_surf
                 mu_R_surf = T*np.log(Max(eps, act_R_surf))
+            # CHR
             elif solidType in ["CHR"]:
                 # mu_R is like for ACR, except kappa*curv term
                 mu_R = ( self.mu_reg_sln(c_sld, Omga) +
@@ -686,7 +690,8 @@ class modMPET(daeModel):
                 mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
                         (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
                         )
-                mu_R_surf = mu_R[-1]
+#                mu_R_surf = mu_R[-1]
+                mu_R_surf = mu_R[Nij - 1]
                 # With chem potentials, can now calculate fluxes
                 Flux_vec = np.empty(Nij+1, dtype=object)
                 Flux_vec[0] = 0  # Symmetry at r=0
@@ -717,9 +722,14 @@ class modMPET(daeModel):
                 RHS[-1] = (Rs**2 * Rxn -
                         Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
-                Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
+                Flux_vec[Nij] = -self.delta_L_ac[l](i, j)*Rxn
+#                Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
                 area_vec = edges**2
                 RHS = np.diff(Flux_vec*area_vec)
+                tmpvec = Flux_vec*area_vec
+#                RHS = tmpvec[0:-1] - tmpvec[1:]
+#                RHS = -tmpvec[1:] + tmpvec[0:-1]
+#                RHS = tmpvec[0:-1]
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -915,9 +925,14 @@ class simMPET(daeSimulation):
                         size=(Nvol, Npart))
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
-            if solidType in ["ACR", "CHR", "diffn"]:
+#            if solidType in ["ACR", "CHR", "diffn"]:
+            if solidType in ["ACR"]:
                 solidDisc = D['solidDisc_ac'][l]
                 self.psd_num[l] = np.ceil(psd_raw/solidDisc).astype(np.integer)
+                self.psd_len[l] = solidDisc*self.psd_num[l]
+            elif solidType in ["CHR", "diffn"]:
+                solidDisc = D['solidDisc_ac'][l]
+                self.psd_num[l] = np.ceil(psd_raw/solidDisc).astype(np.integer) + 1
                 self.psd_len[l] = solidDisc*self.psd_num[l]
             # For homogeneous particles (only one "volume" per particle)
             elif solidType in ["homog", "homog_sdn"]:
@@ -1335,7 +1350,8 @@ def consoleRun(D):
     simulation.Initialize(daesolver, datareporter, log)
 
 #    # Save model report
-#    simulation.m.SaveModelReport("report_mpet.xml")
+#    simulation.m.SaveModelReport(os.path.join(os.getcwd(),
+#        "../2013_08_daetools/daetools_tutorials/report_mpet.xml"))
 
     # Solve at time=0 (initialization)
     simulation.SolveInitial()
