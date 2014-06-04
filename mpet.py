@@ -204,6 +204,7 @@ class modMPET(daeModel):
         self.kappa_ac = np.empty(2, dtype=object)
         self.Omga_ac = np.empty(2, dtype=object)
         self.k0_ac = np.empty(2, dtype=object)
+        self.delta_L_ac = np.empty(2, dtype=object)
         self.MHC_Aa_ac = np.empty(2, dtype=object)
         self.scond_ac = np.empty(2, dtype=object)
         self.psd_num_ac = np.empty(2, dtype=object)
@@ -226,6 +227,10 @@ class modMPET(daeModel):
             self.k0_ac[l] = daeParameter("k0_{l}".format(l=l),
                     unit(), self,
                     "exchange current density rate constant for each particle",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.delta_L_ac[l] = daeParameter("delta_L_{l}".format(l=l),
+                    unit(), self,
+                    "Length ratios for particle: Vp/(Ap*Rp)",
                     [self.Nvol_ac[l], self.Npart_ac[l]])
             self.MHC_Aa_ac[l] = daeParameter("MHC_Aa_{l}".format(l=l),
                     unit(), self,
@@ -696,7 +701,7 @@ class modMPET(daeModel):
                 Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R, eta, T)
             elif rxnType == "MHC":
                 Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
-            RHS[-1] = 4*np.pi*(Rs**2 * Rxn -
+            RHS[-1] = 4*np.pi*(Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
                     Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             return (M, RHS)
 
@@ -1049,6 +1054,8 @@ class simMPET(daeSimulation):
                     k0tmp = ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l])
                     self.m.k0_ac[l].SetValue(i, j, k0tmp)
 #                            ((p_area/p_vol)*D['k0_ac'][l]*td)/(F*csmax_ac[l]))
+                    self.m.delta_L_ac[l].SetValue(i, j,
+                            p_vol/(p_area*p_len))
                     self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCerf
                             k0tmp / (spcl.erf(-lmbda/MHC_erf_b) + 1))
 #                    self.m.MHC_Aa_ac[l].SetValue(i, j, # MHCtanh
