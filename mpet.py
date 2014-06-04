@@ -353,10 +353,14 @@ class modMPET(daeModel):
         for l in trodes:
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
+                    Nij = Nsld_mat_ac[l][i, j]
                     eq = self.CreateEquation("cbar_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
-                    eq.Residual = (self.cbar_sld_ac[l](i, j) -
-                            Sum(self.c_sld_ac[l][i, j].array([])) / Nsld_mat_ac[l][i, j]
-                            )
+                    r_vec, volfrac_vec = self.get_unit_solid_discr(
+                            self.D['solidShape_ac'][l],
+                            self.D['solidType_ac'][l], Nij)
+                    eq.Residual = self.cbar_sld_ac[l](i, j)
+                    for k in range(Nij):
+                        eq.Residual -= self.c_sld_ac[l][i, j](k)*volfrac_vec[k]
 #                    eq.BuildJacobianExpressions = True
                     eq.CheckUnitsConsistency = False
 
@@ -364,11 +368,19 @@ class modMPET(daeModel):
         for l in trodes:
             eq = self.CreateEquation("ffrac_{l}".format(l=l))
             eq.Residual = self.ffrac_ac[l]()
-            numpartvol_tot = float(np.sum(Nsld_mat_ac[l]))
+            # Make a float of Vtot, total particle volume in electrode
+            # Note: for some reason, even when "factored out", it's a bit
+            # slower to use Sum(self.psd_vol_ac[l].array([], [])
+            Vtot = np.sum(self.psd_vol_ac[l].npyValues)
+            tmp = 0
             for i in range(Nvol_ac[l]):
                 for j in range(Npart_ac[l]):
-                    eq.Residual -= (self.cbar_sld_ac[l](i, j) *
-                            (Nsld_mat_ac[l][i, j]/numpartvol_tot))
+                    Vpart = self.psd_vol_ac[l](i, j)
+                    # For some reason the following slower, so
+                    # it's helpful to factor out the Vtot sum:
+                    # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
+                    tmp += self.cbar_sld_ac[l](i, j) * Vpart
+            eq.Residual -= tmp / Vtot
             eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each electrode volume
@@ -383,9 +395,16 @@ class modMPET(daeModel):
                 for j in range(Npart_ac[l]):
                     # The volume of this particular particle
                     Vj = self.psd_vol_ac[l](i, j)
-                    res += (Vj/Vu)*(Sum(self.c_sld_ac[l][i, j].dt_array([])) /
-                            Nsld_mat_ac[l][i, j])
-                eq.Residual = self.j_plus_ac[l](i) - res
+                    Nij = Nsld_mat_ac[l][i, j]
+                    r_vec, volfrac_vec = self.get_unit_solid_discr(
+                            self.D['solidShape_ac'][l],
+                            self.D['solidType_ac'][l], Nij)
+                    tmp = 0
+                    for k in range(Nij):
+                        tmp += (self.c_sld_ac[l][i, j].dt(k) *
+                                volfrac_vec[k])
+                    res += tmp * Vj
+                eq.Residual = self.j_plus_ac[l](i) - res/Vu
                 eq.CheckUnitsConsistency = False
 
         # Solid active particle concentrations, potential, and bulk
@@ -649,13 +668,12 @@ class modMPET(daeModel):
         elif solidType in ["diffn", "CHR"] and solidShape == "sphere":
             # For discretization background, see Zeng & Bazant 2013
             # Mass matrix is common for spherical shape, diffn or CHR
-            Rs = 1.
-            dr = Rs/(Nij - 1)
-            r_vec = np.linspace(0, Rs, Nij)
+            Rs = 1. # (non-dimensionalized by itself)
+            r_vec, volfrac_vec = self.get_unit_solid_discr(
+                    solidShape, solidType, Nij)
             edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-            vol_vec = r_vec**2 * dr + (1./12)*dr**3
-            vol_vec[0] = (1./24)*dr**3
-            vol_vec[-1] = (1./3)*(Rs**3 - (Rs - dr/2.)**3)
+            vol_vec = 4./3.*np.pi*Rs**3 * volfrac_vec
+            dr = r_vec[1] - r_vec[0]
             M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                     shape=(Nij,Nij), format="csr")
             M1[1, 0] = M1[-2, -1] = 1./4
@@ -666,10 +684,10 @@ class modMPET(daeModel):
             if solidType in ["diffn"]:
                 RHS = np.empty(Nij, dtype=object)
                 c_diffs = np.diff(c_sld)
-                RHS[1:Nij - 1] = (
+                RHS[1:Nij - 1] = 4*np.pi*(
                         Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
                         Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
-                RHS[0] = Ds*(dr/2.)**2*c_diffs[0]/dr
+                RHS[0] = 4*np.pi*Ds*(dr/2.)**2*c_diffs[0]/dr
                 # Take the surface concentration
                 c_surf = c_sld[-1]
                 # Assuming dilute solid
@@ -719,7 +737,7 @@ class modMPET(daeModel):
                 Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
-                RHS[-1] = (Rs**2 * Rxn -
+                RHS[-1] = 4*np.pi*(Rs**2 * Rxn -
                         Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
                 Flux_vec[Nij] = -self.delta_L_ac[l](i, j)*Rxn
@@ -727,9 +745,6 @@ class modMPET(daeModel):
                 area_vec = edges**2
                 RHS = np.diff(Flux_vec*area_vec)
                 tmpvec = Flux_vec*area_vec
-#                RHS = tmpvec[0:-1] - tmpvec[1:]
-#                RHS = -tmpvec[1:] + tmpvec[0:-1]
-#                RHS = tmpvec[0:-1]
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -887,6 +902,30 @@ class modMPET(daeModel):
             else:
                 out[i] = 0.0
         return out
+
+    def get_unit_solid_discr(self, solidShape, solidType, Nij):
+        if solidShape == "C3" and solidType in ["ACR"]:
+            r_vec = None
+            # For 1D particle, the vol fracs are simply related to the
+            # length discretization
+            volfrac_vec = (1./Nij) * np.ones(Nij)  # scaled to 1D particle volume
+            return r_vec, volfrac_vec
+        if solidType in ["homog", "homog_sdn"]:
+            r_vec = None
+            volfrac_vec = np.ones(1)
+            return r_vec, volfrac_vec
+        if solidShape == "sphere" and solidType in ["diffn", "CHR"]:
+            Rs = 1.
+            dr = Rs/(Nij - 1)
+            r_vec = np.linspace(0, Rs, Nij)
+            vol_vec = 4*np.pi*(r_vec**2 * dr + (1./12)*dr**3)
+            vol_vec[0] = 4*np.pi*(1./24)*dr**3
+            vol_vec[-1] = (4./3)*np.pi*(Rs**3 - (Rs - dr/2.)**3)
+            Vp = 4./3.*np.pi*Rs**3
+            volfrac_vec = vol_vec/Vp
+            return r_vec, volfrac_vec
+        else:
+            raise NotImplementedError("Fix shape volumes!")
 
 class simMPET(daeSimulation):
     def __init__(self, D=None):
