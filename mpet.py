@@ -742,7 +742,7 @@ class modMPET(daeModel):
             elif solidType in ["CHR"]:
                 Flux_vec[Nij] = -self.delta_L_ac[l](i, j)*Rxn
 #                Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
-                area_vec = edges**2
+                area_vec = 4*np.pi*edges**2
                 RHS = np.diff(Flux_vec*area_vec)
                 tmpvec = Flux_vec*area_vec
             return (M, RHS)
