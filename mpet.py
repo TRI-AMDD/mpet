@@ -1063,7 +1063,7 @@ class simMPET(daeSimulation):
                     self.m.scond_ac[l].SetValue(i, j,
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
-                            D['Dsld_ac'][l]*(p_area/p_vol)*td/p_len)
+                            D['Dsld_ac'][l]*td/p_len**2)
                     if solidType in ["homog", "ACR",  "diffn"]:
                         self.m.Omga_ac[l].SetValue(i, j,
                                 D['Omga_ac'][l]/(k*Tref))
