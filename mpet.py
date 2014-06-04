@@ -714,7 +714,7 @@ class modMPET(daeModel):
                 Flux_vec = np.empty(Nij+1, dtype=object)
                 Flux_vec[0] = 0  # Symmetry at r=0
                 c_edges = (c_sld[0:-1]  + c_sld[1:])/2.
-                Flux_vec[1:Nij] = (Ds * (1 - c_edges) * c_edges *
+                Flux_vec[1:Nij] = (Ds/T * (1 - c_edges) * c_edges *
                         np.diff(mu_R)/dr)
                 # Take the surface concentration
                 c_surf = c_sld[-1]
@@ -737,7 +737,7 @@ class modMPET(daeModel):
                 Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
-                RHS[-1] = 4*np.pi*(Rs**2 * Rxn -
+                RHS[-1] = 4*np.pi*(Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
                         Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
                 Flux_vec[Nij] = -self.delta_L_ac[l](i, j)*Rxn
@@ -1116,7 +1116,7 @@ class simMPET(daeSimulation):
                     self.m.scond_ac[l].SetValue(i, j,
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
-                            D['Dsld_ac'][l]*(p_area/p_vol)*td/p_len)
+                            D['Dsld_ac'][l]*td/p_len**2)
                     if solidType in ["homog", "ACR", "CHR", "diffn"]:
                         self.m.Omga_ac[l].SetValue(i, j,
                                 D['Omga_ac'][l]/(k*Tref))
