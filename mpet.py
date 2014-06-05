@@ -1027,10 +1027,10 @@ class simMPET(daeSimulation):
         # Domains
         self.m.Ntrode.CreateArray(2)
         if self.Nvol_s >= 1:
-            self.m.Nvol_s.CreateArray(self.Nvol_s)
+            self.m.Nvol_s.CreateArray(int(self.Nvol_s))
         for l in self.trodes:
-            self.m.Nvol_ac[l].CreateArray(self.Nvol_ac[l])
-            self.m.Npart_ac[l].CreateArray(self.Npart_ac[l])
+            self.m.Nvol_ac[l].CreateArray(int(self.Nvol_ac[l]))
+            self.m.Npart_ac[l].CreateArray(int(self.Npart_ac[l]))
             for i in range(self.psd_num[l].shape[0]):
                 for j in range(self.psd_num[l].shape[1]):
                     self.m.Nsld_mat_ac[l][i, j].CreateArray(
