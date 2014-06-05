@@ -700,7 +700,6 @@ class modMPET(daeModel):
                         self.B_ac(l)*(c_sld - cbar) )
                 mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
                 mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-#                        np.gradient(c_sld)[1:-1]/(dr*r_vec[1:-1])
                         (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
                         )
                 # Surface conc gradient given by natural BC
@@ -708,8 +707,7 @@ class modMPET(daeModel):
                 mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
                         (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
                         )
-#                mu_R_surf = mu_R[-1]
-                mu_R_surf = mu_R[Nij - 1]
+                mu_R_surf = mu_R[-1]
                 # With chem potentials, can now calculate fluxes
                 Flux_vec = np.empty(Nij+1, dtype=object)
                 Flux_vec[0] = 0  # Symmetry at r=0
@@ -741,10 +739,8 @@ class modMPET(daeModel):
                         Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
                 Flux_vec[Nij] = -self.delta_L_ac[l](i, j)*Rxn
-#                Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
                 area_vec = 4*np.pi*edges**2
                 RHS = np.diff(Flux_vec*area_vec)
-                tmpvec = Flux_vec*area_vec
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -964,7 +960,6 @@ class simMPET(daeSimulation):
                         size=(Nvol, Npart))
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
-#            if solidType in ["ACR", "CHR", "diffn"]:
             if solidType in ["ACR"]:
                 solidDisc = D['solidDisc_ac'][l]
                 self.psd_num[l] = np.ceil(psd_raw/solidDisc).astype(np.integer)
@@ -972,7 +967,7 @@ class simMPET(daeSimulation):
             elif solidType in ["CHR", "diffn"]:
                 solidDisc = D['solidDisc_ac'][l]
                 self.psd_num[l] = np.ceil(psd_raw/solidDisc).astype(np.integer) + 1
-                self.psd_len[l] = solidDisc*self.psd_num[l]
+                self.psd_len[l] = solidDisc*(self.psd_num[l] - 1)
             # For homogeneous particles (only one "volume" per particle)
             elif solidType in ["homog", "homog_sdn"]:
                 # Each particle is only one volume
