@@ -303,8 +303,8 @@ class modMPET(daeModel):
 
         # Some values of domain lengths
         trodes = self.trodes
-        Nvol_ac = np.zeros(2, dtype=np.integer)
-        Npart_ac = np.zeros(2, dtype=np.integer)
+        Nvol_ac = [0, 0]
+        Npart_ac = [0, 0]
         for l in trodes:
             Nvol_ac[l] = self.Nvol_ac[l].NumberOfPoints
             Npart_ac[l] = self.Npart_ac[l].NumberOfPoints
@@ -662,7 +662,7 @@ class modMPET(daeModel):
             elif rxnType == "MHC":
 #                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
                 Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_sld)
-            M = sprs.eye(Nij, format="csr")
+            M = sprs.eye(Nij, Nij, format="csr")
             return (M, Rate)
 
         elif solidType in ["diffn", "CHR"] and solidShape == "sphere":
@@ -931,8 +931,8 @@ class simMPET(daeSimulation):
         self.D = D
         # TODO -- why is psd generation in __init__??
         self.Nvol_s = D['Nvol_s']
-        self.Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
-        self.Npart_ac = np.array([D['Npart_ac'][0], D['Npart_ac'][1]])
+        self.Nvol_ac = [D['Nvol_ac'][0], D['Nvol_ac'][1]]
+        self.Npart_ac = [D['Npart_ac'][0], D['Npart_ac'][1]]
         if self.Nvol_ac[0] >= 1: # If we have a full anode
             self.trodes = [0, 1]
         else:
@@ -1027,10 +1027,10 @@ class simMPET(daeSimulation):
         # Domains
         self.m.Ntrode.CreateArray(2)
         if self.Nvol_s >= 1:
-            self.m.Nvol_s.CreateArray(int(self.Nvol_s))
+            self.m.Nvol_s.CreateArray(self.Nvol_s)
         for l in self.trodes:
-            self.m.Nvol_ac[l].CreateArray(int(self.Nvol_ac[l]))
-            self.m.Npart_ac[l].CreateArray(int(self.Npart_ac[l]))
+            self.m.Nvol_ac[l].CreateArray(self.Nvol_ac[l])
+            self.m.Npart_ac[l].CreateArray(self.Npart_ac[l])
             for i in range(self.psd_num[l].shape[0]):
                 for j in range(self.psd_num[l].shape[1]):
                     self.m.Nsld_mat_ac[l][i, j].CreateArray(
