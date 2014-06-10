@@ -665,23 +665,32 @@ class modMPET(daeModel):
             M = sprs.eye(Nij, Nij, format="csr")
             return (M, Rate)
 
-        elif solidType in ["diffn", "CHR"] and solidShape == "sphere":
+        elif solidType in ["diffn", "CHR"] and solidShape in ["sphere", "cylinder"]:
             # For discretization background, see Zeng & Bazant 2013
             # Mass matrix is common for spherical shape, diffn or CHR
             Rs = 1. # (non-dimensionalized by itself)
             r_vec, volfrac_vec = self.get_unit_solid_discr(
                     solidShape, solidType, Nij)
             edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-            vol_vec = 4./3.*np.pi*Rs**3 * volfrac_vec
+            if solidShape == "sphere":
+                Vp = 4./3. * np.pi * Rs**3
+            elif solidShape == "cylinder":
+                Vp = np.pi * Rs**2  # per unit height
+            vol_vec = Vp * volfrac_vec
             dr = r_vec[1] - r_vec[0]
             M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                     shape=(Nij,Nij), format="csr")
             M1[1, 0] = M1[-2, -1] = 1./4
             M2 = sprs.diags(vol_vec, 0, format="csr")
-            M = M1*M2
+            if solidShape == "sphere":
+                M = M1*M2
+            elif solidShape == "cylinder":
+                M = M2
 
             # Diffn
             if solidType in ["diffn"]:
+                if solidShape in ["cylinder"]:
+                    raise NotImplementedError("cylinder-diffn!")
                 RHS = np.empty(Nij, dtype=object)
                 c_diffs = np.diff(c_sld)
                 RHS[1:Nij - 1] = 4*np.pi*(
@@ -698,15 +707,24 @@ class modMPET(daeModel):
                 # mu_R is like for ACR, except kappa*curv term
                 mu_R = ( self.mu_reg_sln(c_sld, Omga) +
                         self.B_ac(l)*(c_sld - cbar) )
-                mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
-                mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-                        (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
-                        )
                 # Surface conc gradient given by natural BC
                 beta_s = self.beta_s_ac[l](i, j)
-                mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
-                        (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
-                        )
+                if solidShape == "sphere":
+                    mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
+                    mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
+                            (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
+                            )
+                    mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
+                            (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
+                            )
+                elif solidShape == "cylinder":
+                    mu_R[0] -= 2 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
+                    mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
+                            (c_sld[2:] - c_sld[0:-2])/(2 * dr*r_vec[1:-1])
+                            )
+                    mu_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
+                            (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
+                            )
                 mu_R_surf = mu_R[-1]
                 # With chem potentials, can now calculate fluxes
                 Flux_vec = np.empty(Nij+1, dtype=object)
@@ -739,7 +757,10 @@ class modMPET(daeModel):
                         Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
                 Flux_vec[Nij] = self.delta_L_ac[l](i, j)*Rxn
-                area_vec = 4*np.pi*edges**2
+                if solidShape == "sphere":
+                    area_vec = 4*np.pi*edges**2
+                elif solidShape == "cylinder":
+                    area_vec = 2*np.pi*edges  # per unit height
                 RHS = np.diff(Flux_vec*area_vec)
             return (M, RHS)
 
@@ -920,6 +941,17 @@ class modMPET(daeModel):
             Vp = 4./3.*np.pi*Rs**3
             volfrac_vec = vol_vec/Vp
             return r_vec, volfrac_vec
+        if solidShape == "cylinder" and solidType in ["diffn", "CHR"]:
+            Rs = 1.
+            h = 1.
+            dr = Rs / (Nij - 1)
+            r_vec = np.linspace(0, Rs, Nij)
+            vol_vec = np.pi * h * 2 * r_vec * dr
+            vol_vec[0] = np.pi * h * dr**2 / 4.
+            vol_vec[-1] = np.pi * h * (Rs * dr - dr**2 / 4.)
+            Vp = np.pi * Rs**2 * h
+            volfrac_vec = vol_vec / Vp
+            return r_vec, volfrac_vec
         else:
             raise NotImplementedError("Fix shape volumes!")
 
@@ -1089,6 +1121,9 @@ class simMPET(daeSimulation):
                         # C3 particles
                         p_area = 2 * 1.2263 * p_len**2
                         p_vol = 1.2263 * p_len**2 * D['partThick_ac'][l]
+                    elif solidShape == "cylinder":
+                        p_area = 2 * np.pi * p_len * D['partThick_ac'][l]
+                        p_vol = np.pi * p_len**2 * D['partThick_ac'][l]
                     self.m.psd_num_ac[l].SetValue(i, j, p_num)
                     self.m.psd_len_ac[l].SetValue(i, j, p_len)
                     self.m.psd_area_ac[l].SetValue(i, j, p_area)
@@ -1215,11 +1250,11 @@ class simMPET(daeSimulation):
                 raise Exception("simSurfCond req. ACR")
             if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
                 raise Exception("ACR and homog_sdn req. C3 shape")
-            if solidType in ["CHR"] and solidShape not in ["sphere"]:
-                raise NotImplementedError("CHR req. sphere")
+            if solidType in ["CHR"] and solidShape not in ["sphere", "cylinder"]:
+                raise NotImplementedError("CHR req. sphere or cylinder")
             if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
                 raise NotImplementedError("Input solidType not defined")
-            if solidShape not in ["C3", "sphere"]:
+            if solidShape not in ["C3", "sphere", "cylinder"]:
                 raise NotImplementedError("Input solidShape not defined")
 #            if solidType == "homog_sdn" and (D['Tabs'] != 298 or
 #                    D['Tref'] != 298):
