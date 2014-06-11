@@ -173,6 +173,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
+#        ax.set_ylim((2, 5))
         if save_flag:
             fig.savefig("mpet_v.png")
         return fig, ax
@@ -418,15 +419,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
                 sharey=True)
-        sol = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
+        sol1 = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
+        sol2 = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
         lens = np.zeros((Npart_ac[l], Nvol_ac[l]))
-        lines = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
+        lines = np.empty((Npart_ac[l], Nvol_ac[l], 2), dtype=object)
         fills = np.empty((Npart_ac[l], Nvol_ac[l], 3), dtype=object)
         if plot_type in ["csld_a", "csld_col_a"]:
             str_base = pfx + "c_sld_trode0vol{j}part{i}"
             ylim = (0, 1.01)
         elif plot_type in ["csld_c", "csld_col_c"]:
-            str_base = pfx + "c_sld_trode1vol{j}part{i}"
+            str_base1 = pfx + "c1_sld_trode1vol{j}part{i}"
+            str_base2 = pfx + "c2_sld_trode1vol{j}part{i}"
             ylim = (0, 1.01)
         elif plot_type == "phisld_a": # plot_type == "phisld"
             str_base = pfx + "p_sld_trode0vol{j}part{i}"
@@ -436,18 +439,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ylim = (-10, 20)
         for i in range(Npart_ac[l]):
             for j in range(Nvol_ac[l]):
-                sol[i, j] = str_base.format(i=i, j=j)
+                sol1[i, j] = str_base1.format(i=i, j=j)
+                sol2[i, j] = str_base2.format(i=i, j=j)
                 lens[i, j] = psd_len_ac[l][0][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
 #                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
-                datay = data[sol[i, j]][0]
-                numy = len(datay)
+                datay1 = data[sol1[i, j]][0]
+                datay2 = data[sol2[i, j]][0]
+                numy = len(datay1)
                 datax = np.linspace(0, lens[i, j], numy)
                 ax[i, j].set_ylim(ylim)
                 ax[i, j].set_xlim((0, lens[i, j]))
-                line, = ax[i, j].plot(datax, datay)
-                lines[i, j] = line
+                line1, = ax[i, j].plot(datax, datay1)
+                line2, = ax[i, j].plot(datax, datay2)
+                lines[i, j, 0] = line1
+                lines[i, j, 1] = line2
                 if plot_type in ["csld_col_c", "csld_col_a"]:
                     fill1 = ax[i, j].fill_between(datax, ylim[0],
                             ylim[1], facecolor='red', alpha=0.9,
@@ -462,8 +469,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def init():
             for i in range(Npart_ac[l]):
                 for j in range(Nvol_ac[l]):
-                    datax = np.zeros(data[sol[i, j]][0].shape)
-                    lines[i, j].set_ydata(np.ma.array(datax, mask=True))
+                    datax = np.zeros(data[sol1[i, j]][0].shape)
+                    lines[i, j, 0].set_ydata(np.ma.array(datax, mask=True))
+                    lines[i, j, 1].set_ydata(np.ma.array(datax, mask=True))
                     if plot_type in ["csld_col_c", "csld_col_a"]:
                         fill1 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='red', alpha=0.0)
@@ -482,9 +490,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def animate(tind):
             for i in range(Npart_ac[l]):
                 for j in range(Nvol_ac[l]):
-                    datay = data[sol[i, j]][tind]
-                    lines[i, j].set_ydata(datay)
-                    datax = lines[i, j].get_xdata()
+                    datay1 = data[sol1[i, j]][tind]
+                    datay2 = data[sol2[i, j]][tind]
+                    lines[i, j, 0].set_ydata(datay1)
+                    lines[i, j, 1].set_ydata(datay2)
+                    datax = lines[i, j, 0].get_xdata()
                     if plot_type in ["csld_col_c", "csld_col_a"]:
                         fill1 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='red', alpha=0.9,
