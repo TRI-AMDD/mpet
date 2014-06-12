@@ -30,7 +30,7 @@ eps = -1e-12
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
         lowerBound=0, upperBound=1, initialGuess=0.25,
-        absTolerance=1e-6)
+        absTolerance=1e-7)
 elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
@@ -765,12 +765,10 @@ class modMPET(daeModel):
                     mu2_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
                             (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
                             )
-#                    Omgb = 1.4
-#                    Omgc = 30
-                    Omgb = 0
-                    Omgc = 0
-                    mu1_R += 0
-                    mu2_R += 0
+                    Omgb = 1.4
+                    Omgc = 1.8
+                    mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
+                    mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
                 mu1_R_surf = mu1_R[-1]
                 mu2_R_surf = mu2_R[-1]
                 # With chem potentials, can now calculate fluxes
