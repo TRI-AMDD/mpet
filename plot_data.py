@@ -9,6 +9,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
+import matplotlib.patches as mpatch
 
 import mpet_params_IO
 
@@ -514,6 +515,165 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             else:
                 return tuple(lines.reshape(-1))
 
+    # Plot all solid concentrations or potentials
+    elif plot_type in ["csldcirc"]:
+        l = (0 if plot_type[-1] == "a" else 1)
+        if data_only:
+            raise NotImplemented("no data-only output for csld/phisld")
+        # Define colors!
+        to_red = 0.3
+        to_yellow = 0.6
+        cdict = {
+                "red" : [(0.0, 0.0, 0.0),
+                         (to_red, 0.0, 0.7),
+                         (to_yellow, 0.7, 0.7),
+                         (1.0, 0.7, 0.7)],
+                "green" : [(0.0, 0.0, 0.0),
+                           (to_red, 0.0, 0.0),
+                           (to_yellow, 0.0, 0.6),
+                           (1.0, 0.6, 0.6)],
+                "blue" : [(0.0, 0.4, 0.4),
+                          (to_red, 0.0, 0.0),
+                          (to_yellow, 0.0, 0.0),
+                          (1.0, 0.0, 0.0)]
+                }
+        cmap = matplotlib.colors.LinearSegmentedColormap(
+                "discrete", cdict)
+        fig = plt.figure()
+        axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.94])
+        axcirc.set_frame_on(False)
+        axcirc.set_axis_off()
+        axcirc.set_aspect('equal')
+        axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
+        axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
+        sol1 = data[pfx + "c1_sld_trode1vol0part0"]
+        sol2 = data[pfx + "c2_sld_trode1vol0part0"]
+        datay1 = sol1[0]
+        datay2 = sol2[0]
+        dataybar = 0.5*(datay1 + datay2)
+        numy = len(datay1)
+        p_len = psd_len_ac[l][0][0, 0]
+        datax = np.linspace(0, p_len, numy)
+        ylim = (0, 1)
+        axcirc.set_ylim(ylim)
+        axcsld.set_ylim(ylim)
+#        axcirc.set_rlim((0, p_len))
+        axcsld.set_xlim((0, p_len*1e9))
+        # csld plot
+        line1, = axcsld.plot(datax*1e9, datay1)
+        line2, = axcsld.plot(datax*1e9, datay2)
+        axcsld.set_xlabel("r [nm]")
+        axcsld.set_ylabel(r"$\widetilde{c}$")
+        datar = datax/datax[-1]/2.05 # normalized to 1/2
+        dr = datar[1] - datar[0]
+        ncirc = numy
+        circfills = np.empty(ncirc, dtype=object)
+        circfills = []
+        col = cmap(dataybar[0])
+        circfills.append(mpatch.Wedge((0.5, 0.5), dr/2., 0, 360,
+            width=dr/2.,
+            facecolor=col, edgecolor=col,
+#            transform=axcirc.transAxes,
+            ))
+        for indxcirc in range(1, ncirc-1):
+            ri = datar[indxcirc] - dr/2.
+            ro = datar[indxcirc] + dr/2.
+            circfills.append(mpatch.Wedge((0.5, 0.5), ro, 0, 360,
+                width=dr,
+                facecolor=col, edgecolor=col,
+#                transform=axcirc.transAxes,
+                ))
+        circfills.append(mpatch.Wedge((0.5, 0.5), datar[-1], 0, 360,
+            width=dr/2.,
+            facecolor=col, edgecolor=col,
+#            transform=axcirc.transAxes,
+            ))
+        collection = mcollect.PatchCollection(circfills,
+                match_original=True,
+                )
+        axcirc.add_collection(collection)
+        # ff or soc plot
+        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+        axff.plot(times*td, ffvec)
+        axff.set_xlabel("time [s]")
+        axff.set_ylabel("Filling Fraction")
+        ffcirc, = axff.plot(times[0]*td, ffvec[0], 'or',
+                markersize=7, markerfacecolor='none',
+                markeredgecolor='red',
+                markeredgewidth=2,
+                )
+#        # Ghetto-rigged v2
+#        circfills[0] = axcirc.fill_between(
+#                np.linspace(0.0, 2*np.pi, 100),
+#                0*np.ones(100), dr/2.*np.ones(100),
+#                facecolor=col, edgecolor=col,
+#                )
+#        circfills[-1] = axcirc.fill_between(
+#                np.linspace(0.0, 2*np.pi, 100),
+#                datar[-1]*np.ones(100),
+#                (datar[-1] - dr/2.)*np.ones(100),
+#                facecolor=col, edgecolor=col,
+#                )
+#        for indxcirc in range(1, ncirc-1):
+#            ri = datar[indxcirc] - dr/2.
+#            ro = datar[indxcirc] + dr/2.
+#            circfills[indxcirc] = axcirc.fill_between(
+#                    np.linspace(0.0, 2*np.pi, 100),
+#                    ri*np.ones(100), ro*np.ones(100),
+#                    facecolor=col, edgecolor=col,
+#                    )
+#        # Ghetto-rigged circle v1...
+#        wherevec = np.linspace(0, 1, 100)
+#        wherevec = np.sin(datar/p_len/(0.1))
+#        nslice = 100
+#        nthet = nslice + 1
+#        thetavec = np.linspace(0, 2*np.pi, nthet)
+#        slicefills = np.empty((nslice, 3), dtype=object)
+#        for indxthet in range(nslice):
+#            thet1 = thetavec[indxthet]
+#            thet2 = thetavec[indxthet+1]
+#            slicefills[indxthet, 0] = axcirc.fill_betweenx(
+#                datar, thet1, thet2,
+#                facecolor='yellow', edgecolor='none',
+#                where=(wherevec > 0.8),
+#                )
+#            slicefills[indxthet, 1] = axcirc.fill_betweenx(
+#                datar, thet1, thet2,
+#                facecolor='red', edgecolor='none',
+#                where=((wherevec > 0.3) & (wherevec < 0.8)),
+#                )
+#            slicefills[indxthet, 2] = axcirc.fill_betweenx(
+#                datar, thet1, thet2,
+#                facecolor='blue', edgecolor='none',
+#                where=(wherevec < 0.3),
+#                )
+        def init():
+#            datax = np.zeros(data[sol1[i, j]][0].shape)
+            datay1 = sol1[0]
+            datay2 = sol2[0]
+            dataybar = 0.5*(datay1 + datay2)
+            line1.set_ydata(np.ma.array(datay1, mask=True))
+            line2.set_ydata(np.ma.array(datay2, mask=True))
+            ffcirc.set_xdata(np.ma.array(0, mask=True))
+            ffcirc.set_ydata(np.ma.array(0, mask=True))
+            colors = cmap(dataybar)
+#            print type(collection)
+#            print dir(collection)
+            collection.set_color(colors)
+            return tuple([collection, line1, line2, ffcirc])
+        def animate(tind):
+#            datax = np.zeros(data[sol1[i, j]][tind].shape)
+            datay1 = sol1[tind]
+            datay2 = sol2[tind]
+            dataybar = 0.5*(datay1 + datay2)
+            line1.set_ydata(datay1)
+            line2.set_ydata(datay2)
+            ffcirc.set_xdata(times[tind]*td)
+            ffcirc.set_ydata(ffvec[tind])
+            colors = cmap(dataybar)
+            collection.set_color(colors)
+            return tuple([collection, line1, line2, ffcirc])
+
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
         if data_only:
@@ -681,10 +841,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
             interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
-        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=30)
+        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=20)
 #                extra_args=['-vcodec', 'libx264'])
 
-    return fig, ax, ani
+    return ani
 
 # This is a block of code which messes with some matplotlib internals
 # to allow for animation of a title. See
