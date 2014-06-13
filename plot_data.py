@@ -557,13 +557,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ylim = (0, 1)
         axcirc.set_ylim(ylim)
         axcsld.set_ylim(ylim)
-#        axcirc.set_rlim((0, p_len))
         axcsld.set_xlim((0, p_len*1e9))
         # csld plot
         line1, = axcsld.plot(datax*1e9, datay1)
         line2, = axcsld.plot(datax*1e9, datay2)
         axcsld.set_xlabel("r [nm]")
         axcsld.set_ylabel(r"$\widetilde{c}$")
+        # colored circle plot
         datar = datax/datax[-1]/2.05 # normalized to 1/2
         dr = datar[1] - datar[0]
         ncirc = numy
@@ -573,7 +573,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         circfills.append(mpatch.Wedge((0.5, 0.5), dr/2., 0, 360,
             width=dr/2.,
             facecolor=col, edgecolor=col,
-#            transform=axcirc.transAxes,
             ))
         for indxcirc in range(1, ncirc-1):
             ri = datar[indxcirc] - dr/2.
@@ -581,12 +580,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             circfills.append(mpatch.Wedge((0.5, 0.5), ro, 0, 360,
                 width=dr,
                 facecolor=col, edgecolor=col,
-#                transform=axcirc.transAxes,
                 ))
         circfills.append(mpatch.Wedge((0.5, 0.5), datar[-1], 0, 360,
             width=dr/2.,
             facecolor=col, edgecolor=col,
-#            transform=axcirc.transAxes,
             ))
         collection = mcollect.PatchCollection(circfills,
                 match_original=True,
@@ -602,53 +599,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 markeredgecolor='red',
                 markeredgewidth=2,
                 )
-#        # Ghetto-rigged v2
-#        circfills[0] = axcirc.fill_between(
-#                np.linspace(0.0, 2*np.pi, 100),
-#                0*np.ones(100), dr/2.*np.ones(100),
-#                facecolor=col, edgecolor=col,
-#                )
-#        circfills[-1] = axcirc.fill_between(
-#                np.linspace(0.0, 2*np.pi, 100),
-#                datar[-1]*np.ones(100),
-#                (datar[-1] - dr/2.)*np.ones(100),
-#                facecolor=col, edgecolor=col,
-#                )
-#        for indxcirc in range(1, ncirc-1):
-#            ri = datar[indxcirc] - dr/2.
-#            ro = datar[indxcirc] + dr/2.
-#            circfills[indxcirc] = axcirc.fill_between(
-#                    np.linspace(0.0, 2*np.pi, 100),
-#                    ri*np.ones(100), ro*np.ones(100),
-#                    facecolor=col, edgecolor=col,
-#                    )
-#        # Ghetto-rigged circle v1...
-#        wherevec = np.linspace(0, 1, 100)
-#        wherevec = np.sin(datar/p_len/(0.1))
-#        nslice = 100
-#        nthet = nslice + 1
-#        thetavec = np.linspace(0, 2*np.pi, nthet)
-#        slicefills = np.empty((nslice, 3), dtype=object)
-#        for indxthet in range(nslice):
-#            thet1 = thetavec[indxthet]
-#            thet2 = thetavec[indxthet+1]
-#            slicefills[indxthet, 0] = axcirc.fill_betweenx(
-#                datar, thet1, thet2,
-#                facecolor='yellow', edgecolor='none',
-#                where=(wherevec > 0.8),
-#                )
-#            slicefills[indxthet, 1] = axcirc.fill_betweenx(
-#                datar, thet1, thet2,
-#                facecolor='red', edgecolor='none',
-#                where=((wherevec > 0.3) & (wherevec < 0.8)),
-#                )
-#            slicefills[indxthet, 2] = axcirc.fill_betweenx(
-#                datar, thet1, thet2,
-#                facecolor='blue', edgecolor='none',
-#                where=(wherevec < 0.3),
-#                )
         def init():
-#            datax = np.zeros(data[sol1[i, j]][0].shape)
             datay1 = sol1[0]
             datay2 = sol2[0]
             dataybar = 0.5*(datay1 + datay2)
@@ -657,12 +608,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ffcirc.set_xdata(np.ma.array(0, mask=True))
             ffcirc.set_ydata(np.ma.array(0, mask=True))
             colors = cmap(dataybar)
-#            print type(collection)
-#            print dir(collection)
             collection.set_color(colors)
             return tuple([collection, line1, line2, ffcirc])
         def animate(tind):
-#            datax = np.zeros(data[sol1[i, j]][tind].shape)
             datay1 = sol1[tind]
             datay2 = sol2[tind]
             dataybar = 0.5*(datay1 + datay2)
