@@ -30,7 +30,7 @@ eps = -1e-12
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
         lowerBound=0, upperBound=1, initialGuess=0.25,
-        absTolerance=1e-7)
+        absTolerance=1e-6)
 elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
@@ -752,7 +752,7 @@ class modMPET(daeModel):
                             )
                 elif solidShape == "cylinder":
                     mu1_R[0] -= 2 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
-                    mu2_R[0] -= 2 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
+                    mu2_R[0] -= 2 * kappa * (2*c2_sld[1] - 2*c2_sld[0])/dr**2
                     mu1_R[1:Nij - 1] -= kappa * (np.diff(c1_sld, 2)/dr**2 +
                             (c1_sld[2:] - c1_sld[0:-2])/(2 * dr*r_vec[1:-1])
                             )
@@ -766,9 +766,11 @@ class modMPET(daeModel):
                             (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
                             )
                     Omgb = 1.4
-                    Omgc = 1.8
+                    Omgc = 20
                     mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
                     mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
+                act1_R = np.exp(mu1_R/T)
+                act2_R = np.exp(mu2_R/T)
                 mu1_R_surf = mu1_R[-1]
                 mu2_R_surf = mu2_R[-1]
                 # With chem potentials, can now calculate fluxes
@@ -778,9 +780,9 @@ class modMPET(daeModel):
                 Flux2_vec[0] = 0  # Symmetry at r=0
                 c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
                 c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
-                Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges) * c1_edges *
+                Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
                         np.diff(mu1_R)/dr)
-                Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges) * c2_edges *
+                Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges)**(1.00) * c2_edges *
                         np.diff(mu2_R)/dr)
                 # Take the surface concentration
                 c1_surf = c1_sld[-1]
@@ -820,8 +822,17 @@ class modMPET(daeModel):
                     area_vec = 4*np.pi*edges**2
                 elif solidShape == "cylinder":
                     area_vec = 2*np.pi*edges  # per unit height
-                RHS1 = np.diff(Flux1_vec*area_vec)
-                RHS2 = np.diff(Flux2_vec*area_vec)
+                FluxTerm1 = np.diff(Flux1_vec*area_vec)
+                FluxTerm2 = np.diff(Flux2_vec*area_vec)
+#                kinterlayer = 1e2
+#                interLayerRxn = (kinterlayer * (1 - c1_sld) *
+#                        (1 - c2_sld) * (act1_R - act2_R))
+#                RxnTerm1 = -interLayerRxn
+#                RxnTerm2 = interLayerRxn
+                RxnTerm1 = 0
+                RxnTerm2 = 0
+                RHS1 = FluxTerm1 + RxnTerm1
+                RHS2 = FluxTerm2 + RxnTerm2
             return (M, RHS1, RHS2)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
