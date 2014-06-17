@@ -20,7 +20,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     dataFile = os.path.join(indir, dataFileName)
     data = sio.loadmat(dataFile)
     # Read in the parameters used to define the simulation
-    paramFileName = "output_params.cfg"
+    paramFileName = "input_params.cfg"
     paramFile = os.path.join(indir, paramFileName)
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramFile)
