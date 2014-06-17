@@ -3,9 +3,11 @@
 
 import sys
 import os
+import shutil
 import errno
 import ConfigParser
 import time
+import subprocess
 
 import numpy as np
 import scipy.sparse as sprs
@@ -1541,16 +1543,54 @@ if __name__ == "__main__":
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramfile)
     D = IO.getDictFromConfig(P)
+
     # Make sure there's a place to store the output
     try:
         os.makedirs(outdir)
     except OSError as exception:
         if exception.errno != errno.EEXIST:
             raise
-    paramFileName = "output_params.cfg"
+        # Clean out the directory
+        for file_obj in os.listdir(outdir):
+            file_path = os.path.join(outdir, file_obj)
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+            else:
+                shutil.rmtree(file_path)
+    paramFileName = "input_params.cfg"
     paramFile = os.path.join(outdir, paramFileName)
     IO.writeConfigFile(P, filename=paramFile)
+
+    # Store info about this script
+    try:
+        # Git option, if it works -- commit info and current diff
+        p1 = subprocess.Popen(['git', 'rev-parse', '--short', 'HEAD'],
+                stdout=subprocess.PIPE)
+        out1, err1 = p1.communicate()
+        p2 = subprocess.Popen(['git', 'diff'],
+                stdout=subprocess.PIPE)
+        out2, err2 = p2.communicate()
+        # Store commit info to file, as well as how to patch if
+        # there's a diff
+        fo = open(os.path.join(outdir, 'commit_info.txt'), 'w')
+        print >> fo, "commit hash:"
+        print >> fo, out1
+        print >> fo, "to run:"
+        print >> fo, "$ git checkout [commit hash]"
+        print >> fo, "$ patch -p1 < commit.diff:"
+        print >> fo, "$ python[2] mpet.py input_params.cfg"
+        fo.close()
+        fo = open(os.path.join(outdir, 'commit.diff'), 'w')
+        print >> fo, out2
+        fo.close()
+    except:
+        # At least keep a copy of this file with the output
+        shutil.copy(os.path.basename(__file__), outdir)
+
+    # Carry out the simulation
     consoleRun(D)
+
+    # Final output for user
     if default_flag:
         print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
                 fname=default_file)
