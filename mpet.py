@@ -215,6 +215,8 @@ class modMPET(daeModel):
         self.Dsld_ac = np.empty(2, dtype=object)
         self.kappa_ac = np.empty(2, dtype=object)
         self.Omga_ac = np.empty(2, dtype=object)
+        self.Omgb_ac = np.empty(2, dtype=object)
+        self.Omgc_ac = np.empty(2, dtype=object)
         self.k0_ac = np.empty(2, dtype=object)
         self.beta_s_ac = np.empty(2, dtype=object)
         self.delta_L_ac = np.empty(2, dtype=object)
@@ -234,6 +236,14 @@ class modMPET(daeModel):
                     "kappa for each particle",
                     [self.Nvol_ac[l], self.Npart_ac[l]])
             self.Omga_ac[l] = daeParameter("Omga_{l}".format(l=l),
+                    unit(), self,
+                    "regular solution parameter for each particle [J]",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.Omgb_ac[l] = daeParameter("Omgb_{l}".format(l=l),
+                    unit(), self,
+                    "regular solution parameter for each particle [J]",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.Omgc_ac[l] = daeParameter("Omgc_{l}".format(l=l),
                     unit(), self,
                     "regular solution parameter for each particle [J]",
                     [self.Nvol_ac[l], self.Npart_ac[l]])
@@ -639,6 +649,8 @@ class modMPET(daeModel):
         b = self.MHC_erfstretch_ac(l) # Only used for MHC
         alpha = self.alpha_ac(l) # Only used for BV
         Omga = self.Omga_ac[l](i, j)
+        Omgb = self.Omgb_ac[l](i, j)
+        Omgc = self.Omgc_ac[l](i, j)
         Ds = self.Dsld_ac[l](i, j) # Only used for "diffn"
         # We need the (non-dimensional) temperature to get the
         # reaction rate dependence correct
@@ -765,8 +777,10 @@ class modMPET(daeModel):
                     mu2_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
                             (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
                             )
-                    Omgb = 1.4
-                    Omgc = 20
+#                    Omgb = 1.4
+#                    Omgc = 20
+#                    Omgb = self.Omgb()
+#                    Omgc = self.Omgc()
                     mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
                     mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
                 act1_R = np.exp(mu1_R/T)
@@ -1221,6 +1235,10 @@ class simMPET(daeSimulation):
                     if solidType in ["homog", "ACR", "CHR", "diffn"]:
                         self.m.Omga_ac[l].SetValue(i, j,
                                 D['Omga_ac'][l]/(k*Tref))
+                        self.m.Omgb_ac[l].SetValue(i, j,
+                                D['Omgb_ac'][l]/(k*Tref))
+                        self.m.Omgc_ac[l].SetValue(i, j,
+                                D['Omgc_ac'][l]/(k*Tref))
                     elif solidType == "homog_sdn":
                         # Not sure about factor of nondimensional T. Thus,
                         # only use this when T = 1, Tabs = Tref = 298
