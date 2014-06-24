@@ -37,8 +37,6 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
 
-outdir_name = "sim_output"
-outdir = os.path.join(os.getcwd(), outdir_name)
 
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="", D=None):
@@ -1363,7 +1361,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
         except Exception, e:
             print 'Cannot call scipy.io.savemat(); is SciPy installed?\n' + str(e)
 
-def setupDataReporters(simulation):
+def setupDataReporters(simulation, outdir):
     """
     Create daeDelegateDataReporter and add data reporters:
      - daeMatlabMATFileDataReporter
@@ -1380,12 +1378,12 @@ def setupDataReporters(simulation):
         sys.exit()
     return datareporter
 
-def consoleRun(D):
+def consoleRun(D, outdir):
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
     simulation   = simMPET(D)
-    datareporter = setupDataReporters(simulation)
+    datareporter = setupDataReporters(simulation, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
@@ -1453,6 +1451,9 @@ if __name__ == "__main__":
     P = IO.getConfig(paramfile)
     D = IO.getDictFromConfig(P)
 
+    # Directories we'll store output in.
+    outdir_name = "sim_output"
+    outdir = os.path.join(os.getcwd(), outdir_name)
     # Make sure there's a place to store the output
     try:
         os.makedirs(outdir)
@@ -1497,7 +1498,18 @@ if __name__ == "__main__":
         shutil.copy(os.path.basename(__file__), outdir)
 
     # Carry out the simulation
-    consoleRun(D)
+    consoleRun(D, outdir)
+
+    # Copy simulation output to archive
+    archivedir_name = time.strftime("%Y%m%d_%H:%M:%S", time.localtime())
+    archivepath = os.path.join(os.getcwd(), "history")
+    archivedir = os.path.join(archivepath, archivedir_name)
+    try:
+        os.makedirs(archivepath)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+    shutil.copytree(outdir, archivedir)
 
     # Final output for user
     if default_flag:
