@@ -172,6 +172,10 @@ class modMPET(daeModel):
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
+        self.rxn1 = daeVariable("rxn1", no_t, self,
+                "reaction in plane 1")
+        self.rxn2 = daeVariable("rxn2", no_t, self,
+                "reaction in plane 2")
 
         # Parameters
         self.NumTrode = daeParameter("NumTrode", unit(), self,
@@ -753,6 +757,9 @@ class modMPET(daeModel):
                         self.B_ac(l)*(c1_sld - c1bar) )
                 mu2_R = ( self.mu_reg_sln(c2_sld, Omga) +
                         self.B_ac(l)*(c2_sld - c2bar) )
+                # Graphite vdW interactions?
+                mu1_R += 40*0.05*(30*c1_sld**2*(1-c1_sld)**2)
+                mu2_R += 40*0.05*(30*c2_sld**2*(1-c2_sld)**2)
                 # Surface conc gradient given by natural BC
                 beta_s = self.beta_s_ac[l](i, j)
                 if solidShape == "sphere":
@@ -779,10 +786,6 @@ class modMPET(daeModel):
                     mu2_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
                             (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
                             )
-#                    Omgb = 1.4
-#                    Omgc = 20
-#                    Omgb = self.Omgb()
-#                    Omgc = self.Omgc()
                     mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
                     mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
                 act1_R = np.exp(mu1_R/T)
@@ -822,11 +825,18 @@ class modMPET(daeModel):
                 Rxn1 = self.R_Marcus(k0, lmbda, c_lyte, c1_surf, eta1, T)
                 Rxn2 = self.R_Marcus(k0, lmbda, c_lyte, c2_surf, eta2, T)
             elif rxnType == "BV":
-                Rxn1 = self.R_BV(k0, alpha, c1_surf, act_O, act1_R_surf, eta1, T)
-                Rxn2 = self.R_BV(k0, alpha, c2_surf, act_O, act2_R_surf, eta2, T)
+                Rxn1 = self.R_BV(k0, alpha, c1_surf, c2_surf, Omgb, act_O, act1_R_surf, eta1, T)
+                Rxn2 = self.R_BV(k0, alpha, c2_surf, c1_surf, Omgb, act_O, act2_R_surf, eta2, T)
+#                Rxn1 = self.R_BV(k0, alpha, c1_surf, act_O, act1_R_surf, eta1, T)
+#                Rxn2 = self.R_BV(k0, alpha, c2_surf, act_O, act2_R_surf, eta2, T)
             elif rxnType == "MHC":
                 Rxn1 = self.R_MHC(k0, lmbda, eta1, Aa, b, T, c1_surf)
                 Rxn2 = self.R_MHC(k0, lmbda, eta2, Aa, b, T, c2_surf)
+            # Store surface reaction info
+            eq = self.CreateEquation("rxn1")
+            eq.Residual = self.rxn1() - Rxn1
+            eq = self.CreateEquation("rxn2")
+            eq.Residual = self.rxn2() - Rxn2
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
                 RHS[-1] = 4*np.pi*(Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
@@ -949,8 +959,10 @@ class modMPET(daeModel):
                 + self.T()*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
                 for i in range(len(c)) ])
 
-    def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
-        gamma_ts = (1./(1-c_sld))
+    def R_BV(self, k0, alpha, ci_sld, cj_sld, Omgb, act_O, act_R, eta, T):
+        gamma_ts = (1./(1-ci_sld))*np.exp((Omgb/T)*cj_sld)
+#    def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
+#        gamma_ts = (1./(1-c_sld))
         ecd = ( k0 * act_O**(1-alpha)
                 * act_R**(alpha) / gamma_ts )
         Rate = ( ecd *
@@ -1287,8 +1299,8 @@ class simMPET(daeSimulation):
                     # Set initial solid concentration values
                     Nij = self.m.Nsld_mat_ac[l][i, j].NumberOfPoints
                     for k in range(Nij):
-                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0)
-                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0)
+                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1+0.001))
+                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1-0.001))
         # Electrolyte
         c_lyte_init = 1.
         phi_guess = 0.
