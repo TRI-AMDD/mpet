@@ -21,7 +21,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     dataFile = os.path.join(indir, dataFileName)
     data = sio.loadmat(dataFile)
     # Read in the parameters used to define the simulation
-    paramFileName = "output_params.cfg"
+    paramFileName = "input_params.cfg"
     paramFile = os.path.join(indir, paramFileName)
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramFile)
@@ -557,11 +557,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ylim = (0, 1)
         axcirc.set_ylim(ylim)
         axcsld.set_ylim(ylim)
-        axcsld.set_xlim((0, p_len*1e9))
+        axcsld.set_xlim((0, p_len*1e6))
         # csld plot
-        line1, = axcsld.plot(datax*1e9, datay1)
-        line2, = axcsld.plot(datax*1e9, datay2)
-        axcsld.set_xlabel("r [nm]")
+        line1, = axcsld.plot(datax*1e6, datay1)
+        line2, = axcsld.plot(datax*1e6, datay2)
+        axcsld.set_xlabel(r"r [$\mu$m]")
         axcsld.set_ylabel(r"$\widetilde{c}$")
         # colored circle plot
         datar = datax/datax[-1]/2.05 # normalized to 1/2
@@ -589,38 +589,53 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 match_original=True,
                 )
         axcirc.add_collection(collection)
-        # ff or soc plot
-        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
-        axff.plot(times*td, ffvec)
+#        # ff or soc plot
+#        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+#        axff.plot(times*td, ffvec)
+#        axff.set_xlabel("time [s]")
+#        axff.set_ylabel("Filling Fraction")
+#        ffcirc, = axff.plot(times[0]*td, ffvec[0], 'or',
+#                markersize=7, markerfacecolor='none',
+#                markeredgecolor='red',
+#                markeredgewidth=2,
+#                )
+        # ff --> rxns plot
+        rxn1vec = data[pfx + 'rxn1'][0]
+        rxn2vec = data[pfx + 'rxn2'][0]
+        axff.plot(times*td, rxn1vec)
+        axff.plot(times*td, rxn2vec)
         axff.set_xlabel("time [s]")
-        axff.set_ylabel("Filling Fraction")
-        ffcirc, = axff.plot(times[0]*td, ffvec[0], 'or',
-                markersize=7, markerfacecolor='none',
-                markeredgecolor='red',
-                markeredgewidth=2,
-                )
+        axff.set_ylabel("Layer Rxn Rate [dimless]")
+#        ffcirc1, = axff.plot(times[0]*td, rxn1vec[0], 'or',
+        ffline = axff.axvline(times[0]*td)
+#        print ffline.get_xdata()
+#        print ffline.get_ydata()
         def init():
             datay1 = sol1[0]
             datay2 = sol2[0]
             dataybar = 0.5*(datay1 + datay2)
             line1.set_ydata(np.ma.array(datay1, mask=True))
             line2.set_ydata(np.ma.array(datay2, mask=True))
-            ffcirc.set_xdata(np.ma.array(0, mask=True))
-            ffcirc.set_ydata(np.ma.array(0, mask=True))
+#            ffcirc.set_xdata(np.ma.array(0, mask=True))
+#            ffcirc.set_ydata(np.ma.array(0, mask=True))
+            ffline.set_xdata(np.ma.array([0, 0], mask=True))
             colors = cmap(dataybar)
             collection.set_color(colors)
-            return tuple([collection, line1, line2, ffcirc])
+#            return tuple([collection, line1, line2, ffcirc])
+            return tuple([collection, line1, line2, ffline])
         def animate(tind):
             datay1 = sol1[tind]
             datay2 = sol2[tind]
             dataybar = 0.5*(datay1 + datay2)
             line1.set_ydata(datay1)
             line2.set_ydata(datay2)
-            ffcirc.set_xdata(times[tind]*td)
-            ffcirc.set_ydata(ffvec[tind])
+#            ffcirc.set_xdata(times[tind]*td)
+#            ffcirc.set_ydata(ffvec[tind])
+            ffline.set_xdata(2*[times[tind]*td])
             colors = cmap(dataybar)
             collection.set_color(colors)
-            return tuple([collection, line1, line2, ffcirc])
+#            return tuple([collection, line1, line2, ffcirc])
+            return tuple([collection, line1, line2, ffline])
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
