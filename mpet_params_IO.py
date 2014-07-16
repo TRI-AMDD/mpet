@@ -62,6 +62,8 @@ class mpetIO():
                          P.getfloat('Materials', 'kappa_c')]
         D["B_ac"] = [P.getfloat('Materials', 'B_a'),
                      P.getfloat('Materials', 'B_c')]
+        D["EvdW_ac"] = [P.getfloat('Materials', 'EvdW_a'),
+                        P.getfloat('Materials', 'EvdW_c')]
         D["rhos_ac"] = [P.getfloat('Materials', 'rhos_a'),
                         P.getfloat('Materials', 'rhos_c')]
         D["Vstd_ac"] = [P.getfloat('Materials', 'Vstd_a'),

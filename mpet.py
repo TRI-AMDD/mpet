@@ -315,6 +315,9 @@ class modMPET(daeModel):
         self.B_ac = daeParameter("B_ac", unit(), self,
                 "Stress coefficient for each particle",
                 [self.Ntrode])
+        self.EvdW_ac = daeParameter("EvdW_ac", unit(), self,
+                "vdW energy between planes",
+                [self.Ntrode])
         self.lmbda_ac = daeParameter("lmbda_ac", unit(), self,
                 "Marcus reorganizational energy",
                 [self.Ntrode])
@@ -756,8 +759,9 @@ class modMPET(daeModel):
                 mu2_R = ( self.mu_reg_sln(c2_sld, Omga) +
                         self.B_ac(l)*(c2_sld - c2bar) )
                 # Graphite vdW interactions?
-                mu1_R += 40*0.05*(30*c1_sld**2*(1-c1_sld)**2)
-                mu2_R += 40*0.05*(30*c2_sld**2*(1-c2_sld)**2)
+                EvdW = self.EvdW_ac(l)
+                mu1_R += EvdW*(30*c1_sld**2*(1-c1_sld)**2)
+                mu2_R += EvdW*(30*c2_sld**2*(1-c2_sld)**2)
                 # Surface conc gradient given by natural BC
                 beta_s = self.beta_s_ac[l](i, j)
                 if solidShape == "sphere":
@@ -1201,6 +1205,8 @@ class simMPET(daeSimulation):
 #            self.m.MHC_Aa_ac.SetValue(l, )
             self.m.B_ac.SetValue(l,
                     D['B_ac'][l]/(k*Tref*D['rhos_ac'][l]))
+            self.m.EvdW_ac.SetValue(l,
+                    D['EvdW_ac'][l]/(k*Tref))
             self.m.cwet_ac.SetValue(l, D['cwet_ac'][l])
             for i in range(self.Nvol_ac[l]):
                 for j in range(self.Npart_ac[l]):
