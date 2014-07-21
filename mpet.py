@@ -649,6 +649,7 @@ class modMPET(daeModel):
         # Get the relevant parameters for this particle
         k0 = self.k0_ac[l](i, j)
         kappa = self.kappa_ac[l](i, j) # only used for ACR/CHR
+        B = self.B_ac(l) # only used for ACR/CHR
         c1bar = self.c1bar_sld_ac[l](i, j) # only used for ACR/CHR
         c2bar = self.c2bar_sld_ac[l](i, j) # only used for ACR/CHR
         lmbda = self.lmbda_ac(l) # Only used for Marcus/MHC
@@ -677,21 +678,14 @@ class modMPET(daeModel):
         if solidType in ["ACR", "homog", "homog_sdn"]:
             if solidType == "ACR":
                 # Make a blank array to allow for boundary conditions
-                cstmp = np.empty(Nij+2, dtype=object)
-                cstmp[1:-1] = c_sld
-                cstmp[0] = self.cwet_ac(l)
-                cstmp[-1] = self.cwet_ac(l)
-                dxs = 1./Nij
-                curv = np.diff(cstmp, 2)/(dxs**2)
-                mu_R = ( self.mu_reg_sln(c_sld, Omga) - kappa*curv
-                        + self.B_ac(l)*(c_sld - cbar) )
+                mu_R = self.calc_ACR_mu_R(c_sld, Omga, B, kappa, T)
                 # If we're also simulating potential drop along the solid,
                 # use that instead of self.phi_c(i)
                 if simSurfCond:
                     phi_m = np.empty(Nij, dtype=object)
                     phi_m[:] = [self.phi_sld_ac[l][i, j](k) for k in range(Nij)]
             elif solidType in ["homog", "homog_sdn"]:
-                mu_R = self.mu_reg_sln(c_sld, Omga)
+                mu_R = self.mu_reg_sln(c_sld, Omga, T, eps)
             # XXX -- Temp dependence!
             act_R = np.exp(mu_R/T)
             # eta = electrochem pot_R - electrochem pot_O
@@ -740,12 +734,6 @@ class modMPET(daeModel):
             if solidType in ["diffn"]:
                 if solidShape in ["cylinder"]:
                     raise NotImplementedError("cylinder-diffn!")
-                RHS = np.empty(Nij, dtype=object)
-                c_diffs = np.diff(c_sld)
-                RHS[1:Nij - 1] = 4*np.pi*(
-                        Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
-                        Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
-                RHS[0] = 4*np.pi*Ds*(dr/2.)**2*c_diffs[0]/dr
                 # Take the surface concentration
                 c_surf = c_sld[-1]
                 # Assuming dilute solid
@@ -754,57 +742,14 @@ class modMPET(daeModel):
             # CHR
             elif solidType in ["CHR"]:
                 # mu_R is like for ACR, except kappa*curv term
-                mu1_R = ( self.mu_reg_sln(c1_sld, Omga) +
-                        self.B_ac(l)*(c1_sld - c1bar) )
-                mu2_R = ( self.mu_reg_sln(c2_sld, Omga) +
-                        self.B_ac(l)*(c2_sld - c2bar) )
-                # Graphite vdW interactions?
                 EvdW = self.EvdW_ac(l)
-                mu1_R += EvdW*(30*c1_sld**2*(1-c1_sld)**2)
-                mu2_R += EvdW*(30*c2_sld**2*(1-c2_sld)**2)
-                # Surface conc gradient given by natural BC
                 beta_s = self.beta_s_ac[l](i, j)
-                if solidShape == "sphere":
-                    raise NotImplementedError("no sphere in this version")
-                    mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
-                    mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-                            (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
-                            )
-                    mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
-                            (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
-                            )
-                elif solidShape == "cylinder":
-                    mu1_R[0] -= 2 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
-                    mu2_R[0] -= 2 * kappa * (2*c2_sld[1] - 2*c2_sld[0])/dr**2
-                    mu1_R[1:Nij - 1] -= kappa * (np.diff(c1_sld, 2)/dr**2 +
-                            (c1_sld[2:] - c1_sld[0:-2])/(2 * dr*r_vec[1:-1])
-                            )
-                    mu2_R[1:Nij - 1] -= kappa * (np.diff(c2_sld, 2)/dr**2 +
-                            (c2_sld[2:] - c2_sld[0:-2])/(2 * dr*r_vec[1:-1])
-                            )
-                    mu1_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
-                            (2*c1_sld[-2] - 2*c1_sld[-1] + 2*dr*beta_s)/dr**2
-                            )
-                    mu2_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
-                            (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
-                            )
-                    mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
-                    mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
+                mu1_R, mu2_R = self.calc_mu12_R(c1_sld, c2_sld, c1bar,
+                        c2bar, Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
                 act1_R = np.exp(mu1_R/T)
                 act2_R = np.exp(mu2_R/T)
                 mu1_R_surf = mu1_R[-1]
                 mu2_R_surf = mu2_R[-1]
-                # With chem potentials, can now calculate fluxes
-                Flux1_vec = np.empty(Nij+1, dtype=object)
-                Flux2_vec = np.empty(Nij+1, dtype=object)
-                Flux1_vec[0] = 0  # Symmetry at r=0
-                Flux2_vec[0] = 0  # Symmetry at r=0
-                c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
-                c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
-                Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
-                        np.diff(mu1_R)/dr)
-                Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges)**(1.00) * c2_edges *
-                        np.diff(mu2_R)/dr)
                 # Take the surface concentration
                 c1_surf = c1_sld[-1]
                 c2_surf = c2_sld[-1]
@@ -841,11 +786,22 @@ class modMPET(daeModel):
             eq.Residual = self.rxn2() - Rxn2
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
-                RHS[-1] = 4*np.pi*(Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
-                        Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
+#                RHS = np.empty(Nij, dtype=object)
+                c_diffs = np.diff(c_sld)
+#                RHS[1:Nij - 1] = 4*np.pi*(
+#                        Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
+#                        Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
+#                RHS[0] = 4*np.pi*Ds*(dr/2.)**2*c_diffs[0]/dr
+                Flux_vec = self.calc_Flux_diffn(c_sld, Ds, Rxn, r_vec, dr)
+                RHS = 4*np.pi*Flux_vec
+#                RHS[-1] = 4*np.pi*(Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
+#                        Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
             elif solidType in ["CHR"]:
-                Flux1_vec[Nij] = 0.5*self.delta_L_ac[l](i, j)*Rxn1
-                Flux2_vec[Nij] = 0.5*self.delta_L_ac[l](i, j)*Rxn2
+                Flux1_bc = 0.5*self.delta_L_ac[l](i, j)*Rxn1
+                Flux2_bc = 0.5*self.delta_L_ac[l](i, j)*Rxn2
+                # With chem potentials, can now calculate fluxes
+                Flux1_vec, Flux2_vec = self.calc_Flux12(c1_sld,
+                        c2_sld, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T)
                 if solidShape == "sphere":
                     area_vec = 4*np.pi*edges**2
                 elif solidShape == "cylinder":
@@ -862,6 +818,94 @@ class modMPET(daeModel):
                 RHS1 = FluxTerm1 + RxnTerm1
                 RHS2 = FluxTerm2 + RxnTerm2
             return (M, RHS1, RHS2)
+
+    def calc_ACR_mu_R(self, c_sld, Omga, B, kappa, T, l):
+        Nij = len(c_sld)
+        cstmp = np.empty(Nij+2, dtype=object)
+        cstmp[1:-1] = c_sld
+        cstmp[0] = self.cwet_ac(l)
+        cstmp[-1] = self.cwet_ac(l)
+        dxs = 1./Nij
+        curv = np.diff(cstmp, 2)/(dxs**2)
+        mu_R = ( self.mu_reg_sln(c_sld, Omga, T, eps) - kappa*curv
+                + self.B_ac(l)*(c_sld - cbar) )
+        return mu_R
+
+    def calc_mu12_R(self, c1_sld, c2_sld, c1bar, c2bar,
+            Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T):
+        Nij = len(c1_sld)
+        solidType = "CHR"
+        solidShape = "cylinder"
+        Rs = 1. # (non-dimensionalized by itself)
+        r_vec, volfrac_vec = self.get_unit_solid_discr(
+                solidShape, solidType, Nij)
+        dr = r_vec[1] - r_vec[0]
+        # mu_R is like for ACR, except kappa*curv term
+        mu1_R = ( self.mu_reg_sln(c1_sld, Omga, T, eps) +
+                B*(c1_sld - c1bar) )
+        mu2_R = ( self.mu_reg_sln(c2_sld, Omga, T, eps) +
+                B*(c2_sld - c2bar) )
+        # Graphite vdW interactions?
+#        EvdW = self.EvdW_ac(l)
+        mu1_R += EvdW*(30*c1_sld**2*(1-c1_sld)**2)
+        mu2_R += EvdW*(30*c2_sld**2*(1-c2_sld)**2)
+        # Surface conc gradient given by natural BC
+#        beta_s = self.beta_s_ac[l](i, j)
+        if solidShape == "sphere":
+            raise NotImplementedError("no sphere in this version")
+            mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
+            mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
+                    (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
+                    )
+            mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
+                    (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
+                    )
+        elif solidShape == "cylinder":
+            mu1_R[0] -= 2 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
+            mu2_R[0] -= 2 * kappa * (2*c2_sld[1] - 2*c2_sld[0])/dr**2
+            mu1_R[1:Nij - 1] -= kappa * (np.diff(c1_sld, 2)/dr**2 +
+                    (c1_sld[2:] - c1_sld[0:-2])/(2 * dr*r_vec[1:-1])
+                    )
+            mu2_R[1:Nij - 1] -= kappa * (np.diff(c2_sld, 2)/dr**2 +
+                    (c2_sld[2:] - c2_sld[0:-2])/(2 * dr*r_vec[1:-1])
+                    )
+            mu1_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
+                    (2*c1_sld[-2] - 2*c1_sld[-1] + 2*dr*beta_s)/dr**2
+                    )
+            mu2_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
+                    (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
+                    )
+            mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
+            mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
+        return (mu1_R, mu2_R)
+
+    def calc_Flux_diffn(self, c_sld, Ds, Rxn, r_vec, dr):
+        Nij = len(c_sld)
+        c_diffs = np.diff(c_sld)
+        Flux_vec = np.empty(Nij, dtype=object)
+        Flux_vec[1:Nij-1] =  ( Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
+                Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
+        Flux_vec[0] = Ds*(dr/2.)**2*c_diffs[0]/dr
+        Flux_vec[-1] = ( Rs**2 * self.delta_L_ac[l](i, j) * Rxn -
+                        Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
+        return Flux_vec
+
+    def calc_Flux12(self, c1_sld, c2_sld, mu1_R, mu2_R, Ds, Flux1_bc,
+            Flux2_bc, dr, T):
+        Nij = len(c1_sld)
+        Flux1_vec = np.empty(Nij+1, dtype=object)
+        Flux2_vec = np.empty(Nij+1, dtype=object)
+        Flux1_vec[0] = 0  # Symmetry at r=0
+        Flux2_vec[0] = 0  # Symmetry at r=0
+        Flux1_vec[-1] = Flux1_bc
+        Flux2_vec[-1] = Flux2_bc
+        c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
+        c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
+        Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
+                np.diff(mu1_R)/dr)
+        Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges)**(1.00) * c2_edges *
+                np.diff(mu2_R)/dr)
+        return (Flux1_vec, Flux2_vec)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
         # Discretization
@@ -956,9 +1000,13 @@ class modMPET(daeModel):
         curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
         return np.diff(curr_dens, 1)/dx
 
-    def mu_reg_sln(self, c, Omga):
+    def mu_reg_sln(self, c, Omga, T, eps):
+        if (type(c[0]) == pyCore.adouble):
+            maxfunc = Max
+        else:
+            maxfunc = np.max
         return np.array([ Omga*(1-2*c[i])
-                + self.T()*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
+                + T*np.log(maxfunc(eps, c[i])/maxfunc(eps, 1-c[i]))
                 for i in range(len(c)) ])
 
     def R_BV(self, k0, alpha, ci_sld, cj_sld, Omgb, act_O, act_R, eta, T):

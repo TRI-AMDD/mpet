@@ -11,6 +11,7 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.patches as mpatch
 
+import mpet
 import mpet_params_IO
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -26,6 +27,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     IO = mpet_params_IO.mpetIO()
     P = IO.getConfig(paramFile)
     D = IO.getDictFromConfig(P)
+    mod = mpet.modMPET("mpet", D=D)
     # simulated (porous) electrodes
     Nvol_ac = np.array([D['Nvol_ac'][0], D['Nvol_ac'][1]])
     if Nvol_ac[0] >= 1: # If porous anode
@@ -153,6 +155,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         "dim_scond [S]: " + str(D['scond_ac'][l]))
             else:
                 print trode + " surface conductivity loss: No"
+
+    def c12bar(c1_sld, c2_sld, l):
+        Nij = len(c1_sld)
+        r_vec, volfrac_vec = mod.get_unit_solid_discr(
+                D['solidShape_ac'][l],
+                D['solidType_ac'][l], Nij)
+        c1bar = np.sum(c1_sld*volfrac_vec)
+        c2bar = np.sum(c2_sld*volfrac_vec)
+        return (c1bar, c2bar)
 
     # Plot voltage profile
     if plot_type == "v":
@@ -517,7 +528,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot all solid concentrations or potentials
     elif plot_type in ["csldcirc"]:
-        l = (0 if plot_type[-1] == "a" else 1)
+#        l = (0 if plot_type[-1] == "a" else 1)
+        l = 1
+        i = 0
+        j = 0
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
@@ -550,6 +564,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         sol2 = data[pfx + "c2_sld_trode1vol0part0"]
         datay1 = sol1[0]
         datay2 = sol2[0]
+#        Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
+#        Omgb = data[pfx + 'Omgb_{l}'.format(l=l)][0][j][i]
+#        Omgc = data[pfx + 'Omgc_{l}'.format(l=l)][0][j][i]
+#        B = data[pfx + "B_ac"][0][l]
+#        kappa = data[pfx + "kappa_{l}".format(l=l)][0][j][i]
+#        EvdW = data[pfx + "EvdW_ac"][0][l]
+#        beta_s = data[pfx + "beta_s_{l}".format(l=l)][0][j][i]
+#        T = data[pfx + "T"][0][0]
+#        c1bar, c2bar = c12bar(datay1, datay2, l)
+#        mu1_R, mu2_R = mod.calc_mu12_R(datay1, datay2, c1bar, c2bar,
+#                Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
         dataybar = 0.5*(datay1 + datay2)
         numy = len(datay1)
         p_len = psd_len_ac[l][0][0, 0]
