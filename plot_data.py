@@ -156,14 +156,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             else:
                 print trode + " surface conductivity loss: No"
 
-    def c12bar(c1_sld, c2_sld, l):
-        Nij = len(c1_sld)
+    def cbar(c_sld, l):
+        Nij = len(c_sld)
         r_vec, volfrac_vec = mod.get_unit_solid_discr(
                 D['solidShape_ac'][l],
                 D['solidType_ac'][l], Nij)
-        c1bar = np.sum(c1_sld*volfrac_vec)
-        c2bar = np.sum(c2_sld*volfrac_vec)
-        return (c1bar, c2bar)
+        return np.sum(c_sld*volfrac_vec)
 
     # Plot voltage profile
     if plot_type == "v":
@@ -560,21 +558,72 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         axcirc.set_aspect('equal')
         axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
         axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
-        sol1 = data[pfx + "c1_sld_trode1vol0part0"]
-        sol2 = data[pfx + "c2_sld_trode1vol0part0"]
-        datay1 = sol1[0]
-        datay2 = sol2[0]
-#        Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
-#        Omgb = data[pfx + 'Omgb_{l}'.format(l=l)][0][j][i]
-#        Omgc = data[pfx + 'Omgc_{l}'.format(l=l)][0][j][i]
-#        B = data[pfx + "B_ac"][0][l]
-#        kappa = data[pfx + "kappa_{l}".format(l=l)][0][j][i]
-#        EvdW = data[pfx + "EvdW_ac"][0][l]
-#        beta_s = data[pfx + "beta_s_{l}".format(l=l)][0][j][i]
-#        T = data[pfx + "T"][0][0]
-#        c1bar, c2bar = c12bar(datay1, datay2, l)
-#        mu1_R, mu2_R = mod.calc_mu12_R(datay1, datay2, c1bar, c2bar,
-#                Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
+        csld1 = data[pfx + "c1_sld_trode1vol0part0"]
+        csld2 = data[pfx + "c2_sld_trode1vol0part0"]
+#        print csld1.shape
+#        print csld2.shape
+#        csld1 = np.diff(csld1, axis=0)
+#        csld1 = np.vstack((np.ones(csld1.shape[1]), csld1))
+#        csld2 = np.diff(csld2, axis=0)
+#        csld2 = np.vstack((np.ones(csld2.shape[1]), csld2))
+#        print csld1.shape
+#        print csld2.shape
+        phisld = data[pfx + "phi_1"]
+        philyte = data[pfx + "phi_lyte_1"]
+        datay1 = csld1[0]
+        datay2 = csld2[0]
+        # PARAMETERS
+        Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
+        Omgb = data[pfx + 'Omgb_{l}'.format(l=l)][0][j][i]
+        Omgc = data[pfx + 'Omgc_{l}'.format(l=l)][0][j][i]
+        B = data[pfx + "B_ac"][0][l]
+        kappa = data[pfx + "kappa_{l}".format(l=l)][0][j][i]
+        EvdW = data[pfx + "EvdW_ac"][0][l]
+        beta_s = data[pfx + "beta_s_{l}".format(l=l)][0][j][i]
+        T = data[pfx + "T"][0][0]
+        k0 = data[pfx + "k0_{l}".format(l=l)][0][j][i]
+        alpha = data[pfx + "alpha_ac"][0][l]
+        delta_L = data[pfx + "delta_L_{l}".format(l=l)][0][j][i]
+        Ds = data[pfx + "Dsld_{l}".format(l=l)][0][j][i]
+        Nij = len(csld1[0])
+        r_vec, volfrac_vec = mod.get_unit_solid_discr(
+                D['solidShape_ac'][l],
+                D['solidType_ac'][l], Nij)
+        dr = r_vec[1] - r_vec[0]
+        act_O = 1.
+        c1bar_vec = [cbar(csld1[i], l) for i in range(len(times))]
+        c2bar_vec = [cbar(csld2[i], l) for i in range(len(times))]
+        mu1_R = np.zeros(csld1.shape)
+        mu2_R = np.zeros(csld1.shape)
+        Flux1 = np.zeros((csld1.shape[0], csld1.shape[1]+1))
+        Flux2 = np.zeros((csld1.shape[0], csld1.shape[1]+1))
+        # Chemical Potential
+        for tind in range(len(times)):
+#            print len(csld1[tind]), len(csld2[tind])
+            mu1_R[tind, :], mu2_R[tind, :] = mod.calc_mu12_R(
+                    csld1[tind], csld2[tind],
+                    c1bar_vec[tind], c2bar_vec[tind],
+                    Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
+        # Overpotential
+        eta1 = ((mu1_R[:, -1] + phisld[:, -1]) -
+                (T*np.log(act_O) + philyte[:, -1]))
+        eta2 = ((mu2_R[:, -1] + phisld[:, -1]) -
+                (T*np.log(act_O) + philyte[:, -1]))
+        # Reactions
+        rxn1_vec = mod.R_BV(k0, alpha, csld1[:, -1], csld2[:, -1],
+                Omgb, act_O, np.exp(mu1_R[:, -1]/T), eta1, T)
+        rxn2_vec = mod.R_BV(k0, alpha, csld2[:, -1], csld1[:, -1],
+                Omgb, act_O, np.exp(mu2_R[:, -1]/T), eta2, T)
+        Flux1_bc_vec = 0.5*delta_L*rxn1_vec
+        Flux2_bc_vec = 0.5*delta_L*rxn2_vec
+        for tind in range(len(times)):
+            Flux1[tind, :], Flux2[tind, :] = mod.calc_Flux12(
+                    csld1[tind], csld2[tind],
+                    mu1_R[tind], mu2_R[tind], Ds,
+                    Flux1_bc_vec[tind], Flux2_bc_vec[tind],
+                    dr, T)
+        rxn1flux_vec = Flux1[:, -1]
+        rxn2flux_vec = Flux2[:, -1]
         dataybar = 0.5*(datay1 + datay2)
         numy = len(datay1)
         p_len = psd_len_ac[l][0][0, 0]
@@ -624,43 +673,113 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                markeredgecolor='red',
 #                markeredgewidth=2,
 #                )
-        # ff --> rxns plot
-        rxn1vec = data[pfx + 'rxn1'][0]
-        rxn2vec = data[pfx + 'rxn2'][0]
-        axff.plot(times*td, rxn1vec)
-        axff.plot(times*td, rxn2vec)
-        axff.set_xlabel("time [s]")
-        axff.set_ylabel("Layer Rxn Rate [dimless]")
-#        ffcirc1, = axff.plot(times[0]*td, rxn1vec[0], 'or',
-        ffline = axff.axvline(times[0]*td)
-#        print ffline.get_xdata()
-#        print ffline.get_ydata()
+#        # ff --> rxns plot
+#        rxn1vec = data[pfx + 'rxn1'][0]
+#        rxn2vec = data[pfx + 'rxn2'][0]
+#        axff.plot(times*td, rxn1vec)
+#        axff.plot(times*td, rxn2vec)
+#        axff.set_xlabel("time [s]")
+#        axff.set_ylabel("Layer Rxn Rate [dimless]")
+#        ffline = axff.axvline(times[0]*td)
+#        # ff --> rxns plot from flux calcs
+#        axff.plot(times*td, rxn1flux_vec)
+#        axff.plot(times*td, rxn2flux_vec)
+#        axff.set_xlabel("time [s]")
+#        axff.set_ylabel("Layer Rxn Rate [dimless]")
+#        axff.set_ylim((0, np.max(rxn1flux_vec.max(),
+#            rxn2flux_vec.max())))
+#        ffline = axff.axvline(times[0]*td)
+#        # Flux plot
+#        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+#        fluxline1, = axff.plot(edges, Flux1[0, :])
+#        fluxline2, = axff.plot(edges, Flux2[0, :])
+#        axff.set_xlim((0, p_len*1e6))
+#        axff.set_ylim((np.min(Flux1.min(), Flux2.min()),
+#            np.max(Flux1.max(), Flux2.max())))
+#        axff.set_ylabel(r"Flux")
+        # dc/dt plot
+        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+        dcdt1 = np.diff(Flux1*2*np.pi*edges)/volfrac_vec
+        dcdt2 = np.diff(Flux2*2*np.pi*edges)/volfrac_vec
+#        print Flux1.shape
+#        print dcdt1.shape
+#        zz
+#        print dcdt1.shape
+#        print np.argmax(dcdt1)
+#        print dcdt1[20:28, 150:160]
+#        np.set_printoptions(threshold='nan')
+#        print dcdt1.flatten()
+#        zz
+        dcdtline1, = axff.plot(r_vec*p_len*1e6, dcdt1[0, :])
+        dcdtline2, = axff.plot(r_vec*p_len*1e6, dcdt2[0, :])
+        axff.set_xlim((0, p_len*1e6))
+        print dcdt1.min(), dcdt2.min(), dcdt1.max(), dcdt2.max()
+        axff.set_ylim((min(dcdt1.min(), dcdt2.min()),
+            max(dcdt1.max(), dcdt2.max())))
+#        axff.set_ylim((-12, 12))
+#        axff.set_xlabel(r"
+        axff.set_ylabel(r"dcdt")
+#        print data.keys()
+#        fig, axs = plt.subplots(2, 1)
+#        pos = 166
+#        axs[0].plot(times*td, dcdt1[:, pos])
+##        axs[0].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
+##        axs[0].plot(times*td, Flux1[:, pos])
+#        axs[0].set_ylabel("dcdt")
+##        axs[0].set_ylabel("Flux")
+#        axs[1].plot(times*td, csld1[:, pos])
+#        axs[1].set_ylabel("c")
+##        axs[2].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
+##        axs[2].set_ylabel("c")
+#        plt.show()
         def init():
-            datay1 = sol1[0]
-            datay2 = sol2[0]
+            datay1 = csld1[0]
+            datay2 = csld2[0]
             dataybar = 0.5*(datay1 + datay2)
             line1.set_ydata(np.ma.array(datay1, mask=True))
             line2.set_ydata(np.ma.array(datay2, mask=True))
+#            # ff
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
-            ffline.set_xdata(np.ma.array([0, 0], mask=True))
+#            ffline.set_xdata(np.ma.array([0, 0], mask=True))
+#            # flux
+#            fluxline1.set_ydata(np.ma.array([0]*(Nij+1), mask=True))
+#            fluxline2.set_ydata(np.ma.array([0]*(Nij+1), mask=True))
+            # dcdt
+            dcdtline1.set_ydata(np.ma.array([0]*Nij, mask=True))
+            dcdtline2.set_ydata(np.ma.array([0]*Nij, mask=True))
             colors = cmap(dataybar)
             collection.set_color(colors)
 #            return tuple([collection, line1, line2, ffcirc])
-            return tuple([collection, line1, line2, ffline])
+#            return tuple([collection, line1, line2, ffline])
+#            return tuple([collection, line1, line2, fluxline1,
+#                fluxline2])
+            return tuple([collection, line1, line2, dcdtline1,
+                dcdtline2])
         def animate(tind):
-            datay1 = sol1[tind]
-            datay2 = sol2[tind]
+            datay1 = csld1[tind]
+            datay2 = csld2[tind]
             dataybar = 0.5*(datay1 + datay2)
             line1.set_ydata(datay1)
             line2.set_ydata(datay2)
+            # ff
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
-            ffline.set_xdata(2*[times[tind]*td])
+#            ffline.set_xdata(2*[times[tind]*td])
+#            # flux
+#            fluxline1.set_ydata(Flux1[tind, :])
+#            fluxline2.set_ydata(Flux2[tind, :])
+            # dcdt
+            dcdtline1.set_ydata(dcdt1[tind, :])
+            dcdtline2.set_ydata(dcdt2[tind, :])
             colors = cmap(dataybar)
             collection.set_color(colors)
 #            return tuple([collection, line1, line2, ffcirc])
-            return tuple([collection, line1, line2, ffline])
+#            return tuple([collection, line1, line2, ffline])
+#            return tuple([collection, line1, line2, fluxline1,
+#                fluxline2])
+            return tuple([collection, line1, line2, dcdtline1,
+                dcdtline2])
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
@@ -827,7 +946,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
-            interval=50, blit=True, repeat=False, init_func=init)
+            interval=500, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=20)
 #                extra_args=['-vcodec', 'libx264'])

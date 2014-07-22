@@ -1004,7 +1004,7 @@ class modMPET(daeModel):
         if (type(c[0]) == pyCore.adouble):
             maxfunc = Max
         else:
-            maxfunc = np.max
+            maxfunc = max
         return np.array([ Omga*(1-2*c[i])
                 + T*np.log(maxfunc(eps, c[i])/maxfunc(eps, 1-c[i]))
                 for i in range(len(c)) ])
