@@ -845,6 +845,14 @@ class modMPET(daeModel):
                 B*(c1_sld - c1bar) )
         mu2_R = ( self.mu_reg_sln(c2_sld, Omga, T, eps) +
                 B*(c2_sld - c2bar) )
+        mu1_reg = self.mu_reg_sln(c1_sld, Omga, T, eps)
+        mu2_reg = self.mu_reg_sln(c2_sld, Omga, T, eps)
+        mu1_B = B*(c1_sld - c1bar)
+        mu2_B = B*(c2_sld - c2bar)
+        mu1_vdW = EvdW*(30*c1_sld**2*(1-c1_sld)**2)
+        mu2_vdW = EvdW*(30*c2_sld**2*(1-c2_sld)**2)
+        mu1_intr = Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
+        mu2_intr = Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
         # Graphite vdW interactions?
 #        EvdW = self.EvdW_ac(l)
         mu1_R += EvdW*(30*c1_sld**2*(1-c1_sld)**2)
@@ -877,7 +885,14 @@ class modMPET(daeModel):
                     )
             mu1_R += Omgb*c2_sld + Omgc*c2_sld*(1-c2_sld)*(1-2*c1_sld)
             mu2_R += Omgb*c1_sld + Omgc*c1_sld*(1-c1_sld)*(1-2*c2_sld)
-        return (mu1_R, mu2_R)
+        if (type(c1_sld[0]) == pyCore.adouble):
+            return (mu1_R, mu2_R)
+        else:
+            return (mu1_R, mu2_R, mu1_reg, mu2_reg, mu1_B, mu2_B, mu1_vdW,
+                mu2_vdW, mu1_intr, mu2_intr)
+#        return (mu1_R, mu2_R)
+#        return (mu1_R, mu2_R, mu1_reg, mu2_reg, mu1_B, mu2_B, mu1_vdW,
+#                mu2_vdW, mu1_intr, mu2_intr)
 
     def calc_Flux_diffn(self, c_sld, Ds, Rxn, r_vec, dr):
         Nij = len(c_sld)

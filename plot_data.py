@@ -1,6 +1,6 @@
 import sys
 import os
-import time
+import datetime
 
 import numpy as np
 import scipy.io as sio
@@ -162,6 +162,49 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 D['solidShape_ac'][l],
                 D['solidType_ac'][l], Nij)
         return np.sum(c_sld*volfrac_vec)
+    def read_areas():
+        fi = open('graphite_data/graphite_area_counts_cm2.txt', 'r')
+        fi.readline() # heading
+        data_t = []
+        data_a1 = []
+        data_a2 = []
+        data_a3 = []
+        for line in fi:
+            line = line.strip().split()
+            data_t.append(float(line[0]))
+            data_a1.append(float(line[1]))
+            data_a2.append(float(line[2]))
+            data_a3.append(float(line[3]))
+        return (data_t, data_a1, data_a2, data_a3)
+    def get_images_times():
+        namebase = 'circ_trans_cropped_G2_int-20130204-'
+        imgfolder = os.path.join(os.getcwd(), 'graphite_data',
+                'circ-trans-crop')
+        imgfilenames = os.listdir(imgfolder)
+        namesTrueTimes = []
+        for imgfilename in imgfilenames:
+#            imgfilename = imgfilename.strip(namebase)
+#            imgfilename = imgfilename.strip('.jpg')
+            imgtimestr = imgfilename[35:41]
+            imgtime = datetime.datetime.strptime(imgtimestr, '%H%M%S')
+            namesTrueTimes.append((imgfilename, imgtime))
+        namesTrueTimes = sorted(namesTrueTimes, key=lambda nt : nt[1])
+        t0 = namesTrueTimes[0][1]
+        namesTimes = []
+        for nTT in namesTrueTimes:
+            imgfilename = nTT[0]
+            imgtime = (nTT[1] - t0).total_seconds()
+            namesTimes.append((imgfilename, imgtime))
+        return namesTimes
+    def get_image(tcur, namesTimes, imgdir):
+        indx = 0
+        for i, nT in enumerate(namesTimes):
+            indx = i
+            if tcur <= nT[1]:
+                break
+        imgname = namesTimes[indx][0]
+        image = plt.imread(os.path.join(imgdir, imgname))
+        return image
 
     # Plot voltage profile
     if plot_type == "v":
@@ -551,23 +594,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 }
         cmap = matplotlib.colors.LinearSegmentedColormap(
                 "discrete", cdict)
+
         fig = plt.figure()
-        axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.94])
+        axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.40])
         axcirc.set_frame_on(False)
         axcirc.set_axis_off()
         axcirc.set_aspect('equal')
+        axmovie = fig.add_axes([0.02, 0.52, 0.48, 0.40])
+        axmovie.set_axis_off()
+#        axmu1det = fig.add_axes([0.04, 0.04, 0.44, 0.40])
+#        axmu2det = fig.add_axes([0.04, 0.56, 0.44, 0.40])
         axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
         axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
         csld1 = data[pfx + "c1_sld_trode1vol0part0"]
         csld2 = data[pfx + "c2_sld_trode1vol0part0"]
-#        print csld1.shape
-#        print csld2.shape
-#        csld1 = np.diff(csld1, axis=0)
-#        csld1 = np.vstack((np.ones(csld1.shape[1]), csld1))
-#        csld2 = np.diff(csld2, axis=0)
-#        csld2 = np.vstack((np.ones(csld2.shape[1]), csld2))
-#        print csld1.shape
-#        print csld2.shape
         phisld = data[pfx + "phi_1"]
         philyte = data[pfx + "phi_lyte_1"]
         datay1 = csld1[0]
@@ -595,15 +635,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         c2bar_vec = [cbar(csld2[i], l) for i in range(len(times))]
         mu1_R = np.zeros(csld1.shape)
         mu2_R = np.zeros(csld1.shape)
+        mu1_reg = np.zeros(csld1.shape)
+        mu2_reg = np.zeros(csld1.shape)
+        mu1_B = np.zeros(csld1.shape)
+        mu2_B = np.zeros(csld1.shape)
+        mu1_vdW = np.zeros(csld1.shape)
+        mu2_vdW = np.zeros(csld1.shape)
+        mu1_intr = np.zeros(csld1.shape)
+        mu2_intr = np.zeros(csld1.shape)
         Flux1 = np.zeros((csld1.shape[0], csld1.shape[1]+1))
         Flux2 = np.zeros((csld1.shape[0], csld1.shape[1]+1))
         # Chemical Potential
         for tind in range(len(times)):
-#            print len(csld1[tind]), len(csld2[tind])
-            mu1_R[tind, :], mu2_R[tind, :] = mod.calc_mu12_R(
+            (mu1_R[tind, :], mu2_R[tind, :],
+                    mu1_reg[tind], mu2_reg[tind],
+                    mu1_B[tind], mu2_B[tind],
+                    mu1_vdW[tind], mu2_vdW[tind],
+                    mu1_intr[tind], mu2_intr[tind]) = mod.calc_mu12_R(
                     csld1[tind], csld2[tind],
                     c1bar_vec[tind], c2bar_vec[tind],
                     Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
+        mu1_kappa = mu1_R - (mu1_reg + mu1_B + mu1_vdW + mu1_intr)
+        mu2_kappa = mu2_R - (mu2_reg + mu2_B + mu2_vdW + mu2_intr)
         # Overpotential
         eta1 = ((mu1_R[:, -1] + phisld[:, -1]) -
                 (T*np.log(act_O) + philyte[:, -1]))
@@ -629,15 +682,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         p_len = psd_len_ac[l][0][0, 0]
         datax = np.linspace(0, p_len, numy)
         ylim = (0, 1)
-        axcirc.set_ylim(ylim)
+        # csld plot
         axcsld.set_ylim(ylim)
         axcsld.set_xlim((0, p_len*1e6))
-        # csld plot
         line1, = axcsld.plot(datax*1e6, datay1)
         line2, = axcsld.plot(datax*1e6, datay2)
         axcsld.set_xlabel(r"r [$\mu$m]")
         axcsld.set_ylabel(r"$\widetilde{c}$")
+
         # colored circle plot
+        axcirc.set_ylim(ylim)
         datar = datax/datax[-1]/2.05 # normalized to 1/2
         dr = datar[1] - datar[0]
         ncirc = numy
@@ -663,6 +717,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 match_original=True,
                 )
         axcirc.add_collection(collection)
+
+        # Experimental images movie
+        namesTimes = get_images_times()
+        imgdir = os.path.join(os.getcwd(), 'graphite_data',
+                'circ-trans-crop')
+        image = get_image(0, namesTimes, imgdir)
+        img = axmovie.imshow(image)
+        patch = mpatch.Circle((178, 162), radius=135, transform=axmovie.transData)
+        img.set_clip_path(patch)
+
 #        # ff or soc plot
 #        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
 #        axff.plot(times*td, ffvec)
@@ -673,6 +737,35 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                markeredgecolor='red',
 #                markeredgewidth=2,
 #                )
+        # areas plot
+        d_t, d_a1, d_a2, d_a3 = read_areas()
+        axff.plot(d_t, d_a1, 'g.')
+        axff.plot(d_t, d_a2, 'r.')
+        axff.plot(d_t, d_a3, 'b.')
+        d_Atot = np.array(d_a1) + np.array(d_a2) + np.array(d_a3)
+        axff.set_xlabel(r'Time (s)')
+        axff.set_ylabel(r'Area (cm$^2$)')
+        axff.yaxis.major.formatter.set_powerlimits((0,0))
+        area_calcs = np.zeros((len(times), 3))
+        for tind in range(len(times)):
+            cbar = 0.5*(csld1[tind, :] + csld2[tind, :])
+            s3ind = np.where(cbar < to_red)
+            s2ind = np.where(
+                    np.logical_and(cbar > to_red, cbar < to_yellow))
+            s1ind = np.where(cbar > to_yellow)
+            Atot = np.pi*D['mean_ac'][l]**2 * 1e2**2 # cm^2
+            # note for cylinder, volfrac = areafrac
+            area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
+            area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])
+            area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
+        t_offset = d_t[0]
+        axff.plot(times*td + t_offset, area_calcs[:, 0], 'g-')
+        axff.plot(times*td + t_offset, area_calcs[:, 1], 'r-')
+        axff.plot(times*td + t_offset, area_calcs[:, 2], 'b-')
+#        print np.sqrt(np.mean(d_Atot)/np.pi)/100*1e6
+#        zz
+#        axff.plot(d_t, d_Atot, '.k')
+#        axff.plot(times*td, np.sum(area_calcs, axis=1), '-k')
 #        # ff --> rxns plot
 #        rxn1vec = data[pfx + 'rxn1'][0]
 #        rxn2vec = data[pfx + 'rxn2'][0]
@@ -680,7 +773,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axff.plot(times*td, rxn2vec)
 #        axff.set_xlabel("time [s]")
 #        axff.set_ylabel("Layer Rxn Rate [dimless]")
-#        ffline = axff.axvline(times[0]*td)
+        ffline = axff.axvline(times[0]*td + t_offset)
 #        # ff --> rxns plot from flux calcs
 #        axff.plot(times*td, rxn1flux_vec)
 #        axff.plot(times*td, rxn2flux_vec)
@@ -691,34 +784,76 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        ffline = axff.axvline(times[0]*td)
 #        # Flux plot
 #        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
-#        fluxline1, = axff.plot(edges, Flux1[0, :])
-#        fluxline2, = axff.plot(edges, Flux2[0, :])
+#        urdata1 = Flux1
+#        urdata2 = Flux2
+#        urline1, = axff.plot(edges, urdata1[0, :])
+#        urline2, = axff.plot(edges, urdata2[0, :])
 #        axff.set_xlim((0, p_len*1e6))
-#        axff.set_ylim((np.min(Flux1.min(), Flux2.min()),
-#            np.max(Flux1.max(), Flux2.max())))
+##        axff.set_ylim((min(np.nanmin(Flux1), np.nanmin(Flux2)),
+##            max(np.nanmax(Flux1), np.nanmaxFlux2))))
+#        axff.set_ylim((-0.012, 0.012))
 #        axff.set_ylabel(r"Flux")
-        # dc/dt plot
-        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
-        dcdt1 = np.diff(Flux1*2*np.pi*edges)/volfrac_vec
-        dcdt2 = np.diff(Flux2*2*np.pi*edges)/volfrac_vec
-#        print Flux1.shape
-#        print dcdt1.shape
-#        zz
-#        print dcdt1.shape
-#        print np.argmax(dcdt1)
-#        print dcdt1[20:28, 150:160]
-#        np.set_printoptions(threshold='nan')
-#        print dcdt1.flatten()
-#        zz
-        dcdtline1, = axff.plot(r_vec*p_len*1e6, dcdt1[0, :])
-        dcdtline2, = axff.plot(r_vec*p_len*1e6, dcdt2[0, :])
-        axff.set_xlim((0, p_len*1e6))
-        print dcdt1.min(), dcdt2.min(), dcdt1.max(), dcdt2.max()
-        axff.set_ylim((min(dcdt1.min(), dcdt2.min()),
-            max(dcdt1.max(), dcdt2.max())))
-#        axff.set_ylim((-12, 12))
-#        axff.set_xlabel(r"
-        axff.set_ylabel(r"dcdt")
+#        # mu_R plot
+#        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+#        urdata1 = mu1_R
+#        urdata2 = mu2_R
+#        urline1, = axff.plot(r_vec*p_len*1e6, mu1_R[0, :])
+#        urline2, = axff.plot(r_vec*p_len*1e6, mu2_R[0, :])
+#        axff.set_xlim((0, p_len*1e6))
+#        axff.set_ylim((min(np.nanmin(mu1_R), np.nanmin(mu2_R)),
+#            max(np.nanmax(mu1_R), np.nanmax(mu2_R))))
+#        axff.set_ylabel(r"$\mu_R$")
+#        # dc/dt plot
+#        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+#        dcdt1 = np.diff(Flux1*2*np.pi*edges)/volfrac_vec
+#        dcdt2 = np.diff(Flux2*2*np.pi*edges)/volfrac_vec
+#        urdata1 = dcdt1
+#        urdata2 = dcdt2
+#        urline1, = axff.plot(r_vec*p_len*1e6, urdata1[0, :])
+#        urline2, = axff.plot(r_vec*p_len*1e6, urdata2[0, :])
+#        axff.set_xlim((0, p_len*1e6))
+##        axff.set_ylim((min(np.nanmin(dcdt1), np.nanmin(dcdt2)),
+##            max(np.nanmax(dcdt1), np.nanmax(dcdt2))))
+#        axff.set_ylim((-10, 10))
+#        axff.set_ylabel(r"dcdt")
+
+#        # mu details
+#        lldata1, lldata2, lldata3, lldata4, lldata5 = (
+#                mu1_reg, mu1_B, mu1_vdW, mu1_kappa, mu1_intr)
+#        lldata = [lldata1, lldata2, lldata3, lldata4, lldata5]
+#        llline1, = axmu1det.plot(r_vec*p_len*1e6, lldata1[0, :], 'b--')
+#        llline2, = axmu1det.plot(r_vec*p_len*1e6, lldata2[0, :], 'b-')
+#        llline3, = axmu1det.plot(r_vec*p_len*1e6, lldata3[0, :], 'bx')
+#        llline4, = axmu1det.plot(r_vec*p_len*1e6, lldata4[0, :], 'b:')
+#        llline5, = axmu1det.plot(r_vec*p_len*1e6, lldata5[0, :], 'b*')
+#        lllines = [llline1, llline2, llline3, llline4, llline5]
+#        axmu1det.set_xlim((0, p_len*1e6))
+#        axmu1det.set_ylim((-3, 3))
+#        #
+#        uldata1, uldata2, uldata3, uldata4, uldata5 = (
+#                mu2_reg, mu2_B, mu2_vdW, mu2_kappa, mu2_intr)
+#        uldata = [uldata1, uldata2, uldata3, uldata4, uldata5]
+#        ulline1, = axmu2det.plot(r_vec*p_len*1e6, uldata1[0, :], 'g--')
+#        ulline2, = axmu2det.plot(r_vec*p_len*1e6, uldata2[0, :], 'g-')
+#        ulline3, = axmu2det.plot(r_vec*p_len*1e6, uldata3[0, :], 'gx')
+#        ulline4, = axmu2det.plot(r_vec*p_len*1e6, uldata4[0, :], 'g:')
+#        ulline5, = axmu2det.plot(r_vec*p_len*1e6, uldata5[0, :], 'g*')
+#        ullines = [ulline1, ulline2, ulline3, ulline4, ulline5]
+#        axmu2det.set_xlim((0, p_len*1e6))
+#        axmu2det.set_ylim((-3, 3))
+
+#        # Flux ul
+#        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+#        uldata1 = Flux1
+#        uldata2 = Flux2
+#        ulline1, = axmu2det.plot(edges, uldata1[0, :])
+#        ulline2, = axmu2det.plot(edges, uldata2[0, :])
+#        axmu2det.set_xlim((0, p_len*1e6))
+##        axff.set_ylim((min(np.nanmin(Flux1), np.nanmin(Flux2)),
+##            max(np.nanmax(Flux1), np.nanmaxFlux2))))
+#        axmu2det.set_ylim((-0.012, 0.012))
+#        axmu2det.set_ylabel(r"Flux")
+
 #        print data.keys()
 #        fig, axs = plt.subplots(2, 1)
 #        pos = 166
@@ -732,54 +867,94 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 ##        axs[2].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
 ##        axs[2].set_ylabel("c")
 #        plt.show()
+
         def init():
             datay1 = csld1[0]
             datay2 = csld2[0]
             dataybar = 0.5*(datay1 + datay2)
-            line1.set_ydata(np.ma.array(datay1, mask=True))
-            line2.set_ydata(np.ma.array(datay2, mask=True))
+            # csld
+            line1.set_ydata(np.ma.array(csld1[0], mask=True))
+            line2.set_ydata(np.ma.array(csld2[0], mask=True))
 #            # ff
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
-#            ffline.set_xdata(np.ma.array([0, 0], mask=True))
-#            # flux
-#            fluxline1.set_ydata(np.ma.array([0]*(Nij+1), mask=True))
-#            fluxline2.set_ydata(np.ma.array([0]*(Nij+1), mask=True))
-            # dcdt
-            dcdtline1.set_ydata(np.ma.array([0]*Nij, mask=True))
-            dcdtline2.set_ydata(np.ma.array([0]*Nij, mask=True))
+            ffline.set_xdata(np.ma.array([0, 0], mask=True))
+#            # flux, mu_R, dcdt
+#            ny = len(urline1.get_ydata())
+#            urline1.set_ydata(np.ma.array([0]*ny, mask=True))
+#            urline2.set_ydata(np.ma.array([0]*ny, mask=True))
+            # color circle
             colors = cmap(dataybar)
             collection.set_color(colors)
+#            # experimental images
+#            img
+#            # mu1 details
+#            for line in lllines:
+#                ny = len(line.get_ydata())
+#                line.set_ydata(np.ma.array([0]*ny, mask=True))
+#            # mu2 details
+#            for line in ullines:
+#                ny = len(line.get_ydata())
+#                line.set_ydata(np.ma.array([0]*ny, mask=True))
+            # Flux ul
+#            ny = len(ulline1.get_ydata())
+#            ulline1.set_ydata(np.ma.array([0]*ny, mask=True))
+#            ulline2.set_ydata(np.ma.array([0]*ny, mask=True))
+#            return tuple([collection, line1, line2])
 #            return tuple([collection, line1, line2, ffcirc])
 #            return tuple([collection, line1, line2, ffline])
-#            return tuple([collection, line1, line2, fluxline1,
-#                fluxline2])
-            return tuple([collection, line1, line2, dcdtline1,
-                dcdtline2])
+            return tuple([collection, img, line1, line2, ffline])
+#            return tuple([collection, line1, line2, urline1, urline2])
+#            return tuple([line1, line2, urline1, urline2,
+#                llline1, llline2, llline3, llline4, llline5,
+#                ulline1, ulline2, ulline3, ulline4, ulline5])
+#            return tuple([line1, line2, urline1, urline2,
+#                llline1, llline2, llline3, llline4, llline5,
+#                ulline1, ulline2])
         def animate(tind):
             datay1 = csld1[tind]
             datay2 = csld2[tind]
             dataybar = 0.5*(datay1 + datay2)
             line1.set_ydata(datay1)
             line2.set_ydata(datay2)
-            # ff
+#            # ff
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
-#            ffline.set_xdata(2*[times[tind]*td])
-#            # flux
-#            fluxline1.set_ydata(Flux1[tind, :])
-#            fluxline2.set_ydata(Flux2[tind, :])
-            # dcdt
-            dcdtline1.set_ydata(dcdt1[tind, :])
-            dcdtline2.set_ydata(dcdt2[tind, :])
+            ffline.set_xdata(2*[times[tind]*td + t_offset])
+#            # flux, mu_R, dcdt
+#            urline1.set_ydata(urdata1[tind, :])
+#            urline2.set_ydata(urdata2[tind, :])
+            # color circle
             colors = cmap(dataybar)
             collection.set_color(colors)
+            # experimental images movie
+            tcur = times[tind]*td + t_offset
+            image = get_image(tcur, namesTimes, imgdir)
+            img.set_array(image)
+#            # mu1 details
+#            for indx in range(len(lllines)):
+#                line = lllines[indx]
+#                data = lldata[indx]
+#                line.set_ydata(data[tind, :])
+#            # mu2 details
+#            for indx in range(len(ullines)):
+#                line = ullines[indx]
+#                data = uldata[indx]
+#                line.set_ydata(data[tind, :])
+#            # Flux ul
+#            ulline1.set_ydata(uldata1[tind, :])
+#            ulline2.set_ydata(uldata2[tind, :])
+#            return tuple([collection, line1, line2])
 #            return tuple([collection, line1, line2, ffcirc])
 #            return tuple([collection, line1, line2, ffline])
-#            return tuple([collection, line1, line2, fluxline1,
-#                fluxline2])
-            return tuple([collection, line1, line2, dcdtline1,
-                dcdtline2])
+            return tuple([collection, img, line1, line2, ffline])
+#            return tuple([collection, line1, line2, urline1, urline2])
+#            return tuple([line1, line2, urline1, urline2,
+#                llline1, llline2, llline3, llline4, llline5,
+#                ulline1, ulline2, ulline3, ulline4, ulline5])
+#            return tuple([line1, line2, urline1, urline2,
+#                llline1, llline2, llline3, llline4, llline5,
+#                ulline1, ulline2])
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
@@ -946,9 +1121,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
-            interval=500, blit=True, repeat=False, init_func=init)
+            interval=10, blit=True, repeat=False, init_func=init)
     if save_flag:
-        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=20)
+        ani.save("mpet_{type}.mp4".format(type=plot_type),
+                fps=20, bitrate=1000,
+                )
 #                extra_args=['-vcodec', 'libx264'])
 
     return ani
