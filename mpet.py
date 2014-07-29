@@ -1673,7 +1673,7 @@ if __name__ == "__main__":
     consoleRun(D, outdir)
 
     # Copy simulation output to archive
-    archivedir_name = time.strftime("%Y%m%d_%H:%M:%S", time.localtime())
+    archivedir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     archivepath = os.path.join(os.getcwd(), "history")
     archivedir = os.path.join(archivepath, archivedir_name)
     try:
