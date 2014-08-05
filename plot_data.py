@@ -215,6 +215,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return ffvec, voltage
         fig, ax = plt.subplots()
         ax.plot(ffvec, voltage)
+#        ax.plot(times*td, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
         xmin = 0.
@@ -576,8 +577,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
-        to_red = 0.3
-        to_yellow = 0.6
+        to_red = 0.4
+        to_yellow = 0.85
         cdict = {
                 "red" : [(0.0, 0.0, 0.0),
                          (to_red, 0.0, 0.7),
@@ -600,7 +601,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         axcirc.set_frame_on(False)
         axcirc.set_axis_off()
         axcirc.set_aspect('equal')
-        axmovie = fig.add_axes([0.02, 0.52, 0.48, 0.40])
+        axmovie = fig.add_axes([0.025, 0.51, 0.475, 0.470])
         axmovie.set_axis_off()
 #        axmu1det = fig.add_axes([0.04, 0.04, 0.44, 0.40])
 #        axmu2det = fig.add_axes([0.04, 0.56, 0.44, 0.40])
@@ -737,6 +738,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                markeredgecolor='red',
 #                markeredgewidth=2,
 #                )
+
         # areas plot
         d_t, d_a1, d_a2, d_a3 = read_areas()
         axff.plot(d_t, d_a1, 'g.')
@@ -745,7 +747,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         d_Atot = np.array(d_a1) + np.array(d_a2) + np.array(d_a3)
         axff.set_xlabel(r'Time (s)')
         axff.set_ylabel(r'Area (cm$^2$)')
-        axff.yaxis.major.formatter.set_powerlimits((0,0))
+        axff.yaxis.major.formatter.set_powerlimits((0,0)) # sci. not'n
         area_calcs = np.zeros((len(times), 3))
         for tind in range(len(times)):
             cbar = 0.5*(csld1[tind, :] + csld2[tind, :])
