@@ -32,7 +32,7 @@ eps = -1e-12
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
         lowerBound=0, upperBound=1, initialGuess=0.25,
-        absTolerance=1e-6)
+        absTolerance=1e-7)
 elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
@@ -617,8 +617,9 @@ class modMPET(daeModel):
             Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
             td = self.D['L_ac'][1]**2 / Damb
             timeHorizon = self.D['tend']/td
-            eq.Residual = self.phi_applied() - self.Vset()*(1 -
-                    np.exp(-Time()/(timeHorizon*1e-3)))
+            eq.Residual = self.phi_applied() - self.Vset()*(
+                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
+#                    np.tanh(Time()/(70.9)))
             eq.CheckUnitsConsistency = False
 
 #        self.action = doNothingAction()
@@ -916,10 +917,19 @@ class modMPET(daeModel):
         Flux2_vec[-1] = Flux2_bc
         c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
         c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
-        Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
+        cbar_edges = 0.5*(c1_edges + c2_edges)
+        Flux1_vec[1:Nij] = (Ds/T * cbar_edges**0 * (1 - c1_edges)**(1.00) * c1_edges *
                 np.diff(mu1_R)/dr)
-        Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges)**(1.00) * c2_edges *
+        Flux2_vec[1:Nij] = (Ds/T * cbar_edges**0 * (1 - c2_edges)**(1.00) * c2_edges *
                 np.diff(mu2_R)/dr)
+#        mu1_edges = (mu1_R[0:-1]  + mu1_R[1:])/2.
+#        mu2_edges = (mu2_R[0:-1]  + mu2_R[1:])/2.
+#        gamma1_TS_edges = np.exp(mu1_edges/T) / c1_edges
+#        gamma2_TS_edges = np.exp(mu2_edges/T) / c2_edges
+#        Flux1_vec[1:Nij] = (Ds/T * c1_edges / gamma1_TS_edges *
+#                np.diff(mu1_R)/dr)
+#        Flux2_vec[1:Nij] = (Ds/T * c2_edges / gamma2_TS_edges *
+#                np.diff(mu2_R)/dr)
         return (Flux1_vec, Flux2_vec)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol_ac, Nvol_s, Nlyte):
@@ -1025,7 +1035,7 @@ class modMPET(daeModel):
                 for i in range(len(c)) ])
 
     def R_BV(self, k0, alpha, ci_sld, cj_sld, Omgb, act_O, act_R, eta, T):
-        gamma_ts = (1./(1-ci_sld))*np.exp((Omgb/T)*cj_sld)
+        gamma_ts = (1./(ci_sld**1.0*(1-ci_sld)))#/ci_sld**(0.5)#*np.exp((Omgb/T)*cj_sld)
 #    def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
 #        gamma_ts = (1./(1-c_sld))
         ecd = ( k0 * act_O**(1-alpha)
@@ -1564,6 +1574,9 @@ def consoleRun(D, outdir):
     
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
+
+    # Set relative tolerances
+    daesolver.RelativeTolerance = 1e-6
 
     # Set the time horizon and the reporting interval
     # We need to get info about the system to figure out the
