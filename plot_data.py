@@ -205,6 +205,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         imgname = namesTimes[indx][0]
         image = plt.imread(os.path.join(imgdir, imgname))
         return image
+    def smooth(vec, k=3):
+        if k == 0:
+            return vec
+        if k % 2 == 0:
+            raise Exception("smooth needs odd argument")
+        ksides = (k-1)/2
+        svec = np.zeros(len(vec))
+        svec[ksides:-ksides] = [
+                np.sum(vec[i-ksides:i+1+ksides])/float(k)
+                for i in range(ksides, len(svec) - ksides)]
+        svec[0] = vec[0]
+        svec[-1] = vec[-1]
+        for sind in range(1, ksides):
+            ksides = sind
+            svec[sind] = (np.sum(vec[:sind+1+ksides]) /
+                    float(2*ksides+1))
+            svec[-(sind+1)] = (np.sum(vec[-(sind+1)-ksides:]) /
+                    float(2*ksides+1))
+        return svec
 
     # Plot voltage profile
     if plot_type == "v":
@@ -589,7 +608,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                            (to_yellow, 0.0, 0.6),
                            (1.0, 0.6, 0.6)],
                 "blue" : [(0.0, 0.4, 0.4),
-                          (to_red, 0.0, 0.0),
+                          (to_red, 0.4, 0.0),
                           (to_yellow, 0.0, 0.0),
                           (1.0, 0.0, 0.0)]
                 }
@@ -679,6 +698,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         rxn1flux_vec = Flux1[:, -1]
         rxn2flux_vec = Flux2[:, -1]
         dataybar = 0.5*(datay1 + datay2)
+        smcount = 9
         numy = len(datay1)
         p_len = psd_len_ac[l][0][0, 0]
         datax = np.linspace(0, p_len, numy)
@@ -751,6 +771,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         area_calcs = np.zeros((len(times), 3))
         for tind in range(len(times)):
             cbar = 0.5*(csld1[tind, :] + csld2[tind, :])
+#            cbar = smooth(0.5*(csld1[tind, :] + csld2[tind, :]),
+#                    smcount)
             s3ind = np.where(cbar < to_red)
             s2ind = np.where(
                     np.logical_and(cbar > to_red, cbar < to_yellow))
@@ -760,7 +782,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
             area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
-        t_offset = d_t[0]
+#        t_offset = d_t[0]
+        t_offset = 0
         axff.plot(times*td + t_offset, area_calcs[:, 0], 'g-')
         axff.plot(times*td + t_offset, area_calcs[:, 1], 'r-')
         axff.plot(times*td + t_offset, area_calcs[:, 2], 'b-')
@@ -874,6 +897,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             datay1 = csld1[0]
             datay2 = csld2[0]
             dataybar = 0.5*(datay1 + datay2)
+            dataybar = smooth(0.5*(datay1 + datay2), smcount)
             # csld
             line1.set_ydata(np.ma.array(csld1[0], mask=True))
             line2.set_ydata(np.ma.array(csld2[0], mask=True))
@@ -917,6 +941,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             datay1 = csld1[tind]
             datay2 = csld2[tind]
             dataybar = 0.5*(datay1 + datay2)
+            dataybar = smooth(0.5*(datay1 + datay2), smcount)
             line1.set_ydata(datay1)
             line2.set_ydata(datay2)
 #            # ff
