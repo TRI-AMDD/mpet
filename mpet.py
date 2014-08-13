@@ -618,8 +618,8 @@ class modMPET(daeModel):
             td = self.D['L_ac'][1]**2 / Damb
             timeHorizon = self.D['tend']/td
             eq.Residual = self.phi_applied() - self.Vset()*(
-                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
-#                    np.tanh(Time()/(70.9)))
+#                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
+                    np.tanh(Time()/(45.0)))
             eq.CheckUnitsConsistency = False
 
 #        self.action = doNothingAction()
@@ -918,9 +918,9 @@ class modMPET(daeModel):
         c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
         c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
         cbar_edges = 0.5*(c1_edges + c2_edges)
-        Flux1_vec[1:Nij] = (Ds/T * cbar_edges**0 * (1 - c1_edges)**(1.00) * c1_edges *
+        Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
                 np.diff(mu1_R)/dr)
-        Flux2_vec[1:Nij] = (Ds/T * cbar_edges**0 * (1 - c2_edges)**(1.00) * c2_edges *
+        Flux2_vec[1:Nij] = (Ds/T * (1 - c2_edges)**(1.00) * c2_edges *
                 np.diff(mu2_R)/dr)
 #        mu1_edges = (mu1_R[0:-1]  + mu1_R[1:])/2.
 #        mu2_edges = (mu2_R[0:-1]  + mu2_R[1:])/2.
