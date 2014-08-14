@@ -224,6 +224,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             svec[-(sind+1)] = (np.sum(vec[-(sind+1)-ksides:]) /
                     float(2*ksides+1))
         return svec
+    def flattenlist(nlist):
+        flist = []
+        for item in nlist:
+            if type(item) in (list, tuple):
+                flist.extend(flatten(item))
+            else:
+                flist.append(item)
+        return flist
 
     # Plot voltage profile
     if plot_type == "v":
@@ -698,7 +706,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         rxn1flux_vec = Flux1[:, -1]
         rxn2flux_vec = Flux2[:, -1]
         dataybar = 0.5*(datay1 + datay2)
-        smcount = 9
+        smcount = 7
         numy = len(datay1)
         p_len = psd_len_ac[l][0][0, 0]
         datax = np.linspace(0, p_len, numy)
@@ -782,15 +790,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
             area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
-#        t_offset = d_t[0]
+        t_offset = d_t[0]
         t_offset = 0
         axff.plot(times*td + t_offset, area_calcs[:, 0], 'g-')
         axff.plot(times*td + t_offset, area_calcs[:, 1], 'r-')
         axff.plot(times*td + t_offset, area_calcs[:, 2], 'b-')
-#        print np.sqrt(np.mean(d_Atot)/np.pi)/100*1e6
-#        zz
 #        axff.plot(d_t, d_Atot, '.k')
 #        axff.plot(times*td, np.sum(area_calcs, axis=1), '-k')
+        ffline = axff.axvline(times[0]*td + t_offset)
+
 #        # ff --> rxns plot
 #        rxn1vec = data[pfx + 'rxn1'][0]
 #        rxn2vec = data[pfx + 'rxn2'][0]
@@ -798,7 +806,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axff.plot(times*td, rxn2vec)
 #        axff.set_xlabel("time [s]")
 #        axff.set_ylabel("Layer Rxn Rate [dimless]")
-        ffline = axff.axvline(times[0]*td + t_offset)
+#        ffline = axff.axvline(times[0]*td + t_offset)
 #        # ff --> rxns plot from flux calcs
 #        axff.plot(times*td, rxn1flux_vec)
 #        axff.plot(times*td, rxn2flux_vec)
@@ -894,6 +902,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        plt.show()
 
         def init():
+            toblit = []
             datay1 = csld1[0]
             datay2 = csld2[0]
             dataybar = 0.5*(datay1 + datay2)
@@ -901,43 +910,42 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             # csld
             line1.set_ydata(np.ma.array(csld1[0], mask=True))
             line2.set_ydata(np.ma.array(csld2[0], mask=True))
+            toblit.extend([line1, line2])
 #            # ff
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
+#            toblit.append(ffcirc)
             ffline.set_xdata(np.ma.array([0, 0], mask=True))
+            toblit.append(ffline)
 #            # flux, mu_R, dcdt
 #            ny = len(urline1.get_ydata())
 #            urline1.set_ydata(np.ma.array([0]*ny, mask=True))
 #            urline2.set_ydata(np.ma.array([0]*ny, mask=True))
+#            toblit.extend([urline1, urline2])
             # color circle
             colors = cmap(dataybar)
             collection.set_color(colors)
-#            # experimental images
-#            img
+            toblit.append(collection)
+            # experimental images
+            toblit.append(img)
 #            # mu1 details
 #            for line in lllines:
 #                ny = len(line.get_ydata())
 #                line.set_ydata(np.ma.array([0]*ny, mask=True))
+#                toblit.append(line)
 #            # mu2 details
 #            for line in ullines:
 #                ny = len(line.get_ydata())
 #                line.set_ydata(np.ma.array([0]*ny, mask=True))
+#                toblit.append(line)
             # Flux ul
 #            ny = len(ulline1.get_ydata())
 #            ulline1.set_ydata(np.ma.array([0]*ny, mask=True))
 #            ulline2.set_ydata(np.ma.array([0]*ny, mask=True))
-#            return tuple([collection, line1, line2])
-#            return tuple([collection, line1, line2, ffcirc])
-#            return tuple([collection, line1, line2, ffline])
-            return tuple([collection, img, line1, line2, ffline])
-#            return tuple([collection, line1, line2, urline1, urline2])
-#            return tuple([line1, line2, urline1, urline2,
-#                llline1, llline2, llline3, llline4, llline5,
-#                ulline1, ulline2, ulline3, ulline4, ulline5])
-#            return tuple([line1, line2, urline1, urline2,
-#                llline1, llline2, llline3, llline4, llline5,
-#                ulline1, ulline2])
+#            toblit.extend(ulline1, ulline2)
+            return tuple(toblit)
         def animate(tind):
+            toblit = []
             datay1 = csld1[tind]
             datay2 = csld2[tind]
             dataybar = 0.5*(datay1 + datay2)
@@ -947,41 +955,39 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            # ff
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
+#            toblit.append(ffcirc)
             ffline.set_xdata(2*[times[tind]*td + t_offset])
+            toblit.append(ffline)
 #            # flux, mu_R, dcdt
 #            urline1.set_ydata(urdata1[tind, :])
 #            urline2.set_ydata(urdata2[tind, :])
+#            toblit.extend([urline1, urline2])
             # color circle
             colors = cmap(dataybar)
             collection.set_color(colors)
+            toblit.append(collection)
             # experimental images movie
             tcur = times[tind]*td + t_offset
             image = get_image(tcur, namesTimes, imgdir)
             img.set_array(image)
+            toblit.append(img)
 #            # mu1 details
 #            for indx in range(len(lllines)):
 #                line = lllines[indx]
 #                data = lldata[indx]
 #                line.set_ydata(data[tind, :])
+#                toblit.append(line)
 #            # mu2 details
 #            for indx in range(len(ullines)):
 #                line = ullines[indx]
 #                data = uldata[indx]
 #                line.set_ydata(data[tind, :])
+#                toblit.append(line)
 #            # Flux ul
 #            ulline1.set_ydata(uldata1[tind, :])
 #            ulline2.set_ydata(uldata2[tind, :])
-#            return tuple([collection, line1, line2])
-#            return tuple([collection, line1, line2, ffcirc])
-#            return tuple([collection, line1, line2, ffline])
-            return tuple([collection, img, line1, line2, ffline])
-#            return tuple([collection, line1, line2, urline1, urline2])
-#            return tuple([line1, line2, urline1, urline2,
-#                llline1, llline2, llline3, llline4, llline5,
-#                ulline1, ulline2, ulline3, ulline4, ulline5])
-#            return tuple([line1, line2, urline1, urline2,
-#                llline1, llline2, llline3, llline4, llline5,
-#                ulline1, ulline2])
+#            toblit.extend([ulline1, ulline2])
+            return tuple(toblit)
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
