@@ -952,6 +952,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             dataybar = smooth(0.5*(datay1 + datay2), smcount)
             line1.set_ydata(datay1)
             line2.set_ydata(datay2)
+            toblit.extend([line1, line2])
 #            # ff
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
