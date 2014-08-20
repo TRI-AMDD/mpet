@@ -604,7 +604,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
-        to_red = 0.4
+        to_red = 0.3
         to_yellow = 0.85
         cdict = {
                 "red" : [(0.0, 0.0, 0.0),
