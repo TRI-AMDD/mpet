@@ -179,7 +179,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     def get_images_times():
         namebase = 'circ_trans_cropped_G2_int-20130204-'
         imgfolder = os.path.join(os.getcwd(), 'graphite_data',
-                'circ-trans-crop')
+                'circ-trans-crop', 'colorMods')
         imgfilenames = os.listdir(imgfolder)
         namesTrueTimes = []
         for imgfilename in imgfilenames:
@@ -601,29 +601,47 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = 1
         i = 0
         j = 0
+#        t0ind = 0
+        t0ind = 470
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
         to_red = 0.3
         to_yellow = 0.85
+#        cdict = {
+#                "red" : [(0.0, 0.0, 0.0),
+#                         (to_red, 0.0, 0.7),
+#                         (to_yellow, 0.7, 0.7),
+#                         (1.0, 0.7, 0.7)],
+#                "green" : [(0.0, 0.0, 0.0),
+#                           (to_red, 0.0, 0.0),
+#                           (to_yellow, 0.0, 0.6),
+#                           (1.0, 0.6, 0.6)],
+#                "blue" : [(0.0, 0.4, 0.4),
+#                          (to_red, 0.4, 0.0),
+#                          (to_yellow, 0.0, 0.0),
+#                          (1.0, 0.0, 0.0)]
+#                }
         cdict = {
-                "red" : [(0.0, 0.0, 0.0),
-                         (to_red, 0.0, 0.7),
-                         (to_yellow, 0.7, 0.7),
-                         (1.0, 0.7, 0.7)],
-                "green" : [(0.0, 0.0, 0.0),
-                           (to_red, 0.0, 0.0),
-                           (to_yellow, 0.0, 0.6),
-                           (1.0, 0.6, 0.6)],
-                "blue" : [(0.0, 0.4, 0.4),
-                          (to_red, 0.4, 0.0),
-                          (to_yellow, 0.0, 0.0),
-                          (1.0, 0.0, 0.0)]
+                "red" : [(0.0, 0.678, 0.678),
+                         (to_red, 0.678, 0.97),
+                         (to_yellow, 0.97, 1.00),
+                         (1.0, 1.00, 1.00)],
+                "green" : [(0.0, 0.604, 0.604),
+                           (to_red, 0.604, 0.486),
+                           (to_yellow, 0.486, 0.973),
+                           (1.0, 0.973, 0.973)],
+                "blue" : [(0.0, 0.0, 0.0),
+                          (to_red, 0.000, 0.000),
+                          (to_yellow, 0.000, 0.000),
+                          (1.0, 0.000, 0.000)]
                 }
         cmap = matplotlib.colors.LinearSegmentedColormap(
                 "discrete", cdict)
 
-        fig = plt.figure()
+#        fig = plt.figure()
+        figscale = 1.1
+        fig = plt.figure(figsize=(figscale*16, figscale*9))
         axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.40])
         axcirc.set_frame_on(False)
         axcirc.set_axis_off()
@@ -638,8 +656,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         csld2 = data[pfx + "c2_sld_trode1vol0part0"]
         phisld = data[pfx + "phi_1"]
         philyte = data[pfx + "phi_lyte_1"]
-        datay1 = csld1[0]
-        datay2 = csld2[0]
+        datay1 = csld1[t0ind]
+        datay2 = csld2[t0ind]
         # PARAMETERS
         Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
         Omgb = data[pfx + 'Omgb_{l}'.format(l=l)][0][j][i]
@@ -722,20 +740,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         # csld plot schematic-like
         axcsld.set_ylim((0, 1))
-        axcsld.set_xlabel(r"r [$\mu$m]")
+        axcsld.set_xlabel(r"r [$\mu$m]", fontsize=22)
         axcsld.yaxis.set_ticks([])
         axcsld.set_axis_bgcolor('none')
-        axcsld.xaxis.set_tick_params(length=0)
+        for tick in axcsld.xaxis.get_major_ticks():
+            tick.label.set_fontsize(18)
         axspines = axcsld.spines
         for spine in ['top', 'bottom', 'left', 'right']:
-            axspines[spine].set_color('none')
+            axspines[spine].set_visible(False)
+        axcsld.xaxis.set_ticks_position('bottom')
         xmax = p_len*1e6
         axcsld.set_xlim((0, xmax))
         # Draw graphite planes
         gpatches = []
         ytop = 0.8
-        gthick = 0.02
-        gylocs = np.linspace(0.02, ytop-gthick/2., 5)
+        gthick = 0.015
+        ng = 9
+        if not ng % 2: raise Exception("ng must be odd")
+        gylocs = np.linspace(0.02, ytop-gthick/2., ng)
         for yloc in gylocs:
             gpatches.append(mpatch.Rectangle((0, yloc-gthick/2.),
                 xmax, gthick, facecolor='black', edgecolor='black',
@@ -785,11 +807,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         axcsld.add_collection(ellipcollect)
         ellipcollect.set_clip_path(clippatch)
         # Colored rectangles inside
+        nlayers = ng - 1
+        nA = nB = nlayers/2
         nrect = numy
-        rect1fills = []
-        rect2fills = []
-        rect1afills = []
-        rect2afills = []
+        rectsA = []
+        rectsB = []
+        for inx in range(nA):
+            rectsA.append([])
+            rectsB.append([])
 #        cmapcsld = plt.get_cmap('gray')
 #        cmapcsld = plt.get_cmap('Greys')
 #        cmapcsld = plt.get_cmap('cool')
@@ -799,77 +824,65 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         alph1 = 1.0
         alph2 = 1.0
         h = gylocs[-1] - gylocs[-2] - gthick
-        y1 = gylocs[-2] + gthick/2.
-        y2 = gylocs[-3] + gthick/2.
-        y1a = gylocs[-4] + gthick/2.
-        y2a = gylocs[-5] + gthick/2.
-        rect1fills.append(mpatch.Rectangle((0, y1), dr/2., h,
+        ysA = []
+        ysB = []
+        for inx in range(nA):
+            ysA.append(gylocs[-(2 + 2*inx)] + gthick/2.)
+            ysB.append(gylocs[-(3 + 2*inx)] + gthick/2.)
+        for inx in range(nA):
+            yA = ysA[inx]
+            yB = ysB[inx]
+            rectsA[inx].append(mpatch.Rectangle((0, yA), dr/2., h,
             facecolor=col1, edgecolor=col1, alpha=alph1,
             linewidth=0,
             ))
-        rect2fills.append(mpatch.Rectangle((0, y2), dr/2., h,
-            facecolor=col2, edgecolor=col1, alpha=alph2,
-            linewidth=0,
-            ))
-        rect1afills.append(mpatch.Rectangle((0, y1a), dr/2., h,
+            rectsB[inx].append(mpatch.Rectangle((0, yB), dr/2., h,
             facecolor=col1, edgecolor=col1, alpha=alph1,
-            linewidth=0,
-            ))
-        rect2afills.append(mpatch.Rectangle((0, y2a), dr/2., h,
-            facecolor=col2, edgecolor=col1, alpha=alph2,
             linewidth=0,
             ))
         for indxrect in range(1, nrect-1):
             ri = datar[indxrect] - dr/2.
-            rect1fills.append(mpatch.Rectangle((ri, y1), dr, h,
+            for indxlyr in range(nA):
+                yA = ysA[indxlyr]
+                yB = ysB[indxlyr]
+                rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr, h,
                 facecolor=col1, edgecolor=col1, alpha=alph1,
                 linewidth=0,
                 ))
-            rect2fills.append(mpatch.Rectangle((ri, y2), dr, h,
-                facecolor=col2, edgecolor=col1, alpha=alph2,
-                linewidth=0,
-                ))
-            rect1afills.append(mpatch.Rectangle((ri, y1a), dr, h,
+                rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr, h,
                 facecolor=col1, edgecolor=col1, alpha=alph1,
-                linewidth=0,
-                ))
-            rect2afills.append(mpatch.Rectangle((ri, y2a), dr, h,
-                facecolor=col2, edgecolor=col1, alpha=alph2,
                 linewidth=0,
                 ))
         ri = datar[-1] - dr/2.
-        rect1fills.append(mpatch.Rectangle((ri, y1), dr/2., h,
+        for indxlyr in range(nA):
+            yA = ysA[indxlyr]
+            yB = ysB[indxlyr]
+            rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr/2., h,
             facecolor=col1, edgecolor=col1, alpha=alph1,
             linewidth=0,
             ))
-        rect2fills.append(mpatch.Rectangle((ri, y2), dr/2., h,
-            facecolor=col2, edgecolor=col2, alpha=alph2,
-            linewidth=0,
-            ))
-        rect1afills.append(mpatch.Rectangle((ri, y1a), dr/2., h,
+            rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr/2., h,
             facecolor=col1, edgecolor=col1, alpha=alph1,
             linewidth=0,
             ))
-        rect2afills.append(mpatch.Rectangle((ri, y2a), dr/2., h,
-            facecolor=col2, edgecolor=col2, alpha=alph2,
-            linewidth=0,
-            ))
-        rectcoll1 = mcollect.PatchCollection(rect1fills,
+        rectcollsA = []
+        rectcollsB = []
+        for indxlyr in range(nA):
+            rectcollsA.append(mcollect.PatchCollection(rectsA[indxlyr],
                 match_original=True,
-                )
-        rectcoll2 = mcollect.PatchCollection(rect2fills,
+                ))
+            rectcollsB.append(mcollect.PatchCollection(rectsB[indxlyr],
                 match_original=True,
-                )
-        rectcoll1a = mcollect.PatchCollection(rect1afills,
-                match_original=True,
-                )
-        rectcoll2a = mcollect.PatchCollection(rect2afills,
-                match_original=True,
-                )
-        axcsld.add_collection(rectcoll1)
-        axcsld.add_collection(rectcoll2)
-        axcsld.add_collection(rectcoll1a)
-        axcsld.add_collection(rectcoll2a)
+                ))
+            axcsld.add_collection(rectcollsA[indxlyr])
+            axcsld.add_collection(rectcollsB[indxlyr])
+        csldcolors1 = cmapcsld(datay1)
+        csldcolors2 = cmapcsld(datay2)
+        for indxlyr in range(nA):
+            rectcollsA[indxlyr].set_color(csldcolors1)
+            rectcollsB[indxlyr].set_color(csldcolors2)
+        topcol = cmap(smooth(dataybar, smcount))
+        ellipcollect.set_color(topcol[::-1])
 
         # colored circle plot
         axcirc.set_ylim(ylim)
@@ -898,12 +911,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 match_original=True,
                 )
         axcirc.add_collection(collection)
+        colors = cmap(smooth(dataybar, smcount))
+        collection.set_color(colors)
 
         # Experimental images movie
         namesTimes = get_images_times()
         imgdir = os.path.join(os.getcwd(), 'graphite_data',
-                'circ-trans-crop')
-        image = get_image(0, namesTimes, imgdir)
+                'circ-trans-crop', 'colorMods')
+        image = get_image(times[t0ind]*td, namesTimes, imgdir)
         img = axmovie.imshow(image)
         patch = mpatch.Circle((178, 162), radius=135, transform=axmovie.transData)
         img.set_clip_path(patch)
@@ -921,12 +936,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         # areas plot
         d_t, d_a1, d_a2, d_a3 = read_areas()
-        axff.plot(d_t, d_a1, 'g.')
-        axff.plot(d_t, d_a2, 'r.')
-        axff.plot(d_t, d_a3, 'b.')
+        sc = 1e0
+        axff.plot(d_t, sc*np.array(d_a1), 'g.', label="expt: Stage 1")
+        axff.plot(d_t, sc*np.array(d_a2), 'r.', label="expt: Stage 2")
+        axff.plot(d_t, sc*np.array(d_a3), 'b.', label="expt: Dilute")
         d_Atot = np.array(d_a1) + np.array(d_a2) + np.array(d_a3)
-        axff.set_xlabel(r'Time (s)')
-        axff.set_ylabel(r'Area (cm$^2$)')
+        axff.set_xlabel(r'Time (s)', fontsize=22)
+        axff.set_ylabel(r'Area (cm$^2$)', fontsize=22)
+        for tick in axff.xaxis.get_major_ticks():
+            tick.label.set_fontsize(18)
+        for tick in axff.yaxis.get_major_ticks():
+            tick.label.set_fontsize(18)
         axff.yaxis.major.formatter.set_powerlimits((0,0)) # sci. not'n
         area_calcs = np.zeros((len(times), 3))
         for tind in range(len(times)):
@@ -944,12 +964,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
         t_offset = d_t[0]
         t_offset = 0
-        axff.plot(times*td + t_offset, area_calcs[:, 0], 'g-')
-        axff.plot(times*td + t_offset, area_calcs[:, 1], 'r-')
-        axff.plot(times*td + t_offset, area_calcs[:, 2], 'b-')
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 0], 'g-',
+                label="sim: Stage 1")
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 1], 'r-',
+                label="sim: Stage 2")
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 2], 'b-',
+                label="sim: Dilute")
 #        axff.plot(d_t, d_Atot, '.k')
 #        axff.plot(times*td, np.sum(area_calcs, axis=1), '-k')
-        ffline = axff.axvline(times[0]*td + t_offset)
+        ffline = axff.axvline(times[t0ind]*td + t_offset)
+        axff.legend(loc='best')
 
 #        # ff --> rxns plot
 #        rxn1vec = data[pfx + 'rxn1'][0]
@@ -1051,7 +1075,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axs[1].set_ylabel("c")
 ##        axs[2].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
 ##        axs[2].set_ylabel("c")
+#        fig.savefig('graphite_t{tval}.eps'.format(tval=times[t0ind]*td),
+#                bbox_inches="tight")
+
 #        plt.show()
+#        fig.savefig('tmp.png', bbox_inches='tight')
 
         def init():
             toblit = []
@@ -1066,17 +1094,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             # csld schematic-like
             csldcolors1 = cmapcsld(datay1)
             csldcolors2 = cmapcsld(datay2)
-            rectcoll1.set_color(csldcolors1)
-            rectcoll2.set_color(csldcolors2)
-            rectcoll1a.set_color(csldcolors1)
-            rectcoll2a.set_color(csldcolors2)
+            for indxlyr in range(nA):
+                rectcollsA[indxlyr].set_color(csldcolors1)
+                rectcollsB[indxlyr].set_color(csldcolors2)
+                toblit.extend([rectcollsA[indxlyr],
+                               rectcollsB[indxlyr]])
             topcol = cmap(dataybar)
             ellipcollect.set_color(topcol[::-1])
-            toblit.extend([rectcoll1, rectcoll2, rectcoll1a, rectcoll2a])
-            toblit.extend([rectcoll1, rectcoll2,
-                           rectcoll1a, rectcoll2a,
-                           ellipcollect,
-                           ])
+            toblit.append(ellipcollect)
 #            # ff
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
@@ -1125,16 +1150,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             # csld schematic-like
             csldcolors1 = cmapcsld(datay1)
             csldcolors2 = cmapcsld(datay2)
-            rectcoll1.set_color(csldcolors1)
-            rectcoll2.set_color(csldcolors2)
-            rectcoll1a.set_color(csldcolors1)
-            rectcoll2a.set_color(csldcolors2)
+            for indxlyr in range(nA):
+                rectcollsA[indxlyr].set_color(csldcolors1)
+                rectcollsB[indxlyr].set_color(csldcolors2)
+                toblit.extend([rectcollsA[indxlyr],
+                               rectcollsB[indxlyr]])
             topcol = cmap(dataybar)[::-1]
             ellipcollect.set_color(topcol)
-            toblit.extend([rectcoll1, rectcoll2,
-                           rectcoll1a, rectcoll2a,
-                           ellipcollect,
-                           ])
+            toblit.append(ellipcollect)
 #            # ff
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
@@ -1340,7 +1363,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             interval=10, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type),
-                fps=20, bitrate=1000,
+                fps=20, bitrate=2500,
+#                writer='alzkes',
+#                savefig_kwargs={'bbox_inches' : 'tight'},
                 )
 #                extra_args=['-vcodec', 'libx264'])
 
