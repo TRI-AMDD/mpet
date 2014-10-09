@@ -185,6 +185,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         for imgfilename in imgfilenames:
 #            imgfilename = imgfilename.strip(namebase)
 #            imgfilename = imgfilename.strip('.jpg')
+            if imgfilename[:5] == "movie":
+                continue
             imgtimestr = imgfilename[35:41]
             imgtime = datetime.datetime.strptime(imgtimestr, '%H%M%S')
             namesTrueTimes.append((imgfilename, imgtime))
@@ -601,8 +603,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = 1
         i = 0
         j = 0
-#        t0ind = 0
-        t0ind = 470
+        t0ind = 0
+#        t0ind = 470
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
@@ -622,19 +624,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                          (to_yellow, 0.0, 0.0),
 #                          (1.0, 0.0, 0.0)]
 #                }
+        rgb_rSd = 0.678
+        rgb_gSd = 0.604
+        rgb_bSd = 0.0
+        rgb_rS2 = 0.970
+        rgb_gS2 = 0.486
+        rgb_bS2 = 0.0
+        rgb_rS1 = 1.00
+        rgb_gS1 = 0.973
+        rgb_bS1 = 0.0
         cdict = {
-                "red" : [(0.0, 0.678, 0.678),
-                         (to_red, 0.678, 0.97),
-                         (to_yellow, 0.97, 1.00),
-                         (1.0, 1.00, 1.00)],
-                "green" : [(0.0, 0.604, 0.604),
-                           (to_red, 0.604, 0.486),
-                           (to_yellow, 0.486, 0.973),
-                           (1.0, 0.973, 0.973)],
-                "blue" : [(0.0, 0.0, 0.0),
-                          (to_red, 0.000, 0.000),
-                          (to_yellow, 0.000, 0.000),
-                          (1.0, 0.000, 0.000)]
+                "red" : [(0.0, rgb_rSd, rgb_rSd),
+                         (to_red, rgb_rSd, rgb_rS2),
+                         (to_yellow, rgb_rS2, rgb_rS1),
+                         (1.0, rgb_rS1, rgb_rS1)],
+                "green" : [(0.0, rgb_gSd, rgb_gSd),
+                           (to_red, rgb_gSd, rgb_gS2),
+                           (to_yellow, rgb_gS2, rgb_gS1),
+                           (1.0, rgb_gS1, rgb_gS1)],
+                "blue" : [(0.0, rgb_bSd, rgb_bSd),
+                          (to_red, rgb_bSd, rgb_bS2),
+                          (to_yellow, rgb_bS2, rgb_bS1),
+                          (1.0, rgb_bS1, rgb_bS1)]
                 }
         cmap = matplotlib.colors.LinearSegmentedColormap(
                 "discrete", cdict)
@@ -937,9 +948,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # areas plot
         d_t, d_a1, d_a2, d_a3 = read_areas()
         sc = 1e0
-        axff.plot(d_t, sc*np.array(d_a1), 'g.', label="expt: Stage 1")
-        axff.plot(d_t, sc*np.array(d_a2), 'r.', label="expt: Stage 2")
-        axff.plot(d_t, sc*np.array(d_a3), 'b.', label="expt: Dilute")
+        msize = 10.
+        axff.plot(d_t, sc*np.array(d_a1), marker='o',
+                linestyle='None',
+                markerfacecolor=(rgb_rS1, rgb_gS1, rgb_bS1),
+                markeredgecolor=(rgb_rS1, rgb_gS1, rgb_bS1),
+                markersize=msize,
+                label="expt: Stage 1")
+        axff.plot(d_t, sc*np.array(d_a2), marker='s',
+                linestyle='None',
+                markerfacecolor=(rgb_rS2, rgb_gS2, rgb_bS2),
+                markeredgecolor=(rgb_rS2, rgb_gS2, rgb_bS2),
+                markersize=msize,
+                label="expt: Stage 2")
+        axff.plot(d_t, sc*np.array(d_a3), marker='^',
+                linestyle='None',
+                markerfacecolor=(rgb_rSd, rgb_gSd, rgb_bSd),
+                markeredgecolor=(rgb_rSd, rgb_gSd, rgb_bSd),
+                markersize=msize,
+                label="expt: Dilute")
         d_Atot = np.array(d_a1) + np.array(d_a2) + np.array(d_a3)
         axff.set_xlabel(r'Time (s)', fontsize=22)
         axff.set_ylabel(r'Area (cm$^2$)', fontsize=22)
@@ -964,15 +991,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
         t_offset = d_t[0]
         t_offset = 0
-        axff.plot(times*td + t_offset, sc*area_calcs[:, 0], 'g-',
+        lwidth = 3.
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 0],
+                linestyle='-',
+                color=(rgb_rS1, rgb_gS1, rgb_bS1),
+                linewidth=lwidth,
                 label="sim: Stage 1")
-        axff.plot(times*td + t_offset, sc*area_calcs[:, 1], 'r-',
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 1],
+                linestyle='-',
+                color=(rgb_rS2, rgb_gS2, rgb_bS2),
+                linewidth=lwidth,
                 label="sim: Stage 2")
-        axff.plot(times*td + t_offset, sc*area_calcs[:, 2], 'b-',
+        axff.plot(times*td + t_offset, sc*area_calcs[:, 2],
+                linestyle='-',
+                color=(rgb_rSd, rgb_gSd, rgb_bSd),
+                linewidth=lwidth,
                 label="sim: Dilute")
 #        axff.plot(d_t, d_Atot, '.k')
 #        axff.plot(times*td, np.sum(area_calcs, axis=1), '-k')
-        ffline = axff.axvline(times[t0ind]*td + t_offset)
+        ffline = axff.axvline(times[t0ind]*td + t_offset,
+                linestyle='--',
+                linewidth=0.7*lwidth,
+                color='#808080')
         axff.legend(loc='best')
 
 #        # ff --> rxns plot
@@ -1363,7 +1403,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             interval=10, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type),
-                fps=20, bitrate=2500,
+                fps=45, bitrate=5500,
 #                writer='alzkes',
 #                savefig_kwargs={'bbox_inches' : 'tight'},
                 )
