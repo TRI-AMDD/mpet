@@ -618,6 +618,7 @@ class modMPET(daeModel):
             td = self.D['L_ac'][1]**2 / Damb
             timeHorizon = self.D['tend']/td
             eq.Residual = self.phi_applied() - self.Vset()*(
+#                    1)
 #                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
                     np.tanh(Time()/(45.0)))
             eq.CheckUnitsConsistency = False
@@ -1667,23 +1668,38 @@ if __name__ == "__main__":
         out2, err2 = p2.communicate()
         # Store commit info to file, as well as how to patch if
         # there's a diff
-        fo = open(os.path.join(outdir, 'commit_info.txt'), 'w')
-        print >> fo, "commit hash:"
-        print >> fo, out1
-        print >> fo, "to run:"
-        print >> fo, "$ git checkout [commit hash]"
-        print >> fo, "$ patch -p1 < commit.diff:"
-        print >> fo, "$ python[2] mpet.py input_params.cfg"
-        fo.close()
-        fo = open(os.path.join(outdir, 'commit.diff'), 'w')
-        print >> fo, out2
-        fo.close()
+        with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
+            print >> fo, "commit hash:"
+            print >> fo, out1
+            print >> fo, "to run:"
+            print >> fo, "$ git checkout [commit hash]"
+            print >> fo, "$ patch -p1 < commit.diff:"
+            print >> fo, "$ python[2] mpet.py input_params.cfg"
+        with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
+            print >> fo, out2
     except:
         # At least keep a copy of this file with the output
         shutil.copy(os.path.basename(__file__), outdir)
 
     # Carry out the simulation
     consoleRun(D, outdir)
+
+    # Final output for user
+    if default_flag:
+        print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
+                fname=default_file)
+        print "Pass other parameter file as an argument to this script\n"
+    else:
+        print "\n\nUsed parameter file ""{fname}""\n\n".format(
+                fname=paramfile)
+    timeEnd = time.time()
+    tTot = timeEnd - timeStart
+    print "Total time:", tTot, "s"
+    try:
+        with open(os.path.join(outdir, 'run_info.txt'), 'a') as fo:
+            print >> fo, "\nTotal run time:", tTot, "s"
+    except Exception as e:
+        pass
 
     # Copy simulation output to archive
     archivedir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -1696,13 +1712,3 @@ if __name__ == "__main__":
             raise
     shutil.copytree(outdir, archivedir)
 
-    # Final output for user
-    if default_flag:
-        print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
-                fname=default_file)
-        print "Pass other parameter file as an argument to this script\n"
-    else:
-        print "\n\nUsed parameter file ""{fname}""\n\n".format(
-                fname=paramfile)
-    timeEnd = time.time()
-    print "Total time:", (timeEnd - timeStart), "s"
