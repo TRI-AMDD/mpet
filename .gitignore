@@ -2,10 +2,12 @@
 *.mat
 *.m4v
 *.mp4
+*.avi
 *.png
 *.pdf
 *.pyc
 *.csv
+*.zip
 params*
 !params_default.cfg
 sim_output*
