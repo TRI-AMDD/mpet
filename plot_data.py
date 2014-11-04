@@ -205,7 +205,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             if tcur <= nT[1]:
                 break
         imgname = namesTimes[indx][0]
-        image = plt.imread(os.path.join(imgdir, imgname))
+        image = matplotlib.image.imread(os.path.join(imgdir, imgname))
         return image
     def smooth(vec, k=3):
         if k == 0:
@@ -610,20 +610,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # Define colors!
         to_red = 0.3
         to_yellow = 0.85
-#        cdict = {
-#                "red" : [(0.0, 0.0, 0.0),
-#                         (to_red, 0.0, 0.7),
-#                         (to_yellow, 0.7, 0.7),
-#                         (1.0, 0.7, 0.7)],
-#                "green" : [(0.0, 0.0, 0.0),
-#                           (to_red, 0.0, 0.0),
-#                           (to_yellow, 0.0, 0.6),
-#                           (1.0, 0.6, 0.6)],
-#                "blue" : [(0.0, 0.4, 0.4),
-#                          (to_red, 0.4, 0.0),
-#                          (to_yellow, 0.0, 0.0),
-#                          (1.0, 0.0, 0.0)]
-#                }
         rgb_rSd = 0.678
         rgb_gSd = 0.604
         rgb_bSd = 0.0
@@ -663,6 +649,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axmu2det = fig.add_axes([0.04, 0.56, 0.44, 0.40])
         axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
         axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
+#        # tmp axes for cbar plot
+#        fig = plt.figure(figsize=(figscale*8, figscale*9))
+#        axff = fig.add_axes([0.04, 0.06, 0.88, 0.40])
+#        axcsld = fig.add_axes([0.04, 0.56, 0.88, 0.40])
         csld1 = data[pfx + "c1_sld_trode1vol0part0"]
         csld2 = data[pfx + "c2_sld_trode1vol0part0"]
         phisld = data[pfx + "phi_1"]
@@ -740,18 +730,67 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         p_len = psd_len_ac[l][0][0, 0]
         datax = np.linspace(0, p_len, numy)
         ylim = (0, 1)
+#        t_offset = d_t[0]
+        t_offset = 0
 
 #        # csld plot
+#        axlabelfs = 22
+#        axtickfs = 18
 #        axcsld.set_ylim(ylim)
 #        axcsld.set_xlim((0, p_len*1e6))
-#        line1, = axcsld.plot(datax*1e6, datay1)
-#        line2, = axcsld.plot(datax*1e6, datay2)
-#        axcsld.set_xlabel(r"r [$\mu$m]")
-#        axcsld.set_ylabel(r"$\widetilde{c}$")
+#        lwidth=3.
+#        line1, = axcsld.plot(datax*1e6, datay1,
+#                color="blue", linewidth=lwidth,
+#                label=r'$c_1$')
+#        line2, = axcsld.plot(datax*1e6, datay2,
+#                color="green", linewidth=lwidth,
+#                label=r'$c_2$')
+#        line3, = axcsld.plot(datax*1e6, 0.5*(datay1 + datay2),
+#                color='red', linewidth=lwidth, linestyle='--',
+#                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
+#        axff.legend(loc='best', fontsize=axtickfs-2)
+#        axcsld.legend(loc='best', fontsize=axtickfs-2)
+#        axcsld.set_xlabel(r"$r$ [$\mu$m]", fontsize=axlabelfs)
+#        axcsld.set_ylabel(r"$c$", fontsize=axlabelfs)
+#        for tick in axcsld.xaxis.get_major_ticks():
+#            tick.label.set_fontsize(axtickfs)
+#        for tick in axcsld.yaxis.get_major_ticks():
+#            tick.label.set_fontsize(axtickfs)
+
+#        # csld plot (axff axes)
+#        axlabelfs = 22
+#        axtickfs = 18
+#        axff.set_ylim(ylim)
+#        axff.set_xlim((0, p_len*1e6))
+#        lwidth=3.
+#        line1, = axff.plot(datax*1e6, datay1,
+#                color="blue", linewidth=lwidth,
+#                label=r'$c_1$')
+#        line2, = axff.plot(datax*1e6, datay2,
+#                color="green", linewidth=lwidth,
+#                label=r'$c_2$')
+#        line3, = axff.plot(datax*1e6, 0.5*(datay1 + datay2),
+#                color='red', linewidth=lwidth, linestyle='--',
+#                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
+#        axff.legend(loc='best', fontsize=axtickfs-2)
+#        axff.set_xlabel(r"$r$ [$\mu$m]", fontsize=axlabelfs)
+#        axff.set_ylabel(r"$c$", fontsize=axlabelfs)
+#        for tick in axff.xaxis.get_major_ticks():
+#            tick.label.set_fontsize(axtickfs)
+#        for tick in axff.yaxis.get_major_ticks():
+#            tick.label.set_fontsize(axtickfs)
+#        bar1indx = 120
+#        bar2indx = 273
+#        axff.fill_between(datax[0:bar1indx+1]*1e6, 0, 1,
+#                color=cmap(0.1), alpha=0.7)
+#        axff.fill_between(datax[bar1indx:bar2indx+1]*1e6, 0, 1,
+#                color=cmap(0.6), alpha=0.7)
+#        axff.fill_between(datax[bar2indx:]*1e6, 0, 1,
+#                color=cmap(0.9), alpha=0.7)
 
         # csld plot schematic-like
         axcsld.set_ylim((0, 1))
-        axcsld.set_xlabel(r"r [$\mu$m]", fontsize=22)
+        axcsld.set_xlabel(r"$r$ [$\mu$m]", fontsize=22)
         axcsld.yaxis.set_ticks([])
         axcsld.set_axis_bgcolor('none')
         for tick in axcsld.xaxis.get_major_ticks():
@@ -989,8 +1028,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
             area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
-        t_offset = d_t[0]
-        t_offset = 0
         lwidth = 3.
         axff.plot(times*td + t_offset, sc*area_calcs[:, 0],
                 linestyle='-',
@@ -1035,8 +1072,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
 #        urdata1 = Flux1
 #        urdata2 = Flux2
-#        urline1, = axff.plot(edges, urdata1[0, :])
-#        urline2, = axff.plot(edges, urdata2[0, :])
+#        urline1, = axff.plot(edges, urdata1[t0ind, :])
+#        urline2, = axff.plot(edges, urdata2[t0ind, :])
 #        axff.set_xlim((0, p_len*1e6))
 ##        axff.set_ylim((min(np.nanmin(Flux1), np.nanmin(Flux2)),
 ##            max(np.nanmax(Flux1), np.nanmaxFlux2))))
@@ -1065,6 +1102,124 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 ##            max(np.nanmax(dcdt1), np.nanmax(dcdt2))))
 #        axff.set_ylim((-10, 10))
 #        axff.set_ylabel(r"dcdt")
+
+#        # D_eff Calculations
+##        # for t0ind = 490
+##        rdil_0 = 0
+##        rdil_1 = 7.6
+##        rstg2_0 = 8.9
+##        rstg2_1 = 18.6
+##        rstg1_0 = 19.5
+##        rstg1_1 = datax[-1]*1e6
+##        t210 = rstg2_0
+##        t211 = 11.0
+##        t220 = 11.8
+##        t221 = 17.1
+##        t230 = 18.11
+##        t231 = rstg2_1
+##        # t0ind = 290
+##        rdil_0 = 0
+##        rdil_1 = 15
+##        rstg2_0 = 16.6
+##        rstg2_1 = 21.4
+##        rstg1_0 = 23.2
+##        rstg1_1 = datax[-1]*1e6
+##        t210 = rstg2_0
+##        t211 = 11.0
+##        t220 = 11.8
+##        t221 = 17.1
+##        t230 = 18.11
+##        t231 = rstg2_1
+#        # t0ind = 590
+#        rdil_0 = 0
+#        rdil_1 = 3.2
+#        rstg2_0 = 4.3
+#        rstg2_1 = 16.0
+#        rstg1_0 = 17.3
+#        rstg1_1 = datax[-1]*1e6
+#        t210 = rstg2_0
+#        t211 = 5.4
+#        t220 = 6.3
+#        t221 = 10.9
+#        t230 = 11.9
+#        t231 = rstg2_1
+#        print "Time:", times[t0ind]*td, "s"
+#        rdil_ind0 = np.argmin(np.abs(datax*1e6 - rdil_0))
+#        rdil_ind1 = np.argmin(np.abs(datax*1e6 - rdil_1))
+#        rstg2_ind0 = np.argmin(np.abs(datax*1e6 - rstg2_0))
+#        rstg2_ind1 = np.argmin(np.abs(datax*1e6 - rstg2_1))
+#        rstg1_ind0 = np.argmin(np.abs(datax*1e6 - rstg1_0))
+#        rstg1_ind1 = np.argmin(np.abs(datax*1e6 - rstg1_1))
+#        ti210 = np.argmin(np.abs(datax*1e6 - t210))
+#        ti211 = np.argmin(np.abs(datax*1e6 - t211))
+#        ti220 = np.argmin(np.abs(datax*1e6 - t220))
+#        ti221 = np.argmin(np.abs(datax*1e6 - t221))
+#        ti230 = np.argmin(np.abs(datax*1e6 - t230))
+#        ti231 = np.argmin(np.abs(datax*1e6 - t231))
+##        axcsld.axvline(datax[ti210]*1e6, color='magenta')
+##        axcsld.axvline(datax[ti211]*1e6, color='magenta')
+##        axcsld.axvline(datax[ti220]*1e6, color='magenta')
+##        axcsld.axvline(datax[ti221]*1e6, color='magenta')
+##        axcsld.axvline(datax[ti230]*1e6, color='magenta')
+##        axcsld.axvline(datax[ti231]*1e6, color='magenta')
+#        axff.axvline(datax[rdil_ind0]*1e6, color='k')
+#        axff.axvline(datax[rdil_ind1]*1e6, color='k')
+#        axff.axvline(datax[rstg2_ind0]*1e6, color='r')
+#        axff.axvline(datax[rstg2_ind1]*1e6, color='r')
+#        axff.axvline(datax[rstg1_ind0]*1e6, color='y')
+#        axff.axvline(datax[rstg1_ind1]*1e6, color='y')
+#        axcsld.axvline(datax[rdil_ind1]*1e6, color='k')
+#        axcsld.axvline(datax[rdil_ind1]*1e6, color='k')
+#        axcsld.axvline(datax[rstg2_ind0]*1e6, color='r')
+#        axcsld.axvline(datax[rstg2_ind1]*1e6, color='r')
+#        axcsld.axvline(datax[rstg1_ind0]*1e6, color='y')
+#        axcsld.axvline(datax[rstg1_ind1]*1e6, color='y')
+#        # Dilute:
+#        print "Dilute"
+#        F1avg_dil = np.mean(Flux1[rdil_ind0:rdil_ind1])
+#        F2avg_dil = np.mean(Flux2[rdil_ind0:rdil_ind1])
+#        gradCavg_dil = ((dataybar[rdil_ind1] - dataybar[rdil_ind0]) /
+#                (r_vec[rdil_ind1] - r_vec[rdil_ind0]))
+#        Dndim_dil = (F1avg_dil + F2avg_dil)/gradCavg_dil
+#        D_dil = Dndim_dil*p_len**2/td
+#        print D_dil
+#        # Stage 2
+#        print "Stage 2"
+#        F1avg_stg2 = np.mean(Flux1[rstg2_ind0:rstg2_ind1])
+#        F2avg_stg2 = np.mean(Flux2[rstg2_ind0:rstg2_ind1])
+#        gradCavg_stg2 = ((dataybar[rstg2_ind1] - dataybar[rstg2_ind0]) /
+#                (r_vec[rstg2_ind1] - r_vec[rstg2_ind0]))
+#        Dndim_stg2 = (F1avg_stg2 + F2avg_stg2)/gradCavg_stg2
+#        D_stg2 = Dndim_stg2*p_len**2/td
+#        print D_stg2
+#        # Stage 1
+#        print "Stage 1"
+#        F1avg_stg1 = np.mean(Flux1[rstg1_ind0:rstg1_ind1])
+#        F2avg_stg1 = np.mean(Flux2[rstg1_ind0:rstg1_ind1])
+#        gradCavg_stg1 = ((dataybar[rstg1_ind1] - dataybar[rstg1_ind0]) /
+#                (r_vec[rstg1_ind1] - r_vec[rstg1_ind0]))
+#        Dndim_stg1 = (F1avg_stg1 + F2avg_stg1)/gradCavg_stg1
+#        D_stg1 = Dndim_stg1*p_len**2/td
+#        print D_stg1
+#        # Stage 2 intermmediates
+#        print "Stage 2, section 1"
+#        F1t21 = np.mean(Flux1[ti210:ti211])
+#        F2t21 = np.mean(Flux2[ti210:ti211])
+#        gradC21 = ((dataybar[ti211] - dataybar[ti210]) /
+#                (r_vec[ti211] - r_vec[ti210]))
+#        print (F1t21 + F2t21)/gradC21 * p_len**2/td
+#        print "Stage 2, section 2"
+#        F1t22 = np.mean(Flux1[ti220:ti221])
+#        F2t22 = np.mean(Flux2[ti220:ti221])
+#        gradC22 = ((dataybar[ti221] - dataybar[ti220]) /
+#                (r_vec[ti221] - r_vec[ti220]))
+#        print (F1t22 + F2t22)/gradC22 * p_len**2/td
+#        print "Stage 2, section 3"
+#        F1t23 = np.mean(Flux1[ti230:ti231])
+#        F2t23 = np.mean(Flux2[ti230:ti231])
+#        gradC23 = ((dataybar[ti231] - dataybar[ti230]) /
+#                (r_vec[ti231] - r_vec[ti230]))
+#        print (F1t23 + F2t23)/gradC23 * p_len**2/td
 
 #        # mu details
 #        lldata1, lldata2, lldata3, lldata4, lldata5 = (
@@ -1103,23 +1258,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axmu2det.set_ylim((-0.012, 0.012))
 #        axmu2det.set_ylabel(r"Flux")
 
-#        print data.keys()
-#        fig, axs = plt.subplots(2, 1)
-#        pos = 166
-#        axs[0].plot(times*td, dcdt1[:, pos])
-##        axs[0].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
-##        axs[0].plot(times*td, Flux1[:, pos])
-#        axs[0].set_ylabel("dcdt")
-##        axs[0].set_ylabel("Flux")
-#        axs[1].plot(times*td, csld1[:, pos])
-#        axs[1].set_ylabel("c")
-##        axs[2].plot(times[2:]*td, np.diff(dcdt1[:, pos], 2))
-##        axs[2].set_ylabel("c")
-#        fig.savefig('graphite_t{tval}.eps'.format(tval=times[t0ind]*td),
-#                bbox_inches="tight")
-
 #        plt.show()
-#        fig.savefig('tmp.png', bbox_inches='tight')
+#        fig.savefig('tmp.pdf', bbox_inches='tight')
 
         def init():
             toblit = []
@@ -1131,6 +1271,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            line1.set_ydata(np.ma.array(csld1[0], mask=True))
 #            line2.set_ydata(np.ma.array(csld2[0], mask=True))
 #            toblit.extend([line1, line2])
+#            line3.set_ydata(np.ma.array(csld2[0], mask=True))
+#            toblit.extend([line3])
             # csld schematic-like
             csldcolors1 = cmapcsld(datay1)
             csldcolors2 = cmapcsld(datay2)
@@ -1146,6 +1288,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
 #            toblit.append(ffcirc)
+            # areas plot
             ffline.set_xdata(np.ma.array([0, 0], mask=True))
             toblit.append(ffline)
 #            # flux, mu_R, dcdt
@@ -1181,12 +1324,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             toblit = []
             datay1 = csld1[tind]
             datay2 = csld2[tind]
-            dataybar = 0.5*(datay1 + datay2)
+            dataybar_raw = 0.5*(datay1 + datay2)
             dataybar = smooth(0.5*(datay1 + datay2), smcount)
 #            # csld
 #            line1.set_ydata(datay1)
 #            line2.set_ydata(datay2)
 #            toblit.extend([line1, line2])
+#            line3.set_ydata(dataybar_raw)
+#            toblit.extend([line3])
             # csld schematic-like
             csldcolors1 = cmapcsld(datay1)
             csldcolors2 = cmapcsld(datay2)
@@ -1202,6 +1347,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
 #            toblit.append(ffcirc)
+            # areas plot
             ffline.set_xdata(2*[times[tind]*td + t_offset])
             toblit.append(ffline)
 #            # flux, mu_R, dcdt
