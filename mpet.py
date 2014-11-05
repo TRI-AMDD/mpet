@@ -603,7 +603,10 @@ class modMPET(daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            timeHorizon = 1./Abs(self.currset())
+            if self.currset.GetValue() != 0.0:
+                timeHorizon = 1./Abs(self.currset())
+            else:
+                timeHorizon = 1.
             eq.Residual = self.current() - self.currset()*(1 -
                     np.exp(-Time()/(timeHorizon*1e-3)))
             eq.CheckUnitsConsistency = False
@@ -1589,9 +1592,9 @@ def consoleRun(D, outdir):
     Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
     td = D['L_ac'][1]**2 / Damb
     currset = D['Crate'] * td/3600.
-    if D['profileType'] == "CC":
+    if D['profileType'] == "CC" and currset != 0.0:
         simulation.TimeHorizon = np.abs(D['capFrac']/currset)
-    else: # CV simulation
+    else: # CV or zero current simulation
         simulation.TimeHorizon = D['tend']/td
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
 
