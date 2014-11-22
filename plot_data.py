@@ -494,6 +494,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ttl.set_text(ttl_fmt.format(perc=tfrac))
             return line1, ttl
 
+    # Plot cslice
+    elif plot_type in ["cslice_a", "cslice_c"]:
+        fig, ax = plt.subplots()
+        sol1 = data[pfx + "c1_sld_trode1vol0part0"]
+        sol2 = data[pfx + "c2_sld_trode1vol0part0"]
+        locinx = len(sol1[0, :]) - 1
+        ax.plot(times*td, sol1[:, locinx])
+        ax.plot(times*td, sol2[:, locinx])
+        print sol1[-1, locinx], sol2[-1, locinx]
+        return fig, ax
+
     # Plot all solid concentrations or potentials
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
             "csld_col_c", "csld_col_a"]:
@@ -820,9 +831,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         dr = datar[1] - datar[0]
         # Set up bounding pie slice
         b0 = 0.3
-        a0 = 24.
+        a0 = p_len*1e6
         nx = 100
-        xpietop = 18.
+        xpietop = 18./24. * a0
         xclip_r = np.linspace(xpietop, xmax, nx)
         yclip_r = b0*np.sqrt(1 - (xclip_r/a0)**2) + ytop
         # Colored ellipses on top
