@@ -118,8 +118,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             print "C_rate:", D['Crate']
         else: # CV
             print "Vset:", D['Vset']
-        print "Specified psd_mean [nm]:", np.array(D['mean_ac'])[trodes]*1e9
-        print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])[trodes]*1e9
+        print "Specified psd_mean [nm]:", np.array(D['psd_mean_ac'])[trodes]*1e9
+        print "Specified psd_stddev [nm]:", np.array(D['psd_stddev_ac'])[trodes]*1e9
 #        print "reg sln params:"
 #        print data[pfx + "a"][0]
         if Nvol_s: print "Nvol_s:", Nvol_s
