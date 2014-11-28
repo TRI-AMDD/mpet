@@ -78,7 +78,7 @@ Vstd = 3.422;                       % Standard potential, V
 alpha = 0.5;                        % Charge transfer coefficient
 
 % Discretization settings
-Nx = 5;                            % Number disc. in x direction
+Nx = 6;                            % Number disc. in x direction
 solid_disc = 1e-9;                 % Discretization size of solid, m (MUST BE LESS THAN LAMBDA)
 numpart = 4;                       % Particles per volume
 tsteps = 200;                      % Number disc. in time
@@ -374,17 +374,19 @@ val(disc.sol:disc.sol+disc.ssteps-1) = real(cell2mat(outarr));
 % Charge conservation for phim domain
 % Have to do this for each volume.
 for i=1:Nx
-    nGsldvec = nGsld((i-1)*numpart+1:i*numpart-1);
-    phimtmp = zeros(numpart + 1, 1);
+    nGsldvec = nGsld((i-1)*numpart+1:i*numpart);
+    % Add a non-conductance from the last particle
+    nGsldvec = [nGsldvec; 0];
+    phimtmp = zeros(numpart + 2, 1);
     ind1 = disc.sol+disc.ssteps+(i-1)*numpart;
     ind2 = disc.sol+disc.ssteps+i*numpart - 1;
     % solid potentials for all the particles in this volume
-    phimtmp(1:end-1) = cpcs(ind1:ind2);
-    % Impose first-particle potential as an equation
-    val(ind1) = phimtmp(1); % LHS = 0 = RHS = phim(0)
+    phimtmp(2:end-1) = cpcs(ind1:ind2);
+    % First potential reference is the cathode bulk at 0
+    phimtmp(1) = 0;
     % Impose no current flowing from final particle in chain within the volume
     phimtmp(end) = phimtmp(end-1);
-    val(ind1+1:ind2) = -nGsldvec.*diff(diff(phimtmp));
+    val(ind1:ind2) = diff(-nGsldvec.*diff(phimtmp));
 end
 
 % Finally the current condition
