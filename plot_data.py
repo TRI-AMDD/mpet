@@ -19,6 +19,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     dataFileName = "output_data.mat"
     dataFile = os.path.join(indir, dataFileName)
     data = sio.loadmat(dataFile)
+    try:
+        data[pfx + 'td'][0][0]
+    except KeyError:
+        pfx = ''
     # Read in the parameters used to define the simulation
     paramFileName = "input_params.cfg"
     paramFile = os.path.join(indir, paramFileName)

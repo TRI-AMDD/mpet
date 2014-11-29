@@ -1401,8 +1401,9 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     def WriteDataToFile(self):
         mdict = {}
         for var in self.Process.Variables:
-            mdict[var.Name] = var.Values
-            mdict[var.Name + '_times'] = var.TimeValues
+            dkeybase = var.Name[len("mpet")+1:]
+            mdict[dkeybase] = var.Values
+            mdict[dkeybase + '_times'] = var.TimeValues
         try:
             scipy.io.savemat(self.ConnectionString,
                              mdict,
@@ -1550,6 +1551,10 @@ if __name__ == "__main__":
     except:
         # At least keep a copy of this file with the output
         shutil.copy(os.path.basename(__file__), outdir)
+    try:
+        shutil.copy("/etc/daetools/daetools.cfg", outdir)
+    except:
+        pass
 
     # Carry out the simulation
     consoleRun(D, outdir)
