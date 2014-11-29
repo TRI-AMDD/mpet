@@ -372,7 +372,6 @@ class modMPET(daeModel):
                     for k in range(Nij):
                         eq.Residual -= self.c_sld_ac[l][i, j](k)*volfrac_vec[k]
 #                    eq.BuildJacobianExpressions = True
-                    eq.CheckUnitsConsistency = False
 
         # Define the overall filling fraction in the electrodes
         for l in trodes:
@@ -391,7 +390,6 @@ class modMPET(daeModel):
                     # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
                     tmp += self.cbar_sld_ac[l](i, j) * Vpart
             eq.Residual -= tmp / Vtot
-            eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each electrode volume
         for l in trodes:
@@ -415,7 +413,6 @@ class modMPET(daeModel):
                                 volfrac_vec[k])
                     res += tmp * Vj
                 eq.Residual = self.j_plus_ac[l](i) - res/Vu
-                eq.CheckUnitsConsistency = False
 
         # Solid active particle concentrations, potential, and bulk
         # solid potential
@@ -441,7 +438,6 @@ class modMPET(daeModel):
                         eq.Residual = LHS_vec[k] - RHS_c_sld_ij[k]
 #                        eq.Residual = (LHS_vec[k] - RHS_c_sld_ij[k] +
 #                                noisevec[k]()) # NOISE
-                        eq.CheckUnitsConsistency = False
 
                 # Also calculate the potential drop along cathode
                 # particle surfaces, if desired
@@ -457,7 +453,6 @@ class modMPET(daeModel):
                                     i=i,j=j,k=k,l=l))
                         RHS = self.c_sld_ac[l][i, j].dt(k) / k0_part
                         eq.Residual = LHS[k] - RHS
-                        eq.CheckUnitsConsistency = False
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
@@ -490,7 +485,6 @@ class modMPET(daeModel):
                         eq.Residual = self.phi_ac[l](i) - self.phi_applied()
                     else: # cathode
                         eq.Residual = self.phi_ac[l](i) - self.phi_cathode()
-                eq.CheckUnitsConsistency = False
 
             # Simulate the potential drop along the connected
             # particles
@@ -528,17 +522,14 @@ class modMPET(daeModel):
                                 (-G_r * (phi_r - phi_n)))
                     else:
                         eq.Residual = self.phipart_ac[l](i, j) - self.phi_ac[l](i)
-                    eq.CheckUnitsConsistency = False
 
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
         if Nvol_ac[0] == 0 and Nvol_s == 0 and Nvol_ac[1] == 1:
             eq = self.CreateEquation("c_lyte")
             eq.Residual = self.c_lyte_ac[1].dt(0) - 0
-            eq.CheckUnitsConsistency = False
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte_ac[1](0) - self.phi_applied()
-            eq.CheckUnitsConsistency = False
         else:
             # Calculate RHS for electrolyte equations
             c_lyte = np.empty(Nlyte, dtype=object)
@@ -565,12 +556,10 @@ class modMPET(daeModel):
                         "sep_lyte_mass_cons_vol{i}".format(i=i))
                 eq.Residual = (self.poros_s()*self.c_lyte_s.dt(i) -
                         RHS_c[offset + i])
-                eq.CheckUnitsConsistency = False
                 # Charge Conservation
                 eq = self.CreateEquation(
                         "sep_lyte_charge_cons_vol{i}".format(i=i))
                 eq.Residual = (RHS_phi[offset + i])
-                eq.CheckUnitsConsistency = False
             # Equations governing the electrolyte in the electrodes.
             # Here, we are coupled to the total reaction rates in the
             # solids.
@@ -586,13 +575,11 @@ class modMPET(daeModel):
                     eq.Residual = (self.poros_ac(l)*self.c_lyte_ac[l].dt(i) +
                             self.epsbeta_ac(l)*(1-self.tp())*self.j_plus_ac[l](i) -
                             RHS_c[offset + i])
-                    eq.CheckUnitsConsistency = False
                     # Charge Conservation
                     eq = self.CreateEquation(
                             "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
                     eq.Residual = (self.epsbeta_ac(l)*self.j_plus_ac[l](i) -
                             RHS_phi[offset + i])
-                    eq.CheckUnitsConsistency = False
 
         # Define the total current. This can be done in either anode
         # or cathode equivalently.
@@ -603,7 +590,6 @@ class modMPET(daeModel):
         for i in range(Nvol_ac[limtrode]):
             # Factor of -1 is to get sign right if referencing anode
             eq.Residual -= dx * (-1)**(1-limtrode) * self.j_plus_ac[limtrode](i)
-        eq.CheckUnitsConsistency = False
 
         if self.profileType == "CC":
             # Total Current Constraint Equation
@@ -614,7 +600,6 @@ class modMPET(daeModel):
                 timeHorizon = 1.
             eq.Residual = self.current() - self.currset()*(1 -
                     np.exp(-Time()/(timeHorizon*1e-3)))
-            eq.CheckUnitsConsistency = False
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
@@ -627,6 +612,8 @@ class modMPET(daeModel):
             timeHorizon = self.D['tend']/td
             eq.Residual = self.phi_applied() - self.Vset()*(
                     1 -np.exp(-Time()/(timeHorizon*1e-3)))
+
+        for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
 #        self.action = doNothingAction()
