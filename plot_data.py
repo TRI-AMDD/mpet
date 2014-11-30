@@ -21,6 +21,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     dataFileName = "output_data.mat"
     dataFile = os.path.join(indir, dataFileName)
     data = sio.loadmat(dataFile)
+    try:
+        data[pfx + 'td'][0][0]
+    except KeyError:
+        pfx = ''
     # Read in the parameters used to define the simulation
     paramFileName = "input_params.cfg"
     paramFile = os.path.join(indir, paramFileName)
@@ -121,8 +125,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             print "C_rate:", D['Crate']
         else: # CV
             print "Vset:", D['Vset']
-        print "Specified psd_mean [nm]:", np.array(D['mean_ac'])[trodes]*1e9
-        print "Specified psd_stddev [nm]:", np.array(D['stddev_ac'])[trodes]*1e9
+        print "Specified psd_mean [nm]:", np.array(D['psd_mean_ac'])[trodes]*1e9
+        print "Specified psd_stddev [nm]:", np.array(D['psd_stddev_ac'])[trodes]*1e9
 #        print "reg sln params:"
 #        print data[pfx + "a"][0]
         if Nvol_s: print "Nvol_s:", Nvol_s
@@ -1034,7 +1038,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             s2ind = np.where(
                     np.logical_and(cbar > to_red, cbar < to_yellow))
             s1ind = np.where(cbar > to_yellow)
-            Atot = np.pi*D['mean_ac'][l]**2 * 1e2**2 # cm^2
+            Atot = np.pi*D['psd_mean_ac'][l]**2 * 1e2**2 # cm^2
             # note for cylinder, volfrac = areafrac
             area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
             area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])

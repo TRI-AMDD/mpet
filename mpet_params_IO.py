@@ -26,10 +26,10 @@ class mpetIO():
                          P.getint('Sim Params', 'Npart_c')]
 
         # Particle info
-        D["mean_ac"] = [P.getfloat('Particles', 'mean_a'),
-                        P.getfloat('Particles', 'mean_c')]
-        D["stddev_ac"] = [P.getfloat('Particles', 'stddev_a'),
-                          P.getfloat('Particles', 'stddev_c')]
+        D["psd_mean_ac"] = [P.getfloat('Particles', 'mean_a'),
+                            P.getfloat('Particles', 'mean_c')]
+        D["psd_stddev_ac"] = [P.getfloat('Particles', 'stddev_a'),
+                              P.getfloat('Particles', 'stddev_c')]
         D["cs0_ac"] = [P.getfloat('Particles', 'cs0_a'),
                        P.getfloat('Particles', 'cs0_c')]
         D["solidType_ac"] = [P.get('Particles', 'solidType_a'),
@@ -46,6 +46,12 @@ class mpetIO():
                                P.getboolean('Conductivity', 'simBulkCond_c')]
         D["mcond_ac"] = [P.getfloat('Conductivity', 'mcond_a'),
                          P.getfloat('Conductivity', 'mcond_c')]
+        D["simPartCond_ac"] = [P.getboolean('Conductivity', 'simPartCond_a'),
+                               P.getboolean('Conductivity', 'simPartCond_c')]
+        D["G_mean_ac"] = [P.getfloat('Conductivity', 'G_mean_a'),
+                          P.getfloat('Conductivity', 'G_mean_c')]
+        D["G_stddev_ac"] = [P.getfloat('Conductivity', 'G_stddev_a'),
+                            P.getfloat('Conductivity', 'G_stddev_c')]
         D["simSurfCond_ac"] = [P.getboolean('Conductivity', 'simSurfCond_a'),
                                P.getboolean('Conductivity', 'simSurfCond_c')]
         D["scond_ac"] = [P.getfloat('Conductivity', 'scond_a'),

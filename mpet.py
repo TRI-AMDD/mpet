@@ -93,6 +93,7 @@ class modMPET(daeModel):
         self.c1bar_sld_ac = np.empty(2, dtype=object)
         self.c2bar_sld_ac = np.empty(2, dtype=object)
         self.phi_ac = np.empty(2, dtype=object)
+        self.phipart_ac = np.empty(2, dtype=object)
         self.j_plus_ac = np.empty(2, dtype=object)
         self.ffrac_ac = np.empty(2, dtype=object)
         for l in trodes:
@@ -152,6 +153,10 @@ class modMPET(daeModel):
                     elec_pot_t, self,
                     "Electrostatic potential in the bulk solid",
                     [self.Nvol_ac[l]])
+            self.phipart_ac[l] = daeVariable("phipart_{l}".format(l=l),
+                    elec_pot_t, self,
+                    "Electrostatic potential at each particle",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
             self.j_plus_ac[l] = daeVariable("j_plus_{l}".format(l=l),
                     no_t, self,
                     "Rate of reaction of positives per solid volume",
@@ -226,6 +231,7 @@ class modMPET(daeModel):
         self.delta_L_ac = np.empty(2, dtype=object)
         self.MHC_Aa_ac = np.empty(2, dtype=object)
         self.scond_ac = np.empty(2, dtype=object)
+        self.G_ac = np.empty(2, dtype=object)
         self.psd_num_ac = np.empty(2, dtype=object)
         self.psd_len_ac = np.empty(2, dtype=object)
         self.psd_area_ac = np.empty(2, dtype=object)
@@ -271,6 +277,10 @@ class modMPET(daeModel):
             self.scond_ac[l] = daeParameter("scond_{l}".format(l=l),
                     unit(), self,
                     "surface conductivity of particles",
+                    [self.Nvol_ac[l], self.Npart_ac[l]])
+            self.G_ac[l] = daeParameter("G_{l}".format(l=l),
+                    unit(), self,
+                    "conductance particles",
                     [self.Nvol_ac[l], self.Npart_ac[l]])
             self.psd_num_ac[l] = daeParameter("psd_numVols_{l}".format(l=l),
                     unit(), self,
@@ -394,8 +404,6 @@ class modMPET(daeModel):
                         eq1.Residual -= self.c1_sld_ac[l][i, j](k) * volfrac_vec[k]
                         eq2.Residual -= self.c2_sld_ac[l][i, j](k) * volfrac_vec[k]
 #                    eq.BuildJacobianExpressions = True
-                    eq1.CheckUnitsConsistency = False
-                    eq2.CheckUnitsConsistency = False
 
         # Define the overall filling fraction in the electrodes
         for l in trodes:
@@ -415,7 +423,6 @@ class modMPET(daeModel):
                     tmp += 0.5 * (self.c1bar_sld_ac[l](i, j) +
                             self.c2bar_sld_ac[l](i, j) ) * Vpart
             eq.Residual -= tmp / Vtot
-            eq.CheckUnitsConsistency = False
 
         # Define dimensionless j_plus for each electrode volume
         for l in trodes:
@@ -440,7 +447,6 @@ class modMPET(daeModel):
                                 volfrac_vec[k])
                     res += tmp * Vj
                 eq.Residual = self.j_plus_ac[l](i) - res/Vu
-                eq.CheckUnitsConsistency = False
 
         # Solid active particle concentrations, potential, and bulk
         # solid potential
@@ -469,12 +475,10 @@ class modMPET(daeModel):
                         eq.Residual = LHS1_vec[k] - RHS_c1_sld_ij[k]
 #                        eq.Residual = (LHS_vec[k] - RHS_c_sld_ij[k] +
 #                                noisevec[k]()) # NOISE
-                        eq.CheckUnitsConsistency = False
                         eq = self.CreateEquation(
                                 "dc2sdt_trode{l}vol{i}part{j}discr{k}".format(
                                     i=i,j=j,k=k,l=l))
                         eq.Residual = LHS2_vec[k] - RHS_c2_sld_ij[k]
-                        eq.CheckUnitsConsistency = False
 
                 # Also calculate the potential drop along cathode
                 # particle surfaces, if desired
@@ -491,7 +495,6 @@ class modMPET(daeModel):
                         RHS = 0.5 * (self.c1_sld_ac[l][i, j].dt(k) +
                                 self.c2_sld_ac[l][i, j].dt(k)) / k0_part
                         eq.Residual = LHS[k] - RHS
-                        eq.CheckUnitsConsistency = False
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
@@ -525,15 +528,52 @@ class modMPET(daeModel):
                     else: # cathode
                         eq.Residual = self.phi_ac[l](i) - self.phi_cathode()
 
+            # Simulate the potential drop along the connected
+            # particles
+            simPartCond = self.D['simPartCond_ac'][l]
+            for i in range(Nvol_ac[l]):
+                phi_bulk = self.phi_ac[l](i)
+                for j in range(Npart_ac[l]):
+                    G_l = self.G_ac[l](i, j)
+                    phi_n = self.phipart_ac[l](i, j)
+                    if j == 0: # reference bulk phi
+                        phi_l = self.phi_ac[l](i)
+                    else:
+                        phi_l = self.phipart_ac[l](i, j - 1)
+                    if j == (Npart_ac[l] - 1): # No particle at and of "chain"
+                        G_r = 0
+                        phi_r = phi_n
+                    else:
+                        G_r = self.G_ac[l](i, j + 1)
+                        phi_r = self.phipart_ac[l](i, j + 1)
+                    # Find average dcs/dt for this particle
+                    Nij = Nsld_mat_ac[l][i, j]
+                    r_vec, volfrac_vec = self.get_unit_solid_discr(
+                            self.D['solidShape_ac'][l],
+                            self.D['solidType_ac'][l], Nij)
+                    dcsbardt = 0
+                    for k in range(Nij):
+                        dcsbardt += (self.c1_sld_ac[l][i, j].dt(k) *
+                                volfrac_vec[k])
+                        dcsbardt += (self.c2_sld_ac[l][i, j].dt(k) *
+                                volfrac_vec[k])
+                    # charge conservation equation around this particle
+                    eq = self.CreateEquation("phi_ac_trode{l}vol{i}part{j}".format(i=i,l=l,j=j))
+                    if simPartCond:
+                        # -dcsbar/dt = I_l - I_r
+                        eq.Residual = dcsbardt + (
+                                (-G_l * (phi_n - phi_l)) -
+                                (-G_r * (phi_r - phi_n)))
+                    else:
+                        eq.Residual = self.phipart_ac[l](i, j) - self.phi_ac[l](i)
+
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
         if Nvol_ac[0] == 0 and Nvol_s == 0 and Nvol_ac[1] == 1:
             eq = self.CreateEquation("c_lyte")
             eq.Residual = self.c_lyte_ac[1].dt(0) - 0
-            eq.CheckUnitsConsistency = False
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte_ac[1](0) - self.phi_applied()
-            eq.CheckUnitsConsistency = False
         else:
             # Calculate RHS for electrolyte equations
             c_lyte = np.empty(Nlyte, dtype=object)
@@ -560,12 +600,10 @@ class modMPET(daeModel):
                         "sep_lyte_mass_cons_vol{i}".format(i=i))
                 eq.Residual = (self.poros_s()*self.c_lyte_s.dt(i) -
                         RHS_c[offset + i])
-                eq.CheckUnitsConsistency = False
                 # Charge Conservation
                 eq = self.CreateEquation(
                         "sep_lyte_charge_cons_vol{i}".format(i=i))
                 eq.Residual = (RHS_phi[offset + i])
-                eq.CheckUnitsConsistency = False
             # Equations governing the electrolyte in the electrodes.
             # Here, we are coupled to the total reaction rates in the
             # solids.
@@ -581,13 +619,11 @@ class modMPET(daeModel):
                     eq.Residual = (self.poros_ac(l)*self.c_lyte_ac[l].dt(i) +
                             self.epsbeta_ac(l)*(1-self.tp())*self.j_plus_ac[l](i) -
                             RHS_c[offset + i])
-                    eq.CheckUnitsConsistency = False
                     # Charge Conservation
                     eq = self.CreateEquation(
                             "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
                     eq.Residual = (self.epsbeta_ac(l)*self.j_plus_ac[l](i) -
                             RHS_phi[offset + i])
-                    eq.CheckUnitsConsistency = False
 
         # Define the total current. This can be done in either anode
         # or cathode equivalently.
@@ -598,7 +634,6 @@ class modMPET(daeModel):
         for i in range(Nvol_ac[limtrode]):
             # Factor of -1 is to get sign right if referencing anode
             eq.Residual -= dx * (-1)**(1-limtrode) * self.j_plus_ac[limtrode](i)
-        eq.CheckUnitsConsistency = False
 
         if self.profileType == "CC":
             # Total Current Constraint Equation
@@ -609,7 +644,6 @@ class modMPET(daeModel):
                 timeHorizon = 1.
             eq.Residual = self.current() - self.currset()*(1 -
                     np.exp(-Time()/(timeHorizon*1e-3)))
-            eq.CheckUnitsConsistency = False
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
@@ -624,6 +658,8 @@ class modMPET(daeModel):
 #                    1)
 #                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
                     np.tanh(Time()/(45.0)))
+
+        for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
 #        self.action = doNothingAction()
@@ -649,7 +685,7 @@ class modMPET(daeModel):
         delPhiEqFit = self.D['delPhiEqFit_ac'][l]
         # Get variables for this particle/electrode volume
         phi_lyte = self.phi_lyte_ac[l](i)
-        phi_m = self.phi_ac[l](i)
+        phi_m = self.phipart_ac[l](i, j)
         c_lyte = self.c_lyte_ac[l](i)
         # Get the relevant parameters for this particle
         k0 = self.k0_ac[l](i, j)
@@ -1016,7 +1052,7 @@ class modMPET(daeModel):
         phi_tmp[1:-1] = [self.phi_sld_ac[l][i, j](k) for k in
                 range(Nij)]
         # BC's -- "touching carbon at each end"
-        phi_s_local = self.phi_c(i)
+        phi_s_local = self.phipart_ac[l](i, j)
         phi_tmp[0] = phi_s_local
         phi_tmp[-1] = phi_s_local
         # LHS
@@ -1149,23 +1185,26 @@ class simMPET(daeSimulation):
             self.trodes = [1]
         self.test_input(D)
 
-        # Generate psd
+        # Generate psd, conductivity distribution
         self.psd_num = np.empty(2, dtype=object)
         self.psd_len = np.empty(2, dtype=object)
+        self.G = np.empty(2, dtype=object)
         for l in self.trodes:
-            mean = D['mean_ac'][l]
-            stddev = D['stddev_ac'][l]
+            psd_mean = D['psd_mean_ac'][l]
+            psd_stddev = D['psd_stddev_ac'][l]
+            G_mean = D['G_mean_ac'][l]
+            G_stddev = D['G_stddev_ac'][l]
             Nvol = self.Nvol_ac[l]
             Npart = self.Npart_ac[l]
             solidType = D['solidType_ac'][l]
             # Make a length-sampled particle size distribution
             # Log-normally distributed
-            if stddev == 0:
-                psd_raw = mean*np.ones((Nvol, Npart))
+            if psd_stddev == 0:
+                psd_raw = psd_mean*np.ones((Nvol, Npart))
             else:
-                var = stddev**2
-                mu = np.log((mean**2)/np.sqrt(var+mean**2))
-                sigma = np.sqrt(np.log(var/(mean**2)+1))
+                psd_var = psd_stddev**2
+                mu = np.log((psd_mean**2)/np.sqrt(psd_var+psd_mean**2))
+                sigma = np.sqrt(np.log(psd_var/(psd_mean**2)+1))
                 psd_raw = np.random.lognormal(mu, sigma,
                         size=(Nvol, Npart))
             # For particles with internal profiles, convert psd to
@@ -1186,6 +1225,15 @@ class simMPET(daeSimulation):
                 self.psd_len[l] = psd_raw
             else:
                 raise NotImplementedError("Solid types missing here")
+
+            if G_stddev == 0:
+                self.G[l] = G_mean * np.ones((Nvol, Npart))
+            else:
+                G_var = G_stddev**2
+                mu = np.log((G_mean**2)/np.sqrt(G_var+G_mean**2))
+                sigma = np.sqrt(np.log(G_var/(G_mean**2)+1))
+                self.G[l] = np.random.lognormal(mu, sigma,
+                        size=(Nvol, Npart))
 
         # Define the model we're going to simulate
         self.m = modMPET("mpet", D=D)
@@ -1327,6 +1375,8 @@ class simMPET(daeSimulation):
                             D['scond_ac'][l] * (k*Tref)/(D['k0_ac'][l]*e*p_len**2))
                     self.m.Dsld_ac[l].SetValue(i, j,
                             D['Dsld_ac'][l]*td/p_len**2)
+                    self.m.G_ac[l].SetValue(i, j,
+                            self.G[l][i, j] * (k*Tref/e) * td/(F*csmax_ac[l]*p_vol))
                     if solidType in ["homog", "ACR", "CHR", "diffn"]:
                         self.m.Omga_ac[l].SetValue(i, j,
                                 D['Omga_ac'][l]/(k*Tref))
@@ -1534,8 +1584,9 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     def WriteDataToFile(self):
         mdict = {}
         for var in self.Process.Variables:
-            mdict[var.Name] = var.Values
-            mdict[var.Name + '_times'] = var.TimeValues
+            dkeybase = var.Name[len("mpet")+1:]
+            mdict[dkeybase] = var.Values
+            mdict[dkeybase + '_times'] = var.TimeValues
         try:
             scipy.io.savemat(self.ConnectionString,
                              mdict,
@@ -1683,6 +1734,10 @@ if __name__ == "__main__":
     except:
         # At least keep a copy of this file with the output
         shutil.copy(os.path.basename(__file__), outdir)
+    try:
+        shutil.copy("/etc/daetools/daetools.cfg", outdir)
+    except:
+        pass
 
     # Carry out the simulation
     consoleRun(D, outdir)
