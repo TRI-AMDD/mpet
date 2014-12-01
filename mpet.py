@@ -1720,9 +1720,14 @@ if __name__ == "__main__":
         p2 = subprocess.Popen(['git', 'diff'],
                 stdout=subprocess.PIPE)
         out2, err2 = p2.communicate()
+        p3 = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                stdout=subprocess.PIPE)
+        out3, err3 = p3.communicate()
         # Store commit info to file, as well as how to patch if
         # there's a diff
         with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
+            print >> fo, "branch name:"
+            print >> fo, out3
             print >> fo, "commit hash:"
             print >> fo, out1
             print >> fo, "to run:"
