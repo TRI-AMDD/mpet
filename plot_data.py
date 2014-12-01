@@ -241,13 +241,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot voltage profile
     if plot_type == "v":
+#        Vstd = 0.120
         voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
 #        voltage = -data[pfx + 'phi_applied'][0]
         ffvec = data[pfx + 'ffrac_1'][0]
+        from xlrd import open_workbook
+        wb = open_workbook('graphite_data/ocp.xls')
+        sheet = wb.sheet_by_index(0)
+        exp_ff = sheet.col_values(0)[1:]
+        exp_v = sheet.col_values(1)[1:]
         if data_only:
             return ffvec, voltage
         fig, ax = plt.subplots()
         ax.plot(ffvec, voltage)
+        ax.plot(exp_ff, exp_v, 'or')
 #        ax.plot(times*td, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
