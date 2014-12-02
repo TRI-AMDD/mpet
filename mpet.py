@@ -175,10 +175,6 @@ class modMPET(daeModel):
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
-        self.rxn1 = daeVariable("rxn1", no_t, self,
-                "reaction in plane 1")
-        self.rxn2 = daeVariable("rxn2", no_t, self,
-                "reaction in plane 2")
 
         # Parameters
         self.NumTrode = daeParameter("NumTrode", unit(), self,
@@ -820,11 +816,6 @@ class modMPET(daeModel):
             elif rxnType == "MHC":
                 Rxn1 = self.R_MHC(k0, lmbda, eta1, Aa, b, T, c1_surf)
                 Rxn2 = self.R_MHC(k0, lmbda, eta2, Aa, b, T, c2_surf)
-            # Store surface reaction info
-            eq = self.CreateEquation("rxn1")
-            eq.Residual = self.rxn1() - Rxn1
-            eq = self.CreateEquation("rxn2")
-            eq.Residual = self.rxn2() - Rxn2
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
 #                RHS = np.empty(Nij, dtype=object)
