@@ -253,23 +253,34 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             return ffvec, voltage
         fig, ax = plt.subplots()
-        ax.plot(ffvec, voltage)
-        ax.plot(exp_ff, exp_v, 'or')
+        ax.plot(ffvec, voltage,
+                linewidth=2.,
+                label="Model")
+        ax.plot(exp_ff, exp_v, 'or',
+                label="Expt. data")
 #        ax.plot(times*td, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
         xmin = 0.
         xmax = 1.
+        fsize = 20
+        axtickfs = 18
         ax.set_xlim((xmin, xmax))
+        ax.legend(loc="best", fontsize=fsize)
 #        if not D['delPhiEqFit']:
 ##            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
 #            ax.axhline(y=Vstd_c, linestyle='--', color='g')
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
-        ax.set_ylabel("Voltage [V]")
+        ax.set_xlabel("Cathode Filling Fraction [dimensionless]",
+                fontsize=fsize)
+        ax.set_ylabel("Voltage [V]", fontsize=fsize)
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
 #        ax.set_ylim((2, 5))
+        for tick in ax.xaxis.get_major_ticks():
+            tick.label.set_fontsize(axtickfs)
+        for tick in ax.yaxis.get_major_ticks():
+            tick.label.set_fontsize(axtickfs)
         if save_flag:
-            fig.savefig("mpet_v.png")
+            fig.savefig("mpet_v.png", bbox_inches="tight")
         return fig, ax
 
     # Plot surface conc.
@@ -1502,7 +1513,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # initial state of the system.
         def init():
             for indx, l in enumerate(lvec):
-                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
+                cbar_mat = 0.5*(
+                        data[pfx + 'c1bar_sld_{l}'.format(l=l)][0] +
+                        data[pfx + 'c2bar_sld_{l}'.format(l=l)][0])
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
                 ttl.set_text('')
@@ -1512,7 +1525,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return out
         def animate(tind):
             for indx, l in enumerate(lvec):
-                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
+                cbar_mat = 0.5*(
+                        data[pfx + 'c1bar_sld_{l}'.format(l=l)][tind] +
+                        data[pfx + 'c2bar_sld_{l}'.format(l=l)][tind])
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
             t_current = times[tind]
@@ -1568,7 +1583,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
-            interval=10, blit=True, repeat=False, init_func=init)
+            interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type),
                 fps=45, bitrate=5500,
