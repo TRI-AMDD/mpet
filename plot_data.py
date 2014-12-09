@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import scipy.io as sio
-import matplotlib
-matplotlib.use("TkAgg")
+import matplotlib as mpl
+mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
@@ -104,6 +104,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
+
+    # Plot defaults
+    axtickfsize = 18
+    labelfsize = 20
+    lwidth = 3.
+    markersize = 10
+    mpl.rcParams['xtick.labelsize'] = axtickfsize
+    mpl.rcParams['ytick.labelsize'] = axtickfsize
+    mpl.rcParams['font.size'] = labelfsize
+    mpl.rcParams['legend.fontsize'] = labelfsize - 2
+    mpl.rcParams['lines.linewidth'] = lwidth
+    mpl.rcParams['lines.markersize'] = markersize
 
     # Print relevant simulation info
     if print_flag:
@@ -209,7 +221,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             if tcur <= nT[1]:
                 break
         imgname = namesTimes[indx][0]
-        image = matplotlib.image.imread(os.path.join(imgdir, imgname))
+        image = mpl.image.imread(os.path.join(imgdir, imgname))
         return image
     def smooth(vec, k=3):
         if k == 0:
@@ -254,31 +266,23 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return ffvec, voltage
         fig, ax = plt.subplots()
         ax.plot(ffvec, voltage,
-                linewidth=2.,
                 label="Model")
-        ax.plot(exp_ff, exp_v, 'or',
+        ax.plot(exp_ff, exp_v, 'or', markersize=int(0.7*markersize),
                 label="Expt. data")
 #        ax.plot(times*td, voltage)
 #        xmin = np.min(ffvec)
 #        xmax = np.max(ffvec)
         xmin = 0.
         xmax = 1.
-        fsize = 20
-        axtickfs = 18
         ax.set_xlim((xmin, xmax))
-        ax.legend(loc="best", fontsize=fsize)
-#        if not D['delPhiEqFit']:
-##            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
-#            ax.axhline(y=Vstd_c, linestyle='--', color='g')
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]",
-                fontsize=fsize)
-        ax.set_ylabel("Voltage [V]", fontsize=fsize)
+        ax.legend(loc="best")
+#        if not D['delPhiEqFit_ac'][1]:
+##            ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
+#            ax.axhline(y=Vstd, linestyle='--', color='g')
+        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        ax.set_ylabel("Voltage [V]")
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
 #        ax.set_ylim((2, 5))
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(axtickfs)
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(axtickfs)
         if save_flag:
             fig.savefig("mpet_v.png", bbox_inches="tight")
         return fig, ax
@@ -448,7 +452,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot electrolyte concentration or potential
     elif plot_type == "elytec" or plot_type == "elytep":
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         if data_only:
             raise NotImplemented("no data-only output for elytec/p")
         fig, ax = plt.subplots()
@@ -638,6 +642,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         j = 0
         t0ind = 0
 #        t0ind = 470
+#        t0ind = 180
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
@@ -666,7 +671,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                           (to_yellow, rgb_bS2, rgb_bS1),
                           (1.0, rgb_bS1, rgb_bS1)]
                 }
-        cmap = matplotlib.colors.LinearSegmentedColormap(
+        cmap = mpl.colors.LinearSegmentedColormap(
                 "discrete", cdict)
 
 #        fig = plt.figure()
@@ -767,51 +772,36 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         t_offset = 0
 
 #        # csld plot
-#        axlabelfs = 22
-#        axtickfs = 18
 #        axcsld.set_ylim(ylim)
 #        axcsld.set_xlim((0, p_len*1e6))
-#        lwidth=3.
 #        line1, = axcsld.plot(datax*1e6, datay1,
-#                color="blue", linewidth=lwidth,
+#                color="blue",
 #                label=r'$c_1$')
 #        line2, = axcsld.plot(datax*1e6, datay2,
-#                color="green", linewidth=lwidth,
+#                color="green",
 #                label=r'$c_2$')
 #        line3, = axcsld.plot(datax*1e6, 0.5*(datay1 + datay2),
-#                color='red', linewidth=lwidth, linestyle='--',
+#                color='red', linestyle='--',
 #                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
-#        axff.legend(loc='best', fontsize=axtickfs-2)
-#        axcsld.legend(loc='best', fontsize=axtickfs-2)
-#        axcsld.set_xlabel(r"$r$ [$\mu$m]", fontsize=axlabelfs)
-#        axcsld.set_ylabel(r"$c$", fontsize=axlabelfs)
-#        for tick in axcsld.xaxis.get_major_ticks():
-#            tick.label.set_fontsize(axtickfs)
-#        for tick in axcsld.yaxis.get_major_ticks():
-#            tick.label.set_fontsize(axtickfs)
+#        axcsld.legend(loc='best')
+#        axcsld.set_xlabel(r"$r$ [$\mu$m]")
+#        axcsld.set_ylabel(r"$c$")
 
 #        # csld plot (axff axes)
-#        axlabelfs = 22
-#        axtickfs = 18
 #        axff.set_ylim(ylim)
 #        axff.set_xlim((0, p_len*1e6))
-#        lwidth=3.
 #        line1, = axff.plot(datax*1e6, datay1,
-#                color="blue", linewidth=lwidth,
+#                color="blue",
 #                label=r'$c_1$')
 #        line2, = axff.plot(datax*1e6, datay2,
-#                color="green", linewidth=lwidth,
+#                color="green",
 #                label=r'$c_2$')
 #        line3, = axff.plot(datax*1e6, 0.5*(datay1 + datay2),
-#                color='red', linewidth=lwidth, linestyle='--',
+#                color='red', linestyle='--',
 #                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
-#        axff.legend(loc='best', fontsize=axtickfs-2)
-#        axff.set_xlabel(r"$r$ [$\mu$m]", fontsize=axlabelfs)
-#        axff.set_ylabel(r"$c$", fontsize=axlabelfs)
-#        for tick in axff.xaxis.get_major_ticks():
-#            tick.label.set_fontsize(axtickfs)
-#        for tick in axff.yaxis.get_major_ticks():
-#            tick.label.set_fontsize(axtickfs)
+#        axff.legend(loc='best')
+#        axff.set_xlabel(r"$r$ [$\mu$m]")
+#        axff.set_ylabel(r"$c$")
 #        bar1indx = 120
 #        bar2indx = 273
 #        axff.fill_between(datax[0:bar1indx+1]*1e6, 0, 1,
@@ -823,11 +813,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         # csld plot schematic-like
         axcsld.set_ylim((0, 1))
-        axcsld.set_xlabel(r"$r$ [$\mu$m]", fontsize=22)
+        axcsld.set_xlabel(r"$r$ [$\mu$m]")
         axcsld.yaxis.set_ticks([])
         axcsld.set_axis_bgcolor('none')
-        for tick in axcsld.xaxis.get_major_ticks():
-            tick.label.set_fontsize(18)
         axspines = axcsld.spines
         for spine in ['top', 'bottom', 'left', 'right']:
             axspines[spine].set_visible(False)
@@ -867,7 +855,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         xy_r = np.hstack((xclip_r.reshape(-1,1),
                           yclip_r.reshape(-1,1)))
         path_array = np.vstack((path_array, xy_r))
-        clippath = matplotlib.path.Path(path_array)
+        clippath = mpl.path.Path(path_array)
         clippatch = mpatch.PathPatch(clippath, facecolor='none',
                 edgecolor='none')
         axcsld.add_patch(clippatch)
@@ -1012,7 +1000,21 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axff.set_xlabel("time [s]")
 #        axff.set_ylabel("Filling Fraction")
 #        ffcirc, = axff.plot(times[0]*td, ffvec[0], 'or',
-#                markersize=7, markerfacecolor='none',
+#                markerfacecolor='none',
+#                markeredgecolor='red',
+#                markeredgewidth=2,
+#                )
+
+#        # voltage plot on exp images axis
+#        axmovie.set_axis_on()
+#        axmovie.set_position([0.08, 0.56, 0.40, 0.40])
+#        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+#        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+#        axmovie.plot(ffvec, voltage)
+#        axmovie.set_xlabel("Cathode Filling Fraction [dimensionless]")
+#        axmovie.set_ylabel("Voltage [V]")
+#        ffcirc, = axmovie.plot(ffvec[t0ind], voltage[t0ind], 'or',
+#                markerfacecolor='none',
 #                markeredgecolor='red',
 #                markeredgewidth=2,
 #                )
@@ -1020,32 +1022,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # areas plot
         d_t, d_a1, d_a2, d_a3 = read_areas()
         sc = 1e0
-        msize = 10.
         axff.plot(d_t, sc*np.array(d_a1), marker='o',
                 linestyle='None',
                 markerfacecolor=(rgb_rS1, rgb_gS1, rgb_bS1),
                 markeredgecolor=(rgb_rS1, rgb_gS1, rgb_bS1),
-                markersize=msize,
                 label="expt: Stage 1")
         axff.plot(d_t, sc*np.array(d_a2), marker='s',
                 linestyle='None',
                 markerfacecolor=(rgb_rS2, rgb_gS2, rgb_bS2),
                 markeredgecolor=(rgb_rS2, rgb_gS2, rgb_bS2),
-                markersize=msize,
                 label="expt: Stage 2")
         axff.plot(d_t, sc*np.array(d_a3), marker='^',
                 linestyle='None',
                 markerfacecolor=(rgb_rSd, rgb_gSd, rgb_bSd),
                 markeredgecolor=(rgb_rSd, rgb_gSd, rgb_bSd),
-                markersize=msize,
                 label="expt: Dilute")
         d_Atot = np.array(d_a1) + np.array(d_a2) + np.array(d_a3)
-        axff.set_xlabel(r'Time (s)', fontsize=22)
-        axff.set_ylabel(r'Area (cm$^2$)', fontsize=22)
-        for tick in axff.xaxis.get_major_ticks():
-            tick.label.set_fontsize(18)
-        for tick in axff.yaxis.get_major_ticks():
-            tick.label.set_fontsize(18)
+        axff.set_xlabel(r'Time (s)')
+        axff.set_ylabel(r'Area (cm$^2$)')
         axff.yaxis.major.formatter.set_powerlimits((0,0)) # sci. not'n
         area_calcs = np.zeros((len(times), 3))
         for tind in range(len(times)):
@@ -1061,21 +1055,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             area_calcs[tind, 0] = Atot*np.sum(volfrac_vec[s1ind])
             area_calcs[tind, 1] = Atot*np.sum(volfrac_vec[s2ind])
             area_calcs[tind, 2] = Atot*np.sum(volfrac_vec[s3ind])
-        lwidth = 3.
         axff.plot(times*td + t_offset, sc*area_calcs[:, 0],
                 linestyle='-',
                 color=(rgb_rS1, rgb_gS1, rgb_bS1),
-                linewidth=lwidth,
                 label="sim: Stage 1")
         axff.plot(times*td + t_offset, sc*area_calcs[:, 1],
                 linestyle='-',
                 color=(rgb_rS2, rgb_gS2, rgb_bS2),
-                linewidth=lwidth,
                 label="sim: Stage 2")
         axff.plot(times*td + t_offset, sc*area_calcs[:, 2],
                 linestyle='-',
                 color=(rgb_rSd, rgb_gSd, rgb_bSd),
-                linewidth=lwidth,
                 label="sim: Dilute")
 #        axff.plot(d_t, d_Atot, '.k')
 #        axff.plot(times*td, np.sum(area_calcs, axis=1), '-k')
@@ -1116,8 +1106,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
 #        urdata1 = mu1_R
 #        urdata2 = mu2_R
-#        urline1, = axff.plot(r_vec*p_len*1e6, mu1_R[0, :])
-#        urline2, = axff.plot(r_vec*p_len*1e6, mu2_R[0, :])
+#        urline1, = axff.plot(r_vec*p_len*1e6, mu1_R[t0ind, :])
+#        urline2, = axff.plot(r_vec*p_len*1e6, mu2_R[t0ind, :])
 #        axff.set_xlim((0, p_len*1e6))
 #        axff.set_ylim((min(np.nanmin(mu1_R), np.nanmin(mu2_R)),
 #            max(np.nanmax(mu1_R), np.nanmax(mu2_R))))
@@ -1291,8 +1281,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axmu2det.set_ylim((-0.012, 0.012))
 #        axmu2det.set_ylabel(r"Flux")
 
-#        plt.show()
 #        fig.savefig('tmp.pdf', bbox_inches='tight')
+#        plt.show()
 
         def init():
             toblit = []
@@ -1321,6 +1311,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
 #            toblit.append(ffcirc)
+#            # voltage
+#            ffcirc.set_xdata(np.ma.array(0, mask=True))
+#            ffcirc.set_ydata(np.ma.array(0, mask=True))
+#            toblit.append(ffcirc)
             # areas plot
             ffline.set_xdata(np.ma.array([0, 0], mask=True))
             toblit.append(ffline)
@@ -1333,8 +1327,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             colors = cmap(dataybar)
             collection.set_color(colors)
             toblit.append(collection)
-            # experimental images
-            toblit.append(img)
+#            # experimental images
+#            toblit.append(img)
 #            # mu1 details
 #            for line in lllines:
 #                ny = len(line.get_ydata())
@@ -1359,12 +1353,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             datay2 = csld2[tind]
             dataybar_raw = 0.5*(datay1 + datay2)
             dataybar = smooth(0.5*(datay1 + datay2), smcount)
-#            # csld
-#            line1.set_ydata(datay1)
-#            line2.set_ydata(datay2)
-#            toblit.extend([line1, line2])
-#            line3.set_ydata(dataybar_raw)
-#            toblit.extend([line3])
+            # csld
+            line1.set_ydata(datay1)
+            line2.set_ydata(datay2)
+            toblit.extend([line1, line2])
+            line3.set_ydata(dataybar_raw)
+            toblit.extend([line3])
             # csld schematic-like
             csldcolors1 = cmapcsld(datay1)
             csldcolors2 = cmapcsld(datay2)
@@ -1380,6 +1374,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            ffcirc.set_xdata(times[tind]*td)
 #            ffcirc.set_ydata(ffvec[tind])
 #            toblit.append(ffcirc)
+#            # voltage
+#            ffcirc.set_xdata(ffvec[tind])
+#            ffcirc.set_ydata(voltage[tind])
+#            toblit.append(ffcirc)
             # areas plot
             ffline.set_xdata(2*[times[tind]*td + t_offset])
             toblit.append(ffline)
@@ -1391,11 +1389,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             colors = cmap(dataybar)
             collection.set_color(colors)
             toblit.append(collection)
-            # experimental images movie
-            tcur = times[tind]*td + t_offset
-            image = get_image(tcur, namesTimes, imgdir)
-            img.set_array(image)
-            toblit.append(img)
+#            # experimental images movie
+#            tcur = times[tind]*td + t_offset
+#            image = get_image(tcur, namesTimes, imgdir)
+#            img.set_array(image)
+#            toblit.append(img)
 #            # mu1 details
 #            for indx in range(len(lllines)):
 #                line = lllines[indx]
@@ -1444,18 +1442,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     "blue" : [(0.0, 0.0, 0.0),
                               (1.0, 0.0, 0.0)]
                     }
-            cmap = matplotlib.colors.LinearSegmentedColormap(
+            cmap = mpl.colors.LinearSegmentedColormap(
                     "discrete", cdict)
         # Smooth colormap changes:
         if color_changes == "smooth":
-#            cmap = matplotlib.cm.RdYlGn_r # A default green-yellow-red map
+#            cmap = mpl.cm.RdYlGn_r # A default green-yellow-red map
             # generated with colormap.org
             cmaps = np.load("colormaps_custom.npz")
             cmap_data = cmaps["GnYlRd_3"]
-            cmap = matplotlib.colors.ListedColormap(cmap_data/255.)
+            cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         # Implement hack to be able to animate title
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(lvec), squeeze=False)
         ttlx = 0.5 if len(lvec) < 2 else 1.1
@@ -1543,7 +1541,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for bulkp")
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
         ymin = -1
         ymax = 10
@@ -1586,7 +1584,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
         ani.save("mpet_{type}.mp4".format(type=plot_type),
-                fps=45, bitrate=5500,
+                fps=25, bitrate=5500,
 #                writer='alzkes',
 #                savefig_kwargs={'bbox_inches' : 'tight'},
                 )
