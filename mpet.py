@@ -1250,7 +1250,7 @@ class simMPET(daeSimulation):
                     for k in range(Nij):
                         self.m.c_sld_ac[l][i, j].SetInitialCondition(k, cs0)
         # Electrolyte
-        c_lyte_init = 1.
+        c_lyte_init = self.D['c0']/1000. # normalize to 1 M = 1000 mol/m^3
         phi_guess = 0.
         for i in range(self.Nvol_s):
             self.m.c_lyte_s.SetInitialCondition(i, c_lyte_init)
