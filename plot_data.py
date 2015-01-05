@@ -4,8 +4,8 @@ import time
 
 import numpy as np
 import scipy.io as sio
-import matplotlib
-matplotlib.use("TkAgg")
+import matplotlib as mpl
+mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
@@ -101,6 +101,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
+
+    # Plot defaults
+    axtickfsize = 18
+    labelfsize = 20
+    lwidth = 3.
+    markersize = 10
+    mpl.rcParams['xtick.labelsize'] = axtickfsize
+    mpl.rcParams['ytick.labelsize'] = axtickfsize
+    mpl.rcParams['font.size'] = labelfsize
+    mpl.rcParams['legend.fontsize'] = labelfsize - 2
+    mpl.rcParams['lines.linewidth'] = lwidth
+    mpl.rcParams['lines.markersize'] = markersize
 
     # Print relevant simulation info
     if print_flag:
@@ -346,13 +358,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot electrolyte concentration or potential
     elif plot_type == "elytec" or plot_type == "elytep":
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         if data_only:
             raise NotImplemented("no data-only output for elytec/p")
         fig, ax = plt.subplots()
         if plot_type == "elytec":
             ymin = 0
-            ymax = 1.5
+            ymax = 2.2
             ax.set_ylabel('Concentration of electrolyte [nondim]')
             sep = pfx + 'c_lyte_s'
             anode = pfx + 'c_lyte_0'
@@ -538,18 +550,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     "blue" : [(0.0, 0.0, 0.0),
                               (1.0, 0.0, 0.0)]
                     }
-            cmap = matplotlib.colors.LinearSegmentedColormap(
+            cmap = mpl.colors.LinearSegmentedColormap(
                     "discrete", cdict)
         # Smooth colormap changes:
         if color_changes == "smooth":
-#            cmap = matplotlib.cm.RdYlGn_r # A default green-yellow-red map
+#            cmap = mpl.cm.RdYlGn_r # A default green-yellow-red map
             # generated with colormap.org
             cmaps = np.load("colormaps_custom.npz")
             cmap_data = cmaps["GnYlRd_3"]
-            cmap = matplotlib.colors.ListedColormap(cmap_data/255.)
+            cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         # Implement hack to be able to animate title
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(lvec), squeeze=False)
         ttlx = 0.5 if len(lvec) < 2 else 1.1
@@ -633,7 +645,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for bulkp")
-        matplotlib.animation.Animation._blit_draw = _blit_draw
+        mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
         ymin = -1
         ymax = 10
@@ -680,9 +692,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     return fig, ax, ani
 
-# This is a block of code which messes with some matplotlib internals
+# This is a block of code which messes with some mpl internals
 # to allow for animation of a title. See
-# http://stackoverflow.com/questions/17558096/animated-title-in-matplotlib
+# http://stackoverflow.com/questions/17558096/animated-title-in-mpl
 def _blit_draw(self, artists, bg_cache):
     # Handles blitted drawing, which renders only the artists given instead
     # of the entire figure.
