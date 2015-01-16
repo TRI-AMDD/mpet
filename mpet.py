@@ -1405,6 +1405,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             mdict[dkeybase] = var.Values
             mdict[dkeybase + '_times'] = var.TimeValues
         try:
+            import scipy.io
             scipy.io.savemat(self.ConnectionString,
                              mdict,
                              appendmat=False,
@@ -1430,6 +1431,11 @@ def setupDataReporters(simulation, outdir):
     matfilename = os.path.join(outdir, matDataName)
     if (simulation.dr.Connect(matfilename, simName) == False):
         sys.exit()
+    # a hack to make compatible with pre/post r526 daetools
+    try:
+        simulation.dr.ConnectionString = simulation.dr.ConnectString
+    except AttributeError:
+        pass
     return datareporter
 
 def consoleRun(D, outdir):
