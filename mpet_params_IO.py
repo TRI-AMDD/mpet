@@ -9,7 +9,8 @@ class mpetIO():
         return P
 
     def getDictFromConfig(self, P):
-        D = {}
+        dD = {}
+        ndD = {}
 
         # Simulation Parameters
         D["profileType"] = P.get('Sim Params', 'profileType')
@@ -110,6 +111,7 @@ class mpetIO():
         D["Tref"] = P.getfloat('Constants', 'Tref')
         D["e"] = P.getfloat('Constants', 'e')
         D["N_A"] = P.getfloat('Constants', 'N_A')
+        D["F"] = D["e"] * D["N_A"]
 
         return D
 
