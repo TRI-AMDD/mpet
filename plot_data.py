@@ -554,7 +554,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         fig, ax = plt.subplots()
         if plot_type == "elytec":
             ymin = 0
-            ymax = 1.5
+            ymax = 2.2
             ax.set_ylabel('Concentration of electrolyte [nondim]')
             sep = pfx + 'c_lyte_s'
             anode = pfx + 'c_lyte_0'
@@ -1703,9 +1703,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     return ani
 
-# This is a block of code which messes with some matplotlib internals
+# This is a block of code which messes with some mpl internals
 # to allow for animation of a title. See
-# http://stackoverflow.com/questions/17558096/animated-title-in-matplotlib
+# http://stackoverflow.com/questions/17558096/animated-title-in-mpl
 def _blit_draw(self, artists, bg_cache):
     # Handles blitted drawing, which renders only the artists given instead
     # of the entire figure.

@@ -1424,7 +1424,7 @@ class simMPET(daeSimulation):
                         self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1+0.001))
                         self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1-0.001))
         # Electrolyte
-        c_lyte_init = 1.
+        c_lyte_init = self.D['c0']/1000. # normalize to 1 M = 1000 mol/m^3
         phi_guess = 0.
         for i in range(self.Nvol_s):
             self.m.c_lyte_s.SetInitialCondition(i, c_lyte_init)
@@ -1579,6 +1579,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             mdict[dkeybase] = var.Values
             mdict[dkeybase + '_times'] = var.TimeValues
         try:
+            import scipy.io
             scipy.io.savemat(self.ConnectionString,
                              mdict,
                              appendmat=False,
@@ -1604,6 +1605,11 @@ def setupDataReporters(simulation, outdir):
     matfilename = os.path.join(outdir, matDataName)
     if (simulation.dr.Connect(matfilename, simName) == False):
         sys.exit()
+    # a hack to make compatible with pre/post r526 daetools
+    try:
+        simulation.dr.ConnectionString = simulation.dr.ConnectString
+    except AttributeError:
+        pass
     return datareporter
 
 def consoleRun(D, outdir):
