@@ -1,5 +1,9 @@
 import ConfigParser
 
+import scipy.special as spcl
+
+import delta_phi_fits
+
 class mpetIO():
 
     def getConfig(self, paramfile="params.cfg"):
@@ -13,107 +17,343 @@ class mpetIO():
         ndD = {}
 
         # Simulation Parameters
-        D["profileType"] = P.get('Sim Params', 'profileType')
-        D["Crate"] = P.getfloat('Sim Params', 'Crate')
-        D["Vset"] = P.getfloat('Sim Params', 'Vset')
-        D["capFrac"] = P.getfloat('Sim Params', 'capFrac')
-        D["tend"] = P.getfloat('Sim Params', 'tend')
-        D["tsteps"] = P.getfloat('Sim Params', 'tsteps')
-        D["Tabs"] = P.getfloat('Sim Params', 'T')
-        D["Nvol_ac"] = [P.getint('Sim Params', 'Nvol_a'),
-                        P.getint('Sim Params', 'Nvol_c')]
-        D["Nvol_s"] = P.getint('Sim Params', 'Nvol_s')
-        D["Npart_ac"] = [P.getint('Sim Params', 'Npart_a'),
-                         P.getint('Sim Params', 'Npart_c')]
+        ndD["profileType"] = P.get('Sim Params', 'profileType')
+        dD["Crate"] = P.getfloat('Sim Params', 'Crate')
+        dD["Vset"] = P.getfloat('Sim Params', 'Vset')
+        ndD["capFrac"] = P.getfloat('Sim Params', 'capFrac')
+        dD["tend"] = P.getfloat('Sim Params', 'tend')
+        ndD["tsteps"] = P.getfloat('Sim Params', 'tsteps')
+        Tabs = dD["Tabs"] = P.getfloat('Sim Params', 'T')
+        ndD["Nvol"] = {"a": P.getint('Sim Params', 'Nvol_a'),
+                       "c": P.getint('Sim Params', 'Nvol_c'),
+                       "s": P.getint('Sim Params', 'Nvol_s')}
+        ndD["Npart"] = {"a": P.getint('Sim Params', 'Npart_a'),
+                        "c": P.getint('Sim Params', 'Npart_c')}
+        ndD["trodes"] = ["c"]
+        if ndD["Nvol"]["a"] >= 1:
+            ndD["trodes"].append("a")
 
         # Particle info
-        D["psd_mean_ac"] = [P.getfloat('Particles', 'mean_a'),
-                            P.getfloat('Particles', 'mean_c')]
-        D["psd_stddev_ac"] = [P.getfloat('Particles', 'stddev_a'),
-                              P.getfloat('Particles', 'stddev_c')]
-        D["cs0_ac"] = [P.getfloat('Particles', 'cs0_a'),
-                       P.getfloat('Particles', 'cs0_c')]
-        D["solidType_ac"] = [P.get('Particles', 'solidType_a'),
-                             P.get('Particles', 'solidType_c')]
-        D["solidDisc_ac"] = [P.getfloat('Particles', 'solidDisc_a'),
-                             P.getfloat('Particles', 'solidDisc_c')]
-        D["solidShape_ac"] = [P.get('Particles', 'solidShape_a'),
-                              P.get('Particles', 'solidShape_c')]
-        D["partThick_ac"] = [P.getfloat('Particles', 'partThick_a'),
-                             P.getfloat('Particles', 'partThick_c')]
+        dD["psd_mean"] = {"a": P.getfloat('Particles', 'mean_a'),
+                          "c":  P.getfloat('Particles', 'mean_c')}
+        dD["psd_stddev"] = {"a": P.getfloat('Particles', 'stddev_a'),
+                            "c": P.getfloat('Particles', 'stddev_c')}
+        dD["cs0"] = {"a": P.getfloat('Particles', 'cs0_a'),
+                "c": P.getfloat('Particles', 'cs0_c')}
+        ndD["solidType"] = {"a": P.get('Particles', 'solidType_a'),
+                "c": P.get('Particles', 'solidType_c')}
+        dD["solidDisc"] = {"a": P.getfloat('Particles', 'solidDisc_a'),
+                "c": P.getfloat('Particles', 'solidDisc_c')}
+        ndD["solidShape"] = {"a": P.get('Particles', 'solidShape_a'),
+                "c": P.get('Particles', 'solidShape_c')}
+        dD["partThick"] = {"a": P.getfloat('Particles', 'partThick_a'),
+                "c": P.getfloat('Particles', 'partThick_c')}
 
         # Conductivity
-        D["simBulkCond_ac"] = [P.getboolean('Conductivity', 'simBulkCond_a'),
-                               P.getboolean('Conductivity', 'simBulkCond_c')]
-        D["mcond_ac"] = [P.getfloat('Conductivity', 'mcond_a'),
-                         P.getfloat('Conductivity', 'mcond_c')]
-        D["simPartCond_ac"] = [P.getboolean('Conductivity', 'simPartCond_a'),
-                               P.getboolean('Conductivity', 'simPartCond_c')]
-        D["G_mean_ac"] = [P.getfloat('Conductivity', 'G_mean_a'),
-                          P.getfloat('Conductivity', 'G_mean_c')]
-        D["G_stddev_ac"] = [P.getfloat('Conductivity', 'G_stddev_a'),
-                            P.getfloat('Conductivity', 'G_stddev_c')]
-        D["simSurfCond_ac"] = [P.getboolean('Conductivity', 'simSurfCond_a'),
-                               P.getboolean('Conductivity', 'simSurfCond_c')]
-        D["scond_ac"] = [P.getfloat('Conductivity', 'scond_a'),
-                         P.getfloat('Conductivity', 'scond_c')]
+        ndD["simBulkCond"] = {"a": P.getboolean('Conductivity', 'simBulkCond_a'),
+                "c": P.getboolean('Conductivity', 'simBulkCond_c')}
+        dD["mcond"] = {"a": P.getfloat('Conductivity', 'mcond_a'),
+                "c": P.getfloat('Conductivity', 'mcond_c')}
+        ndD["simPartCond"] = {"a": P.getboolean('Conductivity', 'simPartCond_a'),
+                "c": P.getboolean('Conductivity', 'simPartCond_c')}
+        dD["G_mean"] = {"a": P.getfloat('Conductivity', 'G_mean_a'),
+                "c": P.getfloat('Conductivity', 'G_mean_c')}
+        dD["G_stddev"] = {"a": P.getfloat('Conductivity', 'G_stddev_a'),
+                "c": P.getfloat('Conductivity', 'G_stddev_c')}
+        ndD["simSurfCond"] = {"a": P.getboolean('Conductivity', 'simSurfCond_a'),
+                "c": P.getboolean('Conductivity', 'simSurfCond_c')}
+        dD["scond"] = {"a": P.getfloat('Conductivity', 'scond_a'),
+                "c": P.getfloat('Conductivity', 'scond_c')}
 
         # Materials
-        D["Omga_ac"] = [P.getfloat('Materials', 'Omega_a_a'),
-                        P.getfloat('Materials', 'Omega_a_c')]
-        D["kappa_ac"] = [P.getfloat('Materials', 'kappa_a'),
-                         P.getfloat('Materials', 'kappa_c')]
-        D["B_ac"] = [P.getfloat('Materials', 'B_a'),
-                     P.getfloat('Materials', 'B_c')]
-        D["rhos_ac"] = [P.getfloat('Materials', 'rhos_a'),
-                        P.getfloat('Materials', 'rhos_c')]
-        D["Vstd_ac"] = [P.getfloat('Materials', 'Vstd_a'),
-                        P.getfloat('Materials', 'Vstd_c')]
-        D["Dsld_ac"] = [P.getfloat('Materials', 'Dsld_a'),
-                        P.getfloat('Materials', 'Dsld_c')]
-        D["dgammasdc_ac"] = [P.getfloat('Materials', 'dgammasdc_a'),
-                             P.getfloat('Materials', 'dgammasdc_c')]
-        D["cwet_ac"] = [P.getfloat('Materials', 'cwet_a'),
-                        P.getfloat('Materials', 'cwet_c')]
-        D["delPhiEqFit_ac"] = [P.getboolean('Materials', 'delPhiEqFit_a'),
-                          P.getboolean('Materials', 'delPhiEqFit_c')]
-        D["material_ac"] = [P.get('Materials', 'material_a'),
-                            P.get('Materials', 'material_c')]
+        dD["Omga"] = {"a": P.getfloat('Materials', 'Omega_a_a'),
+                "c": P.getfloat('Materials', 'Omega_a_c')}
+        dD["kappa"] = {"a": P.getfloat('Materials', 'kappa_a'),
+                "c": P.getfloat('Materials', 'kappa_c')}
+        dD["B"] = {"a": P.getfloat('Materials', 'B_a'),
+                "c": P.getfloat('Materials', 'B_c')}
+        dD["rhos"] = {"a": P.getfloat('Materials', 'rhos_a'),
+                "c": P.getfloat('Materials', 'rhos_c')}
+        dD["Vstd"] = {"a": P.getfloat('Materials', 'Vstd_a'),
+                "c": P.getfloat('Materials', 'Vstd_c')}
+        dD["Dsld"] = {"a": P.getfloat('Materials', 'Dsld_a'),
+                "c": P.getfloat('Materials', 'Dsld_c')}
+        dD["dgammasdc"] = {"a": P.getfloat('Materials', 'dgammasdc_a'),
+                "c": P.getfloat('Materials', 'dgammasdc_c')}
+        dD["cwet"] = {"a": P.getfloat('Materials', 'cwet_a'),
+                "c": P.getfloat('Materials', 'cwet_c')}
+        ndD["delPhiEqFit"] = {"a": P.getboolean('Materials', 'delPhiEqFit_a'),
+                "c": P.getboolean('Materials', 'delPhiEqFit_c')}
+        ndD["material"] = {"a": P.get('Materials', 'material_a'),
+                "c": P.get('Materials', 'material_c')}
 
         # Reactions
-        D["rxnType_ac"] = [P.get('Reactions', 'rxnType_a'),
-                           P.get('Reactions', 'rxnType_c')]
-        D["k0_ac"] = [P.getfloat('Reactions', 'k0_a'),
-                      P.getfloat('Reactions', 'k0_c')]
-        D["alpha_ac"] = [P.getfloat('Reactions', 'alpha_a'),
-                         P.getfloat('Reactions', 'alpha_c')]
-        D["lambda_ac"] = [P.getfloat('Reactions', 'lambda_a'),
-                          P.getfloat('Reactions', 'lambda_c')]
+        ndD["rxnType"] = {"a": P.get('Reactions', 'rxnType_a'),
+                "c": P.get('Reactions', 'rxnType_c')}
+        dD["k0"] = {"a": P.getfloat('Reactions', 'k0_a'),
+                "c": P.getfloat('Reactions', 'k0_c')}
+        ndD["alpha"] = {"a": P.getfloat('Reactions', 'alpha_a'),
+                "c": P.getfloat('Reactions', 'alpha_c')}
+        dD["lambda"] = {"a": P.getfloat('Reactions', 'lambda_a'),
+                "c": P.getfloat('Reactions', 'lambda_c')}
 
         # Geometry
-        D["L_ac"] = [P.getfloat('Geometry', 'L_a'),
-                     P.getfloat('Geometry', 'L_c')]
-        D["L_s"] = P.getfloat('Geometry', 'L_s')
-        D["P_L_ac"] = [P.getfloat('Geometry', 'P_L_a'),
-                       P.getfloat('Geometry', 'P_L_c')]
-        D["poros_ac"] = [P.getfloat('Geometry', 'poros_a'),
-                         P.getfloat('Geometry', 'poros_c')]
+        dD["L"] = {"a": P.getfloat('Geometry', 'L_a'),
+                "c": P.getfloat('Geometry', 'L_c'),
+                "s": P.getfloat('Geometry', 'L_s')}
+        ndD["P_L"] = {"a": P.getfloat('Geometry', 'P_L_a'),
+                "c": P.getfloat('Geometry', 'P_L_c')}
+        ndD["poros"] = {"a": P.getfloat('Geometry', 'poros_a'),
+                "b": P.getfloat('Geometry', 'poros_c')}
+        ndD["poros"]["s"] = 1.
 
         # Electrolyte
-        D["c0"] = P.getfloat('Electrolyte', 'c0')
-        D["zp"] = P.getfloat('Electrolyte', 'zp')
-        D["zm"] = P.getfloat('Electrolyte', 'zm')
-        D["Dp"] = P.getfloat('Electrolyte', 'Dp')
-        D["Dm"] = P.getfloat('Electrolyte', 'Dm')
+        c0 = dD["c0"] = P.getfloat('Electrolyte', 'c0')
+        Dp = dD["Dp"] = P.getfloat('Electrolyte', 'Dp')
+        Dm = dD["Dm"] = P.getfloat('Electrolyte', 'Dm')
+        zp = ndD["zp"] = P.getfloat('Electrolyte', 'zp')
+        zm = ndD["zm"] = P.getfloat('Electrolyte', 'zm')
 
         # Constants
-        D["k"] = P.getfloat('Constants', 'k')
-        D["Tref"] = P.getfloat('Constants', 'Tref')
-        D["e"] = P.getfloat('Constants', 'e')
-        D["N_A"] = P.getfloat('Constants', 'N_A')
-        D["F"] = D["e"] * D["N_A"]
+        k = dD["k"] = P.getfloat('Constants', 'k')
+        Tref = dD["Tref"] = P.getfloat('Constants', 'Tref')
+        e = dD["e"] = P.getfloat('Constants', 'e')
+        N_A = dD["N_A"] = P.getfloat('Constants', 'N_A')
+        F = dD["F"] = dD["e"] * dD["N_A"]
 
-        return D
+        # Post-processing
+        self.test_input(dD, ndD)
+
+        psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(ndD, dD)
+        dD["psd_raw"] = {"a": psd_raw["a"], "c": psd_raw["c"]}
+        ndD["psd_num"] = {"a": psd_num["a"], "c": psd_num["c"]}
+        dD["psd_len"] = {"a": psd_len["a"], "c": psd_len["c"]}
+        dD["psd_area"] = {"a": psd_area["a"], "c": psd_area["c"]}
+        dD["psd_vol"] = {"a": psd_vol["a"], "c": psd_vol["c"]}
+        G = self.distr_G(ndD, dD)
+        dD["G"] = {"a": G["a"], "c": G["c"]}
+
+        Lref = dD["Lref"] = dD["L"]["c"]
+        # maximum concentration in electrode solids, mol/m^3
+        dD["csmax"] = {"a": dD['rhos']["a"]/N_A,
+                "c": dD['rhos']["c"]/N_A}
+        # Ambipolar diffusivity
+        Damb = dD["Damb"] = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        # Cation transference number
+        tp = dD["tp"] = zp*Dp / (zp*Dp + zm*Dm)
+        # Diffusive time scale
+        td = dD["td"] = L_ref**2 / Damb
+        # Electrode capacity ratio
+        dD["cap"] = {}
+        dD["cap"]["c"] = (dD['L']["c"] * (1-ndD['poros']["c"]) *
+                ndD['P_L']["c"] * dD['rhos']["c"])
+        if "a" in ndD["trodes"].keys():
+            # full porous anode with finite capacity
+            dD["cap"]["a"] = (dD['L']["a"] * (1-ndD['poros']["a"]) *
+                    D['P_L']["a"] * D['rhos']["a"])
+            ndD["z"] = dD["cap"]["c"] / dD["cap"]["a"]
+        else:
+            # flat plate anode with assumed infinite supply of metal
+            ndD["z"] = 0
+
+        # Some non-dimensional parameters
+        T = ndD["T"] = Tabs/Tref
+        ndD["L"]["s"] = dD["L"]["s"] / Lref
+        ndD["Dp"] = Dp / Damb
+        ndD["Dm"] = Dm / Damb
+        ndD["phi_cathode"] = 0.
+        ndD["currset"] = dD["Crate"]*td/3600
+        ndD["Vset"] = dD["Vest"] * e/(k*Tref)
+        # nondimensional parameters which depend on the electrode
+        ndD["L"] = {}
+        ndD["epsbeta"] = {}
+        ndD["mcond"] = {}
+        ndD["dphi_eq_ref"] = {}
+        ndD["lambda"] = {}
+        ndD["mHC_erfstretch"] = {}
+        ndD["B"] = {}
+        ndD["kappa"] = {}
+        ndD["k0"] = {}
+        ndD["beta_s"] = {}
+        ndD["delta_L"] = {}
+        ndD["MHC_Aa"] = {}
+        ndD["scond"] = {}
+        ndD["Dsld"] = {}
+        ndD["G"] = {}
+        ndD["Omga"] = {}
+        for trode in ndD["trodes"]:
+            ndD["L"][trode] = dD["L"][trode]/Lref
+            ndD["epsbeta"][trode] = (
+                    (1-ndD['poros'][trode]) * ndD['P_L'][trode] *
+                    dD["csmax"][trode]/c0)
+            ndD["mcond"][trode] = (
+                    dD['mcond'][trode] * (td * k * N_A * Tref) /
+                    (L_ref**2 * F**2 * c0))
+            if ndD["delPhiEqFit"][trode]:
+                material = ndD['material'][trode]
+                fits = delta_phi_fits.DPhiFits(dD)
+                phifunc = fits.materialData[material]
+                ndD["dphi_eq_ref"][trode] = phifunc(dD['cs0'][trode], 0)
+            else:
+                ndD["dphi_eq_ref"][trode] = 0.
+            lmbda = ndD["lambda"][trode] = dD["lambda"][trode]/(k*Tref)
+            MHC_erf_b = ndD["MHC_erfstretch"][trode] = 2*np.sqrt(lmbda)
+            ndD["B"][trode] = dD['B'][trode]/(k*Tref*D['rhos'][trode])
+            psd_len = dD["psd_len"][trode]
+            psd_area = dD["psd_area"][trode]
+            psd_vol = dD["psd_vol"][trode]
+            ndD["kappa"][trode] = (dD['kappa'][trode] /
+                    (k*Tref*dD['rhos'][trode]*psd_len**2))
+            k0 = ndD["k0"][trode] = (
+                    ((psd_area/psd_vol)*dD['k0'][trode]*td) /
+                    (F*dD["csmax"][trode]))
+            ndD["beta_s"][trode] = (dD['dgammasdc_ac'][trode]*psd_len*
+                    dD['rhos'][trode]/dD['kappa'][trode])
+            ndD["delta_L"][trode] = psd_vol/(psd_area*psd_len)
+            ndD["MHC_Aa"][trode] = k0 / (spcl.erf(-lmbda/MHC_erf_b) + 1)
+            ndD["scond"][trode] = (dD['scond'][trode] * (k*Tref) /
+                    (dD['k0'][trode]*e*psd_len**2))
+            ndD["Dsld"][trode] = dD['Dsld'][trode]*td/psd_len**2
+            ndD["G"][trode] = (dD["G"][trode] * (k*Tref/e) * td /
+                    (F*dD["csmax"][trode]*psd_vol))
+            solidType = ndD["solidType"][trode]
+            if solidType in ["homog", "ACR", "CHR", "diffn"]:
+                ndD["Omga"][trode] = dD["Omga"][trode] / (k*Tref)
+            elif solidType in ["homog_sdn"]:
+                # Not sure about factor of nondimensional T.
+                ndD["Omga"][trode] = T*self.size2regsln(psd_len)
+            else:
+                raise NotImplementedError("Solid types missing here")
+
+        return dD, ndD
+
+    def distr_part(self, ndD, dD):
+        psd_raw = {}
+        psd_num = {}
+        psd_len = {}
+        psd_area = {}
+        psd_vol = {}
+        for trode in ndD["trodes"]:
+            Nv = ndD["Nvol"][trode]
+            Np = ndD["Npart"][trode]
+            mean = dD["psd_mean"][trode]
+            stddev = dD["psd_stddev"][trode]
+            solidType = ndD["solidType"][trode]
+            # Make a length-sampled particle size distribution
+            # Log-normally distributed
+            if dD["psd_mean"][trode] == 0:
+                raw = (dD["psd_mean"][trode] *
+                        np.ones((Nv, Np)))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2)/np.sqrt(var+mean**2))
+                sigma = np.sqrt(np.log(var/(mean**2)+1))
+                raw = np.random.lognormal(
+                        mu, sigma, size=(Nv, Np))
+            psd_raw[trode] = raw
+            # For particles with internal profiles, convert psd to
+            # integers -- number of steps
+            solidDisc = dD["solidDisc"][trode]
+            if solidType in ["ACR"]:
+                psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer)
+                psd_len[trode] = solidDisc*psd_num[trode]
+            elif solidType in ["CHR", "diffn"]:
+                psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer) + 1
+                psd_len[trode] = solidDisc*(psd_num[trode] - 1)
+            # For homogeneous particles (only one "volume" per particle)
+            elif solidType in ["homog", "homog_sdn"]:
+                # Each particle is only one volume
+                psd_num[trode] = np.ones(psd_raw[trode].shape).astype(np.integer)
+                # The lengths are given by the original length distr.
+                psd_len[trode] = psd_raw[trode]
+            else:
+                raise NotImplementedError("Solid types missing here")
+            # Calculate areas and volumes
+            solidShape = ndD["solidShape"]
+            if solidShape == "sphere":
+                psd_area = (4*np.pi)*psd_len**2
+                psd_vol = (4./3)*np.pi*psd_len**3
+            elif solidShape == "C3":
+                psd_area = 2 * 1.2263 * psd_len**2
+                psd_vol = 1.2263 * psd_len**2 * dD['partThick'][trode]
+            elif solidShape == "cylinder":
+                psd_area = 2 * np.pi * psd_len * dD['partThick'][trode]
+                psd_vol = np.pi * psd_len**2 * dD['partThick'][trode]
+        return psd_raw, psd_num, psd_len, psd_area, psd_vol
+
+    def distr_G(self, dD, ndD):
+        G = {}
+        for trode in ndD["trodes"]:
+            Nv = ndD["Nvol"][trode]
+            Np = ndD["Npart"][trode]
+            mean = dD["G_mean"][trode]
+            stddev = dD["G_stddev"][trode]
+            if stddev == 0:
+                G[trode] = mean * np.ones((Nv, Np))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2)/np.sqrt(var+mean**2))
+                sigma = np.sqrt(np.log(var/(mean**2)+1))
+                G[trode] = np.random.lognormal(mu, sigma, size=(Nv, Np))
+        return G
+
+    def size2regsln(self, size):
+        """
+        This function returns the non-dimensional regular solution
+        parameter which creates a barrier height that corresponds to
+        the given particle size (C3 particle, measured in nm in the
+        [100] direction). The barrier height vs size is taken from
+        Cogswell 2013, and the reg sln vs barrier height was done by
+        TRF 2014.
+        """
+        # First, this function wants the argument to be in [nm]
+        size *= 1e+9
+        # Parameters for polynomial curve fit
+        p1 = -1.168e4
+        p2 = 2985
+        p3 = -208.3
+        p4 = -8.491
+        p5 = -10.25
+        p6 = 4.516
+        # The nucleation barrier depends on the ratio of the particle
+        # wetted area to total particle volume.
+        # *Wetted* area to volume ratio for C3 particles (Cogswell
+        # 2013 or Kyle Smith)
+        AV = 3.6338/size
+        # Fit function (TRF, "SWCS" paper 2014)
+        param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
+        # replace values less than 2 with 2.
+        param[param < 2] = 2
+#        if param < 2:
+#            param = 2
+        return param
+
+    def test_input(self, dD, ndD):
+        if dD['Tabs'] != 298 or dD['Tref'] != 298:
+            raise Exception("Temp dependence not implemented")
+        if D['Nvol']["c"] < 1:
+            raise Exception("Must have at least one porous electrode")
+        for trode in ndD["trodes"]:
+            solidType = ndD['solidType'][trode]
+            solidShape = ndD['solidShape'][trode]
+            if D['simSurfCond'][trode] and solidType != "ACR":
+                raise Exception("simSurfCond req. ACR")
+            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
+                raise Exception("ACR and homog_sdn req. C3 shape")
+            if solidType in ["CHR"] and solidShape not in ["sphere", "cylinder"]:
+                raise NotImplementedError("CHR req. sphere or cylinder")
+            if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
+                raise NotImplementedError("Input solidType not defined")
+            if solidShape not in ["C3", "sphere", "cylinder"]:
+                raise NotImplementedError("Input solidShape not defined")
+            if solidType == "homog_sdn" and (D['Tabs'] != 298 or
+                    D['Tref'] != 298):
+                raise NotImplementedError("homog_snd req. Tref=Tabs=298")
+            if solidType in ["diffn"] and solidShape != "sphere":
+                raise NotImplementedError("diffn currently req. sphere")
+            if D['delPhiEqFit_ac'][l] and solidType not in ["diffn", "homog"]:
+                raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
+        return
 
     def writeConfigFile(self, P, filename="output_params.cfg"):
         fo = open(filename, "w")
