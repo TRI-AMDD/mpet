@@ -102,10 +102,10 @@ class modMPET(daeModel):
             # Concentration in electrode active particles
             Nv = Nvol[l]
             Np = Npart[l]
-            self.c_sld_ac[l] = np.empty((Nv, Np), dtype=object)
+            self.c_sld[l] = np.empty((Nv, Np), dtype=object)
             for i in range(Nv):
                 for j in range(Np):
-                    self.c_sld_ac[l][i, j] = daeVariable(
+                    self.c_sld[l][i, j] = daeVariable(
                             "c_sld_trode{l}vol{i}part{j}".format(
                             i=i, j=j, l=l), mole_frac_t, self,
                             "Concentration in each solid particle",
@@ -115,16 +115,16 @@ class modMPET(daeModel):
             # -- it's a lot of equations to keep track of for nothing
             # if we don't need it.
             if ndD['simSurfCond'][l]:
-                self.phi_sld[l] = np.empty((Nvol, Npart), dtype=object)
+                self.phi_sld[l] = np.empty((Nv, Np), dtype=object)
                 for i in range(Nv):
                     for j in range(Np):
-                        self.phi_sld_ac[l][i, j] = daeVariable(
+                        self.phi_sld[l][i, j] = daeVariable(
                                 "p_sld_trode{l}_vol{i}_part{j}".format(
                                 i=i, j=j, l=l), elec_pot_t, self,
                                 "Electrostatic potential in each solid particle",
                                 [self.DmnPartSub[l][i, j]])
             else:
-                self.phi_sld_ac[l] = False
+                self.phi_sld[l] = False
             # Average active particle concentrations
             self.cbar_sld[l] = daeVariable("cbar_sld_{l}".format(l=l),
                     mole_frac_t, self,
@@ -145,7 +145,7 @@ class modMPET(daeModel):
             self.ffrac[l] = daeVariable("ffrac_{l}".format(l=l),
                 mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
-        if Nvol_s >= 1: # If we have a separator
+        if Nvol["s"] >= 1: # If we have a separator
             self.c_lyte["s"] = daeVariable("c_lyte_s", mole_frac_t, self,
                     "Concentration in the electrolyte in the separator",
                     [self.DmnCell["s"]])
@@ -320,7 +320,6 @@ class modMPET(daeModel):
         Npart = ndD["Npart"]
         Nlyte = np.sum(Nvol.values())
         psd_num = ndD["psd_num"]
-        psd_vol = ndD["psd_vol"]
 #        Nsld_mat_ac = np.empty(2, dtype=object)
 #        for l in trodes:
 #            Nsld_mat_ac[l] = np.zeros((Nvol_ac[l], Npart_ac[l]), dtype=np.integer)
@@ -378,16 +377,18 @@ class modMPET(daeModel):
             # Make a float of Vtot, total particle volume in electrode
             # Note: for some reason, even when "factored out", it's a bit
             # slower to use Sum(self.psd_vol_ac[l].array([], [])
-            Vtot = np.sum(psd_vol[l])
+#            Vtot = np.sum(psd_vol[l])
             tmp = 0
             for i in range(Nvol[l]):
                 for j in range(Npart[l]):
-                    Vpart = psd_vol[l][i, j]
+#                    Vpart = psd_vol[l][i, j]
+                    Vpart = ndD["psd_vol_FracTot"][l][i, j]
                     # For some reason the following slower, so
                     # it's helpful to factor out the Vtot sum:
                     # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
                     tmp += self.cbar_sld[l](i, j) * Vpart
-            eq.Residual -= tmp / Vtot
+#            eq.Residual -= tmp / Vtot
+            eq.Residual -= tmp
 
         # Define dimensionless j_plus for each electrode volume
         for l in trodes:
@@ -398,10 +399,11 @@ class modMPET(daeModel):
                 res = 0
                 # sum over particle volumes in given electrode volume
 #                Vu = Sum(self.psd_vol_ac[l].array(i, []))
-                Vu = np.sum(psd_vol[l][i, :])
+#                Vu = np.sum(psd_vol[l][i, :])
                 for j in range(Npart[l]):
                     # The volume of this particular particle
-                    Vj = psd_vol[l][i, j]
+#                    Vj = psd_vol[l][i, j]
+                    Vj = ndD["psd_vol_FracVol"][l][i, j]
                     Nij = psd_num[l][i, j]
                     r_vec, volfrac_vec = self.get_unit_solid_discr(
                             ndD['solidShape'][l],
@@ -411,7 +413,8 @@ class modMPET(daeModel):
                         tmp += (self.c_sld[l][i, j].dt(k) *
                                 volfrac_vec[k])
                     res += tmp * Vj
-                eq.Residual = self.j_plus[l](i) - res/Vu
+#                eq.Residual = self.j_plus[l](i) - res/Vu
+                eq.Residual = self.j_plus[l](i) - res
 
         # Solid active particle concentrations, potential, and bulk
         # solid potential
@@ -459,7 +462,7 @@ class modMPET(daeModel):
             if simBulkCond:
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = np.empty(Nvol[l]+2, dtype=object)
-                phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol_ac[l])]
+                phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
                 if l == 0: # anode
                     # Potential at the current collector is from
                     # simulation
@@ -543,7 +546,7 @@ class modMPET(daeModel):
                     for i in range(Nvol["a"])] # anode
             phi_lyte[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [self.phi_lyte["s"](i)
                     for i in range(Nvol["s"])] # separator
-            phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [self.phi_lyte_ac["c"](i)
+            phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [self.phi_lyte["c"](i)
                     for i in range(Nvol["c"])] # cathode
             (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
                     Nvol, Nlyte)
@@ -596,16 +599,16 @@ class modMPET(daeModel):
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
             if ndD["currset"] != 0.0:
-                timeHorizon = 1./Abs(ndD["currset"])
+                timeHorizon = 1./np.abs(ndD["currset"])
             else:
                 timeHorizon = ndD["tend"]
-            eq.Residual = self.current() - self.currset()*(
+            eq.Residual = self.current() - ndD["currset"]*(
                     1 - np.exp(-Time()/(timeHorizon*1e-3)))
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
             timeHorizon = ndD["tend"]
-            eq.Residual = self.phi_applied() - self.Vset()*(
+            eq.Residual = self.phi_applied() - ndD["Vset"]*(
                     1 - np.exp(-Time()/(timeHorizon*1e-3)))
 
         for eq in self.Equations:
@@ -641,7 +644,7 @@ class modMPET(daeModel):
         cbar = self.cbar_sld[l](i, j) # only used for ACR/CHR
         k0 = ndD["k0"][l][i, j]
         kappa = ndD["kappa"][l][i, j] # only used for ACR/CHR
-        lmbda = ndD["lmbda"][l] # Only used for Marcus/MHC
+        lmbda = ndD["lambda"][l] # Only used for Marcus/MHC
         Aa = ndD["MHC_Aa"][l][i, j] # Only used for MHC
         b = ndD["MHC_erfstretch"][l] # Only used for MHC
         alpha = ndD["alpha"][l] # Only used for BV
@@ -846,7 +849,7 @@ class modMPET(daeModel):
         phitmp[1:-1] = phivec
         # If we don't have a full anode, assume no rxn resistance at a
         # lithium anode, and measure relative to Li
-        if Nvol_ac[0] == 0:
+        if Nvol["a"] == 0:
             phitmp[0] = self.phi_applied()
         else: # porous anode -- no flux into anode current collector
             phitmp[0] = phitmp[1]
@@ -995,7 +998,7 @@ class simMPET(daeSimulation):
             raise Exception("Need parameters input")
         self.ndD = ndD
         # Define the model we're going to simulate
-        self.m = modMPET("mpet", D=D)
+        self.m = modMPET("mpet", ndD=ndD)
 
     def SetUpParametersAndDomains(self):
         # Domains
@@ -1017,7 +1020,7 @@ class simMPET(daeSimulation):
         Nlyte = np.sum(Nvol.values())
         phi_cathode = ndD["phi_cathode"]
         # Solids
-        for l in self.trodes:
+        for l in ndD["trodes"]:
             cs0 = ndD['cs0'][l]
             # Guess initial filling fractions
             self.m.ffrac[l].SetInitialGuess(cs0)
@@ -1189,7 +1192,7 @@ def consoleRun(ndD, outdir):
     daesolver.RelativeTolerance = 1e-6
 
     # Set the time horizon and the reporting interval
-    if ndD['profileType'] == "CC" and nd["currset"] != 0.0:
+    if ndD['profileType'] == "CC" and ndD["currset"] != 0.0:
         simulation.TimeHorizon = 1./np.abs(ndD['tend'])
     else: # CV or zero current simulation
         simulation.TimeHorizon = ndD['tend']

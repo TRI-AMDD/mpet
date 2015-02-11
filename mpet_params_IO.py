@@ -39,7 +39,7 @@ class mpetIO():
                           "c":  P.getfloat('Particles', 'mean_c')}
         dD["psd_stddev"] = {"a": P.getfloat('Particles', 'stddev_a'),
                             "c": P.getfloat('Particles', 'stddev_c')}
-        dD["cs0"] = {"a": P.getfloat('Particles', 'cs0_a'),
+        ndD["cs0"] = {"a": P.getfloat('Particles', 'cs0_a'),
                 "c": P.getfloat('Particles', 'cs0_c')}
         ndD["solidType"] = {"a": P.get('Particles', 'solidType_a'),
                 "c": P.get('Particles', 'solidType_c')}
@@ -81,7 +81,7 @@ class mpetIO():
                 "c": P.getfloat('Materials', 'Dsld_c')}
         dD["dgammasdc"] = {"a": P.getfloat('Materials', 'dgammasdc_a'),
                 "c": P.getfloat('Materials', 'dgammasdc_c')}
-        dD["cwet"] = {"a": P.getfloat('Materials', 'cwet_a'),
+        ndD["cwet"] = {"a": P.getfloat('Materials', 'cwet_a'),
                 "c": P.getfloat('Materials', 'cwet_c')}
         ndD["delPhiEqFit"] = {"a": P.getboolean('Materials', 'delPhiEqFit_a'),
                 "c": P.getboolean('Materials', 'delPhiEqFit_c')}
@@ -167,6 +167,8 @@ class mpetIO():
         ndD["Vset"] = dD["Vset"] * e/(k*Tref)
         ndD["tend"] = dD["tend"] / td
         # nondimensional parameters which depend on the electrode
+        ndD["psd_vol_FracTot"] = {}
+        ndD["psd_vol_FracVol"] = {}
         ndD["L"] = {}
         ndD["L"]["s"] = dD["L"]["s"] / Lref
         ndD["epsbeta"] = {}
@@ -185,6 +187,14 @@ class mpetIO():
         ndD["G"] = {}
         ndD["Omga"] = {}
         for trode in ndD["trodes"]:
+            ndD["psd_vol_FracTot"][trode] = (dD["psd_vol"][trode] /
+                    np.sum(dD["psd_vol"][trode]))
+            print dD["psd_vol"][trode].shape
+            Vuvec = np.sum(dD["psd_vol"][trode], axis=1)
+            print Vuvec.shape
+            print Vuvec[:, np.newaxis].shape
+            ndD["psd_vol_FracVol"][trode] = (dD["psd_vol"][trode] /
+                    Vuvec[:, np.newaxis])
             ndD["L"][trode] = dD["L"][trode]/Lref
             ndD["epsbeta"][trode] = (
                     (1-ndD['poros'][trode]) * ndD['P_L'][trode] *
@@ -221,7 +231,8 @@ class mpetIO():
                     (F*dD["csmax"][trode]*psd_vol))
             solidType = ndD["solidType"][trode]
             if solidType in ["homog", "ACR", "CHR", "diffn"]:
-                ndD["Omga"][trode] = dD["Omga"][trode] / (k*Tref)
+                ndD["Omga"][trode] = (dD["Omga"][trode] / (k*Tref) *
+                        np.ones(psd_num[trode].shape))
             elif solidType in ["homog_sdn"]:
                 # Not sure about factor of nondimensional T.
                 ndD["Omga"][trode] = T*self.size2regsln(psd_len)
