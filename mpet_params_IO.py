@@ -189,10 +189,7 @@ class mpetIO():
         for trode in ndD["trodes"]:
             ndD["psd_vol_FracTot"][trode] = (dD["psd_vol"][trode] /
                     np.sum(dD["psd_vol"][trode]))
-            print dD["psd_vol"][trode].shape
             Vuvec = np.sum(dD["psd_vol"][trode], axis=1)
-            print Vuvec.shape
-            print Vuvec[:, np.newaxis].shape
             ndD["psd_vol_FracVol"][trode] = (dD["psd_vol"][trode] /
                     Vuvec[:, np.newaxis])
             ndD["L"][trode] = dD["L"][trode]/Lref

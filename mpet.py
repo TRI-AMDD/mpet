@@ -1193,7 +1193,7 @@ def consoleRun(ndD, outdir):
 
     # Set the time horizon and the reporting interval
     if ndD['profileType'] == "CC" and ndD["currset"] != 0.0:
-        simulation.TimeHorizon = 1./np.abs(ndD['tend'])
+        simulation.TimeHorizon = 1./np.abs(ndD['currset'])
     else: # CV or zero current simulation
         simulation.TimeHorizon = ndD['tend']
     simulation.ReportingInterval = simulation.TimeHorizon/ndD['tsteps']
