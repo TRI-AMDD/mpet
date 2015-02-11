@@ -1,5 +1,6 @@
 import ConfigParser
 
+import numpy as np
 import scipy.special as spcl
 
 import delta_phi_fits
@@ -104,7 +105,7 @@ class mpetIO():
         ndD["P_L"] = {"a": P.getfloat('Geometry', 'P_L_a'),
                 "c": P.getfloat('Geometry', 'P_L_c')}
         ndD["poros"] = {"a": P.getfloat('Geometry', 'poros_a'),
-                "b": P.getfloat('Geometry', 'poros_c')}
+                "c": P.getfloat('Geometry', 'poros_c')}
         ndD["poros"]["s"] = 1.
 
         # Electrolyte
@@ -124,13 +125,13 @@ class mpetIO():
         # Post-processing
         self.test_input(dD, ndD)
 
-        psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(ndD, dD)
+        psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(dD, ndD)
         dD["psd_raw"] = {"a": psd_raw["a"], "c": psd_raw["c"]}
         ndD["psd_num"] = {"a": psd_num["a"], "c": psd_num["c"]}
         dD["psd_len"] = {"a": psd_len["a"], "c": psd_len["c"]}
         dD["psd_area"] = {"a": psd_area["a"], "c": psd_area["c"]}
         dD["psd_vol"] = {"a": psd_vol["a"], "c": psd_vol["c"]}
-        G = self.distr_G(ndD, dD)
+        G = self.distr_G(dD, ndD)
         dD["G"] = {"a": G["a"], "c": G["c"]}
 
         Lref = dD["Lref"] = dD["L"]["c"]
@@ -142,15 +143,15 @@ class mpetIO():
         # Cation transference number
         tp = ndD["tp"] = zp*Dp / (zp*Dp + zm*Dm)
         # Diffusive time scale
-        td = dD["td"] = L_ref**2 / Damb
+        td = dD["td"] = Lref**2 / Damb
         # Electrode capacity ratio
         dD["cap"] = {}
         dD["cap"]["c"] = (dD['L']["c"] * (1-ndD['poros']["c"]) *
                 ndD['P_L']["c"] * dD['rhos']["c"])
-        if "a" in ndD["trodes"].keys():
+        if "a" in ndD["trodes"]:
             # full porous anode with finite capacity
             dD["cap"]["a"] = (dD['L']["a"] * (1-ndD['poros']["a"]) *
-                    D['P_L']["a"] * D['rhos']["a"])
+                    ndD['P_L']["a"] * dD['rhos']["a"])
             ndD["z"] = dD["cap"]["c"] / dD["cap"]["a"]
         else:
             # flat plate anode with assumed infinite supply of metal
@@ -158,21 +159,21 @@ class mpetIO():
 
         # Some nondimensional parameters
         T = ndD["T"] = Tabs/Tref
-        ndD["L"]["s"] = dD["L"]["s"] / Lref
         ndD["Dp"] = Dp / Damb
         ndD["Dm"] = Dm / Damb
         ndD["c0"] = c0 / 1000. # normalize to 1 M
         ndD["phi_cathode"] = 0.
         ndD["currset"] = dD["Crate"]*td/3600
-        ndD["Vset"] = dD["Vest"] * e/(k*Tref)
+        ndD["Vset"] = dD["Vset"] * e/(k*Tref)
         ndD["tend"] = dD["tend"] / td
         # nondimensional parameters which depend on the electrode
         ndD["L"] = {}
+        ndD["L"]["s"] = dD["L"]["s"] / Lref
         ndD["epsbeta"] = {}
         ndD["mcond"] = {}
         ndD["dphi_eq_ref"] = {}
         ndD["lambda"] = {}
-        ndD["mHC_erfstretch"] = {}
+        ndD["MHC_erfstretch"] = {}
         ndD["B"] = {}
         ndD["kappa"] = {}
         ndD["k0"] = {}
@@ -190,7 +191,7 @@ class mpetIO():
                     dD["csmax"][trode]/c0)
             ndD["mcond"][trode] = (
                     dD['mcond'][trode] * (td * k * N_A * Tref) /
-                    (L_ref**2 * F**2 * c0))
+                    (Lref**2 * F**2 * c0))
             if ndD["delPhiEqFit"][trode]:
                 material = ndD['material'][trode]
                 fits = delta_phi_fits.DPhiFits(ndD["T"])
@@ -200,7 +201,7 @@ class mpetIO():
                 ndD["dphi_eq_ref"][trode] = 0.
             lmbda = ndD["lambda"][trode] = dD["lambda"][trode]/(k*Tref)
             MHC_erf_b = ndD["MHC_erfstretch"][trode] = 2*np.sqrt(lmbda)
-            ndD["B"][trode] = dD['B'][trode]/(k*Tref*D['rhos'][trode])
+            ndD["B"][trode] = dD['B'][trode]/(k*Tref*dD['rhos'][trode])
             psd_len = dD["psd_len"][trode]
             psd_area = dD["psd_area"][trode]
             psd_vol = dD["psd_vol"][trode]
@@ -229,7 +230,7 @@ class mpetIO():
 
         return dD, ndD
 
-    def distr_part(self, ndD, dD):
+    def distr_part(self, dD, ndD):
         psd_raw = {}
         psd_num = {}
         psd_len = {}
@@ -271,16 +272,16 @@ class mpetIO():
             else:
                 raise NotImplementedError("Solid types missing here")
             # Calculate areas and volumes
-            solidShape = ndD["solidShape"]
+            solidShape = ndD["solidShape"][trode]
             if solidShape == "sphere":
-                psd_area = (4*np.pi)*psd_len**2
-                psd_vol = (4./3)*np.pi*psd_len**3
+                psd_area[trode] = (4*np.pi)*psd_len[trode]**2
+                psd_vol[trode] = (4./3)*np.pi*psd_len[trode]**3
             elif solidShape == "C3":
-                psd_area = 2 * 1.2263 * psd_len**2
-                psd_vol = 1.2263 * psd_len**2 * dD['partThick'][trode]
+                psd_area[trode] = 2 * 1.2263 * psd_len[trode]**2
+                psd_vol[trode] = 1.2263 * psd_len[trode]**2 * dD['partThick'][trode]
             elif solidShape == "cylinder":
-                psd_area = 2 * np.pi * psd_len * dD['partThick'][trode]
-                psd_vol = np.pi * psd_len**2 * dD['partThick'][trode]
+                psd_area[trode] = 2 * np.pi * psd_len[trode] * dD['partThick'][trode]
+                psd_vol[trode] = np.pi * psd_lent[trode]**2 * dD['partThick'][trode]
         return psd_raw, psd_num, psd_len, psd_area, psd_vol
 
     def distr_G(self, dD, ndD):
@@ -353,12 +354,12 @@ class mpetIO():
                 raise NotImplementedError("homog_snd req. Tref=Tabs=298")
             if solidType in ["diffn"] and solidShape != "sphere":
                 raise NotImplementedError("diffn currently req. sphere")
-            if ndD['delPhiEqFit'][l] and solidType not in ["diffn", "homog"]:
-                if ndD['material'][l] == "LiMn2O4" and dD['Tabs'] != 298:
+            if ndD['delPhiEqFit'][trode] and solidType not in ["diffn", "homog"]:
+                if ndD['material'][trode] == "LiMn2O4" and dD['Tabs'] != 298:
                     raise Exception("LiMn204 req. Tabs = 298 K")
-                if ndD['material'][l] == "LiC6" and dD['Tabs'] != 298:
+                if ndD['material'][trode] == "LiC6" and dD['Tabs'] != 298:
                     raise Exception("LiC6 req. Tabs = 298 K")
-                if ndD['material'][l] == "NCA1" and dD['Tabs'] != 298:
+                if ndD['material'][trode] == "NCA1" and dD['Tabs'] != 298:
                     raise Exception("NCA1 req. Tabs = 298 K")
                 raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
         return
