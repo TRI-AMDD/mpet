@@ -15,7 +15,9 @@ class mpetIO():
         return P
 
     def getDictFromConfig(self, P):
+        # Dictionary of dimensional parameters
         dD = {}
+        # Dictionary of nondimensional parameters
         ndD = {}
 
         # Simulation Parameters
