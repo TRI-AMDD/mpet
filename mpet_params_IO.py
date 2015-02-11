@@ -167,6 +167,10 @@ class mpetIO():
         ndD["currset"] = dD["Crate"]*td/3600
         ndD["Vset"] = dD["Vset"] * e/(k*Tref)
         ndD["tend"] = dD["tend"] / td
+        if ndD["profileType"] == "CC" and ndD["currset"] != 0.0:
+            ndD["tend"] = ndD["capFrac"] / ndD["currset"]
+        else: # CV or zero current simulation
+            ndD["tend"] = dD["tend"] / td
         # nondimensional parameters which depend on the electrode
         ndD["psd_vol_FracTot"] = {}
         ndD["psd_vol_FracVol"] = {}
@@ -379,8 +383,8 @@ class mpetIO():
         fo.close()
         return
     def writeDicts(self, dD, ndD, filenamebase="input_dict"):
-        pickle.dump(dD, open(filename + "_dD.p", "wb"))
-        pickle.dump(ndD, open(filename + "_ndD.p", "wb"))
+        pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
+        pickle.dump(ndD, open(filenamebase + "_ndD.p", "wb"))
         return
     def readDicts(self, filenamebase="input_dict"):
         dD = pickle.load(open(filenamebase + "_dD.p", "rb"))

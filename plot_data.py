@@ -48,36 +48,35 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     solidShape = ndD["solidShape"]
     rxnType = ndD["rxnType"]
     psd_len = dD["psd_len"]
-    Vstd = Vstd["c"] - Vstd["a"]
     # Discretization (and associated porosity)
-    dxc = dD["L"]["c"]/Nvol["c"]
-    dxvec = np.array(Nvol["c"] * [dxc])
-    porosvec = np.array(Nvol["c"] * [ndD["poros"]["c"]])
     Lfac = 1e6
     Lunit = r"$\mu$m"
-    L_c = dD['L']["c"] * Lfac
+    dxc = ndD["L"]["c"]/Nvol["c"]
+    dxvec = np.array(Nvol["c"] * [dxc])
+    porosvec = np.array(Nvol["c"] * [ndD["poros"]["c"]])
+#    L_c = dD['L']["c"] * Lfac
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
     if Nvol["s"]:
-        dxs = dD["L"]["s"]/Nvol["s"]
+        dxs = ndD["L"]["s"]/Nvol["s"]
         dxvec_s = np.array(Nvol["s"] * [dxs])
         dxvec = np.hstack((dxvec_s, dxvec))
         poros_s = np.array(Nvol["s"] * [ndD["poros"]["s"]])
         porosvec = np.hstack((poros_s, porosvec))
-        L_s = dD['L']["s"] * Lfac
-        cellsvec += L_s/L_c
+#        L_s = dD['L']["s"] * Lfac
+        cellsvec += dD["L"]["s"] / dD["L"]["c"]
         cellsvec_s = dxs*np.arange(Nvol["s"]) + dxs/2.
         cellsvec = np.hstack((cellsvec_s, cellsvec))
     if "a" in trodes:
-        dxa = dD["L"]["a"]/Nvol["a"]
+        dxa = ndD["L"]["a"]/Nvol["a"]
         dxvec_a = np.array(Nvol["a"] * [dxa])
         dxvec = np.hstack((dxvec_a, dxvec))
         poros_a = np.array(Nvol["a"] * [ndD["poros"]["a"]])
         porosvec = np.hstack((poros_a, porosvec))
-        L_a = dD['L']["a"] * Lfac
-        cellsvec += L_a/L_c
+#        L_a = dD['L']["a"] * Lfac
+        cellsvec += dD["L"]["a"] / dD["L"]["c"]
         cellsvec_a = dxa*np.arange(Nvol["a"]) + dxa/2.
         cellsvec = np.hstack((cellsvec_a, cellsvec))
-    cellsvec *= L_c
+    cellsvec *= dD["L"]["c"] * Lfac
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
@@ -130,7 +129,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         print ("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
                 np.array(dD['psd_stddev']["c"])*Lfac)
 #        print "reg sln params:"
-#        print data[pfx + "a"][0]
+#        print ndD["Omga"]
         if Nvol["s"]: print "Nvol_s:", Nvol["s"]
         print "Nvol_c:", Nvol["c"]
         if Nvol["a"]: print "Nvol_a:", Nvol["a"]
@@ -162,31 +161,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot voltage profile
     if plot_type == "v":
-        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
-#        voltage = -data[pfx + 'phi_applied'][0]
+        voltage = ((Vstd["c"] - Vstd["a"]) -
+                (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
         if data_only:
             return ffvec, voltage
         fig, ax = plt.subplots()
         ax.plot(ffvec, voltage)
-#        xmin = np.min(ffvec)
-#        xmax = np.max(ffvec)
         xmin = 0.
         xmax = 1.
         ax.set_xlim((xmin, xmax))
-#        if not D['delPhiEqFit']:
-##            ax.axhline(y=Vstd_c, xmin=xmin, xmax=xmax, linestyle='--', color='g')
-#            ax.axhline(y=Vstd_c, linestyle='--', color='g')
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
-#        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
         if save_flag:
             fig.savefig("mpet_v.png")
         return fig, ax
 
     # Plot surface conc.
     if plot_type in ["surf_c", "surf_a"]:
-#        l = (0 if plot_type[-1] == "a" else 1)
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for surf")
@@ -206,13 +198,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot misc stuff about reactions
     if plot_type in ["rxnp_c", "rxnp_a"]:
-#        l = (0 if plot_type[-1] == "a" else 1)
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for rxnp")
         fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
                 sharey=True)
-#        lmbda = data[pfx + "lambda_ac"][0][l]
         k0 = dD['k0'][l]
         sol_c_str_base = pfx + "c_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
         sol_p_str = pfx + "phi_{l}".format(l=l)
@@ -288,7 +278,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot SoC profile
     if plot_type in ["soc_c", "soc_a"]:
-#        l = (0 if plot_type[-1] == "a" else 1)
         l = plot_type[-1]
         ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
         if data_only:
@@ -318,7 +307,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         sep = pfx + 'c_lyte_s'
         anode = pfx + 'c_lyte_a'
         cath = pfx + 'c_lyte_c'
-        ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
+        ax.set_xlabel('Time [s]')
         cvec = data[cath]
         if Nvol["s"]:
             cvec_s = data[sep]
@@ -398,7 +387,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
-#        line1, = ax.plot(datax, datay)
         line1, = ax.plot(datax, datay, '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
@@ -423,7 +411,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Plot all solid concentrations or potentials
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
             "csld_col_c", "csld_col_a"]:
-#        l = (0 if plot_type[-1] == "a" else 1)
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
@@ -433,21 +420,21 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         lens = np.zeros((Npart[l], Nvol[l]))
         lines = np.empty((Npart[l], Nvol[l]), dtype=object)
         fills = np.empty((Npart[l], Nvol[l], 3), dtype=object)
-        if plot_type in ["csld_a", "csld_col_a"]:
-            str_base = pfx + "c_sld_trode0vol{j}part{i}"
+        if plot_type in ["csld_a", "csld_col_a", "csld_c", "csld_col_c"]:
+            str_base = pfx + "c_sld_trode{l}vol{j}part{i}"
             ylim = (0, 1.01)
-        elif plot_type in ["csld_c", "csld_col_c"]:
-            str_base = pfx + "c_sld_trode1vol{j}part{i}"
-            ylim = (0, 1.01)
-        elif plot_type == "phisld_a": # plot_type == "phisld"
-            str_base = pfx + "p_sld_trode0vol{j}part{i}"
+#        elif plot_type in ["csld_c", "csld_col_c"]:
+#            str_base = pfx + "c_sld_trode1vol{j}part{i}"
+#            ylim = (0, 1.01)
+        elif plot_type in ["phisld_a", "phisld_c"]: # plot_type == "phisld"
+            str_base = pfx + "p_sld_trode{l}vol{j}part{i}"
             ylim = (-10, 20)
-        elif plot_type == "phisld_c":
-            str_base = pfx + "p_sld_trode1vol{j}part{i}"
-            ylim = (-10, 20)
+#        elif plot_type == "phisld_c":
+#            str_base = pfx + "p_sld_trode1vol{j}part{i}"
+#            ylim = (-10, 20)
         for i in range(Npart[l]):
             for j in range(Nvol[l]):
-                sol[i, j] = str_base.format(i=i, j=j)
+                sol[i, j] = str_base.format(l=l, i=i, j=j)
                 lens[i, j] = psd_len[l][j, i]
                 # Remove axis ticks
                 ax[i, j].xaxis.set_major_locator(plt.NullLocator())
@@ -637,7 +624,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot cathode potential
     elif plot_type in ["bulkp_c", "bulkp_a"]:
-#        l = (0 if plot_type[-1] == "a" else 1)
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for bulkp")

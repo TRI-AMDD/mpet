@@ -598,18 +598,18 @@ class modMPET(daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            if ndD["currset"] != 0.0:
-                timeHorizon = 1./np.abs(ndD["currset"])
-            else:
-                timeHorizon = ndD["tend"]
+#            if ndD["currset"] != 0.0:
+#                timeHorizon = 1./np.abs(ndD["currset"])
+#            else:
+#                timeHorizon = ndD["tend"]
             eq.Residual = self.current() - ndD["currset"]*(
-                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
+                    1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            timeHorizon = ndD["tend"]
+#            timeHorizon = ndD["tend"]
             eq.Residual = self.phi_applied() - ndD["Vset"]*(
-                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
+                    1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -1192,10 +1192,11 @@ def consoleRun(ndD, outdir):
     daesolver.RelativeTolerance = 1e-6
 
     # Set the time horizon and the reporting interval
-    if ndD['profileType'] == "CC" and ndD["currset"] != 0.0:
-        simulation.TimeHorizon = 1./np.abs(ndD['currset'])
-    else: # CV or zero current simulation
-        simulation.TimeHorizon = ndD['tend']
+#    if ndD['profileType'] == "CC" and ndD["currset"] != 0.0:
+#        simulation.TimeHorizon = 1./np.abs(ndD['currset'])
+#    else: # CV or zero current simulation
+#        simulation.TimeHorizon = ndD['tend']
+    simulation.TimeHorizon = ndD["tend"]
     simulation.ReportingInterval = simulation.TimeHorizon/ndD['tsteps']
 
     # Connect data reporter
