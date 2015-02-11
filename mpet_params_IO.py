@@ -192,9 +192,16 @@ class mpetIO():
         ndD["G"] = {}
         ndD["Omga"] = {}
         for trode in ndD["trodes"]:
+            # Fraction of individual particle volume compared to total
+            # particle volume
             ndD["psd_vol_FracTot"][trode] = (dD["psd_vol"][trode] /
                     np.sum(dD["psd_vol"][trode]))
+            # Sums of all particle volumes within each simulated
+            # electrode volume
             Vuvec = np.sum(dD["psd_vol"][trode], axis=1)
+            # Fraction of individual particle volume compared to total
+            # volume of particles _within the simulated electrode
+            # volume_
             ndD["psd_vol_FracVol"][trode] = (dD["psd_vol"][trode] /
                     Vuvec[:, np.newaxis])
             ndD["L"][trode] = dD["L"][trode]/Lref

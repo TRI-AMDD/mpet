@@ -157,176 +157,16 @@ class modMPET(daeModel):
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
 
-#        # Parameters
-#        self.NumTrode = daeParameter("NumTrode", unit(), self,
-#                "Number of electroes simulated (1 or 0)")
-#        self.NumVol_ac = daeParameter("NumVol_ac", unit(), self,
-#                "Number of volumes in the electrode",
-#                [self.Ntrode])
-#        self.NumPart_ac = daeParameter("NumPart_ac", unit(), self,
-#                "Number of particles in each electrode volume",
-#                [self.Ntrode])
-#        self.NumVol_s = daeParameter("NumVol_s", unit(), self,
-#                "Number of volumes in the electrolyte")
-#        self.L_ac = daeParameter("L_ac", unit(), self,
-#                "Length of electrodes (ndim to L_c)",
-#                [self.Ntrode])
-#        self.L_s = daeParameter("L_s", unit(), self,
-#                "Length of separator (ndim to L_c)")
-#        self.epsbeta_ac = daeParameter("epsbeta_ac", unit(), self,
-#                "porosity times beta in electrodes",
-#                [self.Ntrode])
-#        self.zp = daeParameter("zp", unit(), self,
-#                "cation charge number")
-#        self.zm = daeParameter("zm", unit(), self,
-#                "anion charge number")
-#        self.tp = daeParameter("tp", unit(), self,
-#                "positive transference number")
-#        self.poros_s = daeParameter("poros_s", unit(), self,
-#                "porosity in separator")
-#        self.poros_ac = daeParameter("poros_ac", unit(), self,
-#                "porosity in electrode",
-#                [self.Ntrode])
-#        self.phi_cathode = daeParameter("phi_cathode", unit(), self,
-#                "reference potential, at the cathode + "
-#                "(phi_applied is relative to this)")
-#        self.td = daeParameter("td", unit(), self,
-#                "Diffusive time [s]")
-#        self.dim_Damb = daeParameter("dim_Damb", unit(), self,
-#                "ambipolar diffusivity [m^2/s]")
-#        self.Dp = daeParameter("Dp", unit(), self,
-#                "non-dimensional diffusivity of positive ions")
-#        self.Dm = daeParameter("Dm", unit(), self,
-#                "non-dimensional diffusivity of negative ions")
-#        self.Dsld_ac = np.empty(2, dtype=object)
-#        self.kappa_ac = np.empty(2, dtype=object)
-#        self.Omga_ac = np.empty(2, dtype=object)
-#        self.k0_ac = np.empty(2, dtype=object)
-#        self.beta_s_ac = np.empty(2, dtype=object)
-#        self.delta_L_ac = np.empty(2, dtype=object)
-#        self.MHC_Aa_ac = np.empty(2, dtype=object)
-#        self.scond_ac = np.empty(2, dtype=object)
-#        self.G_ac = np.empty(2, dtype=object)
-#        self.psd_num_ac = np.empty(2, dtype=object)
-#        self.psd_len_ac = np.empty(2, dtype=object)
-#        self.psd_area_ac = np.empty(2, dtype=object)
-#        self.psd_vol_ac = np.empty(2, dtype=object)
-#        for l in trodes:
-#            self.Dsld_ac[l] = daeParameter("Dsld_{l}".format(l=l),
-#                    unit(), self,
-#                    "Diffusivity in electrode active particles",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.kappa_ac[l] = daeParameter("kappa_{l}".format(l=l),
-#                    unit(), self,
-#                    "kappa for each particle",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.Omga_ac[l] = daeParameter("Omga_{l}".format(l=l),
-#                    unit(), self,
-#                    "regular solution parameter for each particle [J]",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.k0_ac[l] = daeParameter("k0_{l}".format(l=l),
-#                    unit(), self,
-#                    "exchange current density rate constant for each particle",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.beta_s_ac[l] = daeParameter("beta_s_{l}".format(l=l),
-#                    unit(), self,
-#                    "surface wetting, nondim: kappa*d(gamma_s)/dc",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.delta_L_ac[l] = daeParameter("delta_L_{l}".format(l=l),
-#                    unit(), self,
-#                    "Length ratios for particle: Vp/(Ap*Rp)",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.MHC_Aa_ac[l] = daeParameter("MHC_Aa_{l}".format(l=l),
-#                    unit(), self,
-#                    "MHC factor for erf approximation parameter",
-##                    [self.Ntrode])
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.scond_ac[l] = daeParameter("scond_{l}".format(l=l),
-#                    unit(), self,
-#                    "surface conductivity of particles",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.G_ac[l] = daeParameter("G_{l}".format(l=l),
-#                    unit(), self,
-#                    "conductance particles",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.psd_num_ac[l] = daeParameter("psd_numVols_{l}".format(l=l),
-#                    unit(), self,
-#                    "Particle numbers of discretizations",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.psd_len_ac[l] = daeParameter("psd_lengths_{l}".format(l=l),
-#                    unit(), self,
-#                    "Particle lengths [nm]",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.psd_area_ac[l] = daeParameter("psd_active_areas_{l}".format(l=l),
-#                    unit(), self,
-#                    "Particle active areas [nm^2]",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#            self.psd_vol_ac[l] = daeParameter("psd_volumes_{l}".format(l=l),
-#                    unit(), self,
-#                    "Particle volumes [nm^3]",
-#                    [self.Nvol_ac[l], self.Npart_ac[l]])
-#        self.dphi_eq_ref_ac = daeParameter("dphi_eq_ref_ac",
-#                unit(), self,
-#                "dimensionless potential offset in referencing fit " +
-#                "delta_phi_eq curves -- used only for initialization",
-#                [self.Ntrode])
-#        self.alpha_ac = daeParameter("alpha_ac", unit(), self,
-#                " Charge transfer coefficient",
-#                [self.Ntrode])
-#        self.dim_csmax_ac = daeParameter("dim_csmax_ac", unit(), self,
-#                "maximum lithium concentration in solid [mol/m^3]",
-#                [self.Ntrode])
-#        self.MHC_erfstretch_ac = daeParameter("MHC_b_ac", unit(), self,
-#                "MHC factor for erf approximation parameter",
-#                [self.Ntrode])
-#        self.T = daeParameter("T", unit(), self,
-#                "Non dimensional temperature")
-#        self.currset = daeParameter("currset", unit(), self,
-#                "dimensionless current")
-#        self.Vset = daeParameter("Vset", unit(), self,
-#                "dimensionless applied voltage (relative to " +
-#                "Delta V OCV of the  cell)")
-#        self.cwet_ac = daeParameter("cwet_ac", unit(), self,
-#                "Wetted surface concentration",
-#                [self.Ntrode])
-#        self.B_ac = daeParameter("B_ac", unit(), self,
-#                "Stress coefficient for each particle",
-#                [self.Ntrode])
-#        self.lmbda_ac = daeParameter("lmbda_ac", unit(), self,
-#                "Marcus reorganizational energy",
-#                [self.Ntrode])
-#        self.mcond_ac = daeParameter("mcond_ac", unit(), self,
-#                "conductivity of cathode",
-#                [self.Ntrode])
-#        self.z = daeParameter("z", unit(), self,
-#                "capacity ratio of cathode:anode")
-
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
         trodes = self.trodes
-#        Nvol_ac = [0, 0]
-#        Npart_ac = [0, 0]
-#        for l in trodes:
-#            Nvol_ac[l] = self.Nvol_ac[l].NumberOfPoints
-#            Npart_ac[l] = self.Npart_ac[l].NumberOfPoints
-#        if self.D['Nvol_s'] >= 1: # if we have a separator
-#            Nvol_s = self.Nvol_s.NumberOfPoints
-#        else:
-#            Nvol_s = 0
         ndD = self.ndD
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
         Nlyte = np.sum(Nvol.values())
         psd_num = ndD["psd_num"]
-#        Nsld_mat_ac = np.empty(2, dtype=object)
-#        for l in trodes:
-#            Nsld_mat_ac[l] = np.zeros((Nvol_ac[l], Npart_ac[l]), dtype=np.integer)
-#            for i in range(Nvol_ac[l]):
-#                for j in range(Npart_ac[l]):
-#                    Nptsij = self.Nsld_mat_ac[l][i, j].NumberOfPoints
-#                    Nsld_mat_ac[l][i, j] = Nptsij
         # External function -- erf -- prepare to store external
         # function objects. For some reason, each external function
         # object that gets created has to stay 'alive' as an attribute
@@ -377,17 +217,14 @@ class modMPET(daeModel):
             # Make a float of Vtot, total particle volume in electrode
             # Note: for some reason, even when "factored out", it's a bit
             # slower to use Sum(self.psd_vol_ac[l].array([], [])
-#            Vtot = np.sum(psd_vol[l])
             tmp = 0
             for i in range(Nvol[l]):
                 for j in range(Npart[l]):
-#                    Vpart = psd_vol[l][i, j]
                     Vpart = ndD["psd_vol_FracTot"][l][i, j]
                     # For some reason the following slower, so
                     # it's helpful to factor out the Vtot sum:
                     # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
                     tmp += self.cbar_sld[l](i, j) * Vpart
-#            eq.Residual -= tmp / Vtot
             eq.Residual -= tmp
 
         # Define dimensionless j_plus for each electrode volume
@@ -398,11 +235,8 @@ class modMPET(daeModel):
                 # particle in the volume.
                 res = 0
                 # sum over particle volumes in given electrode volume
-#                Vu = Sum(self.psd_vol_ac[l].array(i, []))
-#                Vu = np.sum(psd_vol[l][i, :])
                 for j in range(Npart[l]):
                     # The volume of this particular particle
-#                    Vj = psd_vol[l][i, j]
                     Vj = ndD["psd_vol_FracVol"][l][i, j]
                     Nij = psd_num[l][i, j]
                     r_vec, volfrac_vec = self.get_unit_solid_discr(
@@ -413,7 +247,6 @@ class modMPET(daeModel):
                         tmp += (self.c_sld[l][i, j].dt(k) *
                                 volfrac_vec[k])
                     res += tmp * Vj
-#                eq.Residual = self.j_plus[l](i) - res/Vu
                 eq.Residual = self.j_plus[l](i) - res
 
         # Solid active particle concentrations, potential, and bulk
@@ -598,16 +431,11 @@ class modMPET(daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-#            if ndD["currset"] != 0.0:
-#                timeHorizon = 1./np.abs(ndD["currset"])
-#            else:
-#                timeHorizon = ndD["tend"]
             eq.Residual = self.current() - ndD["currset"]*(
                     1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-#            timeHorizon = ndD["tend"]
             eq.Residual = self.phi_applied() - ndD["Vset"]*(
                     1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
 
@@ -640,8 +468,8 @@ class modMPET(daeModel):
         phi_lyte = self.phi_lyte[l](i)
         phi_m = self.phi_part[l](i, j)
         c_lyte = self.c_lyte[l](i)
-        # Get the relevant parameters for this particle
         cbar = self.cbar_sld[l](i, j) # only used for ACR/CHR
+        # Get the relevant parameters for this particle
         k0 = ndD["k0"][l][i, j]
         kappa = ndD["kappa"][l][i, j] # only used for ACR/CHR
         lmbda = ndD["lambda"][l] # Only used for Marcus/MHC
@@ -877,8 +705,7 @@ class modMPET(daeModel):
         Nij = ndD["psd_num"][l][i, j]
         # solid potential variables for this particle
         phi_tmp = np.empty(Nij + 2, dtype=object)
-        phi_tmp[1:-1] = [self.phi_sld[l][i, j](k) for k in
-                range(Nij)]
+        phi_tmp[1:-1] = [self.phi_sld[l][i, j](k) for k in range(Nij)]
         # BC's -- "touching carbon at each end"
         phi_s_local = self.phi_part[l](i, j)
         phi_tmp[0] = phi_s_local
@@ -1192,12 +1019,8 @@ def consoleRun(ndD, outdir):
     daesolver.RelativeTolerance = 1e-6
 
     # Set the time horizon and the reporting interval
-#    if ndD['profileType'] == "CC" and ndD["currset"] != 0.0:
-#        simulation.TimeHorizon = 1./np.abs(ndD['currset'])
-#    else: # CV or zero current simulation
-#        simulation.TimeHorizon = ndD['tend']
     simulation.TimeHorizon = ndD["tend"]
-    simulation.ReportingInterval = simulation.TimeHorizon/ndD['tsteps']
+    simulation.ReportingInterval = ndD["tend"] / ndD['tsteps']
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
@@ -1207,10 +1030,6 @@ def consoleRun(ndD, outdir):
 
     # Initialize the simulation
     simulation.Initialize(daesolver, datareporter, log)
-
-#    # Save model report
-#    simulation.m.SaveModelReport(os.path.join(os.getcwd(),
-#        "../2013_08_daetools/daetools_tutorials/report_mpet.xml"))
 
     # Solve at time=0 (initialization)
     simulation.SolveInitial()
