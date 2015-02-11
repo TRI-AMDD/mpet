@@ -140,7 +140,7 @@ class mpetIO():
         # Ambipolar diffusivity
         Damb = dD["Damb"] = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
         # Cation transference number
-        tp = dD["tp"] = zp*Dp / (zp*Dp + zm*Dm)
+        tp = ndD["tp"] = zp*Dp / (zp*Dp + zm*Dm)
         # Diffusive time scale
         td = dD["td"] = L_ref**2 / Damb
         # Electrode capacity ratio
@@ -156,14 +156,16 @@ class mpetIO():
             # flat plate anode with assumed infinite supply of metal
             ndD["z"] = 0
 
-        # Some non-dimensional parameters
+        # Some nondimensional parameters
         T = ndD["T"] = Tabs/Tref
         ndD["L"]["s"] = dD["L"]["s"] / Lref
         ndD["Dp"] = Dp / Damb
         ndD["Dm"] = Dm / Damb
+        ndD["c0"] = c0 / 1000. # normalize to 1 M
         ndD["phi_cathode"] = 0.
         ndD["currset"] = dD["Crate"]*td/3600
         ndD["Vset"] = dD["Vest"] * e/(k*Tref)
+        ndD["tend"] = dD["tend"] / td
         # nondimensional parameters which depend on the electrode
         ndD["L"] = {}
         ndD["epsbeta"] = {}
@@ -191,7 +193,7 @@ class mpetIO():
                     (L_ref**2 * F**2 * c0))
             if ndD["delPhiEqFit"][trode]:
                 material = ndD['material'][trode]
-                fits = delta_phi_fits.DPhiFits(dD)
+                fits = delta_phi_fits.DPhiFits(ndD["T"])
                 phifunc = fits.materialData[material]
                 ndD["dphi_eq_ref"][trode] = phifunc(dD['cs0'][trode], 0)
             else:
@@ -207,7 +209,7 @@ class mpetIO():
             k0 = ndD["k0"][trode] = (
                     ((psd_area/psd_vol)*dD['k0'][trode]*td) /
                     (F*dD["csmax"][trode]))
-            ndD["beta_s"][trode] = (dD['dgammasdc_ac'][trode]*psd_len*
+            ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*psd_len*
                     dD['rhos'][trode]/dD['kappa'][trode])
             ndD["delta_L"][trode] = psd_vol/(psd_area*psd_len)
             ndD["MHC_Aa"][trode] = k0 / (spcl.erf(-lmbda/MHC_erf_b) + 1)
@@ -331,12 +333,12 @@ class mpetIO():
     def test_input(self, dD, ndD):
         if dD['Tabs'] != 298 or dD['Tref'] != 298:
             raise Exception("Temp dependence not implemented")
-        if D['Nvol']["c"] < 1:
+        if ndD['Nvol']["c"] < 1:
             raise Exception("Must have at least one porous electrode")
         for trode in ndD["trodes"]:
             solidType = ndD['solidType'][trode]
             solidShape = ndD['solidShape'][trode]
-            if D['simSurfCond'][trode] and solidType != "ACR":
+            if ndD['simSurfCond'][trode] and solidType != "ACR":
                 raise Exception("simSurfCond req. ACR")
             if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
                 raise Exception("ACR and homog_sdn req. C3 shape")
@@ -346,12 +348,18 @@ class mpetIO():
                 raise NotImplementedError("Input solidType not defined")
             if solidShape not in ["C3", "sphere", "cylinder"]:
                 raise NotImplementedError("Input solidShape not defined")
-            if solidType == "homog_sdn" and (D['Tabs'] != 298 or
-                    D['Tref'] != 298):
+            if solidType == "homog_sdn" and (dD['Tabs'] != 298 or
+                    dD['Tref'] != 298):
                 raise NotImplementedError("homog_snd req. Tref=Tabs=298")
             if solidType in ["diffn"] and solidShape != "sphere":
                 raise NotImplementedError("diffn currently req. sphere")
-            if D['delPhiEqFit_ac'][l] and solidType not in ["diffn", "homog"]:
+            if ndD['delPhiEqFit'][l] and solidType not in ["diffn", "homog"]:
+                if ndD['material'][l] == "LiMn2O4" and dD['Tabs'] != 298:
+                    raise Exception("LiMn204 req. Tabs = 298 K")
+                if ndD['material'][l] == "LiC6" and dD['Tabs'] != 298:
+                    raise Exception("LiC6 req. Tabs = 298 K")
+                if ndD['material'][l] == "NCA1" and dD['Tabs'] != 298:
+                    raise Exception("NCA1 req. Tabs = 298 K")
                 raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
         return
 
