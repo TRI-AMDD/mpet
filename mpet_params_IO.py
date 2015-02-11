@@ -1,4 +1,5 @@
 import ConfigParser
+import pickle
 
 import numpy as np
 import scipy.special as spcl
@@ -372,8 +373,16 @@ class mpetIO():
                 raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
         return
 
-    def writeConfigFile(self, P, filename="output_params.cfg"):
+    def writeConfigFile(self, P, filename="input_params.cfg"):
         fo = open(filename, "w")
         P.write(fo)
         fo.close()
         return
+    def writeDicts(self, dD, ndD, filenamebase="input_dict"):
+        pickle.dump(dD, open(filename + "_dD.p", "wb"))
+        pickle.dump(ndD, open(filename + "_ndD.p", "wb"))
+        return
+    def readDicts(self, filenamebase="input_dict"):
+        dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
+        ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
+        return dD, ndD

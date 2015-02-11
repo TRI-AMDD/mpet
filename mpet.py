@@ -1259,6 +1259,8 @@ if __name__ == "__main__":
     paramFileName = "input_params.cfg"
     paramFile = os.path.join(outdir, paramFileName)
     IO.writeConfigFile(P, filename=paramFile)
+    dictFile = os.path.join(outdir, "input_dict")
+    IO.writeDicts(dD, ndD, filenamebase=dictFile)
 
     # Store info about this script
     try:
