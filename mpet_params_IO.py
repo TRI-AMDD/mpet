@@ -127,16 +127,10 @@ class mpetIO():
 
         # Post-processing
         self.test_input(dD, ndD)
-
         psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(dD, ndD)
-        dD["psd_raw"] = {"a": psd_raw["a"], "c": psd_raw["c"]}
-        ndD["psd_num"] = {"a": psd_num["a"], "c": psd_num["c"]}
-        dD["psd_len"] = {"a": psd_len["a"], "c": psd_len["c"]}
-        dD["psd_area"] = {"a": psd_area["a"], "c": psd_area["c"]}
-        dD["psd_vol"] = {"a": psd_vol["a"], "c": psd_vol["c"]}
         G = self.distr_G(dD, ndD)
-        dD["G"] = {"a": G["a"], "c": G["c"]}
 
+        # Various calculated and defined parameters
         Lref = dD["Lref"] = dD["L"]["c"]
         # maximum concentration in electrode solids, mol/m^3
         dD["csmax"] = {"a": dD['rhos']["a"]/N_A,
@@ -164,7 +158,7 @@ class mpetIO():
         T = ndD["T"] = Tabs/Tref
         ndD["Dp"] = Dp / Damb
         ndD["Dm"] = Dm / Damb
-        ndD["c0"] = c0 / 1000. # normalize to 1 M
+        ndD["c0"] = c0 / 1000. # normalize by 1 M
         ndD["phi_cathode"] = 0.
         ndD["currset"] = dD["Crate"]*td/3600
         ndD["Vset"] = dD["Vset"] * e/(k*Tref)
@@ -173,7 +167,14 @@ class mpetIO():
             ndD["tend"] = ndD["capFrac"] / ndD["currset"]
         else: # CV or zero current simulation
             ndD["tend"] = dD["tend"] / td
-        # nondimensional parameters which depend on the electrode
+
+        # parameters which depend on the electrode
+        dD["psd_raw"] = {}
+        ndD["psd_num"] = {}
+        dD["psd_len"] = {}
+        dD["psd_area"] = {}
+        dD["psd_vol"] = {}
+        dD["G"] = {}
         ndD["psd_vol_FracTot"] = {}
         ndD["psd_vol_FracVol"] = {}
         ndD["L"] = {}
@@ -194,6 +195,13 @@ class mpetIO():
         ndD["G"] = {}
         ndD["Omga"] = {}
         for trode in ndD["trodes"]:
+            # particle size distribution and connectivity distribution
+            dD["psd_raw"][trode] = psd_raw[trode]
+            ndD["psd_num"][trode] = psd_num[trode]
+            dD["psd_len"][trode] = psd_len[trode]
+            dD["psd_area"][trode] = psd_area[trode]
+            dD["psd_vol"][trode] = psd_vol[trode]
+            dD["G"][trode] = G[trode]
             # Fraction of individual particle volume compared to total
             # particle volume
             ndD["psd_vol_FracTot"][trode] = (dD["psd_vol"][trode] /
@@ -223,30 +231,30 @@ class mpetIO():
             lmbda = ndD["lambda"][trode] = dD["lambda"][trode]/(k*Tref)
             MHC_erf_b = ndD["MHC_erfstretch"][trode] = 2*np.sqrt(lmbda)
             ndD["B"][trode] = dD['B'][trode]/(k*Tref*dD['rhos'][trode])
-            psd_len = dD["psd_len"][trode]
-            psd_area = dD["psd_area"][trode]
-            psd_vol = dD["psd_vol"][trode]
+            lens = dD["psd_len"][trode]
+            areas = dD["psd_area"][trode]
+            vols = dD["psd_vol"][trode]
             ndD["kappa"][trode] = (dD['kappa'][trode] /
-                    (k*Tref*dD['rhos'][trode]*psd_len**2))
+                    (k*Tref*dD['rhos'][trode]*lens**2))
             k0 = ndD["k0"][trode] = (
-                    ((psd_area/psd_vol)*dD['k0'][trode]*td) /
+                    ((areas/vols)*dD['k0'][trode]*td) /
                     (F*dD["csmax"][trode]))
-            ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*psd_len*
+            ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*lens*
                     dD['rhos'][trode]/dD['kappa'][trode])
-            ndD["delta_L"][trode] = psd_vol/(psd_area*psd_len)
+            ndD["delta_L"][trode] = vols/(areas*lens)
             ndD["MHC_Aa"][trode] = k0 / (spcl.erf(-lmbda/MHC_erf_b) + 1)
             ndD["scond"][trode] = (dD['scond'][trode] * (k*Tref) /
-                    (dD['k0'][trode]*e*psd_len**2))
-            ndD["Dsld"][trode] = dD['Dsld'][trode]*td/psd_len**2
+                    (dD['k0'][trode]*e*lens**2))
+            ndD["Dsld"][trode] = dD['Dsld'][trode]*td/lens**2
             ndD["G"][trode] = (dD["G"][trode] * (k*Tref/e) * td /
-                    (F*dD["csmax"][trode]*psd_vol))
+                    (F*dD["csmax"][trode]*vols))
             solidType = ndD["solidType"][trode]
             if solidType in ["homog", "ACR", "CHR", "diffn"]:
                 ndD["Omga"][trode] = (dD["Omga"][trode] / (k*Tref) *
                         np.ones(psd_num[trode].shape))
             elif solidType in ["homog_sdn"]:
                 # Not sure about factor of nondimensional T.
-                ndD["Omga"][trode] = T*self.size2regsln(psd_len)
+                ndD["Omga"][trode] = T*self.size2regsln(lens)
             else:
                 raise NotImplementedError("Solid types missing here")
 
@@ -349,8 +357,6 @@ class mpetIO():
         param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
         # replace values less than 2 with 2.
         param[param < 2] = 2
-#        if param < 2:
-#            param = 2
         return param
 
     def test_input(self, dD, ndD):
