@@ -311,7 +311,7 @@ class mpetIO():
                 psd_vol[trode] = 1.2263 * psd_len[trode]**2 * dD['partThick'][trode]
             elif solidShape == "cylinder":
                 psd_area[trode] = 2 * np.pi * psd_len[trode] * dD['partThick'][trode]
-                psd_vol[trode] = np.pi * psd_lent[trode]**2 * dD['partThick'][trode]
+                psd_vol[trode] = np.pi * psd_len[trode]**2 * dD['partThick'][trode]
         return psd_raw, psd_num, psd_len, psd_area, psd_vol
 
     def distr_G(self, dD, ndD):
