@@ -274,7 +274,7 @@ class mpetIO():
             solidType = ndD["solidType"][trode]
             # Make a length-sampled particle size distribution
             # Log-normally distributed
-            if dD["psd_mean"][trode] == 0:
+            if dD["psd_stddev"][trode] == 0:
                 raw = (dD["psd_mean"][trode] *
                         np.ones((Nv, Np)))
             else:
