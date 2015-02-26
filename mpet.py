@@ -1051,15 +1051,8 @@ def consoleRun(ndD, outdir):
         simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
 
-if __name__ == "__main__":
+def main(paramfile="params_default.cfg"):
     timeStart = time.time()
-    default_flag = 0
-    default_file = "params_default.cfg"
-    if len(sys.argv) < 2:
-        default_flag = 1
-        paramfile = default_file
-    else:
-        paramfile = sys.argv[1]
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     IO = mpet_params_IO.mpetIO()
@@ -1125,7 +1118,7 @@ if __name__ == "__main__":
     consoleRun(ndD, outdir)
 
     # Final output for user
-    if default_flag:
+    if paramfile == "params_default.cfg":
         print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
                 fname=default_file)
         print "Pass other parameter file as an argument to this script\n"
@@ -1152,3 +1145,10 @@ if __name__ == "__main__":
             raise
     shutil.copytree(outdir, archivedir)
 
+if __name__ == "__main__":
+    default_file = "params_default.cfg"
+    if len(sys.argv) < 2:
+        paramfile = default_file
+    else:
+        paramfile = sys.argv[1]
+    main(paramfile)
