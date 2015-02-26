@@ -632,10 +632,16 @@ class modMPET(daeModel):
         # Discretization
         # The lengths are nondimensionalized by the cathode length
         dxvec = np.empty(np.sum(Nvol.values()) + 2, dtype=object)
-        dxa = np.array(Nvol["a"] * [self.ndD["L"]["a"]/Nvol["a"]])
-        dxc = np.array(Nvol["c"] * [self.ndD["L"]["c"]/Nvol["c"]])
-        dxs = np.array(Nvol["s"] * [self.ndD["L"]["s"]/Nvol["s"]])
-        dxtmp = np.hstack((dxa, dxs, dxc))
+        if Nvol["a"]:
+            dxa = Nvol["a"] * [self.ndD["L"]["a"]/Nvol["a"]]
+        else:
+            dxa = []
+        if Nvol["s"]:
+            dxs = Nvol["s"] * [self.ndD["L"]["s"]/Nvol["s"]]
+        else:
+            dxs = []
+        dxc = Nvol["c"] * [self.ndD["L"]["c"]/Nvol["c"]]
+        dxtmp = np.array(dxa + dxs + dxc)
         dxvec[1:-1] = dxtmp
         dxvec[0] = dxvec[1]
         dxvec[-1] = dxvec[-2]
