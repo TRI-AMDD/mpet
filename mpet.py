@@ -1060,8 +1060,9 @@ def main(paramfile="params_default.cfg"):
     dD, ndD = IO.getDictFromConfig(P)
 
     # Directories we'll store output in.
-    outdir_name = "sim_output"
-    outdir = os.path.join(os.getcwd(), outdir_name)
+    outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    outdir_path = os.path.join(os.getcwd(), "history")
+    outdir = os.path.join(outdir_path, outdir_name)
     # Make sure there's a place to store the output
     try:
         os.makedirs(outdir)
@@ -1134,16 +1135,15 @@ def main(paramfile="params_default.cfg"):
     except Exception as e:
         pass
 
-    # Copy simulation output to archive
-    archivedir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    archivepath = os.path.join(os.getcwd(), "history")
-    archivedir = os.path.join(archivepath, archivedir_name)
+    # Copy simulation output to current directory
+    tmpDir_name = "sim_output"
+    tmpDir = os.path.join(os.getcwd(), tmpDir_name)
     try:
-        os.makedirs(archivepath)
+        shutil.rmtree(tmpDir)
     except OSError as exception:
-        if exception.errno != errno.EEXIST:
+        if exception.errno != errno.ENOENT:
             raise
-    shutil.copytree(outdir, archivedir)
+    shutil.copytree(outdir, tmpDir)
 
 if __name__ == "__main__":
     default_file = "params_default.cfg"
