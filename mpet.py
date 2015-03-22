@@ -1140,7 +1140,7 @@ def main(paramfile="params_default.cfg"):
     tmpDir = os.path.join(os.getcwd(), tmpDir_name)
     try:
         shutil.rmtree(tmpDir)
-    except OSError as exception:
+    except IOError as exception:
         if exception.errno != errno.ENOENT:
             raise
     shutil.copytree(outdir, tmpDir)
