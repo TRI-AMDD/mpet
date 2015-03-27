@@ -473,8 +473,6 @@ class modMPET(daeModel):
         k0 = ndD["k0"][l][i, j]
         kappa = ndD["kappa"][l][i, j] # only used for ACR/CHR
         lmbda = ndD["lambda"][l] # Only used for Marcus/MHC
-        Aa = ndD["MHC_Aa"][l][i, j] # Only used for MHC
-        b = ndD["MHC_erfstretch"][l] # Only used for MHC
         alpha = ndD["alpha"][l] # Only used for BV
         Omga = ndD["Omga"][l][i, j]
         Ds = ndD["Dsld"][l][i, j] # Only used for "diffn"
@@ -526,8 +524,7 @@ class modMPET(daeModel):
             elif rxnType == "BV":
                 Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
             elif rxnType == "MHC":
-#                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
-                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_sld)
+                Rate = self.R_MHC(k0, lmbda, eta, T, c_sld, c_lyte)
             M = sprs.eye(Nij, Nij, format="csr")
             return (M, Rate)
 
@@ -614,7 +611,7 @@ class modMPET(daeModel):
             elif rxnType == "BV":
                 Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R_surf, eta, T)
             elif rxnType == "MHC":
-                Rxn = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_surf)
+                Rxn = self.R_MHC(k0, lmbda, eta, T, c_surf, c_lyte)
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
                 RHS[-1] = 4*np.pi*(Rs**2 * ndD["delta_L"][l][i, j] * Rxn -
@@ -753,21 +750,27 @@ class modMPET(daeModel):
             (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         return Rate
 
-#    def R_MHC(self, k0, lmbda, eta, Aa, b, T):
-    def R_MHC(self, k0, lmbda, eta, Aa, b, T, c_sld):
-        def knet(eta, lmbda, b):
-            argox = (eta - lmbda)/b
-            argrd = (-eta - lmbda)/b
-            k = Aa*((Erf(argrd) + 1) - (Erf(argox) +1))
-            return k
+    def R_MHC(self, k0, lmbda, eta, T, c_sld, c_lyte):
+        # See Zeng, Smith, Bai, Bazant 2014
+        # Convert to "MHC overpotential"
+        eta_hat = eta + T*np.log(c_lyte/c_sld)
+        a = 1. + np.sqrt(lmbda)
+        gamma_ts = 1./(1. - c_sld)
+        def kfunc(k0, eta, lmbda, a):
+            # evaluate with eta for oxidation, -eta for reduction
+            return (k0 * np.sqrt(np.pi*lmbda) / (1 + np.exp(-eta))
+                    * (1. - Erf((lmbda - np.sqrt(a + eta**2))
+                        / (2*np.sqrt(lmbda)))))
         if type(eta) == np.ndarray:
             Rate = np.empty(len(eta), dtype=object)
             for i, etaval in enumerate(eta):
-#                Rate[i] = knet(etaval, lmbda, b)
-                Rate[i] = (1-c_sld[i])*knet(etaval, lmbda, b)
+                krd = kfunc(k0, -eta_hat[i], lmbda, a)
+                kox = kfunc(k0, eta_hat[i], lmbda, a)
+                Rate[i] = (1./gamma_ts[i])*(krd*c_lyte - kox*c_sld[i])
         else:
-#            Rate = np.array([knet(eta, lmbda, b)])
-            Rate = np.array([(1-c_sld)*knet(eta, lmbda, b)])
+            krd = kfunc(k0, -eta_hat, lmbda, a)
+            kox = kfunc(k0, eta_hat, lmbda, a)
+            Rate = (1./gamma_ts)*(krd*c_lyte - kox*c_sld)
         return Rate
 
     def MX(self, mat, objvec):
