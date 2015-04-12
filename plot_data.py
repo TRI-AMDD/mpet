@@ -143,11 +143,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         for l in trodes:
             if rxnType[l] == "BV":
                 print "alpha_" + l + ":", ndD['alpha'][l]
-            elif rxnType_ac[l] == "Marcus":
+            elif rxnType[l] in ["Marcus", "MHC"]:
                 print "lambda_" + l + "/(kTref):", ndD["lambda"][l]
-            elif rxnType_ac[l] == "MHC":
-                print "MHC_Aa_" + l + ":", ndD["MHC_Aa"][l]
-                print "b_" + l + ":", ndD["MHC_erfstretch"][l]
             if ndD['simBulkCond'][l]:
                 print (l + " bulk conductivity loss: Yes -- " +
                         "dim_mcond [S/m]: " + str(dD['mcond'][l]))

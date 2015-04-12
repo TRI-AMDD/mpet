@@ -183,13 +183,11 @@ class mpetIO():
         ndD["mcond"] = {}
         ndD["dphi_eq_ref"] = {}
         ndD["lambda"] = {}
-        ndD["MHC_erfstretch"] = {}
         ndD["B"] = {}
         ndD["kappa"] = {}
         ndD["k0"] = {}
         ndD["beta_s"] = {}
         ndD["delta_L"] = {}
-        ndD["MHC_Aa"] = {}
         ndD["scond"] = {}
         ndD["Dsld"] = {}
         ndD["G"] = {}
@@ -229,7 +227,6 @@ class mpetIO():
             else:
                 ndD["dphi_eq_ref"][trode] = 0.
             lmbda = ndD["lambda"][trode] = dD["lambda"][trode]/(k*Tref)
-            MHC_erf_b = ndD["MHC_erfstretch"][trode] = 2*np.sqrt(lmbda)
             ndD["B"][trode] = dD['B'][trode]/(k*Tref*dD['rhos'][trode])
             lens = dD["psd_len"][trode]
             areas = dD["psd_area"][trode]
@@ -242,7 +239,6 @@ class mpetIO():
             ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*lens*
                     dD['rhos'][trode]/dD['kappa'][trode])
             ndD["delta_L"][trode] = vols/(areas*lens)
-            ndD["MHC_Aa"][trode] = k0 / (spcl.erf(-lmbda/MHC_erf_b) + 1)
             ndD["scond"][trode] = (dD['scond'][trode] * (k*Tref) /
                     (dD['k0'][trode]*e*lens**2))
             ndD["Dsld"][trode] = dD['Dsld'][trode]*td/lens**2
