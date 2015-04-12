@@ -174,7 +174,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
         if save_flag:
-            fig.savefig("mpet_v.png")
+            fig.savefig("mpet_v.png", bbox_inches="tight")
         return fig, ax
 
     # Plot surface conc.
@@ -273,7 +273,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                    (np.exp(-Malpha*eta/1) - np.exp((1-Malpha)*eta/1)) )
                 line, = ax[i, j].plot(datax, BVecd)
         if save_flag:
-            fig.savefig("Rxn_out.png")
+            fig.savefig("Rxn_out.png", bbox_inches="tight")
         return fig, ax
 
     # Plot SoC profile
@@ -291,7 +291,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Filling Fraciton [dimless]")
         if save_flag:
-            fig.savefig("mpet_soc.png")
+            fig.savefig("mpet_soc.png", bbox_inches="tight")
         return fig, ax
 
     # Check to make sure mass is conserved in elyte
@@ -336,7 +336,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Current [C-rate]")
         if save_flag:
-            fig.savefig("mpet_current.png")
+            fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
     # Plot electrolyte concentration or potential
