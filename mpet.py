@@ -739,8 +739,11 @@ class modMPET(daeModel):
         return Rate
 
     def R_Marcus(self, k0, lmbda, c_lyte, c_sld, eta, T):
-        c_sld = np.array([Max(eps, c_sld[i]) for i in
-            range(len(c_sld))])
+        if type(c_sld) == np.ndarray:
+            c_sld = np.array([Max(eps, c_sld[i]) for i in
+                range(len(c_sld))])
+        else:
+            c_sld = Max(eps, c_sld)
         alpha = 0.5*(1 + (T/lmbda) * np.log(Max(eps, c_lyte)/c_sld))
         # We'll assume c_e = 1 (at the standard state for electrons)
 #        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
