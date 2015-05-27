@@ -119,11 +119,11 @@ class mpetIO():
         zm = ndD["zm"] = P.getfloat('Electrolyte', 'zm')
 
         # Constants
-        k = dD["k"] = P.getfloat('Constants', 'k')
-        Tref = dD["Tref"] = P.getfloat('Constants', 'Tref')
-        e = dD["e"] = P.getfloat('Constants', 'e')
-        N_A = dD["N_A"] = P.getfloat('Constants', 'N_A')
-        F = dD["F"] = dD["e"] * dD["N_A"]
+        k = dD["k"] = 1.381e-23 # J/(K particle)
+        Tref = dD["Tref"] = 298 # K
+        e = dD["e"] = 1.602e-19 # C
+        N_A = dD["N_A"] = 6.022e23 # particle/mol
+        F = dD["F"] = dD["e"] * dD["N_A"] # C/mol
 
         # Post-processing
         self.test_input(dD, ndD)
