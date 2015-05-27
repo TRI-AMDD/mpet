@@ -12,7 +12,10 @@ params*
 !params_default.cfg
 sim_output*
 archive/
+history/
+movies_figs/
 bai_LFP_data/
+graphite_data/
 
 py_mat_compare
 data_capacity.txt
