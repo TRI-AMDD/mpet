@@ -626,16 +626,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             raise NotImplemented("no data-only output for bulkp")
         mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
-        ymin = -1
-        ymax = 10
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
         ax.set_ylabel('Potential of cathode [nondim]')
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                 transform = ax.transAxes, verticalalignment="center",
                 horizontalalignment="center")
-        bulkp = pfx + 'phi_{l}'.format(l=l)
+        bulkp = pfx + 'phi_bulk_{l}'.format(l=l)
         Ltrode = dD['L'][l] * Lfac
         datay = data[bulkp][0]
+        ymin = np.min(data[bulkp]) - 0.2
+        ymax = np.max(data[bulkp]) + 0.2
         numy = len(datay)
         xmin = 0
         xmax = Ltrode
