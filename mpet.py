@@ -631,24 +631,24 @@ class modMPET(daeModel):
             # Factor of -1 is to get sign right if referencing anode
             eq.Residual -= dx * (-1)**(1-limtrode) * self.j_plus_ac[limtrode](i)
 
+        Dp = self.D['Dp']
+        Dm = self.D['Dm']
+        zp = self.D['zp']
+        zm = self.D['zm']
+        Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        td = self.D['L_ac'][1]**2 / Damb
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
             if self.currset.GetValue() != 0.0:
                 timeHorizon = 1./Abs(self.currset())
             else:
-                timeHorizon = 1.
+                timeHorizon = self.D['tend']/td
             eq.Residual = self.current() - self.currset()*(1 -
                     np.exp(-Time()/(timeHorizon*1e-3)))
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            Dp = self.D['Dp']
-            Dm = self.D['Dm']
-            zp = self.D['zp']
-            zm = self.D['zm']
-            Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
-            td = self.D['L_ac'][1]**2 / Damb
             timeHorizon = self.D['tend']/td
             eq.Residual = self.phi_applied() - self.Vset()*(
 #                    1)
@@ -1420,9 +1420,14 @@ class simMPET(daeSimulation):
                     self.m.c2bar_sld_ac[l].SetInitialGuess(i, j, cs0)
                     # Set initial solid concentration values
                     Nij = self.m.Nsld_mat_ac[l][i, j].NumberOfPoints
+                    epsrnd = 0.005
+                    rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
+                    rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
+                    rnd1 -= np.mean(rnd1)
+                    rnd2 -= np.mean(rnd2)
                     for k in range(Nij):
-                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1+0.001))
-                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0*(1-0.001))
+                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd1[i])
+                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd2[i])
         # Electrolyte
         c_lyte_init = self.D['c0']/1000. # normalize to 1 M = 1000 mol/m^3
         phi_guess = 0.
