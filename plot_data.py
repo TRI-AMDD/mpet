@@ -311,8 +311,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for rxnp")
+        scl = 0.5
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
-                sharey=True, figsize=(16,9))
+                sharey=True, figsize=(scl*16, scl*9))
 #        lmbda = data[pfx + "lambda_ac"][0][l]
         k0 = D['k0_ac'][l]
         sol_c1_str_base = pfx + "c1_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
@@ -400,7 +401,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         label=r"$V_{appl}$")
                 for tl in ax[i, j].get_yticklabels():
                     tl.set_color('b')
-                ax[i, j].set_ylabel(r"$V_{appl}$ [V]", color="b")
+                ax[i, j].set_ylabel(r"Voltage [V]", color="b")
                 ax[i, j].set_xlabel("Time [s]")
 #                line1, = ax[i, j].plot(datax, 1./gamma1_ts,
 #                        label=r"$1/\gamma_1$")
@@ -416,7 +417,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         label=r"$Resist_{tot}$")
                 for tl in ax2.get_yticklabels():
                     tl.set_color('r')
-                ax2.set_ylabel("Reaction Resistance [nondimensional]",
+#                ax2.set_ylabel("Reaction Resistance [nondimensional]",
+                ax2.set_ylabel(r"$R_\mathrm{rxn}$ [nondimensional]",
                         color="r")
 #                line1, = ax2.plot(datax, rxn1_vec, linestyle='--',
 #                        label=r"$rxn_1$")
@@ -430,8 +432,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 ##                        label=r"$rd_2$")
 ##                line6, = ax2.plot(datax, ox2_vec, linestyle='-.',
 ##                        label=r"$ox_2$")
-                ax2.legend(loc="upper right")
-                ax[i, j].legend(loc="upper left")
+#                ax2.legend(loc="upper right")
+#                ax[i, j].legend(loc="upper left")
+                ax2.set_ylim((0., 100))
+                ax[i, j].set_ylim((-0.05, 0.10))
 ##                # homog particles
 ##                mu_R = Omga*(1-2*csld) + 1*np.log(csld/(1-csld))
 ##                # ACR particles
@@ -633,6 +637,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
             "csld_col_c", "csld_col_a"]:
         t0ind = len(times) - 1
+#        t0ind = 300
+        print "t =", times[t0ind]*td, "s"
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
@@ -693,6 +699,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     fills[i, j, :] = [fill1, fill2, fill3]
 #                fig.savefig("csld_c.pdf", bbox_inches="tight")
 #                plt.show()
+#                zz
+
         def init():
             for i in range(Npart_ac[l]):
                 for j in range(Nvol_ac[l]):
@@ -1391,8 +1399,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axmu2det.set_ylim((-0.012, 0.012))
 #        axmu2det.set_ylabel(r"Flux")
 
-        fig.savefig('tmp.png', bbox_inches='tight')
-        plt.show()
+#        fig.savefig('tmp.png', bbox_inches='tight')
+#        plt.show()
 
         def init():
             toblit = []
