@@ -1420,14 +1420,14 @@ class simMPET(daeSimulation):
                     self.m.c2bar_sld_ac[l].SetInitialGuess(i, j, cs0)
                     # Set initial solid concentration values
                     Nij = self.m.Nsld_mat_ac[l][i, j].NumberOfPoints
-                    epsrnd = 0.005
+                    epsrnd = 0.0001
                     rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
                     rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
                     rnd1 -= np.mean(rnd1)
                     rnd2 -= np.mean(rnd2)
                     for k in range(Nij):
-                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd1[i])
-                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd2[i])
+                        self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd1[k])
+                        self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd2[k])
         # Electrolyte
         c_lyte_init = self.D['c0']/1000. # normalize to 1 M = 1000 mol/m^3
         phi_guess = 0.
@@ -1650,6 +1650,7 @@ def consoleRun(D, outdir):
     else: # CV or zero current simulation
         simulation.TimeHorizon = D['tend']/td
     simulation.ReportingInterval = simulation.TimeHorizon/D['tsteps']
+#    simulation.ReportingTimes = list(np.logspace(-4, np.log10(simulation.TimeHorizon), D['tsteps']))
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
