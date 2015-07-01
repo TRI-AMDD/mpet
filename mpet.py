@@ -652,8 +652,8 @@ class modMPET(daeModel):
             timeHorizon = self.D['tend']/td
             eq.Residual = self.phi_applied() - self.Vset()*(
 #                    1)
-#                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
-                    np.tanh(Time()/(45.0)))
+                    1 - np.exp(-Time()/(timeHorizon*1e-3)))
+#                    np.tanh(Time()/(45.0)))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
