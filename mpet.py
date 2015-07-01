@@ -156,6 +156,7 @@ class modMPET(daeModel):
                 "Overall battery voltage (at anode current collector)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
+        self.dummyVar = daeVariable("dummyVar", no_t, self, "dummyVar")
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -442,15 +443,15 @@ class modMPET(daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-#        self.action = doNothingAction()
-##        self.ON_CONDITION(Time() >= Constant(300*s),
-#        self.ON_CONDITION(
-##                Time() >= Constant(100*s) & Abs(self.phi_applied()) >= 60,
-#                Abs(self.phi_applied()) >= 20,
-#                switchToStates = [],
-#                setVariableValues = [],
-#                triggerEvents = [],
-#                userDefinedActions = [self.action] )
+        if self.profileType == "CC":
+            # Set the condition to terminate the simulation upon reaching
+            # a cutoff voltage.
+            self.stopCondition = (
+                    ((Abs(self.phi_applied()) <= ndD["phimin"]) |
+                        (Abs(self.phi_applied()) >= ndD["phimax"]))
+                    & (self.dummyVar() < 1))
+            self.ON_CONDITION(self.stopCondition,
+                    setVariableValues = [(self.dummyVar, 2)])
 
     def calc_sld_dcs_dt(self, trode_indx, vol_indx, part_indx):
         # shorthand
@@ -898,25 +899,30 @@ class simMPET(daeSimulation):
                 self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
         # Guess the initial cell voltage
         self.m.phi_applied.SetInitialGuess(0.0)
+        self.m.dummyVar.AssignValue(0) # used for V cutoff condition
 
-#    def Run(self):
-#        """
-#        Overload the simulation "run" function so that the simulation
-#        terminates when the specified condition is satisfied.
-#        """
-#        while self.CurrentTime < self.TimeHorizon:
-#            t_step = self.CurrentTime + self.ReportingInterval
-#            if t_step > self.TimeHorizon:
-#                t_step = self.TimeHorizon
-#
-#            self.Log.Message("Integrating from %.2f to %.2fs ..." % (self.CurrentTime, t_step), 0)
-#            self.IntegrateUntilTime(t_step, eStopAtModelDiscontinuity)
-#            self.ReportData(self.CurrentTime)
-#
-#            if self.LastSatisfiedCondition:
-#                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
-#                self.Log.Message('Stopping the simulation...', 0)
-#                return
+    def Run(self):
+        """
+        Overload the simulation "Run" function so that the simulation
+        terminates when the specified condition is satisfied.
+        """
+        time = 0.
+        while self.CurrentTime < self.TimeHorizon:
+            nextTime = time + self.ReportingInterval
+            if nextTime > self.TimeHorizon:
+                nextTime = self.TimeHorizon
+            self.Log.Message("Integrating from {t0:.2f} to {t1:.2f} s ...".format(
+                t0=self.CurrentTime, t1=nextTime), 0)
+            time = self.IntegrateUntilTime(nextTime,
+                    eStopAtModelDiscontinuity, True)
+            self.ReportData(self.CurrentTime)
+            self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
+            if time < nextTime:
+                # This means that the Integrate function returned
+                # before reaching the specified nextTime.
+                # This implies that the simulation stopped at the
+                # "discontinuity".
+                break
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
@@ -968,12 +974,6 @@ class noise(daeScalarExternalFunction):
 #        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
 #        self.counter += 1
 #        return adouble(float(noise_vec[self.position]))
-
-class doNothingAction(daeAction):
-    def __init__(self):
-        daeAction.__init__(self)
-    def Execute(self):
-        pass
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """

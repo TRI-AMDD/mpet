@@ -23,6 +23,8 @@ class mpetIO():
         # Simulation Parameters
         ndD["profileType"] = P.get('Sim Params', 'profileType')
         dD["Crate"] = P.getfloat('Sim Params', 'Crate')
+        dD["Vmax"] = P.getfloat('Sim Params', 'Vmax')
+        dD["Vmin"] = P.getfloat('Sim Params', 'Vmin')
         dD["Vset"] = P.getfloat('Sim Params', 'Vset')
         ndD["capFrac"] = P.getfloat('Sim Params', 'capFrac')
         dD["tend"] = P.getfloat('Sim Params', 'tend')
@@ -182,6 +184,9 @@ class mpetIO():
         ndD["epsbeta"] = {}
         ndD["mcond"] = {}
         ndD["dphi_eq_ref"] = {}
+        ndD["phiRef"] = { # temporary, used for Vmax, Vmin
+                "a" : (e/(k*Tref))*dD["Vstd"]["a"],
+                "c" : 0.}
         ndD["lambda"] = {}
         ndD["B"] = {}
         ndD["kappa"] = {}
@@ -223,9 +228,11 @@ class mpetIO():
                 material = ndD['material'][trode]
                 fits = delta_phi_fits.DPhiFits(ndD["T"])
                 phifunc = fits.materialData[material]
-                ndD["dphi_eq_ref"][trode] = phifunc(dD['cs0'][trode], 0)
+                ndD["dphi_eq_ref"][trode] = phifunc(ndD['cs0'][trode], 0)
+                ndD["phiRef"][trode] = ndD["dphi_eq_ref"][trode]
             else:
                 ndD["dphi_eq_ref"][trode] = 0.
+                ndD["phiRef"][trode] = (e/(k*Tref))*dD["Vstd"][trode]
             lmbda = ndD["lambda"][trode] = dD["lambda"][trode]/(k*Tref)
             ndD["B"][trode] = dD['B'][trode]/(k*Tref*dD['rhos'][trode])
             lens = dD["psd_len"][trode]
@@ -253,6 +260,11 @@ class mpetIO():
                 ndD["Omga"][trode] = T*self.size2regsln(lens)
             else:
                 raise NotImplementedError("Solid types missing here")
+
+        # Set up voltage cutoff values
+        ndDVref = ndD["phiRef"]["c"] - ndD["phiRef"]["a"]
+        ndD["phimin"] = -((e/(k*Tref))*dD["Vmax"] - ndDVref)
+        ndD["phimax"] = -((e/(k*Tref))*dD["Vmin"] - ndDVref)
 
         return dD, ndD
 
