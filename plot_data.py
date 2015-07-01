@@ -104,18 +104,23 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
+    figsize = (6, 4.5)
 
     # Plot defaults
     axtickfsize = 18
     labelfsize = 20
     lwidth = 3.
-    markersize = 10
+#    markersize = 10
+    markersize = 8
     mpl.rcParams['xtick.labelsize'] = axtickfsize
     mpl.rcParams['ytick.labelsize'] = axtickfsize
     mpl.rcParams['font.size'] = labelfsize
+#    mpl.rcParams['font.family'] = "sarif"
     mpl.rcParams['legend.fontsize'] = labelfsize - 2
     mpl.rcParams['lines.linewidth'] = lwidth
     mpl.rcParams['lines.markersize'] = markersize
+    mpl.rcParams['lines.markeredgewidth'] = 0.1
+#    mpl.rcParams['text.usetex'] = True
 
     # Print relevant simulation info
     if print_flag:
@@ -264,7 +269,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         exp_v = sheet.col_values(1)[1:]
         if data_only:
             return ffvec, voltage
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         ax.plot(ffvec, voltage,
                 label="Model")
         ax.plot(exp_ff, exp_v, 'or', markersize=int(0.7*markersize),
@@ -279,12 +284,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        if not D['delPhiEqFit_ac'][1]:
 ##            ax.axhline(y=Vstd, xmin=xmin, xmax=xmax, linestyle='--', color='g')
 #            ax.axhline(y=Vstd, linestyle='--', color='g')
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        ax.set_xlabel("Filling Fraction [dimensionless]")
         ax.set_ylabel("Voltage [V]")
 #        ax.set_ylim((Vstd_c - 0.3, Vstd_c + 0.4))
 #        ax.set_ylim((2, 5))
         if save_flag:
-            fig.savefig("mpet_v.png", bbox_inches="tight")
+            fig.savefig("mpet_v.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot surface conc.
@@ -311,9 +316,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for rxnp")
-        scl = 0.5
+#        scl = 0.5
+        scl = 1.4
+        figsize = (scl*4.6, scl*3)
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
-                sharey=True, figsize=(scl*16, scl*9))
+                sharey=True, figsize=figsize)
 #        lmbda = data[pfx + "lambda_ac"][0][l]
         k0 = D['k0_ac'][l]
         sol_c1_str_base = pfx + "c1_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
@@ -323,8 +330,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         lyte_p_str = pfx + "phi_lyte_{l}".format(l=l)
         ylim = (0, 1.01)
         ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
-        datax = times*td
-#        datax = ffvec
+#        datax = times*td
+        datax = ffvec
         for i in range(Npart_ac[l]):
             for j in range(Nvol_ac[l]):
                 sol1_str = sol_c1_str_base.format(i=i, j=j)
@@ -402,7 +409,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 for tl in ax[i, j].get_yticklabels():
                     tl.set_color('b')
                 ax[i, j].set_ylabel(r"Voltage [V]", color="b")
-                ax[i, j].set_xlabel("Time [s]")
+#                ax[i, j].set_xlabel("Time [s]")
+                ax[i, j].set_xlabel("Filling Fraction [dimensionless]")
 #                line1, = ax[i, j].plot(datax, 1./gamma1_ts,
 #                        label=r"$1/\gamma_1$")
 #                line2, = ax[i, j].plot(datax, 1./gamma2_ts,
@@ -418,7 +426,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 for tl in ax2.get_yticklabels():
                     tl.set_color('r')
 #                ax2.set_ylabel("Reaction Resistance [nondimensional]",
-                ax2.set_ylabel(r"$R_\mathrm{rxn}$ [nondimensional]",
+                ax2.set_ylabel(r"$R_\mathrm{rxn}$ [dimensionless]",
                         color="r")
 #                line1, = ax2.plot(datax, rxn1_vec, linestyle='--',
 #                        label=r"$rxn_1$")
@@ -637,18 +645,50 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
             "csld_col_c", "csld_col_a"]:
         t0ind = len(times) - 1
-#        t0ind = 300
+#        t0ind = 230
         print "t =", times[t0ind]*td, "s"
+        # Define colors!
+        to_red = 0.3
+        to_yellow = 0.85
+        rgb_rSd = 0.678
+        rgb_gSd = 0.604
+        rgb_bSd = 0.0
+        rgb_rS2 = 0.970
+        rgb_gS2 = 0.486
+        rgb_bS2 = 0.0
+        rgb_rS1 = 1.00
+        rgb_gS1 = 0.973
+        rgb_bS1 = 0.0
+        cdict = {
+                "red" : [(0.0, rgb_rSd, rgb_rSd),
+                         (to_red, rgb_rSd, rgb_rS2),
+                         (to_yellow, rgb_rS2, rgb_rS1),
+                         (1.0, rgb_rS1, rgb_rS1)],
+                "green" : [(0.0, rgb_gSd, rgb_gSd),
+                           (to_red, rgb_gSd, rgb_gS2),
+                           (to_yellow, rgb_gS2, rgb_gS1),
+                           (1.0, rgb_gS1, rgb_gS1)],
+                "blue" : [(0.0, rgb_bSd, rgb_bSd),
+                          (to_red, rgb_bSd, rgb_bS2),
+                          (to_yellow, rgb_bS2, rgb_bS1),
+                          (1.0, rgb_bS1, rgb_bS1)]
+                }
+        cmap = mpl.colors.LinearSegmentedColormap(
+                "discrete", cdict)
         l = (0 if plot_type[-1] == "a" else 1)
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
-        scl = 0.5
+        scl = 1.4
+#        # 2x1 fig
+#        figsize = (scl*4, scl*3)
+        # 2x2 fig
+        figsize = (scl*4.6, scl*3)
         fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
-                sharey=True, figsize=(scl*16, scl*9))
+                sharey=True, figsize=figsize)
         sol1 = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
         sol2 = np.empty((Npart_ac[l], Nvol_ac[l]), dtype=object)
         lens = np.zeros((Npart_ac[l], Nvol_ac[l]))
-        lines = np.empty((Npart_ac[l], Nvol_ac[l], 2), dtype=object)
+        lines = np.empty((Npart_ac[l], Nvol_ac[l], 3), dtype=object)
         fills = np.empty((Npart_ac[l], Nvol_ac[l], 3), dtype=object)
         if plot_type in ["csld_a", "csld_col_a"]:
             str_base = pfx + "c_sld_trode0vol{j}part{i}"
@@ -683,9 +723,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 ax[i, j].set_ylabel(r"$c$")
                 line1, = ax[i, j].plot(datax, datay1, label=r"$c_1$")
                 line2, = ax[i, j].plot(datax, datay2, label=r"$c_2$")
+                ## For color-filling and \overline{c}
+                dataybar = (datay1+datay2)/2.
+                line3, = ax[i, j].plot(datax, dataybar,
+                        color='red', linestyle='--',
+                        label=r"$\overline{c}$")
+                ## only for static plots for now
+#                bar1indx = np.nonzero(dataybar > to_red)[0][0]
+#                bar2indx = len(dataybar) - np.nonzero(dataybar[::-1] < to_yellow)[0][0]
+#                ax[i, j].fill_between(datax[0:bar1indx+1]*1e6, 0, ylim[1],
+#                        color=cmap(0.1), alpha=0.6)
+#                ax[i, j].fill_between(datax[bar1indx:bar2indx+1]*1e6, 0, ylim[1],
+#                        color=cmap(0.6), alpha=0.6)
+#                ax[i, j].fill_between(datax[bar2indx:]*1e6, 0, ylim[1],
+#                        color=cmap(0.9), alpha=0.6)
+                ##
                 ax[i, j].legend(loc="best")
                 lines[i, j, 0] = line1
                 lines[i, j, 1] = line2
+                lines[i, j, 2] = line3
                 if plot_type in ["csld_col_c", "csld_col_a"]:
                     fill1 = ax[i, j].fill_between(datax, ylim[0],
                             ylim[1], facecolor='red', alpha=0.9,
@@ -699,7 +755,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     fills[i, j, :] = [fill1, fill2, fill3]
 #                fig.savefig("csld_c.pdf", bbox_inches="tight")
 #                plt.show()
-#                zz
 
         def init():
             for i in range(Npart_ac[l]):
@@ -707,6 +762,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     datax = np.zeros(data[sol1[i, j]][0].shape)
                     lines[i, j, 0].set_ydata(np.ma.array(datax, mask=True))
                     lines[i, j, 1].set_ydata(np.ma.array(datax, mask=True))
+                    lines[i, j, 2].set_ydata(np.ma.array(datax, mask=True))
                     if plot_type in ["csld_col_c", "csld_col_a"]:
                         fill1 = ax[i, j].fill_between(datax, ylim[0],
                                 ylim[1], facecolor='red', alpha=0.0)
@@ -727,8 +783,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 for j in range(Nvol_ac[l]):
                     datay1 = data[sol1[i, j]][tind]
                     datay2 = data[sol2[i, j]][tind]
+                    dataybar = 0.5*(datay1+datay2)
                     lines[i, j, 0].set_ydata(datay1)
                     lines[i, j, 1].set_ydata(datay2)
+                    lines[i, j, 2].set_ydata(dataybar)
                     datax = lines[i, j, 0].get_xdata()
                     if plot_type in ["csld_col_c", "csld_col_a"]:
                         fill1 = ax[i, j].fill_between(datax, ylim[0],
@@ -749,15 +807,245 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             else:
                 return tuple(lines.reshape(-1))
 
-    # Plot all solid concentrations or potentials
+    # schematic plot alone
     elif plot_type in ["csldcirc"]:
+        t0ind = 0
+#        t0ind = 440
+#        t0ind = 490
+        print "t =", t0ind*td, "s"
+        # Define colors!
+        to_red = 0.3
+        to_yellow = 0.85
+        rgb_rSd = 0.678
+        rgb_gSd = 0.604
+        rgb_bSd = 0.0
+        rgb_rS2 = 0.970
+        rgb_gS2 = 0.486
+        rgb_bS2 = 0.0
+        rgb_rS1 = 1.00
+        rgb_gS1 = 0.973
+        rgb_bS1 = 0.0
+        cdict = {
+                "red" : [(0.0, rgb_rSd, rgb_rSd),
+                         (to_red, rgb_rSd, rgb_rS2),
+                         (to_yellow, rgb_rS2, rgb_rS1),
+                         (1.0, rgb_rS1, rgb_rS1)],
+                "green" : [(0.0, rgb_gSd, rgb_gSd),
+                           (to_red, rgb_gSd, rgb_gS2),
+                           (to_yellow, rgb_gS2, rgb_gS1),
+                           (1.0, rgb_gS1, rgb_gS1)],
+                "blue" : [(0.0, rgb_bSd, rgb_bSd),
+                          (to_red, rgb_bSd, rgb_bS2),
+                          (to_yellow, rgb_bS2, rgb_bS1),
+                          (1.0, rgb_bS1, rgb_bS1)]
+                }
+        cmap = mpl.colors.LinearSegmentedColormap(
+                "discrete", cdict)
+        scl = 0.35
+        fig, axcsld = plt.subplots(figsize=(scl*16, scl*9))
+        csld1 = data[pfx + "c1_sld_trode1vol0part0"]
+        csld2 = data[pfx + "c2_sld_trode1vol0part0"]
+        datay1 = csld1[t0ind]
+        datay2 = csld2[t0ind]
+        dataybar = 0.5*(datay1 + datay2)
+        smcount = 7
+        numy = len(datay1)
+        p_len = psd_len_ac[l][0][0, 0]
+        datax = np.linspace(0, p_len, numy)
+        axcsld.set_ylim((0, 1))
+        axcsld.set_xlabel(r"$r$ [$\mu$m]")
+        axcsld.yaxis.set_ticks([])
+        axcsld.set_axis_bgcolor('none')
+        axspines = axcsld.spines
+        for spine in ['top', 'bottom', 'left', 'right']:
+            axspines[spine].set_visible(False)
+        axcsld.xaxis.set_ticks_position('bottom')
+        xmax = p_len*1e6
+        axcsld.set_xlim((0, xmax))
+        # Draw graphite planes
+        gpatches = []
+        ytop = 0.8
+        gthick = 0.025
+        ng = 9
+        if not ng % 2: raise Exception("ng must be odd")
+        gylocs = np.linspace(0.02, ytop-gthick/2., ng)
+        for yloc in gylocs:
+            gpatches.append(mpatch.Rectangle((0, yloc-gthick/2.),
+                xmax, gthick, facecolor='black', edgecolor='black',
+                ))
+        gcollect = mcollect.PatchCollection(gpatches,
+                match_original=True)
+        axcsld.add_collection(gcollect)
+        # Color discretization
+        datar = datax*1e6
+        dr = datar[1] - datar[0]
+        # Set up bounding pie slice
+        b0 = 0.3
+        a0 = p_len*1e6
+        nx = 100
+        xpietop = 18./24. * a0
+        xclip_r = np.linspace(xpietop, xmax, nx)
+        yclip_r = b0*np.sqrt(1 - (xclip_r/a0)**2) + ytop
+        # Colored ellipses on top
+        # Set up a clipping path for the ellipses
+        path_array = np.array([
+            [xmax, ytop],
+            [0, ytop],
+            ])
+        xy_r = np.hstack((xclip_r.reshape(-1,1),
+                          yclip_r.reshape(-1,1)))
+        path_array = np.vstack((path_array, xy_r))
+        clippath = mpl.path.Path(path_array)
+        clippatch = mpatch.PathPatch(clippath, facecolor='none',
+                edgecolor='none')
+        axcsld.add_patch(clippatch)
+        # Add ellipses which are the "top-down" color on top of the
+        # pie slice. Have to add these from outer to inner so they can
+        # stack on each other...
+        ellipfills = []
+        ellipfcol = cmap(dataybar[0])
+        ellipfills.append(mpatch.Ellipse((0, ytop),
+            2*xmax, 2*xmax*b0/a0,
+            facecolor=ellipfcol, linewidth=0.))
+        nelip = numy
+        for indxtop in range(1, nelip):
+            r_outer = xmax - dr/2. - (indxtop-1)*dr
+            ellipfills.append(mpatch.Ellipse((0, ytop),
+                2*r_outer, 2*r_outer*b0/a0,
+                facecolor=ellipfcol, linewidth=0))
+        ellipcollect = mcollect.PatchCollection(ellipfills,
+                match_original=True)
+        axcsld.add_collection(ellipcollect)
+        ellipcollect.set_clip_path(clippatch)
+        # Colored rectangles inside
+        nlayers = ng - 1
+        nA = nB = nlayers/2
+        nrect = numy
+        rectsA = []
+        rectsB = []
+        for inx in range(nA):
+            rectsA.append([])
+            rectsB.append([])
+#        cmapcsld = plt.get_cmap('gray')
+#        cmapcsld = plt.get_cmap('Greys')
+#        cmapcsld = plt.get_cmap('cool')
+        cmapcsld = plt.get_cmap('summer')
+        col1 = cmapcsld(datay1[0])
+        col2 = cmapcsld(datay2[0])
+        alph1 = 1.0
+        alph2 = 1.0
+        h = gylocs[-1] - gylocs[-2] - gthick
+        ysA = []
+        ysB = []
+        for inx in range(nA):
+            ysA.append(gylocs[-(2 + 2*inx)] + gthick/2.)
+            ysB.append(gylocs[-(3 + 2*inx)] + gthick/2.)
+        for inx in range(nA):
+            yA = ysA[inx]
+            yB = ysB[inx]
+            rectsA[inx].append(mpatch.Rectangle((0, yA), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+            rectsB[inx].append(mpatch.Rectangle((0, yB), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+        for indxrect in range(1, nrect-1):
+            ri = datar[indxrect] - dr/2.
+            for indxlyr in range(nA):
+                yA = ysA[indxlyr]
+                yB = ysB[indxlyr]
+                rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr, h,
+                facecolor=col1, edgecolor=col1, alpha=alph1,
+#                linewidth=0,
+                ))
+                rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr, h,
+                facecolor=col1, edgecolor=col1, alpha=alph1,
+#                linewidth=0,
+                ))
+        ri = datar[-1] - dr/2.
+        for indxlyr in range(nA):
+            yA = ysA[indxlyr]
+            yB = ysB[indxlyr]
+            rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+            rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+        rectcollsA = []
+        rectcollsB = []
+        for indxlyr in range(nA):
+            rectcollsA.append(mcollect.PatchCollection(rectsA[indxlyr],
+                match_original=True,
+                ))
+            rectcollsB.append(mcollect.PatchCollection(rectsB[indxlyr],
+                match_original=True,
+                ))
+            axcsld.add_collection(rectcollsA[indxlyr])
+            axcsld.add_collection(rectcollsB[indxlyr])
+        csldcolors1 = cmapcsld(datay1)
+        csldcolors2 = cmapcsld(datay2)
+        for indxlyr in range(nA):
+            rectcollsA[indxlyr].set_color(csldcolors1)
+            rectcollsB[indxlyr].set_color(csldcolors2)
+#        topcol = cmap(smooth(dataybar, smcount))
+        topcol = cmap(dataybar)
+        ellipcollect.set_color(topcol[::-1])
+#        if save_flag:
+#            fig.savefig("csldcirc.png", dpi=400, bbox_inches="tight")
+#            return fig, axcsld
+#        fig.savefig("csldcirc.pdf", bbox_inches="tight")
+#        plt.show()
+
+        def init():
+            toblit = []
+            datay1 = csld1[0]
+            datay2 = csld2[0]
+            dataybar = 0.5*(datay1 + datay2)
+            csldcolors1 = cmapcsld(datay1)
+            csldcolors2 = cmapcsld(datay2)
+            for indxlyr in range(nA):
+                rectcollsA[indxlyr].set_color(csldcolors1)
+                rectcollsB[indxlyr].set_color(csldcolors2)
+                toblit.extend([rectcollsA[indxlyr],
+                               rectcollsB[indxlyr]])
+            topcol = cmap(dataybar)
+            ellipcollect.set_color(topcol[::-1])
+            toblit.append(ellipcollect)
+            return tuple(toblit)
+
+        def animate(tind):
+            toblit = []
+            datay1 = csld1[tind]
+            datay2 = csld2[tind]
+            dataybar = 0.5*(datay1 + datay2)
+            # csld schematic-like
+            csldcolors1 = cmapcsld(datay1)
+            csldcolors2 = cmapcsld(datay2)
+            for indxlyr in range(nA):
+                rectcollsA[indxlyr].set_color(csldcolors1)
+                rectcollsB[indxlyr].set_color(csldcolors2)
+                toblit.extend([rectcollsA[indxlyr],
+                               rectcollsB[indxlyr]])
+            topcol = cmap(dataybar)[::-1]
+            ellipcollect.set_color(topcol)
+            toblit.append(ellipcollect)
+            return tuple(toblit)
+
+    # Plot all solid concentrations or potentials
+    elif plot_type in ["multplot"]:
 #        l = (0 if plot_type[-1] == "a" else 1)
         l = 1
         i = 0
         j = 0
         t0ind = 0
 #        t0ind = 470
-        t0ind = 330
+        t0ind = 215
+        print "t =", times[t0ind]*td, "s"
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         # Define colors!
@@ -790,22 +1078,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "discrete", cdict)
 
 #        fig = plt.figure()
-        figscale = 1.1
-        fig = plt.figure(figsize=(figscale*16, figscale*9))
-        axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.40])
-        axcirc.set_frame_on(False)
-        axcirc.set_axis_off()
-        axcirc.set_aspect('equal')
-        axmovie = fig.add_axes([0.025, 0.51, 0.475, 0.470])
-        axmovie.set_axis_off()
-#        axmu1det = fig.add_axes([0.04, 0.04, 0.44, 0.40])
-#        axmu2det = fig.add_axes([0.04, 0.56, 0.44, 0.40])
-        axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
-        axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
-#        # tmp axes for cbar plot
-#        fig = plt.figure(figsize=(figscale*8, figscale*9))
-#        axff = fig.add_axes([0.04, 0.06, 0.88, 0.40])
-#        axcsld = fig.add_axes([0.04, 0.56, 0.88, 0.40])
+        figscale = 0.8
+#        fig = plt.figure(figsize=(figscale*16, figscale*9))
+#        axcirc = fig.add_axes([0.04, 0.04, 0.44, 0.40])
+#        axcirc.set_frame_on(False)
+#        axcirc.set_axis_off()
+#        axcirc.set_aspect('equal')
+#        axmovie = fig.add_axes([0.025, 0.51, 0.475, 0.470])
+#        axmovie.set_axis_off()
+##        axmu1det = fig.add_axes([0.04, 0.04, 0.44, 0.40])
+##        axmu2det = fig.add_axes([0.04, 0.56, 0.44, 0.40])
+#        axff = fig.add_axes([0.54, 0.56, 0.44, 0.40])
+#        axcsld = fig.add_axes([0.54, 0.08, 0.44, 0.40])
+        # tmp axes for cbar plot
+        fig = plt.figure(figsize=(figscale*8, figscale*9))
+        axff = fig.add_axes([0.04, 0.06, 0.88, 0.40])
+        axcsld = fig.add_axes([0.04, 0.56, 0.88, 0.40])
         csld1 = data[pfx + "c1_sld_trode1vol0part0"]
         csld2 = data[pfx + "c2_sld_trode1vol0part0"]
         phisld = data[pfx + "phi_1"]
@@ -878,7 +1166,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         rxn1flux_vec = Flux1[:, -1]
         rxn2flux_vec = Flux2[:, -1]
         dataybar = 0.5*(datay1 + datay2)
-        smcount = 7
+#        smcount = 7
+        smcount = 9
         numy = len(datay1)
         p_len = psd_len_ac[l][0][0, 0]
         datax = np.linspace(0, p_len, numy)
@@ -886,219 +1175,220 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        t_offset = d_t[0]
         t_offset = 0
 
-        # csld plot
-        axcsld.set_ylim(ylim)
-        axcsld.set_xlim((0, p_len*1e6))
-        line1, = axcsld.plot(datax*1e6, datay1,
-                color="blue",
-                label=r'$c_1$')
-        line2, = axcsld.plot(datax*1e6, datay2,
-                color="green",
-                label=r'$c_2$')
-        line3, = axcsld.plot(datax*1e6, 0.5*(datay1 + datay2),
-                color='red', linestyle='--',
-                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
-        axcsld.legend(loc='best')
-        axcsld.set_xlabel(r"$r$ [$\mu$m]")
-        axcsld.set_ylabel(r"$c$")
-
-#        # csld plot (axff axes)
-#        axff.set_ylim(ylim)
-#        axff.set_xlim((0, p_len*1e6))
-#        line1, = axff.plot(datax*1e6, datay1,
+#        # csld plot
+#        axcsld.set_ylim(ylim)
+#        axcsld.set_xlim((0, p_len*1e6))
+#        line1, = axcsld.plot(datax*1e6, datay1,
 #                color="blue",
 #                label=r'$c_1$')
-#        line2, = axff.plot(datax*1e6, datay2,
+#        line2, = axcsld.plot(datax*1e6, datay2,
 #                color="green",
 #                label=r'$c_2$')
-#        line3, = axff.plot(datax*1e6, 0.5*(datay1 + datay2),
+#        line3, = axcsld.plot(datax*1e6, 0.5*(datay1 + datay2),
 #                color='red', linestyle='--',
 #                label=r'$\overline{c} = 0.5*(c_1 + c_2)$')
-#        axff.legend(loc='best')
-#        axff.set_xlabel(r"$r$ [$\mu$m]")
-#        axff.set_ylabel(r"$c$")
-#        bar1indx = 120
-#        bar2indx = 273
-#        axff.fill_between(datax[0:bar1indx+1]*1e6, 0, 1,
-#                color=cmap(0.1), alpha=0.7)
-#        axff.fill_between(datax[bar1indx:bar2indx+1]*1e6, 0, 1,
-#                color=cmap(0.6), alpha=0.7)
-#        axff.fill_between(datax[bar2indx:]*1e6, 0, 1,
-#                color=cmap(0.9), alpha=0.7)
-
-#        # csld plot schematic-like
-#        axcsld.set_ylim((0, 1))
+#        axcsld.legend(loc='best')
 #        axcsld.set_xlabel(r"$r$ [$\mu$m]")
-#        axcsld.yaxis.set_ticks([])
-#        axcsld.set_axis_bgcolor('none')
-#        axspines = axcsld.spines
-#        for spine in ['top', 'bottom', 'left', 'right']:
-#            axspines[spine].set_visible(False)
-#        axcsld.xaxis.set_ticks_position('bottom')
-#        xmax = p_len*1e6
-#        axcsld.set_xlim((0, xmax))
-#        # Draw graphite planes
-#        gpatches = []
-#        ytop = 0.8
-#        gthick = 0.015
-#        ng = 9
-#        if not ng % 2: raise Exception("ng must be odd")
-#        gylocs = np.linspace(0.02, ytop-gthick/2., ng)
-#        for yloc in gylocs:
-#            gpatches.append(mpatch.Rectangle((0, yloc-gthick/2.),
-#                xmax, gthick, facecolor='black', edgecolor='black',
-#                ))
-#        gcollect = mcollect.PatchCollection(gpatches,
-#                match_original=True)
-#        axcsld.add_collection(gcollect)
-#        # Color discretization
-#        datar = datax*1e6
-#        dr = datar[1] - datar[0]
-#        # Set up bounding pie slice
-#        b0 = 0.3
-#        a0 = p_len*1e6
-#        nx = 100
-#        xpietop = 18./24. * a0
-#        xclip_r = np.linspace(xpietop, xmax, nx)
-#        yclip_r = b0*np.sqrt(1 - (xclip_r/a0)**2) + ytop
-#        # Colored ellipses on top
-#        # Set up a clipping path for the ellipses
-#        path_array = np.array([
-#            [xmax, ytop],
-#            [0, ytop],
-#            ])
-#        xy_r = np.hstack((xclip_r.reshape(-1,1),
-#                          yclip_r.reshape(-1,1)))
-#        path_array = np.vstack((path_array, xy_r))
-#        clippath = mpl.path.Path(path_array)
-#        clippatch = mpatch.PathPatch(clippath, facecolor='none',
-#                edgecolor='none')
-#        axcsld.add_patch(clippatch)
-#        # Add ellipses which are the "top-down" color on top of the
-#        # pie slice. Have to add these from outer to inner so they can
-#        # stack on each other...
-#        ellipfills = []
-#        ellipfcol = cmap(dataybar[0])
-#        ellipfills.append(mpatch.Ellipse((0, ytop),
-#            2*xmax, 2*xmax*b0/a0,
-#            facecolor=ellipfcol, linewidth=0.))
-#        nelip = numy
-#        for indxtop in range(1, nelip):
-#            r_outer = xmax - dr/2. - (indxtop-1)*dr
-#            ellipfills.append(mpatch.Ellipse((0, ytop),
-#                2*r_outer, 2*r_outer*b0/a0,
-#                facecolor=ellipfcol, linewidth=0))
-#        ellipcollect = mcollect.PatchCollection(ellipfills,
-#                match_original=True)
-#        axcsld.add_collection(ellipcollect)
-#        ellipcollect.set_clip_path(clippatch)
-#        # Colored rectangles inside
-#        nlayers = ng - 1
-#        nA = nB = nlayers/2
-#        nrect = numy
-#        rectsA = []
-#        rectsB = []
-#        for inx in range(nA):
-#            rectsA.append([])
-#            rectsB.append([])
-##        cmapcsld = plt.get_cmap('gray')
-##        cmapcsld = plt.get_cmap('Greys')
-##        cmapcsld = plt.get_cmap('cool')
-#        cmapcsld = plt.get_cmap('summer')
-#        col1 = cmapcsld(datay1[0])
-#        col2 = cmapcsld(datay2[0])
-#        alph1 = 1.0
-#        alph2 = 1.0
-#        h = gylocs[-1] - gylocs[-2] - gthick
-#        ysA = []
-#        ysB = []
-#        for inx in range(nA):
-#            ysA.append(gylocs[-(2 + 2*inx)] + gthick/2.)
-#            ysB.append(gylocs[-(3 + 2*inx)] + gthick/2.)
-#        for inx in range(nA):
-#            yA = ysA[inx]
-#            yB = ysB[inx]
-#            rectsA[inx].append(mpatch.Rectangle((0, yA), dr/2., h,
-#            facecolor=col1, edgecolor=col1, alpha=alph1,
-#            linewidth=0,
-#            ))
-#            rectsB[inx].append(mpatch.Rectangle((0, yB), dr/2., h,
-#            facecolor=col1, edgecolor=col1, alpha=alph1,
-#            linewidth=0,
-#            ))
-#        for indxrect in range(1, nrect-1):
-#            ri = datar[indxrect] - dr/2.
-#            for indxlyr in range(nA):
-#                yA = ysA[indxlyr]
-#                yB = ysB[indxlyr]
-#                rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr, h,
-#                facecolor=col1, edgecolor=col1, alpha=alph1,
-#                linewidth=0,
-#                ))
-#                rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr, h,
-#                facecolor=col1, edgecolor=col1, alpha=alph1,
-#                linewidth=0,
-#                ))
-#        ri = datar[-1] - dr/2.
-#        for indxlyr in range(nA):
-#            yA = ysA[indxlyr]
-#            yB = ysB[indxlyr]
-#            rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr/2., h,
-#            facecolor=col1, edgecolor=col1, alpha=alph1,
-#            linewidth=0,
-#            ))
-#            rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr/2., h,
-#            facecolor=col1, edgecolor=col1, alpha=alph1,
-#            linewidth=0,
-#            ))
-#        rectcollsA = []
-#        rectcollsB = []
-#        for indxlyr in range(nA):
-#            rectcollsA.append(mcollect.PatchCollection(rectsA[indxlyr],
-#                match_original=True,
-#                ))
-#            rectcollsB.append(mcollect.PatchCollection(rectsB[indxlyr],
-#                match_original=True,
-#                ))
-#            axcsld.add_collection(rectcollsA[indxlyr])
-#            axcsld.add_collection(rectcollsB[indxlyr])
-#        csldcolors1 = cmapcsld(datay1)
-#        csldcolors2 = cmapcsld(datay2)
-#        for indxlyr in range(nA):
-#            rectcollsA[indxlyr].set_color(csldcolors1)
-#            rectcollsB[indxlyr].set_color(csldcolors2)
-#        topcol = cmap(smooth(dataybar, smcount))
-#        ellipcollect.set_color(topcol[::-1])
+#        axcsld.set_ylabel(r"$c$")
 
-        # colored circle plot
-        axcirc.set_ylim(ylim)
-        datar = datax/datax[-1]/2.05 # normalized to 1/2
-        dr = datar[1] - datar[0]
-        ncirc = numy
-        circfills = np.empty(ncirc, dtype=object)
-        circfills = []
-        col = cmap(dataybar[0])
-        circfills.append(mpatch.Wedge((0.5, 0.5), dr/2., 0, 360,
-            width=dr/2.,
-            facecolor=col, edgecolor=col,
-            ))
-        for indxcirc in range(1, ncirc-1):
-            ri = datar[indxcirc] - dr/2.
-            ro = datar[indxcirc] + dr/2.
-            circfills.append(mpatch.Wedge((0.5, 0.5), ro, 0, 360,
-                width=dr,
-                facecolor=col, edgecolor=col,
+        # csld plot (axff axes)
+        axff.set_ylim(ylim)
+        axff.set_xlim((0, p_len*1e6))
+        line1, = axff.plot(datax*1e6, datay1,
+                color="blue",
+                label=r'$c_1$')
+        line2, = axff.plot(datax*1e6, datay2,
+                color="green",
+                label=r'$c_2$')
+        line3, = axff.plot(datax*1e6, dataybar,
+                color='red', linestyle='--',
+#                label=r'$\overline{c} = (c_1 + c_2)/2$')
+                label=r'$\overline{c}$')
+        axff.legend(loc='best')
+        axff.set_xlabel(r"$r$ [$\mu$m]")
+        axff.set_ylabel(r"$c$")
+        bar1indx = np.nonzero(dataybar > to_red)[0][0]
+        bar2indx = len(dataybar) - np.nonzero(dataybar[::-1] < to_yellow)[0][0]
+        axff.fill_between(datax[0:bar1indx+1]*1e6, 0, 1,
+                color=cmap(0.1), alpha=0.6)
+        axff.fill_between(datax[bar1indx:bar2indx+1]*1e6, 0, 1,
+                color=cmap(0.6), alpha=0.6)
+        axff.fill_between(datax[bar2indx:]*1e6, 0, 1,
+                color=cmap(0.9), alpha=0.6)
+
+        # csld plot schematic-like
+        axcsld.set_ylim((0, 1))
+#        axcsld.set_xlabel(r"$r$ [$\mu$m]")
+        axcsld.yaxis.set_ticks([])
+        axcsld.set_axis_bgcolor('none')
+        axspines = axcsld.spines
+        for spine in ['top', 'bottom', 'left', 'right']:
+            axspines[spine].set_visible(False)
+        axcsld.xaxis.set_ticks_position('bottom')
+        xmax = p_len*1e6
+        axcsld.set_xlim((0, xmax))
+        # Draw graphite planes
+        gpatches = []
+        ytop = 0.8
+        gthick = 0.020
+        ng = 9
+        if not ng % 2: raise Exception("ng must be odd")
+        gylocs = np.linspace(0.02, ytop-gthick/2., ng)
+        for yloc in gylocs:
+            gpatches.append(mpatch.Rectangle((0, yloc-gthick/2.),
+                xmax, gthick, facecolor='black', edgecolor='black',
                 ))
-        circfills.append(mpatch.Wedge((0.5, 0.5), datar[-1], 0, 360,
-            width=dr/2.,
-            facecolor=col, edgecolor=col,
+        gcollect = mcollect.PatchCollection(gpatches,
+                match_original=True)
+        axcsld.add_collection(gcollect)
+        # Color discretization
+        datar = datax*1e6
+        dr = datar[1] - datar[0]
+        # Set up bounding pie slice
+        b0 = 0.3
+        a0 = p_len*1e6
+        nx = 100
+        xpietop = 18./24. * a0
+        xclip_r = np.linspace(xpietop, xmax, nx)
+        yclip_r = b0*np.sqrt(1 - (xclip_r/a0)**2) + ytop
+        # Colored ellipses on top
+        # Set up a clipping path for the ellipses
+        path_array = np.array([
+            [xmax, ytop],
+            [0, ytop],
+            ])
+        xy_r = np.hstack((xclip_r.reshape(-1,1),
+                          yclip_r.reshape(-1,1)))
+        path_array = np.vstack((path_array, xy_r))
+        clippath = mpl.path.Path(path_array)
+        clippatch = mpatch.PathPatch(clippath, facecolor='none',
+                edgecolor='none')
+        axcsld.add_patch(clippatch)
+        # Add ellipses which are the "top-down" color on top of the
+        # pie slice. Have to add these from outer to inner so they can
+        # stack on each other...
+        ellipfills = []
+        ellipfcol = cmap(dataybar[0])
+        ellipfills.append(mpatch.Ellipse((0, ytop),
+            2*xmax, 2*xmax*b0/a0,
+            facecolor=ellipfcol, linewidth=0.))
+        nelip = numy
+        for indxtop in range(1, nelip):
+            r_outer = xmax - dr/2. - (indxtop-1)*dr
+            ellipfills.append(mpatch.Ellipse((0, ytop),
+                2*r_outer, 2*r_outer*b0/a0,
+                facecolor=ellipfcol, linewidth=0))
+        ellipcollect = mcollect.PatchCollection(ellipfills,
+                match_original=True)
+        axcsld.add_collection(ellipcollect)
+        ellipcollect.set_clip_path(clippatch)
+        # Colored rectangles inside
+        nlayers = ng - 1
+        nA = nB = nlayers/2
+        nrect = numy
+        rectsA = []
+        rectsB = []
+        for inx in range(nA):
+            rectsA.append([])
+            rectsB.append([])
+#        cmapcsld = plt.get_cmap('gray')
+#        cmapcsld = plt.get_cmap('Greys')
+#        cmapcsld = plt.get_cmap('cool')
+        cmapcsld = plt.get_cmap('summer')
+        col1 = cmapcsld(datay1[0])
+        col2 = cmapcsld(datay2[0])
+        alph1 = 1.0
+        alph2 = 1.0
+        h = gylocs[-1] - gylocs[-2] - gthick
+        ysA = []
+        ysB = []
+        for inx in range(nA):
+            ysA.append(gylocs[-(2 + 2*inx)] + gthick/2.)
+            ysB.append(gylocs[-(3 + 2*inx)] + gthick/2.)
+        for inx in range(nA):
+            yA = ysA[inx]
+            yB = ysB[inx]
+            rectsA[inx].append(mpatch.Rectangle((0, yA), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
             ))
-        collection = mcollect.PatchCollection(circfills,
+            rectsB[inx].append(mpatch.Rectangle((0, yB), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+        for indxrect in range(1, nrect-1):
+            ri = datar[indxrect] - dr/2.
+            for indxlyr in range(nA):
+                yA = ysA[indxlyr]
+                yB = ysB[indxlyr]
+                rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr, h,
+                facecolor=col1, edgecolor=col1, alpha=alph1,
+#                linewidth=0,
+                ))
+                rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr, h,
+                facecolor=col1, edgecolor=col1, alpha=alph1,
+#                linewidth=0,
+                ))
+        ri = datar[-1] - dr/2.
+        for indxlyr in range(nA):
+            yA = ysA[indxlyr]
+            yB = ysB[indxlyr]
+            rectsA[indxlyr].append(mpatch.Rectangle((ri, yA), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+            rectsB[indxlyr].append(mpatch.Rectangle((ri, yB), dr/2., h,
+            facecolor=col1, edgecolor=col1, alpha=alph1,
+#            linewidth=0,
+            ))
+        rectcollsA = []
+        rectcollsB = []
+        for indxlyr in range(nA):
+            rectcollsA.append(mcollect.PatchCollection(rectsA[indxlyr],
                 match_original=True,
-                )
-        axcirc.add_collection(collection)
-        colors = cmap(smooth(dataybar, smcount))
-        collection.set_color(colors)
+                ))
+            rectcollsB.append(mcollect.PatchCollection(rectsB[indxlyr],
+                match_original=True,
+                ))
+            axcsld.add_collection(rectcollsA[indxlyr])
+            axcsld.add_collection(rectcollsB[indxlyr])
+        csldcolors1 = cmapcsld(datay1)
+        csldcolors2 = cmapcsld(datay2)
+        for indxlyr in range(nA):
+            rectcollsA[indxlyr].set_color(csldcolors1)
+            rectcollsB[indxlyr].set_color(csldcolors2)
+        topcol = cmap(smooth(dataybar, smcount))
+        ellipcollect.set_color(topcol[::-1])
+
+#        # colored circle plot
+#        axcirc.set_ylim(ylim)
+#        datar = datax/datax[-1]/2.05 # normalized to 1/2
+#        dr = datar[1] - datar[0]
+#        ncirc = numy
+#        circfills = np.empty(ncirc, dtype=object)
+#        circfills = []
+#        col = cmap(dataybar[0])
+#        circfills.append(mpatch.Wedge((0.5, 0.5), dr/2., 0, 360,
+#            width=dr/2.,
+#            facecolor=col, edgecolor=col,
+#            ))
+#        for indxcirc in range(1, ncirc-1):
+#            ri = datar[indxcirc] - dr/2.
+#            ro = datar[indxcirc] + dr/2.
+#            circfills.append(mpatch.Wedge((0.5, 0.5), ro, 0, 360,
+#                width=dr,
+#                facecolor=col, edgecolor=col,
+#                ))
+#        circfills.append(mpatch.Wedge((0.5, 0.5), datar[-1], 0, 360,
+#            width=dr/2.,
+#            facecolor=col, edgecolor=col,
+#            ))
+#        collection = mcollect.PatchCollection(circfills,
+#                match_original=True,
+#                )
+#        axcirc.add_collection(collection)
+#        colors = cmap(smooth(dataybar, smcount))
+#        collection.set_color(colors)
 
 #        # Experimental images movie
 #        namesTimes = get_images_times()
@@ -1120,22 +1410,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                markeredgewidth=2,
 #                )
 
-        # voltage plot on exp images axis
-        axmovie.set_axis_on()
-        axmovie.set_position([0.08, 0.56, 0.40, 0.40])
-        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
-        tvec = times*td
-        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
-        axmovie.plot(ffvec, voltage)
-#        axmovie.plot(tvec, voltage)
-        axmovie.set_xlabel("Cathode Filling Fraction [dimensionless]")
-        axmovie.set_ylabel("Voltage [V]")
-        ffcirc, = axmovie.plot(ffvec[t0ind], voltage[t0ind], 'or',
-#        ffcirc, = axmovie.plot(tvec[t0ind], voltage[t0ind], 'or',
-                markerfacecolor='none',
-                markeredgecolor='red',
-                markeredgewidth=2,
-                )
+#        # voltage plot on exp images axis
+#        axmovie.set_axis_on()
+#        axmovie.set_position([0.08, 0.56, 0.40, 0.40])
+#        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+#        tvec = times*td
+#        voltage = Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]
+#        axmovie.plot(ffvec, voltage)
+##        axmovie.plot(tvec, voltage)
+#        axmovie.set_xlabel("Cathode Filling Fraction [dimensionless]")
+#        axmovie.set_ylabel("Voltage [V]")
+#        ffcirc, = axmovie.plot(ffvec[t0ind], voltage[t0ind], 'or',
+##        ffcirc, = axmovie.plot(tvec[t0ind], voltage[t0ind], 'or',
+#                markerfacecolor='none',
+#                markeredgecolor='red',
+#                markeredgewidth=2,
+#                )
 
 #        # areas plot
 #        d_t, d_a1, d_a2, d_a3 = read_areas()
@@ -1220,16 +1510,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 ##            max(np.nanmax(Flux1), np.nanmaxFlux2))))
 #        axff.set_ylim((-0.012, 0.012))
 #        axff.set_ylabel(r"Flux")
-        # mu_R plot
-        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
-        urdata1 = mu1_R
-        urdata2 = mu2_R
-        urline1, = axff.plot(r_vec*p_len*1e6, mu1_R[t0ind, :])
-        urline2, = axff.plot(r_vec*p_len*1e6, mu2_R[t0ind, :])
-        axff.set_xlim((0, p_len*1e6))
-        axff.set_ylim((min(np.nanmin(mu1_R), np.nanmin(mu2_R)),
-            max(np.nanmax(mu1_R), np.nanmax(mu2_R))))
-        axff.set_ylabel(r"$\mu_R$")
+#        # mu_R plot
+#        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
+#        urdata1 = mu1_R
+#        urdata2 = mu2_R
+#        urline1, = axff.plot(r_vec*p_len*1e6, mu1_R[t0ind, :])
+#        urline2, = axff.plot(r_vec*p_len*1e6, mu2_R[t0ind, :])
+#        axff.set_xlim((0, p_len*1e6))
+#        axff.set_ylim((min(np.nanmin(mu1_R), np.nanmin(mu2_R)),
+#            max(np.nanmax(mu1_R), np.nanmax(mu2_R))))
+#        axff.set_ylabel(r"$\mu_R$")
 #        # dc/dt plot
 #        edges = p_len*1e6*np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2., 1))
 #        dcdt1 = np.diff(Flux1*2*np.pi*edges)/volfrac_vec
@@ -1399,8 +1689,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #        axmu2det.set_ylim((-0.012, 0.012))
 #        axmu2det.set_ylabel(r"Flux")
 
-#        fig.savefig('tmp.png', bbox_inches='tight')
-#        plt.show()
+        fig.savefig('mpet_mult.pdf', bbox_inches='tight')
+#        fig.savefig('mpet_mult.png', dpi=150, bbox_inches='tight')
+        plt.show()
 
         def init():
             toblit = []
@@ -1414,37 +1705,37 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             toblit.extend([line1, line2])
             line3.set_ydata(np.ma.array(csld2[0], mask=True))
             toblit.extend([line3])
-#            # csld schematic-like
-#            csldcolors1 = cmapcsld(datay1)
-#            csldcolors2 = cmapcsld(datay2)
-#            for indxlyr in range(nA):
-#                rectcollsA[indxlyr].set_color(csldcolors1)
-#                rectcollsB[indxlyr].set_color(csldcolors2)
-#                toblit.extend([rectcollsA[indxlyr],
-#                               rectcollsB[indxlyr]])
-#            topcol = cmap(dataybar)
-#            ellipcollect.set_color(topcol[::-1])
-#            toblit.append(ellipcollect)
+            # csld schematic-like
+            csldcolors1 = cmapcsld(datay1)
+            csldcolors2 = cmapcsld(datay2)
+            for indxlyr in range(nA):
+                rectcollsA[indxlyr].set_color(csldcolors1)
+                rectcollsB[indxlyr].set_color(csldcolors2)
+                toblit.extend([rectcollsA[indxlyr],
+                               rectcollsB[indxlyr]])
+            topcol = cmap(dataybar)
+            ellipcollect.set_color(topcol[::-1])
+            toblit.append(ellipcollect)
 #            # ff
 #            ffcirc.set_xdata(np.ma.array(0, mask=True))
 #            ffcirc.set_ydata(np.ma.array(0, mask=True))
 #            toblit.append(ffcirc)
-            # voltage
-            ffcirc.set_xdata(np.ma.array(0, mask=True))
-            ffcirc.set_ydata(np.ma.array(0, mask=True))
-            toblit.append(ffcirc)
+#            # voltage
+#            ffcirc.set_xdata(np.ma.array(0, mask=True))
+#            ffcirc.set_ydata(np.ma.array(0, mask=True))
+#            toblit.append(ffcirc)
 #            # areas plot
 #            ffline.set_xdata(np.ma.array([0, 0], mask=True))
 #            toblit.append(ffline)
-            # flux, mu_R, dcdt
-            ny = len(urline1.get_ydata())
-            urline1.set_ydata(np.ma.array([0]*ny, mask=True))
-            urline2.set_ydata(np.ma.array([0]*ny, mask=True))
-            toblit.extend([urline1, urline2])
-            # color circle
-            colors = cmap(dataybar)
-            collection.set_color(colors)
-            toblit.append(collection)
+#            # flux, mu_R, dcdt
+#            ny = len(urline1.get_ydata())
+#            urline1.set_ydata(np.ma.array([0]*ny, mask=True))
+#            urline2.set_ydata(np.ma.array([0]*ny, mask=True))
+#            toblit.extend([urline1, urline2])
+#            # color circle
+#            colors = cmap(dataybar)
+#            collection.set_color(colors)
+#            toblit.append(collection)
 #            # experimental images
 #            toblit.append(img)
 #            # mu1 details
