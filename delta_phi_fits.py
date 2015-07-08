@@ -10,6 +10,7 @@ class DPhiFits():
         self.materialData['LiC6'] = self.LiC6
         self.materialData['NCA1'] = self.NCA1
         self.materialData['idealSolid'] = self.idealSolid
+        self.materialData['Li'] = self.Li
 
     def LiMn2O4(self, y, del_phi_ref):
         """
@@ -63,6 +64,10 @@ class DPhiFits():
         del_phi_eq = self.eokT * (
                 -self.kToe * np.log(y/(1-y))
                 ) - del_phi_ref
+        return del_phi_eq
+
+    def Li(self, y, del_phi_ref):
+        del_phi_eq = 0.
         return del_phi_eq
 
     def NCA1(self, y, del_phi_ref):
