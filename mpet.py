@@ -722,28 +722,32 @@ class modMPET(daeModel):
                     phi_m = np.empty(Nij, dtype=object)
                     phi_m[:] = [self.phi_sld_ac[l][i, j](k) for k in range(Nij)]
             elif solidType in ["homog", "homog_sdn"]:
-                mu_R = self.mu_reg_sln(c_sld, Omga, T, eps)
+#                mu_R = self.mu_reg_sln(c_sld, Omga, T, eps)
+                mu1_R = mu2_R = 0.
             # XXX -- Temp dependence!
-            act_R = np.exp(mu_R/T)
+            act1_R = np.exp(mu1_R/T)
+            act2_R = np.exp(mu2_R/T)
             # eta = electrochem pot_R - electrochem pot_O
             # eta = (mu_R + phi_R) - (mu_O + phi_O)
             if delPhiEqFit:
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
-                delta_phi_eq = phifunc(c_sld[-1], self.dphi_eq_ref_ac(l))
-                eta = (phi_m - phi_lyte) - delta_phi_eq
+                delta_phi_eq = (phifunc(c1_sld[-1], self.dphi_eq_ref_ac(l))
+                        + np.log(act_O))
+                eta1 = eta2 = (phi_m - phi_lyte) - delta_phi_eq
             else:
                 eta = (mu_R + phi_m) - (mu_O + phi_lyte)
             if rxnType == "Marcus":
-                Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
+                Rate1 = self.R_Marcus(k0, lmbda, c_lyte, c1_sld, eta1, T)
             elif rxnType == "BV":
-                Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
+                Rate1 = self.R_BV(k0, alpha, c1_sld, c2_sld, Omgb, act_O, act1_R, eta1, T)
+                Rate2 = self.R_BV(k0, alpha, c2_sld, c1_sld, Omgb, act_O, act2_R, eta2, T)
             elif rxnType == "MHC":
 #                Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T)
                 Rate = self.R_MHC(k0, lmbda, eta, Aa, b, T, c_sld)
             M = sprs.eye(Nij, Nij, format="csr")
-            return (M, Rate)
+            return (M, Rate1, Rate2)
 
         elif solidType in ["diffn", "CHR"] and solidShape in ["sphere", "cylinder"]:
             # For discretization background, see Zeng & Bazant 2013
@@ -797,8 +801,10 @@ class modMPET(daeModel):
                 material = self.D['material_ac'][l]
                 fits = delta_phi_fits.DPhiFits(self.D)
                 phifunc = fits.materialData[material]
-                delta_phi_eq1 = phifunc(c1_surf, self.dphi_eq_ref_ac(l))
-                delta_phi_eq2 = phifunc(c2_surf, self.dphi_eq_ref_ac(l))
+                delta_phi_eq1 = (phifunc(c1_surf, self.dphi_eq_ref_ac(l))
+                        + np.log(act_O))
+                delta_phi_eq2 = (phifunc(c2_surf, self.dphi_eq_ref_ac(l))
+                        + np.log(act_O))
                 eta1 = (phi_m - phi_lyte) - delta_phi_eq1
                 eta2 = (phi_m - phi_lyte) - delta_phi_eq2
             else:
@@ -1266,7 +1272,7 @@ class simMPET(daeSimulation):
                 D['P_L_ac'][1] * D['rhos_ac'][1])
         if D['Nvol_ac'][0]:
             # full porous anode with finite capacity
-            cap_a = (D['L_ac'][0] * (1-D['poros_ac'][0]) *
+            cap_a = (D['L_ac'][0] * (1) *
                     D['P_L_ac'][0] * D['rhos_ac'][0])
             z = cap_c / cap_a
         else:
@@ -1295,9 +1301,14 @@ class simMPET(daeSimulation):
             self.m.L_ac.SetValue(l, D['L_ac'][l]/L_ref)
             self.m.dim_csmax_ac.SetValue(l, csmax_ac[l])
             self.m.poros_ac.SetValue(l, D['poros_ac'][l])
-            self.m.epsbeta_ac.SetValue(l,
-                    (1-D['poros_ac'][l]) * D['P_L_ac'][l] *
-                    csmax_ac[l]/D['c0'])
+            if l == 1: # cathode
+                self.m.epsbeta_ac.SetValue(l,
+                        (1-D['poros_ac'][l]) * D['P_L_ac'][l] *
+                        csmax_ac[l]/D['c0'])
+            else: # Li anode (weird, hacky)
+                self.m.epsbeta_ac.SetValue(l,
+                        (1) * D['P_L_ac'][l] *
+                        csmax_ac[l]/D['c0'])
             self.m.mcond_ac.SetValue(l,
                     D['mcond_ac'][l] * (td * k * N_A * Tref) /
                     (L_ref**2 * F**2 *D['c0']))
