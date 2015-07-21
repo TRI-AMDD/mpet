@@ -1064,7 +1064,7 @@ def consoleRun(ndD, outdir):
         simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
 
-def main(paramfile="params_default.cfg"):
+def main(paramfile="params_default.cfg", keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
@@ -1153,10 +1153,13 @@ def main(paramfile="params_default.cfg"):
     tmpDir = os.path.join(os.getcwd(), tmpDir_name)
     try:
         shutil.rmtree(tmpDir)
-    except IOError as exception:
+    except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
     shutil.copytree(outdir, tmpDir)
+
+    if not keepArchive:
+        shutil.rmtree(outdir)
 
 if __name__ == "__main__":
     default_file = "params_default.cfg"
@@ -1164,4 +1167,4 @@ if __name__ == "__main__":
         paramfile = default_file
     else:
         paramfile = sys.argv[1]
-    main(paramfile)
+    main(paramfile, keepArchive=False)
