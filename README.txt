@@ -13,22 +13,23 @@ mpet.py
 
 4. Edit params.cfg to suit simulation you're trying to run
 
-5. Run script, passing params.py as an argument:
-    - python2 mpet.py params.py
+5. Run script, passing params.py as an argument (try with/without the 2):
+    - python[2] mpet.py params.py
 
 6. Analyze output with plot_data.py (pass output data directory, then
 plot-type as arguments).
     - e.g., voltage plot:
-        $ python2 plot_data.py sim_output v
-    - all options:
+        $ python[2] plot_data.py sim_output v
+    - all options (full, c, a indicate full cell, cathode, and anode):
       v -- voltage vs filling fraction
       curr -- current vs time
       elytec -- electrolyte concentration (movie)
       elytep -- electrolyte potential (movie)
-      csld -- solid concentrations (all, movie)
-      phisld -- solid potential (all, used with simSurfCathCond = true, movie)
-      cbar -- average solid concentrations (movie)
-      cathp -- macroscopic cathode solid phise potential (movie)
+      csld_{c,a} -- solid concentrations (all, movie, used with solidType_{c,a} not homog)
+      phisld_{c,a} -- solid potential (all, movie, used with simSurfCond_{c,a} = true)
+      cbar_{full,c,a} -- average solid concentrations (movie)
+      bulkp_{c,a} -- macroscopic electrode solid phise potential (movie)
+      soc_{c,a} -- electrode state of charge
 If you want to save output to a movie (or figure), add "save" (no
 quotes) as an extra argument to plot_data.py:
         $ python2 plot_data.py sim_output cbar save
