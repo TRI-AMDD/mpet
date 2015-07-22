@@ -16,6 +16,17 @@ mpet.py
 5. Run script, passing params.py as an argument (try with/without the 2):
     - python[2] mpet.py params.py
 
+The software will save the simulation output data in a folder called
+"sim_output" and will also keep a time-stamped copy in a folder called
+"history." Each output directory should contain
+    - the output data
+    - a copy of the input parameters defining the simulation
+    - a copy of the daetools config parameters (e.g. solver tolerances)
+    - information about the script used to run the simulation
+    - information about the simulation (e.g. run time)
+    - processed, dimensional and nondimensional parameters as
+      Python-pickled dictionary objects
+
 6. Analyze output with plot_data.py (pass output data directory, then
 plot-type as arguments).
     - e.g., voltage plot:
