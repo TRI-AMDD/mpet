@@ -383,6 +383,26 @@ class modMPET(daeModel):
 #                        previous_output, _position_) for _position_
 #                        in range(Nsld)]
 
+        # Prepare the Ideal Solution log ratio terms
+        self.ISfuncs = np.empty(2, dtype=object)
+        for l in trodes:
+            self.ISfuncs[l] = np.empty((Nvol_ac[l], Npart_ac[l]),
+                    dtype=object)
+            for i in range(Nvol_ac[l]):
+                for j in range(Npart_ac[l]):
+                    self.ISfuncs[l][i, j] = np.empty(2, dtype=object)
+                    Nsld = Nsld_mat_ac[l][i, j]
+                    self.ISfuncs[l][i, j][0] = np.array(
+                            [LogRatio("LR{l}{i}{j}{k}1".format(l=l,i=i,j=j,k=k),
+                                self, unit(),
+                                self.c1_sld_ac[l][i, j](k)) for k in
+                                range(Nsld)])
+                    self.ISfuncs[l][i, j][1] = np.array(
+                            [LogRatio("LR{l}{i}{j}{k}2".format(l=l,i=i,j=j,k=k),
+                                self, unit(),
+                                self.c2_sld_ac[l][i, j](k)) for k in
+                                range(Nsld)])
+
         # Define the average concentration in each particle (algebraic
         # equations)
         for l in trodes:
@@ -715,7 +735,9 @@ class modMPET(daeModel):
         if solidType in ["ACR", "homog", "homog_sdn"]:
             if solidType == "ACR":
                 # Make a blank array to allow for boundary conditions
-                mu_R = self.calc_ACR_mu_R(c_sld, Omga, B, kappa, T)
+                ISfuncs = self.ISfuncs[l][i, j]
+                mu_R = self.calc_ACR_mu_R(c_sld, Omga, B, kappa, T, l,
+                        ISfuncs)
                 # If we're also simulating potential drop along the solid,
                 # use that instead of self.phi_c(i)
                 if simSurfCond:
@@ -785,8 +807,11 @@ class modMPET(daeModel):
                 # mu_R is like for ACR, except kappa*curv term
                 EvdW = self.EvdW_ac(l)
                 beta_s = self.beta_s_ac[l](i, j)
+                ISfuncs1 = self.ISfuncs[l][i, j][0]
+                ISfuncs2 = self.ISfuncs[l][i, j][1]
                 mu1_R, mu2_R = self.calc_mu12_R(c1_sld, c2_sld, c1bar,
-                        c2bar, Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T)
+                        c2bar, Omga, Omgb, Omgc, B, kappa, EvdW,
+                        beta_s, T, ISfuncs1, ISfuncs2)
                 act1_R = np.exp(mu1_R/T)
                 act2_R = np.exp(mu2_R/T)
                 mu1_R_surf = mu1_R[-1]
@@ -857,7 +882,7 @@ class modMPET(daeModel):
                 RHS2 = FluxTerm2 + RxnTerm2
             return (M, RHS1, RHS2)
 
-    def calc_ACR_mu_R(self, c_sld, Omga, B, kappa, T, l):
+    def calc_ACR_mu_R(self, c_sld, Omga, B, kappa, T, l, ISfuncs=None):
         Nij = len(c_sld)
         cstmp = np.empty(Nij+2, dtype=object)
         cstmp[1:-1] = c_sld
@@ -865,12 +890,13 @@ class modMPET(daeModel):
         cstmp[-1] = self.cwet_ac(l)
         dxs = 1./Nij
         curv = np.diff(cstmp, 2)/(dxs**2)
-        mu_R = ( self.mu_reg_sln(c_sld, Omga, T, eps) - kappa*curv
+        mu_R = ( self.mu_reg_sln(c_sld, Omga, T, ISfuncs) - kappa*curv
                 + self.B_ac(l)*(c_sld - cbar) )
         return mu_R
 
     def calc_mu12_R(self, c1_sld, c2_sld, c1bar, c2bar,
-            Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T):
+            Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T,
+            ISfuncs1=None, ISfuncs2=None):
         Nij = len(c1_sld)
         solidType = "CHR"
         solidShape = "cylinder"
@@ -879,12 +905,12 @@ class modMPET(daeModel):
                 solidShape, solidType, Nij)
         dr = r_vec[1] - r_vec[0]
         # mu_R is like for ACR, except kappa*curv term
-        mu1_R = ( self.mu_reg_sln(c1_sld, Omga, T, eps) +
+        mu1_R = ( self.mu_reg_sln(c1_sld, Omga, T, ISfuncs1) +
                 B*(c1_sld - c1bar) )
-        mu2_R = ( self.mu_reg_sln(c2_sld, Omga, T, eps) +
+        mu2_R = ( self.mu_reg_sln(c2_sld, Omga, T, ISfuncs2) +
                 B*(c2_sld - c2bar) )
-        mu1_reg = self.mu_reg_sln(c1_sld, Omga, T, eps)
-        mu2_reg = self.mu_reg_sln(c2_sld, Omga, T, eps)
+        mu1_reg = self.mu_reg_sln(c1_sld, Omga, T, ISfuncs1)
+        mu2_reg = self.mu_reg_sln(c2_sld, Omga, T, ISfuncs2)
         mu1_B = B*(c1_sld - c1bar)
         mu2_B = B*(c2_sld - c2bar)
         mu1_vdW = EvdW*(30*c1_sld**2*(1-c1_sld)**2)
@@ -954,6 +980,15 @@ class modMPET(daeModel):
         Flux2_vec[-1] = Flux2_bc
         c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
         c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
+        # keep the concentrations between 0 and 1
+        c1_edges = np.array([Max(1e-6, c1_edges[i]) for i in
+                range(len(c1_edges))])
+        c1_edges = np.array([Min((1-1e-6), c1_edges[i]) for i in
+                range(len(c1_edges))])
+        c2_edges = np.array([Max(1e-6, c2_edges[i]) for i in
+                range(len(c1_edges))])
+        c2_edges = np.array([Min((1-1e-6), c2_edges[i]) for i in
+                range(len(c1_edges))])
         cbar_edges = 0.5*(c1_edges + c2_edges)
         Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
                 np.diff(mu1_R)/dr)
@@ -1062,14 +1097,14 @@ class modMPET(daeModel):
         curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
         return np.diff(curr_dens, 1)/dx
 
-    def mu_reg_sln(self, c, Omga, T, eps):
+    def mu_reg_sln(self, c, Omga, T, ISfuncs=None):
+        enthalpyTerm = np.array([Omga*(1-2*c[i]) for i in range(len(c))])
         if (type(c[0]) == pyCore.adouble):
-            maxfunc = Max
+#            logCterm = T*locCfunc()
+            ISterm = T*np.array([ISfuncs[i]() for i in range(len(c))])
         else:
-            maxfunc = max
-        return np.array([ Omga*(1-2*c[i])
-                + T*np.log(maxfunc(eps, c[i])/maxfunc(eps, 1-c[i]))
-                for i in range(len(c)) ])
+            ISterm = np.array([T*np.log(c[i]/(1-c[i])) for i in range(len(c))])
+        return ISterm + enthalpyTerm
 
     def R_BV(self, k0, alpha, ci_sld, cj_sld, Omgb, act_O, act_R, eta, T):
         gamma_ts = (1./(ci_sld**1.0*(1-ci_sld)))#/ci_sld**(0.5)#*np.exp((Omgb/T)*cj_sld)
@@ -1526,6 +1561,42 @@ class simMPET(daeSimulation):
 #                self.Log.Message('Condition: [{0}] satisfied at time {1}s'.format(self.LastSatisfiedCondition, self.CurrentTime), 0)
 #                self.Log.Message('Stopping the simulation...', 0)
 #                return
+
+class LogRatio(daeScalarExternalFunction):
+    """
+    Class to make a piecewise function that evaluates
+    log(c/(1-c)). However, near the edges (close to zero and one),
+    extend the function linearly to avoid negative log errors and
+    allow concentrations above one and below zero.
+    """
+    def __init__(self, Name, Model, units, c):
+        arguments = {}
+        arguments["c"] = c
+        daeScalarExternalFunction.__init__(self, Name, Model, units,
+                arguments)
+
+    def Calculate(self, values):
+        c = values["c"]
+        cVal = c.Value
+        EPS = 1e-6
+        cL = EPS
+        cH = 1 - EPS
+        if cVal < cL:
+            logRatio = (1./(cL*(1-cL)))*(cVal-cL) + np.log(cL/(1-cL))
+        elif cVal > cH:
+            logRatio = (1./(cH*(1-cH)))*(cVal-cH) + np.log(cH/(1-cH))
+        else:
+            logRatio = np.log(cVal/(1-cVal))
+        logRatio = adouble(logRatio)
+        if c.Derivative != 0:
+            if cVal < cL:
+                logRatio.Derivative = 1./(cL*(1-cL))
+            elif cVal > cH:
+                logRatio.Derivative = 1./(cH*(1-cH))
+            else:
+                logRatio.Derivative = 1./(cVal*(1-cVal))
+            logRatio.Derivative *= c.Derivative
+        return logRatio
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,
