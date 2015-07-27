@@ -108,7 +108,7 @@ class mpetIO():
             ndD = {}
             P = P_e[trode]
 
-            Type = ndD["type"] = P.get('Particles', 'type'),
+            Type = ndD["type"] = P.get('Particles', 'type')
             dD["disc"] = P.getfloat('Particles', 'discretization')
             Shape = ndD["shape"] = P.get('Particles', 'shape')
             dD["thickness"] = P.getfloat('Particles', 'thickness')
@@ -129,7 +129,7 @@ class mpetIO():
             if Type in ["CHR"]:
                 dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
             if Type in ["ACR"]:
-                dD["cwet"] = P.getfloat('Material', 'cwet')
+                ndD["cwet"] = P.getfloat('Material', 'cwet')
             if Type in ["diffn", "homog"]:
                 ndD["delPhiEqFit"] = P.getboolean('Materials', 'delPhiEqFit')
                 ndD["delPhiFunc"] = P.getboolean('Materials', 'delPhiFunc')
@@ -148,7 +148,8 @@ class mpetIO():
         self.test_system_input(dD_s, ndD_s)
         for trode in ndD_s["trodes"]:
             self.test_electrode_input(dD_e[trode], ndD_e[trode])
-        psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(dD_s, ndD_s)
+        psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(
+                dD_s, ndD_s, dD_e, ndD_e)
         G = self.distr_G(dD_s, ndD_s)
 
         # Various calculated and defined parameters
@@ -203,9 +204,10 @@ class mpetIO():
         ndD_s["epsbeta"] = {}
         ndD_s["mcond"] = {}
         ndD_s["dphi_eq_ref"] = {}
-        ndD_s["phiRef"] = { # temporary, used for Vmax, Vmin
-                "a" : (e/(k*Tref))*dD_s["Vstd"]["a"],
-                "c" : 0.}
+#        ndD_s["phiRef"] = { # temporary, used for Vmax, Vmin
+#                "a" : (e/(k*Tref))*dD_s["Vstd"]["a"],
+#                "c" : 0.}
+        ndD_s["phiRef"] = {"a" : 0.} # temporary, used for Vmax, Vmin
 #        ndD_s["lambda"] = {}
 #        ndD_s["B"] = {}
 #        ndD_s["kappa"] = {}
@@ -243,20 +245,21 @@ class mpetIO():
             ndD_s["mcond"][trode] = (
                     dD_s['mcond'][trode] * (td * k * N_A * Tref) /
                     (Lref**2 * F**2 * c0))
+            vols = dD_s["psd_vol"][trode]
             ndD_s["G"][trode] = (dD_s["G"][trode] * (k*Tref/e) * td /
                     (F*dD_e[trode]["csmax"]*vols))
-            if ndD_s["delPhiEqFit"][trode]:
-                material = ndD_s['material'][trode]
-                fits = delta_phi_fits.DPhiFits(ndD_s["T"])
-                phifunc = fits.materialData[material]
-                ndD_s["dphi_eq_ref"][trode] = phifunc(ndD_s['cs0'][trode], 0)
-                ndD_s["phiRef"][trode] = ndD_s["dphi_eq_ref"][trode]
-            else:
-                ndD_s["dphi_eq_ref"][trode] = 0.
-                ndD_s["phiRef"][trode] = (e/(k*Tref))*dD_s["Vstd"][trode]
 
             ## Electrode particle parameters
             Type = ndD_e[trode]['type']
+            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
+                material = ndD_e[trode]['delPhiFunc']
+                fits = delta_phi_fits.DPhiFits(ndD_s["T"])
+                phifunc = fits.materialData[material]
+                ndD_e[trode]["dphi_eq_ref"] = phifunc(ndD_s['cs0'][trode], 0)
+                ndD_s["phiRef"][trode] = ndD_e[trode]["dphi_eq_ref"]
+            else:
+                ndD_e[trode]["dphi_eq_ref"] = 0.
+                ndD_s["phiRef"][trode] = (e/(k*Tref))*dD_e[trode]["Vstd"]
             lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*Tref)
             if Type not in ["diffn"]:
                 ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
@@ -267,16 +270,17 @@ class mpetIO():
             Nvol, Npart = psd_raw[trode].shape
             # Electrode parameters which depend on the individual
             # particle (e.g. because of non-dimensionalization)
-            ndD_e["indvPart"] = np.empty((Nvol, Npart), dtype=object)
-            for i in Nvol:
-                for j in Npart:
+            ndD_e[trode]["indvPart"] = np.empty((Nvol, Npart), dtype=object)
+            for i in range(Nvol):
+                for j in range(Npart):
                     # Bring in a copy of the nondimensional parameters
                     # we've calculated so far which are the same for
                     # all particles.
-                    ndD_e["indvPart"][i, j] = ndD_e[trode].copy()
+                    ndD_e[trode]["indvPart"][i, j] = ndD_e[trode].copy()
                     # This creates a reference for shorthand.
-                    ndD_tmp = ndD_e["IP"][i, j]
+                    ndD_tmp = ndD_e[trode]["indvPart"][i, j]
                     # This specific particle dimensions
+                    ndD_tmp["N"] = ndD_s["psd_num"][trode][i, j]
                     plen = dD_s["psd_len"][trode][i, j]
                     parea = dD_s["psd_area"][trode][i, j]
                     pvol = dD_s["psd_vol"][trode][i, j]
@@ -325,22 +329,22 @@ class mpetIO():
 
         return dD_s, ndD_s, dD_e, ndD_e
 
-    def distr_part(self, dD, ndD):
+    def distr_part(self, dD_s, ndD_s, dD_e, ndD_e):
         psd_raw = {}
         psd_num = {}
         psd_len = {}
         psd_area = {}
         psd_vol = {}
-        for trode in ndD["trodes"]:
-            Nv = ndD["Nvol"][trode]
-            Np = ndD["Npart"][trode]
-            mean = dD["psd_mean"][trode]
-            stddev = dD["psd_stddev"][trode]
-            solidType = ndD["solidType"][trode]
+        for trode in ndD_s["trodes"]:
+            Nv = ndD_s["Nvol"][trode]
+            Np = ndD_s["Npart"][trode]
+            mean = dD_s["psd_mean"][trode]
+            stddev = dD_s["psd_stddev"][trode]
+            solidType = ndD_e[trode]["type"]
             # Make a length-sampled particle size distribution
             # Log-normally distributed
-            if isClose(dD["psd_stddev"][trode], 0.):
-                raw = (dD["psd_mean"][trode] *
+            if isClose(dD_s["psd_stddev"][trode], 0.):
+                raw = (dD_s["psd_mean"][trode] *
                         np.ones((Nv, Np)))
             else:
                 var = stddev**2
@@ -351,7 +355,7 @@ class mpetIO():
             psd_raw[trode] = raw
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
-            solidDisc = dD["solidDisc"][trode]
+            solidDisc = dD_e[trode]["disc"]
             if solidType in ["ACR"]:
                 psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer)
                 psd_len[trode] = solidDisc*psd_num[trode]
@@ -367,16 +371,16 @@ class mpetIO():
             else:
                 raise NotImplementedError("Solid types missing here")
             # Calculate areas and volumes
-            solidShape = ndD["solidShape"][trode]
+            solidShape = ndD_e[trode]["shape"]
             if solidShape == "sphere":
                 psd_area[trode] = (4*np.pi)*psd_len[trode]**2
                 psd_vol[trode] = (4./3)*np.pi*psd_len[trode]**3
             elif solidShape == "C3":
                 psd_area[trode] = 2 * 1.2263 * psd_len[trode]**2
-                psd_vol[trode] = 1.2263 * psd_len[trode]**2 * dD['partThick'][trode]
+                psd_vol[trode] = 1.2263 * psd_len[trode]**2 * dD_e[trode]['thickness']
             elif solidShape == "cylinder":
-                psd_area[trode] = 2 * np.pi * psd_len[trode] * dD['partThick'][trode]
-                psd_vol[trode] = np.pi * psd_len[trode]**2 * dD['partThick'][trode]
+                psd_area[trode] = 2 * np.pi * psd_len[trode] * dD_e[trode]['thickness']
+                psd_vol[trode] = np.pi * psd_len[trode]**2 * dD_e[trode]['thickness']
         return psd_raw, psd_num, psd_len, psd_area, psd_vol
 
     def distr_G(self, dD, ndD):
@@ -436,31 +440,33 @@ class mpetIO():
         return
 
     def test_electrode_input(self, dD, ndD):
-        for trode in ndD["trodes"]:
-            T298 = isClose(ndD['T'], 1.)
-            solidType = ndD[trode]['solidType'][trode]
-            solidShape = ndD[trode]['solidShape'][trode]
-            if ndD[trode]['simSurfCond'][trode] and solidType != "ACR":
-                raise Exception("simSurfCond req. ACR")
-            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
-                raise Exception("ACR and homog_sdn req. C3 shape")
-            if (solidType in ["CHR", "diffn"] and solidShape not in
-                    ["sphere", "cylinder"]):
-                raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-            if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
-                raise NotImplementedError("Input solidType not defined")
-            if solidShape not in ["C3", "sphere", "cylinder"]:
-                raise NotImplementedError("Input solidShape not defined")
-            if solidType == "homog_sdn" and not T298:
-                raise NotImplementedError("homog_snd req. Tabs=298")
-            if ndD['delPhiEqFit'][trode] and solidType not in ["diffn", "homog"]:
-                if ndD['material'][trode] == "LiMn2O4" and not T298:
+        T298 = isClose(ndD['T'], 1.)
+        solidType = ndD['type']
+        solidShape = ndD['shape']
+#        if ndD['simSurfCond'] and solidType != "ACR":
+#            raise Exception("simSurfCond req. ACR")
+        if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
+            raise Exception("ACR and homog_sdn req. C3 shape")
+        if (solidType in ["CHR", "diffn"] and solidShape not in
+                ["sphere", "cylinder"]):
+            raise NotImplementedError("CHR and diffn req. sphere or cylinder")
+        if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
+            raise NotImplementedError("Input solidType not defined")
+        if solidShape not in ["C3", "sphere", "cylinder"]:
+            raise NotImplementedError("Input solidShape not defined")
+        if solidType == "homog_sdn" and not T298:
+            raise NotImplementedError("homog_snd req. Tabs=298")
+        try:
+            if ndD['delPhiEqFit'][trode]:
+                if ndD['delPhiFunc'][trode] == "LiMn2O4" and not T298:
                     raise Exception("LiMn204 req. Tabs = 298 K")
-                if ndD['material'][trode] == "LiC6" and not T298:
+                if ndD['delPhiFunc'][trode] == "LiC6" and not T298:
                     raise Exception("LiC6 req. Tabs = 298 K")
-                if ndD['material'][trode] == "NCA1" and not T298:
+                if ndD['delPhiFunc'][trode] == "NCA1" and not T298:
                     raise Exception("NCA1 req. Tabs = 298 K")
                 raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
+        except KeyError:
+            pass
         return
 
     def writeConfigFile(self, P, filename="input_params.cfg"):

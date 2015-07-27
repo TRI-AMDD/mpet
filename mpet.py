@@ -46,10 +46,10 @@ class modMPET(daeModel):
         if (ndD_s is None) or (ndD_e is None):
             raise Exception("Need input parameter dictionaries")
         self.ndD = ndD_s
-        self.profileType = ndD['profileType']
-        Nvol = ndD["Nvol"]
-        Npart = ndD["Npart"]
-        self.trodes = trodes = ndD["trodes"]
+        self.profileType = ndD_s['profileType']
+        Nvol = ndD_s["Nvol"]
+        Npart = ndD_s["Npart"]
+        self.trodes = trodes = ndD_s["trodes"]
 
         # Domains where variables are distributed
         self.DmnCell = {} # domains over full cell dimensions
@@ -167,7 +167,8 @@ class modMPET(daeModel):
         for l in trodes:
             Nv = Nvol[l]
             Np = Npart[l]
-            self.portsOut[l] = np.empty(Nv, dtype=object)
+            self.portsOutLyte[l] = np.empty(Nv, dtype=object)
+            self.portsOutBulk[l] = np.empty((Nv, Np), dtype=object)
             self.particles[l] = np.empty((Nv, Np), dtype=object)
             for i in range(Nv):
                 self.portsOutLyte[l][i] = mpetPorts.portFromElyte(
@@ -179,16 +180,16 @@ class modMPET(daeModel):
                         "portTrode{l}vol{i}part{j}".format(l=l,i=i,j=j),
                         eOutletPort, self,
                         "Bulk electrode port to particles")
-                    solidType = ndD_e[l][i, j]['type']
+                    solidType = ndD_e[l]["indvPart"][i, j]['type']
                     if solidType in ["homog", "homog_sdn"]:
                         pMod = mpetMaterials.mod0D1var
                     elif solidType in ["ACR", "CHR", "diffn"]:
                         pMod = mpetMaterials.mod1D1var
                     else:
                         raise NotImplementedError("no model for given solid type")
-                    self.particles[l][i, j] = pmod(
+                    self.particles[l][i, j] = pMod(
                             "partTrode{l}vol{i}part{j}".format(l=l,i=i,j=j),
-                            self, ndD_e[l][i, j])
+                            self, ndD=ndD_e[l]["indvPart"][i, j])
                     self.ConnectPorts(self.portsOutLyte[l][i],
                             self.particles[l][i, j].portInLyte)
                     self.ConnectPorts(
@@ -293,10 +294,10 @@ class modMPET(daeModel):
         for l in trodes:
             for i in range(Nvol[l]):
                 eq = self.CreateEquation("portout_c_trode{l}vol{i}".format(i=i,l=l))
-                eq.Residaul = (self.c_lyte[l](i) -
+                eq.Residual = (self.c_lyte[l](i) -
                         self.portsOutLyte[l][i].c_lyte())
                 eq = self.CreateEquation("portout_p_trode{l}vol{i}".format(i=i,l=l))
-                eq.Residaul = (self.phi_lyte[l](i) -
+                eq.Residual = (self.phi_lyte[l](i) -
                         self.portsOutLyte[l][i].phi_lyte())
                 for j in range(Npart[l]):
                     eq = self.CreateEquation(
@@ -915,7 +916,7 @@ class simMPET(daeSimulation):
             for i in range(ndD["Nvol"][l]):
                 for j in range(ndD["Npart"][l]):
                     self.m.particles[l][i, j].Dmn.CreateArray(
-                            int(ndD_s["psd_num"][l][i, j]))
+                            int(ndD["psd_num"][l][i, j]))
 
     def SetUpVariables(self):
         ndD_s = self.ndD_s
@@ -925,7 +926,7 @@ class simMPET(daeSimulation):
         phi_cathode = ndD_s["phi_cathode"]
         # Solids
         for l in ndD_s["trodes"]:
-            cs0 = self.ndD_e[l]['cs0']
+            cs0 = self.ndD_s['cs0'][l]
             # Guess initial filling fractions
             self.m.ffrac[l].SetInitialGuess(cs0)
             for i in range(Nvol[l]):
@@ -950,7 +951,7 @@ class simMPET(daeSimulation):
         for i in range(Nvol["s"]):
             self.m.c_lyte["s"].SetInitialCondition(i, c_lyte_init)
             self.m.phi_lyte["s"].SetInitialGuess(i, phi_guess)
-        for l in ndD["trodes"]:
+        for l in ndD_s["trodes"]:
             for i in range(Nvol[l]):
                 self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
                 self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
@@ -1151,7 +1152,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     IO.writeConfigFile(P_s, filename=paramFile)
     dictFile = os.path.join(outdir, "input_dict_system")
     IO.writeDicts(dD_s, ndD_s, filenamebase=dictFile)
-    for trode in ndD_s[trodes]:
+    for trode in ndD_s["trodes"]:
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
         IO.writeConfigFile(P_e[trode], filename=paramFile)
