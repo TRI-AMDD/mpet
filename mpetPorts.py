@@ -17,6 +17,10 @@ class portFromElyte(daePort):
                 "Concentration in the electrolyte")
         self.phi_lyte = daeVariable("phi_lyte", elec_pot_t, self,
                 "Electric potential in the electrolyte")
+
+class portFromBulk(daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+        daePort.__init__(self, Name, PortType, Model, Description)
         self.phi_m = daeVariable("phi_m", elec_pot_t, self,
                 "Electric potential in the e- conducting phase")
 

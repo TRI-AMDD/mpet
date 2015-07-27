@@ -44,6 +44,8 @@ class mod1D1var(daeModel):
                 [self.Dmn])
         self.cbar = daeVariable("cbar", mole_frac_t, self,
                 "Average concentration in active particle")
+        self.dcbardt = daeVariable("dcbardt", no_t, self,
+                "Rate of particle filling")
         if self.ndD["simSurfCond"]:
             self.phi = daeVariable("phi", elec_pot_t, self,
                     "Electric potential within the particle",
@@ -52,11 +54,12 @@ class mod1D1var(daeModel):
             self.phi = False
 
         # Ports
-        self.portOut = mpetPorts.portFromParticle()
-        self.portIn = mpetPorts.portFromElyte()
-        self.phi_lyte = self.portIn.phi_lyte()
-        self.c_lyte = self.portIn.c_lyte()
-        self.phi_m = self.portIn.phi_m()
+#        self.portOut = mpetPorts.portFromParticle()
+        self.portInLyte = mpetPorts.portFromElyte()
+        self.portInBulk = mpetPorts.portFromBulk()
+        self.phi_lyte = self.portInLyte.phi_lyte()
+        self.c_lyte = self.portInLyte.c_lyte()
+        self.phi_m = self.portInBulk.phi_m()
 
     def DeclareEquations(self):
         ndD = self.ndD
@@ -67,13 +70,13 @@ class mod1D1var(daeModel):
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.portOut.cbar()
+        eq.Residual = self.cbar()
         for k in range(N):
             eq.Residual -= self.c(k) * volfrac_vec[k]
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
-        eq.Residual = self.portOut.dcbardt()
+        eq.Residual = self.dcbardt()
         for k in range(N):
             eq.Residual -= self.c.dt(k) * volfrac_vec[k]
 
@@ -126,7 +129,7 @@ class mod1D1var(daeModel):
         phi_lyte = self.phi_lyte
         phi_m = self.phi_m
         c_lyte = self.c_lyte
-        cbar = self.portOut.cbar() # only used for ACR/CHR
+        cbar = self.cbar() # only used for ACR/CHR
         # Get the relevant parameters for this particle
         k0 = ndD["k0"]
         kappa = ndD["kappa"] # only used for ACR/CHR

@@ -17,7 +17,7 @@ class mpetIO():
         # electrode config(s)
         P_e = {}
         # cathode config
-        paramfile_c = P_s.get('Electrode', 'cathode')
+        paramfile_c = P_s.get('Electrodes', 'cathode')
         P_c = ConfigParser.RawConfigParser()
         P_c.optionxform = str
         P_c.read(paramfile_c)
@@ -267,7 +267,7 @@ class mpetIO():
             Nvol, Npart = psd_raw[trode].shape
             # Electrode parameters which depend on the individual
             # particle (e.g. because of non-dimensionalization)
-            ndD_e["indvPart"] = np.empty(Nvol, Npart, dtype=object)
+            ndD_e["indvPart"] = np.empty((Nvol, Npart), dtype=object)
             for i in Nvol:
                 for j in Npart:
                     # Bring in a copy of the nondimensional parameters
