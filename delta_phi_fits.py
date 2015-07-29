@@ -7,10 +7,12 @@ class DPhiFits():
         Tabs = 298
         e = 1.602e-19
         self.eokT = e/(k*Tabs)
+        self.kToe = (k*Tabs)/e
         self.materialData = {}
         self.materialData['LiMn2O4'] = self.LiMn2O4
         self.materialData['LiC6'] = self.LiC6
         self.materialData['NCA1'] = self.NCA1
+        self.materialData['NCA2'] = self.NCA2
         self.materialData['idealSolid'] = self.idealSolid
 
     def LiMn2O4(self, y, del_phi_ref):
@@ -69,4 +71,19 @@ class DPhiFits():
         del_phi_eq = self.eokT*(
                 3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4 -
                 0.06*np.log(y/(1-y)) ) - del_phi_ref
+        return del_phi_eq
+
+    def NCA2(self, y, del_phi_ref):
+        """
+        Fit \Delta\phi^{eq} for Li_q Ni(0.8)Co(0.15)Al(0.05)O2
+        as a function of y. Here, y actually represents a practical
+        utilization of 70% of the material, so the material is "empty"
+        (y=0) when q=0.3 and full (y=1) when q=1.
+        This can only return values for Tabs = 298 K
+        This function was obtained from a fit by Raymond B. Smith
+        of Samsung data of a LiC6-NCA cell discharged at C/100.
+        """
+        del_phi_eq = self.eokT*(-self.kToe*np.log(y/(1-y))
+                + 4.12178 - 0.2338*y - 1.24566*y**2 + 1.16769*y**3
+                - 0.20745*y**4) - del_phi_ref
         return del_phi_eq
