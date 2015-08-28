@@ -1167,4 +1167,4 @@ if __name__ == "__main__":
         paramfile = default_file
     else:
         paramfile = sys.argv[1]
-    main(paramfile, keepArchive=False)
+    main(paramfile, keepArchive=True)
