@@ -924,13 +924,20 @@ class modMPET(daeModel):
         # Surface conc gradient given by natural BC
 #        beta_s = self.beta_s_ac[l](i, j)
         if solidShape == "sphere":
-            raise NotImplementedError("no sphere in this version")
-            mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
-            mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-                    (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
+#            raise NotImplementedError("no sphere in this version")
+            mu1_R[0] -= 3 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
+            mu2_R[0] -= 3 * kappa * (2*c2_sld[1] - 2*c2_sld[0])/dr**2
+            mu1_R[1:Nij - 1] -= kappa * (np.diff(c1_sld, 2)/dr**2 +
+                    (c1_sld[2:] - c1_sld[0:-2])/(dr*r_vec[1:-1])
                     )
-            mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
-                    (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
+            mu2_R[1:Nij - 1] -= kappa * (np.diff(c2_sld, 2)/dr**2 +
+                    (c2_sld[2:] - c2_sld[0:-2])/(dr*r_vec[1:-1])
+                    )
+            mu1_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
+                    (2*c1_sld[-2] - 2*c1_sld[-1] + 2*dr*beta_s)/dr**2
+                    )
+            mu2_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
+                    (2*c2_sld[-2] - 2*c2_sld[-1] + 2*dr*beta_s)/dr**2
                     )
         elif solidShape == "cylinder":
             mu1_R[0] -= 2 * kappa * (2*c1_sld[1] - 2*c1_sld[0])/dr**2
