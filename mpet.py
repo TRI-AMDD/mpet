@@ -811,7 +811,7 @@ class modMPET(daeModel):
                 ISfuncs2 = self.ISfuncs[l][i, j][1]
                 mu1_R, mu2_R = self.calc_mu12_R(c1_sld, c2_sld, c1bar,
                         c2bar, Omga, Omgb, Omgc, B, kappa, EvdW,
-                        beta_s, T, ISfuncs1, ISfuncs2)
+                        beta_s, T, ISfuncs1, ISfuncs2, solidShape)
                 act1_R = np.exp(mu1_R/T)
                 act2_R = np.exp(mu2_R/T)
                 mu1_R_surf = mu1_R[-1]
@@ -896,10 +896,10 @@ class modMPET(daeModel):
 
     def calc_mu12_R(self, c1_sld, c2_sld, c1bar, c2bar,
             Omga, Omgb, Omgc, B, kappa, EvdW, beta_s, T,
-            ISfuncs1=None, ISfuncs2=None):
+            ISfuncs1=None, ISfuncs2=None, solidShape):
         Nij = len(c1_sld)
         solidType = "CHR"
-        solidShape = "cylinder"
+#        solidShape = "cylinder"
         Rs = 1. # (non-dimensionalized by itself)
         r_vec, volfrac_vec = self.get_unit_solid_discr(
                 solidShape, solidType, Nij)
