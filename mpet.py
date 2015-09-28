@@ -649,15 +649,17 @@ class modMPET(daeModel):
         dxd2 = dxtmp
 
         # The porosity vector
-        porosvec = np.empty(Nlyte + 1, dtype=object)
+        porosvec = np.empty(Nlyte + 2, dtype=object)
         # Use the Bruggeman relationship to approximate an effective
         # effect on the transport.
-        porosvec[0:Nvol["a"]] = [self.ndD["poros"]["a"]**(3./2)
-                for i in range(Nvol["a"])] # anode
-        porosvec[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [self.ndD["poros"]["s"]**(3./2)
+        porosvec[0:Nvol["a"]+1] = [self.ndD["poros"]["a"]**(3./2)
+                for i in range(Nvol["a"]+1)] # anode
+        porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [self.ndD["poros"]["s"]**(3./2)
                 for i in range(Nvol["s"])] # separator
-        porosvec[Nvol["a"] + Nvol["s"]:Nlyte+1] = [self.ndD["poros"]["c"]**(3./2)
+        porosvec[Nvol["a"]+1 + Nvol["s"]:] = [self.ndD["poros"]["c"]**(3./2)
                 for i in range(Nvol["c"]+1)] # cathode
+        porosvec = (2*porosvec[1:]*porosvec[:-1])/(porosvec[1:] +
+                porosvec[:-1] + 1e-20)
 
         # Mass conservation equations
         ctmp = np.empty(Nlyte + 2, dtype=object)
@@ -691,7 +693,7 @@ class modMPET(daeModel):
         phitmp[-1] = phitmp[-2]
         # We need average values of c_lyte for the current densities
         # at the finite volume boundaries
-        c_edges = (ctmp[0:-1] + ctmp[1:])/2.
+        c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
         zp = self.ndD["zp"]
         zm = self.ndD["zm"]
         Dp = self.ndD["Dp"]
