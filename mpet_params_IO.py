@@ -5,6 +5,7 @@ import numpy as np
 import scipy.special as spcl
 
 import delta_phi_fits
+import elyte_CST
 
 class mpetIO():
 
@@ -115,10 +116,21 @@ class mpetIO():
 
         # Electrolyte
         c0 = dD["c0"] = P.getfloat('Electrolyte', 'c0')
-        Dp = dD["Dp"] = P.getfloat('Electrolyte', 'Dp')
-        Dm = dD["Dm"] = P.getfloat('Electrolyte', 'Dm')
         zp = ndD["zp"] = P.getfloat('Electrolyte', 'zp')
         zm = ndD["zm"] = P.getfloat('Electrolyte', 'zm')
+        if zm > 0:
+            zm = -zm
+        nup = ndD["nup"] = P.getfloat('Electrolyte', 'nup')
+        num = ndD["num"] = P.getfloat('Electrolyte', 'num')
+        elyteModelType = ndD["elyteModelType"] = P.get('Electrolyte',
+                'elyteModelType')
+        SMset = ndD["SMset"] = P.get('Electrolyte', 'SMset')
+#        SM_D, SM_kappa, SM_thermFac, SM_tp0 = elyte_CST.getProps(SMset)
+#        dD["SM_D"], dD["SM_kappa"] = SM_D, SM_kappa
+#        ndD["SM_thermFac"], ndD["SM_tp0"] = SM_thermFac, SM_tp0
+        Dref = dD["Dref"] = elyte_CST.getProps(SMset)[-1]
+        Dp = dD["Dp"] = P.getfloat('Electrolyte', 'Dp')
+        Dm = dD["Dm"] = P.getfloat('Electrolyte', 'Dm')
 
         # Constants
         k = dD["k"] = 1.381e-23 # J/(K particle)
@@ -138,9 +150,9 @@ class mpetIO():
         dD["csmax"] = {"a": dD['rhos']["a"]/N_A,
                 "c": dD['rhos']["c"]/N_A}
         # Ambipolar diffusivity
-        Damb = dD["Damb"] = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        Damb = dD["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
         # Cation transference number
-        tp = ndD["tp"] = zp*Dp / (zp*Dp + zm*Dm)
+        tp = ndD["tp"] = zp*Dp / (zp*Dp - zm*Dm)
         # Diffusive time scale
         td = dD["td"] = Lref**2 / Damb
         # Electrode capacity ratio
@@ -157,10 +169,15 @@ class mpetIO():
             ndD["z"] = 0
 
         # Some nondimensional parameters
-        T = ndD["T"] = Tabs/Tref
+        T = ndD["T"] = Tabs / Tref
         ndD["Dp"] = Dp / Damb
         ndD["Dm"] = Dm / Damb
-        ndD["c0"] = c0 / 1000. # normalize by 1 M
+        cref = 1000. # mol/m^3 = 1 M
+        ndD["c0"] = c0 / cref # normalize by 1 M
+#        Dref = SM_D(1., T)
+#        ndD["SM_D"] = lambda c, T: SM_D(c, T) / Dref
+#        ndD["SM_kappa"] = lambda c, T: SM_kappa(c, T) * (
+#                k*Tref/(e**2*Dref*N_A*cref))
         ndD["phi_cathode"] = 0.
         ndD["currset"] = dD["Crate"]*td/3600
         ndD["Vset"] = dD["Vset"] * e/(k*Tref)

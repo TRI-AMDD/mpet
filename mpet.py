@@ -26,6 +26,7 @@ from daetools.solvers.superlu import pySuperLU
 
 import mpet_params_IO
 import delta_phi_fits
+import elyte_CST
 
 eps = -1e-12
 
@@ -382,40 +383,76 @@ class modMPET(daeModel):
                     for i in range(Nvol["s"])] # separator
             phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [self.phi_lyte["c"](i)
                     for i in range(Nvol["c"])] # cathode
-            (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
-                    Nvol, Nlyte)
-            # Equations governing the electrolyte in the separator
-            offset = Nvol["a"]
-            for i in range(Nvol["s"]):
-                # Mass Conservation
-                eq = self.CreateEquation(
-                        "sep_lyte_mass_cons_vol{i}".format(i=i))
-                eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
-                        RHS_c[offset + i])
-                # Charge Conservation
-                eq = self.CreateEquation(
-                        "sep_lyte_charge_cons_vol{i}".format(i=i))
-                eq.Residual = (RHS_phi[offset + i])
-            # Equations governing the electrolyte in the electrodes.
-            # Here, we are coupled to the total reaction rates in the
-            # solids.
-            for l in trodes:
-                if l == "a": # anode
-                    offset = 0
-                else: # cathode
-                    offset = Nvol["a"] + Nvol["s"]
-                for i in range(Nvol[l]):
+            if ndD["elyteModelType"] == "dilute":
+                (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
+                        Nvol, Nlyte)
+                # Equations governing the electrolyte in the separator
+                offset = Nvol["a"]
+                for i in range(Nvol["s"]):
                     # Mass Conservation
                     eq = self.CreateEquation(
-                            "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
-                    eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
-                            ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
+                            "sep_lyte_mass_cons_vol{i}".format(i=i))
+                    eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
                             RHS_c[offset + i])
                     # Charge Conservation
                     eq = self.CreateEquation(
-                            "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
-                    eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
-                            RHS_phi[offset + i])
+                            "sep_lyte_charge_cons_vol{i}".format(i=i))
+                    eq.Residual = (RHS_phi[offset + i])
+                # Equations governing the electrolyte in the electrodes.
+                # Here, we are coupled to the total reaction rates in the
+                # solids.
+                for l in trodes:
+                    if l == "a": # anode
+                        offset = 0
+                    else: # cathode
+                        offset = Nvol["a"] + Nvol["s"]
+                    for i in range(Nvol[l]):
+                        # Mass Conservation
+                        eq = self.CreateEquation(
+                                "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
+                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
+                                ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
+                                RHS_c[offset + i])
+                        # Charge Conservation
+                        eq = self.CreateEquation(
+                                "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
+                        eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
+                                RHS_phi[offset + i])
+            elif ndD["elyteModelType"] == "SM":
+                (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
+                        Nvol, Nlyte)
+                # Equations governing the electrolyte in the separator
+                offset = Nvol["a"]
+                for i in range(Nvol["s"]):
+                    # Mass Conservation
+                    eq = self.CreateEquation(
+                            "sep_lyte_mass_cons_vol{i}".format(i=i))
+                    eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
+                            RHS_c[offset + i])
+                    # Charge Conservation
+                    eq = self.CreateEquation(
+                            "sep_lyte_charge_cons_vol{i}".format(i=i))
+                    eq.Residual = (RHS_phi[offset + i])
+                # Equations governing the electrolyte in the electrodes.
+                # Here, we are coupled to the total reaction rates in the
+                # solids.
+                for l in trodes:
+                    if l == "a": # anode
+                        offset = 0
+                    else: # cathode
+                        offset = Nvol["a"] + Nvol["s"]
+                    for i in range(Nvol[l]):
+                        # Mass Conservation
+                        eq = self.CreateEquation(
+                                "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
+                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
+                                ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
+                                RHS_c[offset + i])
+                        # Charge Conservation
+                        eq = self.CreateEquation(
+                                "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
+                        eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
+                                RHS_phi[offset + i])
 
         # Define the total current. This can be done in either anode
         # or cathode equivalently.
@@ -517,9 +554,17 @@ class modMPET(daeModel):
                 fits = delta_phi_fits.DPhiFits(ndD["T"])
                 phifunc = fits.materialData[material]
                 delta_phi_eq = phifunc(c_sld[-1], ndD["dphi_eq_ref"][l])
+                if ndD['elyteModelType'] == "dilute":
+                    # in dilute solutions, phi in electrolyte does not
+                    # account for chemical activity
+                    delta_phi_eq += mu_O
                 eta = (phi_m - phi_lyte) - delta_phi_eq
             else:
                 eta = (mu_R + phi_m) - (mu_O + phi_lyte)
+                if ndD['elyteModelType'] == "SM":
+                    # in SM model, phi in electrolyte is chemical
+                    # potential of Li+
+                    eta += mu_O
             if rxnType == "Marcus":
                 Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
             elif rxnType == "BV":
@@ -604,9 +649,17 @@ class modMPET(daeModel):
                 fits = delta_phi_fits.DPhiFits(ndD["T"])
                 phifunc = fits.materialData[material]
                 delta_phi_eq = phifunc(c_surf, ndD["dphi_eq_ref"][l])
+                if ndD['elyteModelType'] == "dilute":
+                    # in dilute solutions, phi in electrolyte does not
+                    # account for chemical activity
+                    delta_phi_eq += np.log(act_O)
                 eta = (phi_m - phi_lyte) - delta_phi_eq
             else:
                 eta = (mu_R_surf + phi_m) - (mu_O + phi_lyte)
+                if ndD['elyteModelType'] == "SM":
+                    # in SM model, phi in electrolyte is chemical
+                    # potential of Li+
+                    eta += mu_O
             # Calculate reaction rate
             if rxnType == "Marcus":
                 Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
@@ -629,18 +682,25 @@ class modMPET(daeModel):
             return (M, RHS)
 
     def calc_lyte_RHS(self, cvec, phivec, Nvol, Nlyte):
+        ndD = self.ndD
+        zp = ndD["zp"]
+        zm = ndD["zm"]
+        nup = ndD["nup"]
+        num = ndD["num"]
+        nu = nup + num
+        limtrode = ("c" if ndD["z"] < 1 else "a")
         # Discretization
         # The lengths are nondimensionalized by the cathode length
         dxvec = np.empty(np.sum(Nvol.values()) + 2, dtype=object)
         if Nvol["a"]:
-            dxa = Nvol["a"] * [self.ndD["L"]["a"]/Nvol["a"]]
+            dxa = Nvol["a"] * [ndD["L"]["a"]/Nvol["a"]]
         else:
             dxa = []
         if Nvol["s"]:
-            dxs = Nvol["s"] * [self.ndD["L"]["s"]/Nvol["s"]]
+            dxs = Nvol["s"] * [ndD["L"]["s"]/Nvol["s"]]
         else:
             dxs = []
-        dxc = Nvol["c"] * [self.ndD["L"]["c"]/Nvol["c"]]
+        dxc = Nvol["c"] * [ndD["L"]["c"]/Nvol["c"]]
         dxtmp = np.array(dxa + dxs + dxc)
         dxvec[1:-1] = dxtmp
         dxvec[0] = dxvec[1]
@@ -652,57 +712,108 @@ class modMPET(daeModel):
         porosvec = np.empty(Nlyte + 2, dtype=object)
         # Use the Bruggeman relationship to approximate an effective
         # effect on the transport.
-        porosvec[0:Nvol["a"]+1] = [self.ndD["poros"]["a"]**(3./2)
+        porosvec[0:Nvol["a"]+1] = [ndD["poros"]["a"]**(3./2)
                 for i in range(Nvol["a"]+1)] # anode
-        porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [self.ndD["poros"]["s"]**(3./2)
+        porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [ndD["poros"]["s"]**(3./2)
                 for i in range(Nvol["s"])] # separator
-        porosvec[Nvol["a"]+1 + Nvol["s"]:] = [self.ndD["poros"]["c"]**(3./2)
+        porosvec[Nvol["a"]+1 + Nvol["s"]:] = [ndD["poros"]["c"]**(3./2)
                 for i in range(Nvol["c"]+1)] # cathode
-        porosvec = (2*porosvec[1:]*porosvec[:-1])/(porosvec[1:] +
+        poros_edges = (2*porosvec[1:]*porosvec[:-1])/(porosvec[1:] +
                 porosvec[:-1] + 1e-20)
 
-        # Mass conservation equations
-        ctmp = np.empty(Nlyte + 2, dtype=object)
-        ctmp[1:-1] = cvec
-        # If we don't have a real anode, the total current flowing
-        # into the electrolyte is set
-        limtrode = ("c" if self.ndD["z"] < 1 else "a")
-        if Nvol["a"] == 0:
-            ctmp[0] = ( ctmp[1] + (self.current() *
-                self.ndD["epsbeta"][limtrode] *
-                (1-self.ndD["tp"])*dxvec[0])/porosvec[0] )
-        else: # porous anode -- no elyte flux at anode current collector
-            ctmp[0] = ctmp[1]
-        # No electrolyte flux at the cathode current collector
-        ctmp[-1] = ctmp[-2]
-        # Diffusive flux in the electrolyte
-        cflux = -porosvec*np.diff(ctmp)/dxd1
-        # Divergence of the flux
-        RHS_c = -np.diff(cflux)/dxd2
+        if ndD["elyteModelType"] == "dilute":
+            # Mass conservation equations
+            ctmp = np.empty(Nlyte + 2, dtype=object)
+            ctmp[1:-1] = cvec
+            # If we don't have a real anode, the total current flowing
+            # into the electrolyte is set
+            if Nvol["a"] == 0:
+                ctmp[0] = ( ctmp[1] + (self.current() *
+                    ndD["epsbeta"][limtrode] *
+                    (1-ndD["tp"])*dxvec[0])/poros_edges[0] )
+            else: # porous anode -- no elyte flux at anode current collector
+                ctmp[0] = ctmp[1]
+            # No electrolyte flux at the cathode current collector
+            ctmp[-1] = ctmp[-2]
+            # Diffusive flux in the electrolyte
+            cflux = -poros_edges*np.diff(ctmp)/dxd1
+            # Divergence of the flux
+            RHS_c = -np.diff(cflux)/dxd2
+            # Charge conservation equations
+            phitmp = np.empty(Nlyte + 2, dtype=object)
+            phitmp[1:-1] = phivec
+            # If we don't have a full anode, assume no rxn resistance at a
+            # lithium anode, and measure relative to Li
+            if Nvol["a"] == 0:
+                phitmp[0] = self.phi_applied()
+            else: # porous anode -- no flux into anode current collector
+                phitmp[0] = phitmp[1]
+            # No flux into cathode current collector from the electrolyte
+            phitmp[-1] = phitmp[-2]
+            # We need average values of c_lyte for the current densities
+            # at the finite volume boundaries
+            c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
+            Dp = ndD["Dp"]
+            Dm = ndD["Dm"]
+            # Typo in Todd's code in currdens equation
+            currdens = (-((Dp - Dm)*np.diff(ctmp)/dxd1) -
+                    (zp*Dp - zm*Dm)*c_edges*np.diff(phitmp)/dxd1)
+            RHS_phi = -np.diff(poros_edges*currdens)/dxd2
+            return (RHS_c, RHS_phi)
 
-        # Charge conservation equations
-        phitmp = np.empty(Nlyte + 2, dtype=object)
-        phitmp[1:-1] = phivec
-        # If we don't have a full anode, assume no rxn resistance at a
-        # lithium anode, and measure relative to Li
-        if Nvol["a"] == 0:
-            phitmp[0] = self.phi_applied()
-        else: # porous anode -- no flux into anode current collector
-            phitmp[0] = phitmp[1]
-        # No flux into cathode current collector from the electrolyte
-        phitmp[-1] = phitmp[-2]
-        # We need average values of c_lyte for the current densities
-        # at the finite volume boundaries
-        c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
-        zp = self.ndD["zp"]
-        zm = self.ndD["zm"]
-        Dp = self.ndD["Dp"]
-        Dm = self.ndD["Dm"]
-        # Typo in Todd's code in currdens equation
-        currdens = (-((Dp - Dm)*np.diff(ctmp)/dxd1) -
-                (zp*Dp + zm*Dm)*c_edges*np.diff(phitmp)/dxd1)
-        RHS_phi = -np.diff(porosvec*currdens)/dxd2
-        return (RHS_c, RHS_phi)
+        elif ndD["elyteModelType"] == "SM":
+            D = ndD["SM_D"]
+            kappa = ndD["SM_kappa"]
+            tp0 = ndD["SM_tp0"]
+            thermFac = ndD["SM_thermFac"]
+            D, kappa, thermFac, tp0 = elyte_CST.getProps(ndD["SMset"])[:-1]
+            # Vector of c values
+            ctmp = np.empty(Nlyte + 2, dtype=object)
+            ctmp[1:-1] = cvec
+            # If we don't have a real anode, the total current flowing
+            # into the electrolyte is set
+            if Nvol["a"] == 0:
+                ctmp[0] = ctmp[1] + (self.current() *
+                    ndD["epsbeta"][limtrode] *
+                    (1-ndD["SM_tp0"](ctmp[1]))) * (
+                        dxvec[0]/(poros_edges[0]*D(ctmp[1])))
+            else: # porous anode -- no elyte flux at anode current collector
+                ctmp[0] = ctmp[1]
+            # No electrolyte flux at the cathode current collector
+            ctmp[-1] = ctmp[-2]
+
+            # Vector of phi values and c at faces
+            phitmp = np.empty(Nlyte + 2, dtype=object)
+            phitmp[1:-1] = phivec
+            # If we don't have a full anode, assume no rxn resistance at a
+            # lithium anode, and measure relative to Li
+            if Nvol["a"] == 0:
+                phitmp[0] = self.phi_applied()
+            else: # porous anode -- no flux into anode current collector
+                phitmp[0] = phitmp[1]
+            # No flux into cathode current collector from the electrolyte
+            phitmp[-1] = phitmp[-2]
+            # We need average values of c_lyte for the current densities
+            # at the finite volume boundaries
+            c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
+
+            # current density in electrolyte
+            i_edges = -poros_edges * kappa(c) * (
+                    np.diff(phitmp)/dxd1 +
+                    nu/nup*(1-tp0(c_edges)) *
+                    thermFac(c_edges) *
+                    np.diff(np.log(ctmp))/dxd1
+                    )
+            # RHS for mass conservation equation
+            RHS_c = (
+                    np.diff(poros_edges * D(c_edges) *
+                        np.diff(ctmp)/dxd1)/dxd2
+                    +
+                    1./(zp*nup)*np.diff((1-tp0(c_edges))*i_edges)/dxd2
+                    )
+            # RHS for charge conservation equation
+            RHS_phi = -np.diff(i_edges)/dxd2
+            return (RHS_c, RHS_phi)
 
     def calc_part_surf_LHS(self, trode_indx, vol_indx, part_indx):
         # shorthand
