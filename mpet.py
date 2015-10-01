@@ -762,10 +762,6 @@ class modMPET(daeModel):
             return (RHS_c, RHS_phi)
 
         elif ndD["elyteModelType"] == "SM":
-            D = ndD["SM_D"]
-            kappa = ndD["SM_kappa"]
-            tp0 = ndD["SM_tp0"]
-            thermFac = ndD["SM_thermFac"]
             D, kappa, thermFac, tp0 = elyte_CST.getProps(ndD["SMset"])[:-1]
             # Vector of c values
             ctmp = np.empty(Nlyte + 2, dtype=object)
@@ -798,8 +794,8 @@ class modMPET(daeModel):
             c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
 
             # current density in electrolyte
-            i_edges = -poros_edges * kappa(c) * (
-                    np.diff(phitmp)/dxd1 +
+            i_edges = -poros_edges * kappa(c_edges) * (
+                    np.diff(phitmp)/dxd1 -
                     nu/nup*(1-tp0(c_edges)) *
                     thermFac(c_edges) *
                     np.diff(np.log(ctmp))/dxd1
