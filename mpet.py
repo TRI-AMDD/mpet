@@ -383,76 +383,44 @@ class modMPET(daeModel):
                     for i in range(Nvol["s"])] # separator
             phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [self.phi_lyte["c"](i)
                     for i in range(Nvol["c"])] # cathode
-            if ndD["elyteModelType"] == "dilute":
-                (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
-                        Nvol, Nlyte)
-                # Equations governing the electrolyte in the separator
-                offset = Nvol["a"]
-                for i in range(Nvol["s"]):
+            (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
+                    Nvol, Nlyte)
+            # Equations governing the electrolyte in the separator
+            offset = Nvol["a"]
+            for i in range(Nvol["s"]):
+                # Mass Conservation
+                eq = self.CreateEquation(
+                        "sep_lyte_mass_cons_vol{i}".format(i=i))
+                eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
+                        RHS_c[offset + i])
+                # Charge Conservation
+                eq = self.CreateEquation(
+                        "sep_lyte_charge_cons_vol{i}".format(i=i))
+                eq.Residual = (RHS_phi[offset + i])
+            # Equations governing the electrolyte in the electrodes.
+            # Here, we are coupled to the total reaction rates in the
+            # solids.
+            for l in trodes:
+                if l == "a": # anode
+                    offset = 0
+                else: # cathode
+                    offset = Nvol["a"] + Nvol["s"]
+                for i in range(Nvol[l]):
                     # Mass Conservation
                     eq = self.CreateEquation(
-                            "sep_lyte_mass_cons_vol{i}".format(i=i))
-                    eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
-                            RHS_c[offset + i])
-                    # Charge Conservation
-                    eq = self.CreateEquation(
-                            "sep_lyte_charge_cons_vol{i}".format(i=i))
-                    eq.Residual = (RHS_phi[offset + i])
-                # Equations governing the electrolyte in the electrodes.
-                # Here, we are coupled to the total reaction rates in the
-                # solids.
-                for l in trodes:
-                    if l == "a": # anode
-                        offset = 0
-                    else: # cathode
-                        offset = Nvol["a"] + Nvol["s"]
-                    for i in range(Nvol[l]):
-                        # Mass Conservation
-                        eq = self.CreateEquation(
-                                "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
+                            "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
+                    if ndD["elyteModelType"] == "dilute":
                         eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
                                 ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
                                 RHS_c[offset + i])
-                        # Charge Conservation
-                        eq = self.CreateEquation(
-                                "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
-                        eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
-                                RHS_phi[offset + i])
-            elif ndD["elyteModelType"] == "SM":
-                (RHS_c, RHS_phi) = self.calc_lyte_RHS(c_lyte, phi_lyte,
-                        Nvol, Nlyte)
-                # Equations governing the electrolyte in the separator
-                offset = Nvol["a"]
-                for i in range(Nvol["s"]):
-                    # Mass Conservation
-                    eq = self.CreateEquation(
-                            "sep_lyte_mass_cons_vol{i}".format(i=i))
-                    eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i) -
-                            RHS_c[offset + i])
+                    elif ndD["elyteModelType"] == "SM":
+                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) -
+                                RHS_c[offset + i])
                     # Charge Conservation
                     eq = self.CreateEquation(
-                            "sep_lyte_charge_cons_vol{i}".format(i=i))
-                    eq.Residual = (RHS_phi[offset + i])
-                # Equations governing the electrolyte in the electrodes.
-                # Here, we are coupled to the total reaction rates in the
-                # solids.
-                for l in trodes:
-                    if l == "a": # anode
-                        offset = 0
-                    else: # cathode
-                        offset = Nvol["a"] + Nvol["s"]
-                    for i in range(Nvol[l]):
-                        # Mass Conservation
-                        eq = self.CreateEquation(
-                                "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
-                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
-                                ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
-                                RHS_c[offset + i])
-                        # Charge Conservation
-                        eq = self.CreateEquation(
-                                "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
-                        eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
-                                RHS_phi[offset + i])
+                            "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
+                    eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i) -
+                            RHS_phi[offset + i])
 
         # Define the total current. This can be done in either anode
         # or cathode equivalently.
