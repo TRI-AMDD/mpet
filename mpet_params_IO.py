@@ -154,7 +154,10 @@ class mpetIO():
         # Cation transference number
         tp = ndD["tp"] = zp*Dp / (zp*Dp - zm*Dm)
         # Diffusive time scale
-        td = dD["td"] = Lref**2 / Damb
+        if ndD["elyteModelType"] == "dilute":
+            td = dD["td"] = Lref**2 / Damb
+        elif ndD["elyteModelType"] == "SM":
+            td = dD["td"] = Lref**2 / Dref
         # Electrode capacity ratio
         dD["cap"] = {}
         dD["cap"]["c"] = (dD['L']["c"] * (1-ndD['poros']["c"]) *
