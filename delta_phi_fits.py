@@ -11,6 +11,7 @@ class DPhiFits():
         self.materialData = {}
         self.materialData['LiMn2O4'] = self.LiMn2O4
         self.materialData['LiC6'] = self.LiC6
+        self.materialData['LiC6_2'] = self.LiC6_2
         self.materialData['NCA1'] = self.NCA1
         self.materialData['NCA2'] = self.NCA2
         self.materialData['idealSolid'] = self.idealSolid
@@ -55,6 +56,21 @@ class DPhiFits():
                 0.1978*np.tanh((y - 1.0571)/0.0854) -
                 0.6875*np.tanh((y + 0.0117)/0.0529) -
                 0.0175*np.tanh((y - 0.5692)/0.0875)) - del_phi_ref
+        return del_phi_eq
+
+    def LiC6_2(self, y, del_phi_ref):
+        """
+        Fit \Delta\phi^{eq} for Li_y C_6 as a function of y.
+        This can only return values for Tabs = 298 K
+        This function was obtained indirectly from Bernardi and Go 2011
+        """
+        stepDown = lambda x, xc, strch: 0.5*(-np.tanh((x - xc)/strch) + 1)
+        p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
+        sfac = 0.3
+        del_phi_eq = self.eokT*(p1*stepDown(y, 1., sfac*0.02)
+                + (p2 - p1)*stepDown(y, 0.5, 0.005)
+                + (p3 - p2)*stepDown(y, 0.1944, sfac*0.03571)
+                + (p4 - p3)*stepDown(y, 0., sfac*0.08333)) - del_phi_ref
         return del_phi_eq
 
     def idealSolid(self, y, del_phi_ref):
