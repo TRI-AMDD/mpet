@@ -24,8 +24,14 @@ class mpetIO():
         # Simulation Parameters
         ndD["profileType"] = P.get('Sim Params', 'profileType')
         dD["Crate"] = P.getfloat('Sim Params', 'Crate')
-        dD["Vmax"] = P.getfloat('Sim Params', 'Vmax')
-        dD["Vmin"] = P.getfloat('Sim Params', 'Vmin')
+        try:
+            dD["Vmax"] = P.getfloat('Sim Params', 'Vmax')
+        except ConfigParser.NoOptionError:
+            dD["Vmax"] = 1e10
+        try:
+            dD["Vmin"] = P.getfloat('Sim Params', 'Vmin')
+        except ConfigParser.NoOptionError:
+            dD["Vmin"] = -1e10
         dD["Vset"] = P.getfloat('Sim Params', 'Vset')
         ndD["capFrac"] = P.getfloat('Sim Params', 'capFrac')
         dD["tend"] = P.getfloat('Sim Params', 'tend')
@@ -112,7 +118,10 @@ class mpetIO():
                 "c": P.getfloat('Geometry', 'P_L_c')}
         ndD["poros"] = {"a": P.getfloat('Geometry', 'poros_a'),
                 "c": P.getfloat('Geometry', 'poros_c')}
-        ndD["poros"]["s"] = 1.
+        try:
+            ndD["poros"]["s"] = P.getfloat('Geometry', 'poros_s')
+        except ConfigParser.NoOptionError:
+            ndD["poros"]["s"] = 1.
 
         # Electrolyte
         c0 = dD["c0"] = P.getfloat('Electrolyte', 'c0')
