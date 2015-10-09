@@ -298,7 +298,7 @@ class modMPET(daeModel):
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = np.empty(Nvol[l]+2, dtype=object)
                 phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
-                if l == 0: # anode
+                if l == "a": # anode
                     # Potential at the current collector is from
                     # simulation
                     phi_tmp[0] = self.phi_applied()
