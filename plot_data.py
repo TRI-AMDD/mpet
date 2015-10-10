@@ -157,18 +157,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 print l + " surface conductivity loss: No"
 
     # Plot voltage profile
-    if plot_type == "v":
+    if plot_type in ["v", "vt"]:
         voltage = ((Vstd["c"] - Vstd["a"]) -
                 (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
         if data_only:
             return ffvec, voltage
         fig, ax = plt.subplots()
-        ax.plot(ffvec, voltage)
-        xmin = 0.
-        xmax = 1.
-        ax.set_xlim((xmin, xmax))
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        if plot_type == "v":
+            ax.plot(ffvec, voltage)
+            xmin = 0.
+            xmax = 1.
+            ax.set_xlim((xmin, xmax))
+            ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        elif plot_type == "vt":
+            ax.plot(times*td, voltage)
+            ax.set_xlabel("Time [s]")
         ax.set_ylabel("Voltage [V]")
         if save_flag:
             fig.savefig("mpet_v.png", bbox_inches="tight")
