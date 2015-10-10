@@ -298,6 +298,12 @@ class modMPET(daeModel):
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = np.empty(Nvol[l]+2, dtype=object)
                 phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
+                porosvec = np.empty(Nvol[l]+2, dtype=object)
+                porosvec[1:-1] = [self.ndD["poros"][l]**(3./2) for i in range(Nvol[l])]
+                porosvec[0] = porosvec[1]
+                porosvec[-1] = porosvec[-2]
+                porosvec = ((2*porosvec[1:]*porosvec[:-1])
+                        / (porosvec[1:] + porosvec[:-1] + 1e-20))
                 if l == "a": # anode
                     # Potential at the current collector is from
                     # simulation
@@ -310,7 +316,7 @@ class modMPET(daeModel):
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
                 dx = 1./Nvol[l]
-                RHS_phi_tmp = -np.diff(-ndD["mcond"][l]*np.diff(phi_tmp)/dx)/dx
+                RHS_phi_tmp = -np.diff(-porosvec*ndD["mcond"][l]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for i in range(Nvol[l]):
                 eq = self.CreateEquation("phi_ac_trode{l}vol{i}".format(i=i,l=l))
