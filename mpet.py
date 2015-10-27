@@ -978,6 +978,12 @@ class modMPET(daeModel):
 
     def calc_Flux12(self, c1_sld, c2_sld, mu1_R, mu2_R, Ds, Flux1_bc,
             Flux2_bc, dr, T):
+        if type(c1_sld[0]) == pyCore.adouble:
+            MIN = Min
+            MAX = Max
+        else:
+            MIN = min
+            MAX = max
         Nij = len(c1_sld)
         Flux1_vec = np.empty(Nij+1, dtype=object)
         Flux2_vec = np.empty(Nij+1, dtype=object)
@@ -988,13 +994,13 @@ class modMPET(daeModel):
         c1_edges = (c1_sld[0:-1]  + c1_sld[1:])/2.
         c2_edges = (c2_sld[0:-1]  + c2_sld[1:])/2.
         # keep the concentrations between 0 and 1
-        c1_edges = np.array([Max(1e-6, c1_edges[i]) for i in
+        c1_edges = np.array([MAX(1e-6, c1_edges[i]) for i in
                 range(len(c1_edges))])
-        c1_edges = np.array([Min((1-1e-6), c1_edges[i]) for i in
+        c1_edges = np.array([MIN((1-1e-6), c1_edges[i]) for i in
                 range(len(c1_edges))])
-        c2_edges = np.array([Max(1e-6, c2_edges[i]) for i in
+        c2_edges = np.array([MAX(1e-6, c2_edges[i]) for i in
                 range(len(c1_edges))])
-        c2_edges = np.array([Min((1-1e-6), c2_edges[i]) for i in
+        c2_edges = np.array([MIN((1-1e-6), c2_edges[i]) for i in
                 range(len(c1_edges))])
         cbar_edges = 0.5*(c1_edges + c2_edges)
         Flux1_vec[1:Nij] = (Ds/T * (1 - c1_edges)**(1.00) * c1_edges *
