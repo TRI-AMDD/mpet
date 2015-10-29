@@ -10,8 +10,11 @@ class DPhiFits():
         self.kToe = (k*Tabs)/e
         self.materialData = {}
         self.materialData['LiMn2O4'] = self.LiMn2O4
+        self.materialData['LiMn2O4_2'] = self.LiMn2O4_2
         self.materialData['LiC6'] = self.LiC6
         self.materialData['LiC6_2'] = self.LiC6_2
+        self.materialData['LiC6_coke'] = self.LiC6_coke
+        self.materialData['LiC6_coke2'] = self.LiC6_coke2
         self.materialData['NCA1'] = self.NCA1
         self.materialData['NCA2'] = self.NCA2
         self.materialData['idealSolid'] = self.idealSolid
@@ -33,16 +36,43 @@ class DPhiFits():
                 ) - del_phi_ref
         return del_phi_eq
 
-#    def LiC6(self, y, del_phi_ref):
-#        """
-#        Fit \Delta\phi^{eq} for Li_y C_6 as a function of y.
-#        This can only return values for Tabs = 298 K
-#        This function was obtained from
-#        Doyle, Newman, 1996
-#        """
-#        del_phi_eq = self.eokT*(-0.16 + 1.32*np.exp(-3.0*y) +
-#                10.*np.exp(-2000.*y)) - del_phi_ref
-#        return del_phi_eq
+    def LiMn2O4_2(self, y, del_phi_ref):
+        """
+        Fit \Delta\phi^{eq} for Li_y Mn_2 O_4 as a function of y.
+        This can only return values for Tabs = 298 K
+        This function was obtained from
+        Fuller, Doyle, Newman, 1994
+        del_phi_ref is the offset (non-dimensional) potential by which
+        the returned value will be shifted (for numerical convenience)
+        """
+        del_phi_eq = self.eokT*(
+                4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
+                0.105734*(1/((1.00167 - y)**(0.379571)) - 1.576) -
+                0.045*np.exp(-71.69*y**8) +
+                0.01*np.exp(-200*(y - 0.19))
+                ) - del_phi_ref
+        return del_phi_eq
+
+    def LiC6_coke(self, y, del_phi_ref):
+        """
+        Fit \Delta\phi^{eq} for Li_y C_6 as a function of y.
+        This can only return values for Tabs = 298 K
+        This function was obtained from
+        Doyle, Newman, 1996
+        """
+        del_phi_eq = self.eokT*(-0.16 + 1.32*np.exp(-3.0*y) +
+                10.*np.exp(-2000.*y)) - del_phi_ref
+        return del_phi_eq
+
+    def LiC6_coke2(self, y, del_phi_ref):
+        """
+        Fit \Delta\phi^{eq} for Li_y C_6 as a function of y.
+        This can only return values for Tabs = 298 K
+        This function was obtained from
+        Fuller, Doyle, Newman, 1994
+        """
+        del_phi_eq = self.eokT*(-0.132 + 1.41*np.exp(-3.52*y)) - del_phi_ref
+        return del_phi_eq
 
     def LiC6(self, y, del_phi_ref):
         """
