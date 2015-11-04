@@ -546,6 +546,10 @@ class modMPET(daeModel):
             elif rxnType == "MHC":
                 k0_MHC = k0/self.MHC_kfunc(0., lmbda)
                 Rate = self.R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
+            elif rxnType == "BV_mod01":
+                Rxn = self.R_BV_mod01(k0, alpha, c_sld, c_lyte, eta, T)
+            elif rxnType == "BV_mod02":
+                Rxn = self.R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T)
             M = sprs.eye(Nij, Nij, format="csr")
             return (M, Rate)
 
@@ -642,6 +646,10 @@ class modMPET(daeModel):
             elif rxnType == "MHC":
                 k0_MHC = k0/self.MHC_kfunc(0., lmbda)
                 Rxn = self.R_MHC(k0_MHC, lmbda, eta, T, c_surf, c_lyte)
+            elif rxnType == "BV_mod01":
+                Rxn = self.R_BV_mod01(k0, alpha, c_surf, c_lyte, eta, T)
+            elif rxnType == "BV_mod02":
+                Rxn = self.R_BV_mod02(k0, alpha, c_surf, c_lyte, eta, T)
             # Finish up RHS discretization at particle surface
             if solidType in ["diffn"]:
                 RHS[-1] = 4*np.pi*(Rs**2 * ndD["delta_L"][l][i, j] * Rxn -
@@ -818,6 +826,22 @@ class modMPET(daeModel):
         gamma_ts = (1./(1-c_sld))
         ecd = ( k0 * act_O**(1-alpha)
                 * act_R**(alpha) / gamma_ts )
+        Rate = ( ecd *
+            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        return Rate
+
+    def R_BV_mod01(self, k0, alpha, c_sld, c_lyte, eta, T):
+        # Fuller, Doyle, Newman 1994, Mn2O4
+        ecd = ( k0 * c_lyte**(1-alpha) * (1.0 - c_sld)**(1 - alpha) *
+                c_sld**alpha )
+        Rate = ( ecd *
+            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+        return Rate
+
+    def R_BV_mod02(self, k0, alpha, c_sld, c_lyte, eta, T):
+        # Fuller, Doyle, Newman 1994, carbon coke
+        ecd = ( k0 * c_lyte**(1-alpha) * (0.5 - c_sld)**(1 - alpha) *
+                c_sld**alpha )
         Rate = ( ecd *
             (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
         return Rate
