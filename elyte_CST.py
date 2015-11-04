@@ -1,3 +1,5 @@
+import numpy as np
+
 """
 Manage functions for the parameters involved in Stefan-Maxwell
 based concentrated electrolyte transport theory for binary
