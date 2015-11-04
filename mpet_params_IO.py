@@ -169,16 +169,19 @@ class mpetIO():
             td = dD["td"] = Lref**2 / Dref
         # Electrode capacity ratio
         dD["cap"] = {}
-        dD["cap"]["c"] = (dD['L']["c"] * (1-ndD['poros']["c"]) *
-                ndD['P_L']["c"] * dD['rhos']["c"])
+        dD["cap"]["c"] = (dD["e"] * dD['L']["c"] * (1-ndD['poros']["c"]) *
+                ndD['P_L']["c"] * dD['rhos']["c"]) # C/m^2
         if "a" in ndD["trodes"]:
             # full porous anode with finite capacity
-            dD["cap"]["a"] = (dD['L']["a"] * (1-ndD['poros']["a"]) *
-                    ndD['P_L']["a"] * dD['rhos']["a"])
+            dD["cap"]["a"] = (dD["e"] * dD['L']["a"] * (1-ndD['poros']["a"]) *
+                    ndD['P_L']["a"] * dD['rhos']["a"]) # C/m^2
             ndD["z"] = dD["cap"]["c"] / dD["cap"]["a"]
         else:
             # flat plate anode with assumed infinite supply of metal
             ndD["z"] = 0
+        limtrode = ("c" if ndD["z"] < 1 else "a")
+        CrateCurr = dD["cap"][limtrode] / 3600. # A/m^2
+        dD["currset"] = CrateCurr * dD["Crate"] # A/m^2
 
         # Some nondimensional parameters
         T = ndD["T"] = Tabs / Tref

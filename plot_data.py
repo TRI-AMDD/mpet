@@ -122,6 +122,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         print "rxnType:", rxnType
         if profileType == "CC":
             print "C_rate:", dD['Crate']
+            print "current:", dD['currset'], "A/m^2"
         else: # CV
             print "Vset:", dD['Vset']
         print ("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
