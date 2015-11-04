@@ -30,6 +30,7 @@ def LiClO4_PC():
     def thermFac(c):
         return 1.
     def kappa(c):
+        c *= 1000 # mol/m^3
         p_max = 0.542
         p_u = 0.6616
         a = 0.855
