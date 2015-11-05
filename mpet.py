@@ -299,7 +299,8 @@ class modMPET(daeModel):
                 phi_tmp = np.empty(Nvol[l]+2, dtype=object)
                 phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
                 porosvec = np.empty(Nvol[l]+2, dtype=object)
-                porosvec[1:-1] = [self.ndD["poros"][l]**(3./2) for i in range(Nvol[l])]
+                eps_sld = self.ndD["P_L"][l] * (1-self.ndD["poros"][l])
+                porosvec[1:-1] = [eps_sld**(3./2) for i in range(Nvol[l])]
                 porosvec[0] = porosvec[1]
                 porosvec[-1] = porosvec[-2]
                 porosvec = ((2*porosvec[1:]*porosvec[:-1])
