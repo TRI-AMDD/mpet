@@ -25,7 +25,7 @@ class mpetIO():
 
         # anode config
         if P_s.getint('Sim Params', 'Nvol_a') >= 1:
-            paramfile_a = P_s.get('Electrode', 'anode')
+            paramfile_a = P_s.get('Electrodes', 'anode')
             P_a = ConfigParser.RawConfigParser()
             P_a.optionxform = str
             P_a.read(paramfile_a)
