@@ -23,16 +23,19 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         absTolerance=1e-5)
 
 class mod0D1var(daeModel):
-    def __init__(self, Name, Parent=None, Description="", ndD=None):
+    def __init__(self, Name, Parent=None, Description="", ndD=None,
+            ndD_s=None):
         daeModel.__init__(self, Name, Parent, Description)
 
 class mod1D1var(daeModel):
-    def __init__(self, Name, Parent=None, Description="", ndD=None):
+    def __init__(self, Name, Parent=None, Description="", ndD=None,
+            ndD_s=None):
         daeModel.__init__(self, Name, Parent, Description)
 
-        if (ndD is None):
+        if (ndD is None) or (ndD_s is None):
             raise Exception("Need input parameter dictionary")
         self.ndD = ndD
+        self.ndD_s = ndD_s
 
         # Domain
         self.Dmn = daeDomain("discretizationDomain", self, unit(),
@@ -60,7 +63,8 @@ class mod1D1var(daeModel):
                 eInletPort, self, "Inlet port from electrolyte")
         self.portInBulk = mpetPorts.portFromBulk("portInBulk",
                 eInletPort, self, "Inlet port from e- conducting phase")
-        self.mu_lyte = self.portInLyte.mu_lyte()
+#        self.mu_lyte = self.portInLyte.mu_lyte()
+        self.phi_lyte = self.portInLyte.phi_lyte()
         self.c_lyte = self.portInLyte.c_lyte()
         self.phi_m = self.portInBulk.phi_m()
 
@@ -126,14 +130,21 @@ class mod1D1var(daeModel):
         Type = ndD['type']
         Shape = ndD['shape']
 #        rxnType = ndD['rxnType']
+        T = ndD["T"]
         try:
             delPhiEqFit = ndD['delPhiEqFit']
         except KeyError:
             ndD['delPhiEqFit'] = ndD['dphi_eq_ref'] = ndD['delPhiFunc'] = False
         # Get variables for this particle/electrode volume
-        mu_lyte = self.mu_lyte
+#        mu_lyte = self.mu_lyte
+        phi_lyte = self.phi_lyte
+#        mu_lyte = ndD["T"]*np.log(self.c_lyte) + self.phi_lyte
         phi_m = self.phi_m
         c_lyte = self.c_lyte
+        if self.ndD_s["elyteModelType"] == "SM":
+            mu_lyte = phi_lyte
+        elif self.ndD_s["elyteModelType"] == "dilute":
+            mu_lyte = T*np.log(c_lyte) + phi_lyte
         cbar = self.cbar() # only used for ACR/CHR
         # Get the relevant parameters for this particle
         k0 = ndD["k0"]
@@ -151,9 +162,6 @@ class mod1D1var(daeModel):
             Ds = ndD["Dsld"] # Only used for "diffn" or "CHR"
         except KeyError:
             pass
-        # We need the (non-dimensional) temperature to get the
-        # reaction rate dependence correct
-        T = ndD["T"]
         # Number of volumes in current particle
         N = ndD["N"]
         # Concentration (profile?) in the solid

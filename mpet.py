@@ -190,7 +190,8 @@ class modMPET(daeModel):
                         raise NotImplementedError("no model for given solid type")
                     self.particles[l][i, j] = pMod(
                             "partTrode{l}vol{i}part{j}".format(l=l,i=i,j=j),
-                            self, ndD=ndD_e[l]["indvPart"][i, j])
+                            self, ndD=ndD_e[l]["indvPart"][i, j],
+                            ndD_s=ndD_s)
                     self.ConnectPorts(self.portsOutLyte[l][i],
                             self.particles[l][i, j].portInLyte)
                     self.ConnectPorts(
@@ -297,15 +298,18 @@ class modMPET(daeModel):
                 eq = self.CreateEquation("portout_c_trode{l}vol{i}".format(i=i,l=l))
                 eq.Residual = (self.c_lyte[l](i) -
                         self.portsOutLyte[l][i].c_lyte())
-                eq = self.CreateEquation("portout_mu_trode{l}vol{i}".format(i=i,l=l))
-                if ndD["elyteModelType"] == "SM":
-                    mu_lyte = self.phi_lyte[l](i)
-                elif ndD["elyteModelType"] == "dilute":
-                    # Note -- Use of self.portsOutLyte[l][i].c_lyte() here
-                    # isntead of simply self.c_lyte[l](i) seemed to
-                    # help with initialization (?)
-                    mu_lyte = ndD["T"]*np.log(self.portsOutLyte[l][i].c_lyte()) + self.phi_lyte[l](i)
-                eq.Residual = (mu_lyte - self.portsOutLyte[l][i].mu_lyte())
+#                eq = self.CreateEquation("portout_mu_trode{l}vol{i}".format(i=i,l=l))
+#                if ndD["elyteModelType"] == "SM":
+#                    mu_lyte = self.phi_lyte[l](i)
+#                elif ndD["elyteModelType"] == "dilute":
+#                    # Note -- Use of self.portsOutLyte[l][i].c_lyte() here
+#                    # isntead of simply self.c_lyte[l](i) seemed to
+#                    # help with initialization (?)
+#                    mu_lyte = ndD["T"]*np.log(self.portsOutLyte[l][i].c_lyte()) + self.phi_lyte[l](i)
+#                eq.Residual = (mu_lyte - self.portsOutLyte[l][i].mu_lyte())
+                eq = self.CreateEquation("portout_p_trode{l}vol{i}".format(i=i,l=l))
+                phi_lyte = self.phi_lyte[l](i)
+                eq.Residual = (phi_lyte - self.portsOutLyte[l][i].phi_lyte())
                 for j in range(Npart[l]):
                     eq = self.CreateEquation(
                             "portout_pm_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
