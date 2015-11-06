@@ -301,7 +301,7 @@ class modMPET(daeModel):
                 if ndD["elyteModelType"] == "SM":
                     mu_lyte = self.phi_lyte[l](i)
                 elif ndD["elyteModelType"] == "dilute":
-                    mu_lyte = self.c_lyte[l](i) + self.phi_lyte[l](i)
+                    mu_lyte = ndD["T"]*np.log(self.c_lyte[l](i)) + self.phi_lyte[l](i)
                 eq.Residual = (mu_lyte - self.portsOutLyte[l][i].mu_lyte())
                 for j in range(Npart[l]):
                     eq = self.CreateEquation(
