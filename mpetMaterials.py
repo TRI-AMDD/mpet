@@ -342,9 +342,9 @@ def get_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         k0_MHC = k0/MHC_kfunc(0., lmbda)
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
     elif rxnType == "BV_mod01":
-        Rxn = R_BV_mod01(k0, alpha, c_surf, c_lyte, eta, T)
+        Rate = R_BV_mod01(k0, alpha, c_sld, c_lyte, eta, T)
     elif rxnType == "BV_mod02":
-        Rxn = R_BV_mod02(k0, alpha, c_surf, c_lyte, eta, T)
+        Rate = R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T)
     return Rate
 
 def get_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
