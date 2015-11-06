@@ -2,9 +2,9 @@ import ConfigParser
 import pickle
 
 import numpy as np
-import scipy.special as spcl
 
 import delta_phi_fits
+import elyte_CST
 
 class mpetIO():
 
@@ -43,8 +43,14 @@ class mpetIO():
         # Simulation Parameters
         ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
         dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
-        dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
-        dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+        try:
+            dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
+        except ConfigParser.NoOptionError:
+            dD_s["Vmax"] = 1e10
+        try:
+            dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+        except ConfigParser.NoOptionError:
+            dD_s["Vmin"] = -1e10
         dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
         ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
@@ -87,14 +93,25 @@ class mpetIO():
                 "c": P_s.getfloat('Geometry', 'P_L_c')}
         ndD_s["poros"] = {"a": P_s.getfloat('Geometry', 'poros_a'),
                 "c": P_s.getfloat('Geometry', 'poros_c')}
-        ndD_s["poros"]["s"] = 1.
+        try:
+            ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
+        except ConfigParser.NoOptionError:
+            ndD_s["poros"]["s"] = 1.
 
         # Electrolyte
         c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
-        Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
-        Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
         zp = ndD_s["zp"] = P_s.getfloat('Electrolyte', 'zp')
         zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
+        if zm > 0:
+            zm = ndD_s["zm"] = -zm
+        nup = ndD_s["nup"] = P_s.getfloat('Electrolyte', 'nup')
+        num = ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
+        elyteModelType = ndD_s["elyteModelType"] = P_s.get('Electrolyte',
+                'elyteModelType')
+        SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
+        Dref = dD_s["Dref"] = elyte_CST.getProps(SMset)[-1]
+        Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
+        Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
 
         # Constants
         k = dD_s["k"] = 1.381e-23 # J/(K particle)
@@ -122,8 +139,8 @@ class mpetIO():
                 dD["Omga"] = P.getfloat('Material', 'Omega_a')
                 dD["kappa"] = P.getfloat('Material', 'kappa')
                 dD["B"] = P.getfloat('Material', 'B')
-                dD["rho_s"] = P.getfloat('Material', 'rho_s')
                 dD["Vstd"] = P.getfloat('Material', 'Vstd')
+            dD["rho_s"] = P.getfloat('Material', 'rho_s')
             if Type not in ["ACR", "homog", "homog_sdn"]:
                 dD["Dsld"] = P.getfloat('Material', 'Dsld')
             if Type in ["CHR"]:
@@ -131,8 +148,8 @@ class mpetIO():
             if Type in ["ACR"]:
                 ndD["cwet"] = P.getfloat('Material', 'cwet')
             if Type in ["diffn", "homog"]:
-                ndD["delPhiEqFit"] = P.getboolean('Materials', 'delPhiEqFit')
-                ndD["delPhiFunc"] = P.getboolean('Materials', 'delPhiFunc')
+                ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
+                ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
 
             # Reactions
             ndD["rxnType"] = P.get('Reactions', 'rxnType')
@@ -155,39 +172,44 @@ class mpetIO():
         # Various calculated and defined parameters
         Lref = dD_s["Lref"] = dD_s["L"]["c"]
         # Ambipolar diffusivity
-        Damb = dD_s["Damb"] = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
         # Cation transference number
-        tp = ndD_s["tp"] = zp*Dp / (zp*Dp + zm*Dm)
+        tp = ndD_s["tp"] = zp*Dp / (zp*Dp - zm*Dm)
         # Diffusive time scale
-        td = dD_s["td"] = Lref**2 / Damb
+        if ndD_s["elyteModelType"] == "dilute":
+            td = dD_s["td"] = Lref**2 / Damb
+        elif ndD_s["elyteModelType"] == "SM":
+            td = dD_s["td"] = Lref**2 / Dref
 
         # maximum concentration in electrode solids, mol/m^3
         # and electrode capacity ratio
         for trode in ndD_s['trodes']:
-            dD_e[trode]['csmax'] = dD_e[trode]['rho_s']/N_A
-            dD_e[trode]['cap'] = (dD_s['L'][trode] *
+            dD_e[trode]['csmax'] = dD_e[trode]['rho_s'] / N_A # M
+            dD_e[trode]['cap'] = (dD_s["e"] * dD_s['L'][trode] *
                     (1-ndD_s['poros'][trode]) *
                     ndD_s['P_L'][trode] *
-                    dD_e[trode]['rho_s'])
+                    dD_e[trode]['rho_s']) # C/m^2
         if "a" in ndD_s['trodes']:
             ndD_s['z'] = dD_e['c']['cap'] / dD_e['a']['cap']
         else:
             # flat plate anode with assumed infinite supply of metal
             ndD_s['z'] = 0.
+        limtrode = ("c" if ndD_s["z"] < 1 else "a")
+        CrateCurr = dD_e[limtrode]["cap"] / 3600. # A/m^2
+        dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
 
         # Some nondimensional parameters
-        T = ndD_s["T"] = Tabs/Tref
+        T = ndD_s["T"] = Tabs / Tref
         ndD_s["Dp"] = Dp / Damb
         ndD_s["Dm"] = Dm / Damb
-        ndD_s["c0"] = c0 / 1000. # normalize by 1 M
+        cref = 1000. # mol/m^3 = 1 M
+        ndD_s["c0"] = c0 / cref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"]*td/3600
         ndD_s["Vset"] = dD_s["Vset"] * e/(k*Tref)
         ndD_s["tend"] = dD_s["tend"] / td
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
             ndD_s["tend"] = ndD_s["capFrac"] / ndD_s["currset"]
-        else: # CV or zero current simulation
-            ndD_s["tend"] = dD_s["tend"] / td
 
         # parameters which depend on the electrode
         dD_s["psd_raw"] = {}
@@ -457,14 +479,15 @@ class mpetIO():
         if solidType == "homog_sdn" and not T298:
             raise NotImplementedError("homog_snd req. Tabs=298")
         try:
-            if ndD['delPhiEqFit'][trode]:
-                if ndD['delPhiFunc'][trode] == "LiMn2O4" and not T298:
+            if ndD['delPhiEqFit']:
+                if ndD['delPhiFunc'] == "LiMn2O4" and not T298:
                     raise Exception("LiMn204 req. Tabs = 298 K")
-                if ndD['delPhiFunc'][trode] == "LiC6" and not T298:
+                if ndD['delPhiFunc'] == "LiC6" and not T298:
                     raise Exception("LiC6 req. Tabs = 298 K")
-                if ndD['delPhiFunc'][trode] == "NCA1" and not T298:
+                if ndD['delPhiFunc'] == "NCA1" and not T298:
                     raise Exception("NCA1 req. Tabs = 298 K")
-                raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
+                if solidType not in ["diffn", "homog"]:
+                    raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
         except KeyError:
             pass
         return

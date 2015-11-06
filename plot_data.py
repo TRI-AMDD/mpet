@@ -47,7 +47,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if Type not in ["diffn"]:
             Etheta[trode] = dD_e[trode]["Vstd"]
         else:
-            Etheta[trode] = (k*Tref/e) * ndD_e[trode]["dphie_eq_ref"]
+            Etheta[trode] = (k*Tref/e) * ndD_e[trode]["dphi_eq_ref"]
     Vstd = Etheta["c"] - Etheta["a"]
 #    for l in trodes:
 #        # Replace the standard potential if a fit voltage curve was used.
@@ -135,6 +135,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             print "rxnType_{t}:".format(t=trode), ndD_e[trode]['rxnType']
         if profileType == "CC":
             print "C_rate:", dD_s['Crate']
+            print "current:", dD_s['currset'], "A/m^2"
         else: # CV
             print "Vset:", dD_s['Vset']
         print ("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
@@ -180,18 +181,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                print l + " surface conductivity loss: No"
 
     # Plot voltage profile
-    if plot_type == "v":
+    if plot_type in ["v", "vt"]:
         voltage = (Vstd -
                 (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
         if data_only:
             return ffvec, voltage
         fig, ax = plt.subplots()
-        ax.plot(ffvec, voltage)
-        xmin = 0.
-        xmax = 1.
-        ax.set_xlim((xmin, xmax))
-        ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        if plot_type == "v":
+            ax.plot(ffvec, voltage)
+            xmin = 0.
+            xmax = 1.
+            ax.set_xlim((xmin, xmax))
+            ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
+        elif plot_type == "vt":
+            ax.plot(times*td, voltage)
+            ax.set_xlabel("Time [s]")
         ax.set_ylabel("Voltage [V]")
         if save_flag:
             fig.savefig("mpet_v.png", bbox_inches="tight")

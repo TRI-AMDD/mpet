@@ -26,6 +26,7 @@ import mpet_params_IO
 import delta_phi_fits
 import mpetPorts
 import mpetMaterials
+import elyte_CST
 
 eps = -1e-12
 
@@ -296,9 +297,12 @@ class modMPET(daeModel):
                 eq = self.CreateEquation("portout_c_trode{l}vol{i}".format(i=i,l=l))
                 eq.Residual = (self.c_lyte[l](i) -
                         self.portsOutLyte[l][i].c_lyte())
-                eq = self.CreateEquation("portout_p_trode{l}vol{i}".format(i=i,l=l))
-                eq.Residual = (self.phi_lyte[l](i) -
-                        self.portsOutLyte[l][i].phi_lyte())
+                eq = self.CreateEquation("portout_mu_trode{l}vol{i}".format(i=i,l=l))
+                if ndD["elyteModelType"] == "SM":
+                    mu_lyte = self.phi_lyte[l](i)
+                elif ndD["elyteModelType"] == "dilute":
+                    mu_lyte = self.c_lyte[l](i) + self.phi_lyte[l](i)
+                eq.Residual = (mu_lyte - self.portsOutLyte[l][i].mu_lyte())
                 for j in range(Npart[l]):
                     eq = self.CreateEquation(
                             "portout_pm_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
@@ -352,7 +356,14 @@ class modMPET(daeModel):
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = np.empty(Nvol[l]+2, dtype=object)
                 phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
-                if l == 0: # anode
+                porosvec = np.empty(Nvol[l]+2, dtype=object)
+                eps_sld = self.ndD["P_L"][l] * (1-self.ndD["poros"][l])
+                porosvec[1:-1] = [eps_sld**(3./2) for i in range(Nvol[l])]
+                porosvec[0] = porosvec[1]
+                porosvec[-1] = porosvec[-2]
+                porosvec = ((2*porosvec[1:]*porosvec[:-1])
+                        / (porosvec[1:] + porosvec[:-1] + 1e-20))
+                if l == "a": # anode
                     # Potential at the current collector is from
                     # simulation
                     phi_tmp[0] = self.phi_applied()
@@ -364,7 +375,7 @@ class modMPET(daeModel):
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
                 dx = 1./Nvol[l]
-                RHS_phi_tmp = -np.diff(-ndD["mcond"][l]*np.diff(phi_tmp)/dx)/dx
+                RHS_phi_tmp = -np.diff(-porosvec*ndD["mcond"][l]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for i in range(Nvol[l]):
                 eq = self.CreateEquation("phi_ac_trode{l}vol{i}".format(i=i,l=l))
@@ -465,9 +476,13 @@ class modMPET(daeModel):
                     # Mass Conservation
                     eq = self.CreateEquation(
                             "lyteMassCons_trode{l}vol{i}".format(i=i,l=l))
-                    eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
-                            ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
-                            RHS_c[offset + i])
+                    if ndD["elyteModelType"] == "dilute":
+                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) +
+                                ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i) -
+                                RHS_c[offset + i])
+                    elif ndD["elyteModelType"] == "SM":
+                        eq.Residual = (ndD["poros"][l]*self.c_lyte[l].dt(i) -
+                                RHS_c[offset + i])
                     # Charge Conservation
                     eq = self.CreateEquation(
                             "lyteChargeCons_trode{l}vol{i}".format(i=i,l=l))
@@ -510,194 +525,26 @@ class modMPET(daeModel):
             self.ON_CONDITION(self.stopCondition,
                     setVariableValues = [(self.dummyVar, 2)])
 
-#    def calc_sld_dcs_dt(self, trode_indx, vol_indx, part_indx):
-#        # shorthand
-#        l = trode_indx
-#        i = vol_indx
-#        j = part_indx
-#        # Get some useful information
-#        ndD = self.ndD
-#        simSurfCond = ndD['simSurfCond'][l]
-#        solidType = ndD['solidType'][l]
-#        solidShape = ndD['solidShape'][l]
-#        rxnType = ndD['rxnType'][l]
-#        delPhiEqFit = ndD['delPhiEqFit'][l]
-#        # Get variables for this particle/electrode volume
-#        phi_lyte = self.phi_lyte[l](i)
-#        phi_m = self.phi_part[l](i, j)
-#        c_lyte = self.c_lyte[l](i)
-#        cbar = self.cbar_sld[l](i, j) # only used for ACR/CHR
-#        # Get the relevant parameters for this particle
-#        k0 = ndD["k0"][l][i, j]
-#        kappa = ndD["kappa"][l][i, j] # only used for ACR/CHR
-#        lmbda = ndD["lambda"][l] # Only used for Marcus/MHC
-#        alpha = ndD["alpha"][l] # Only used for BV
-#        Omga = ndD["Omga"][l][i, j]
-#        Ds = ndD["Dsld"][l][i, j] # Only used for "diffn"
-#        # We need the (non-dimensional) temperature to get the
-#        # reaction rate dependence correct
-#        T = ndD["T"]
-#        # Number of volumes in current particle
-#        Nij = ndD["psd_num"][l][i, j]
-#        # Concentration (profile?) in the solid
-#        c_sld = np.empty(Nij, dtype=object)
-#        c_sld[:] = [self.c_sld[l][i, j](k) for k in range(Nij)]
-#        # Assume dilute electrolyte
-#        act_O = c_lyte
-#        mu_O = T*np.log(Max(eps, act_O))
-#        # Calculate chemical potential of reduced state
-#
-#        if solidType in ["ACR", "homog", "homog_sdn"]:
-#            if solidType == "ACR":
-#                # Make a blank array to allow for boundary conditions
-#                cstmp = np.empty(Nij+2, dtype=object)
-#                cstmp[1:-1] = c_sld
-#                cstmp[0] = ndD["cwet"][l]
-#                cstmp[-1] = ndD["cwet"][l]
-#                dxs = 1./Nij
-#                curv = np.diff(cstmp, 2)/(dxs**2)
-#                mu_R = ( self.mu_reg_sln(c_sld, Omga) - kappa*curv
-#                        + ndD["B"][l]*(c_sld - cbar) )
-#                # If we're also simulating potential drop along the solid,
-#                # use that instead of self.phi_c(i)
-#                if simSurfCond:
-#                    phi_m = np.empty(Nij, dtype=object)
-#                    phi_m[:] = [self.phi_sld[l][i, j](k) for k in range(Nij)]
-#            elif solidType in ["homog", "homog_sdn"]:
-#                mu_R = self.mu_reg_sln(c_sld, Omga)
-#            # XXX -- Temp dependence!
-#            act_R = np.exp(mu_R/T)
-#            # eta = electrochem pot_R - electrochem pot_O
-#            # eta = (mu_R + phi_R) - (mu_O + phi_O)
-#            if delPhiEqFit:
-#                material = ndD['material'][l]
-#                fits = delta_phi_fits.DPhiFits(ndD["T"])
-#                phifunc = fits.materialData[material]
-#                delta_phi_eq = phifunc(c_sld[-1], ndD["dphi_eq_ref"][l])
-#                eta = (phi_m - phi_lyte) - delta_phi_eq
-#            else:
-#                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-#            if rxnType == "Marcus":
-#                Rate = self.R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
-#            elif rxnType == "BV":
-#                Rate = self.R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
-#            elif rxnType == "MHC":
-#                k0_MHC = k0/self.MHC_kfunc(0., lmbda)
-#                Rate = self.R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
-#            M = sprs.eye(Nij, Nij, format="csr")
-#            return (M, Rate)
-#
-#        elif solidType in ["diffn", "CHR"] and solidShape in ["sphere", "cylinder"]:
-#            # For discretization background, see Zeng & Bazant 2013
-#            # Mass matrix is common for spherical shape, diffn or CHR
-#            Rs = 1. # (non-dimensionalized by itself)
-#            r_vec, volfrac_vec = self.get_unit_solid_discr(
-#                    solidShape, solidType, Nij)
-#            edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-#            if solidShape == "sphere":
-#                Vp = 4./3. * np.pi * Rs**3
-#            elif solidShape == "cylinder":
-#                Vp = np.pi * Rs**2  # per unit height
-#            vol_vec = Vp * volfrac_vec
-#            dr = r_vec[1] - r_vec[0]
-#            M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
-#                    shape=(Nij,Nij), format="csr")
-#            M1[1, 0] = M1[-2, -1] = 1./4
-#            M2 = sprs.diags(vol_vec, 0, format="csr")
-#            if solidShape == "sphere":
-#                M = M1*M2
-#            elif solidShape == "cylinder":
-#                M = M2
-#
-#            # Diffn
-#            if solidType in ["diffn"]:
-#                RHS = np.empty(Nij, dtype=object)
-#                c_diffs = np.diff(c_sld)
-#                RHS[1:Nij - 1] = 4*np.pi*(
-#                        Ds*(r_vec[1:Nij - 1] + dr/2.)**2*c_diffs[1:]/dr -
-#                        Ds*(r_vec[1:Nij - 1] - dr/2.)**2*c_diffs[:-1]/dr )
-#                RHS[0] = 4*np.pi*Ds*(dr/2.)**2*c_diffs[0]/dr
-#                # Take the surface concentration
-#                c_surf = c_sld[-1]
-#                # Assuming dilute solid
-#                act_R_surf = c_surf
-#                mu_R_surf = T*np.log(Max(eps, act_R_surf))
-#            # CHR
-#            elif solidType in ["CHR"]:
-#                # mu_R is like for ACR, except kappa*curv term
-#                mu_R = ( self.mu_reg_sln(c_sld, Omga) +
-#                        ndD["B"][l]*(c_sld - cbar) )
-#                # Surface conc gradient given by natural BC
-#                beta_s = ndD["beta_s"][l][i, j]
-#                if solidShape == "sphere":
-#                    mu_R[0] -= 3 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
-#                    mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-#                            (c_sld[2:] - c_sld[0:-2])/(dr*r_vec[1:-1])
-#                            )
-#                    mu_R[Nij - 1] -= kappa * ((2./Rs)*beta_s +
-#                            (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
-#                            )
-#                elif solidShape == "cylinder":
-#                    mu_R[0] -= 2 * kappa * (2*c_sld[1] - 2*c_sld[0])/dr**2
-#                    mu_R[1:Nij - 1] -= kappa * (np.diff(c_sld, 2)/dr**2 +
-#                            (c_sld[2:] - c_sld[0:-2])/(2 * dr*r_vec[1:-1])
-#                            )
-#                    mu_R[Nij - 1] -= kappa * ((1./Rs)*beta_s +
-#                            (2*c_sld[-2] - 2*c_sld[-1] + 2*dr*beta_s)/dr**2
-#                            )
-#                mu_R_surf = mu_R[-1]
-#                # With chem potentials, can now calculate fluxes
-#                Flux_vec = np.empty(Nij+1, dtype=object)
-#                Flux_vec[0] = 0  # Symmetry at r=0
-#                c_edges = (c_sld[0:-1]  + c_sld[1:])/2.
-#                Flux_vec[1:Nij] = (Ds/T * (1 - c_edges) * c_edges *
-#                        np.diff(mu_R)/dr)
-#                # Take the surface concentration
-#                c_surf = c_sld[-1]
-#                act_R_surf = np.exp(mu_R_surf/T)
-#            # Figure out overpotential
-#            if delPhiEqFit:
-#                material = ndD['material'][l]
-#                fits = delta_phi_fits.DPhiFits(ndD["T"])
-#                phifunc = fits.materialData[material]
-#                delta_phi_eq = phifunc(c_surf, ndD["dphi_eq_ref"][l])
-#                eta = (phi_m - phi_lyte) - delta_phi_eq
-#            else:
-#                eta = (mu_R_surf + phi_m) - (mu_O + phi_lyte)
-#            # Calculate reaction rate
-#            if rxnType == "Marcus":
-#                Rxn = self.R_Marcus(k0, lmbda, c_lyte, c_surf, eta, T)
-#            elif rxnType == "BV":
-#                Rxn = self.R_BV(k0, alpha, c_surf, act_O, act_R_surf, eta, T)
-#            elif rxnType == "MHC":
-#                k0_MHC = k0/self.MHC_kfunc(0., lmbda)
-#                Rxn = self.R_MHC(k0_MHC, lmbda, eta, T, c_surf, c_lyte)
-#            # Finish up RHS discretization at particle surface
-#            if solidType in ["diffn"]:
-#                RHS[-1] = 4*np.pi*(Rs**2 * ndD["delta_L"][l][i, j] * Rxn -
-#                        Ds*(Rs - dr/2)**2*c_diffs[-1]/dr )
-#            elif solidType in ["CHR"]:
-#                Flux_vec[Nij] = ndD["delta_L"][l][i, j] * Rxn
-#                if solidShape == "sphere":
-#                    area_vec = 4*np.pi*edges**2
-#                elif solidShape == "cylinder":
-#                    area_vec = 2*np.pi*edges  # per unit height
-#                RHS = np.diff(Flux_vec*area_vec)
-#            return (M, RHS)
-
     def calc_lyte_RHS(self, cvec, phivec, Nvol, Nlyte):
+        ndD = self.ndD
+        zp = ndD["zp"]
+        zm = ndD["zm"]
+        nup = ndD["nup"]
+        num = ndD["num"]
+        nu = nup + num
+        limtrode = ("c" if ndD["z"] < 1 else "a")
         # Discretization
         # The lengths are nondimensionalized by the cathode length
         dxvec = np.empty(np.sum(Nvol.values()) + 2, dtype=object)
         if Nvol["a"]:
-            dxa = Nvol["a"] * [self.ndD["L"]["a"]/Nvol["a"]]
+            dxa = Nvol["a"] * [ndD["L"]["a"]/Nvol["a"]]
         else:
             dxa = []
         if Nvol["s"]:
-            dxs = Nvol["s"] * [self.ndD["L"]["s"]/Nvol["s"]]
+            dxs = Nvol["s"] * [ndD["L"]["s"]/Nvol["s"]]
         else:
             dxs = []
-        dxc = Nvol["c"] * [self.ndD["L"]["c"]/Nvol["c"]]
+        dxc = Nvol["c"] * [ndD["L"]["c"]/Nvol["c"]]
         dxtmp = np.array(dxa + dxs + dxc)
         dxvec[1:-1] = dxtmp
         dxvec[0] = dxvec[1]
@@ -706,194 +553,107 @@ class modMPET(daeModel):
         dxd2 = dxtmp
 
         # The porosity vector
-        porosvec = np.empty(Nlyte + 1, dtype=object)
+        porosvec = np.empty(Nlyte + 2, dtype=object)
         # Use the Bruggeman relationship to approximate an effective
         # effect on the transport.
-        porosvec[0:Nvol["a"]] = [self.ndD["poros"]["a"]**(3./2)
-                for i in range(Nvol["a"])] # anode
-        porosvec[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [self.ndD["poros"]["s"]**(3./2)
+        porosvec[0:Nvol["a"]+1] = [ndD["poros"]["a"]**(3./2)
+                for i in range(Nvol["a"]+1)] # anode
+        porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [ndD["poros"]["s"]**(3./2)
                 for i in range(Nvol["s"])] # separator
-        porosvec[Nvol["a"] + Nvol["s"]:Nlyte+1] = [self.ndD["poros"]["c"]**(3./2)
+        porosvec[Nvol["a"]+1 + Nvol["s"]:] = [ndD["poros"]["c"]**(3./2)
                 for i in range(Nvol["c"]+1)] # cathode
+        poros_edges = (2*porosvec[1:]*porosvec[:-1])/(porosvec[1:] +
+                porosvec[:-1] + 1e-20)
 
-        # Mass conservation equations
-        ctmp = np.empty(Nlyte + 2, dtype=object)
-        ctmp[1:-1] = cvec
-        # If we don't have a real anode, the total current flowing
-        # into the electrolyte is set
-        limtrode = ("c" if self.ndD["z"] < 1 else "a")
-        if Nvol["a"] == 0:
-            ctmp[0] = ( ctmp[1] + (self.current() *
-                self.ndD["epsbeta"][limtrode] *
-                (1-self.ndD["tp"])*dxvec[0])/porosvec[0] )
-        else: # porous anode -- no elyte flux at anode current collector
-            ctmp[0] = ctmp[1]
-        # No electrolyte flux at the cathode current collector
-        ctmp[-1] = ctmp[-2]
-        # Diffusive flux in the electrolyte
-        cflux = -porosvec*np.diff(ctmp)/dxd1
-        # Divergence of the flux
-        RHS_c = -np.diff(cflux)/dxd2
+        if ndD["elyteModelType"] == "dilute":
+            # Mass conservation equations
+            ctmp = np.empty(Nlyte + 2, dtype=object)
+            ctmp[1:-1] = cvec
+            # If we don't have a real anode, the total current flowing
+            # into the electrolyte is set
+            if Nvol["a"] == 0:
+                ctmp[0] = ( ctmp[1] + (self.current() *
+                    ndD["epsbeta"][limtrode] *
+                    (1-ndD["tp"])*dxvec[0])/poros_edges[0] )
+            else: # porous anode -- no elyte flux at anode current collector
+                ctmp[0] = ctmp[1]
+            # No electrolyte flux at the cathode current collector
+            ctmp[-1] = ctmp[-2]
+            # Diffusive flux in the electrolyte
+            cflux = -poros_edges*np.diff(ctmp)/dxd1
+            # Divergence of the flux
+            RHS_c = -np.diff(cflux)/dxd2
+            # Charge conservation equations
+            phitmp = np.empty(Nlyte + 2, dtype=object)
+            phitmp[1:-1] = phivec
+            # If we don't have a full anode, assume no rxn resistance at a
+            # lithium anode, and measure relative to Li
+            if Nvol["a"] == 0:
+                phitmp[0] = self.phi_applied()
+            else: # porous anode -- no flux into anode current collector
+                phitmp[0] = phitmp[1]
+            # No flux into cathode current collector from the electrolyte
+            phitmp[-1] = phitmp[-2]
+            # We need average values of c_lyte for the current densities
+            # at the finite volume boundaries
+            c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
+            Dp = ndD["Dp"]
+            Dm = ndD["Dm"]
+            # Typo in Todd's code in currdens equation
+            currdens = (-((Dp - Dm)*np.diff(ctmp)/dxd1) -
+                    (zp*Dp - zm*Dm)*c_edges*np.diff(phitmp)/dxd1)
+            RHS_phi = -np.diff(poros_edges*currdens)/dxd2
+            return (RHS_c, RHS_phi)
 
-        # Charge conservation equations
-        phitmp = np.empty(Nlyte + 2, dtype=object)
-        phitmp[1:-1] = phivec
-        # If we don't have a full anode, assume no rxn resistance at a
-        # lithium anode, and measure relative to Li
-        if Nvol["a"] == 0:
-            phitmp[0] = self.phi_applied()
-        else: # porous anode -- no flux into anode current collector
-            phitmp[0] = phitmp[1]
-        # No flux into cathode current collector from the electrolyte
-        phitmp[-1] = phitmp[-2]
-        # We need average values of c_lyte for the current densities
-        # at the finite volume boundaries
-        c_edges = (ctmp[0:-1] + ctmp[1:])/2.
-        zp = self.ndD["zp"]
-        zm = self.ndD["zm"]
-        Dp = self.ndD["Dp"]
-        Dm = self.ndD["Dm"]
-        # Typo in Todd's code in currdens equation
-        currdens = (-((Dp - Dm)*np.diff(ctmp)/dxd1) -
-                (zp*Dp + zm*Dm)*c_edges*np.diff(phitmp)/dxd1)
-        RHS_phi = -np.diff(porosvec*currdens)/dxd2
-        return (RHS_c, RHS_phi)
+        elif ndD["elyteModelType"] == "SM":
+            D, kappa, thermFac, tp0 = elyte_CST.getProps(ndD["SMset"])[:-1]
+            # Vector of c values
+            ctmp = np.empty(Nlyte + 2, dtype=object)
+            ctmp[1:-1] = cvec
+            # If we don't have a real anode, the total current flowing
+            # into the electrolyte is set
+            if Nvol["a"] == 0:
+                ctmp[0] = ctmp[1] + (self.current() *
+                    ndD["epsbeta"][limtrode] *
+                    (1-ndD["SM_tp0"](ctmp[1]))) * (
+                        dxvec[0]/(poros_edges[0]*D(ctmp[1])))
+            else: # porous anode -- no elyte flux at anode current collector
+                ctmp[0] = ctmp[1]
+            # No electrolyte flux at the cathode current collector
+            ctmp[-1] = ctmp[-2]
 
-#    def calc_part_surf_LHS(self, trode_indx, vol_indx, part_indx):
-#        # shorthand
-#        l = trode_indx
-#        i = vol_indx
-#        j = part_indx
-#        # Number of volumes in current particle
-#        Nij = ndD["psd_num"][l][i, j]
-#        # solid potential variables for this particle
-#        phi_tmp = np.empty(Nij + 2, dtype=object)
-#        phi_tmp[1:-1] = [self.phi_sld[l][i, j](k) for k in range(Nij)]
-#        # BC's -- "touching carbon at each end"
-#        phi_s_local = self.phi_part[l](i, j)
-#        phi_tmp[0] = phi_s_local
-#        phi_tmp[-1] = phi_s_local
-#        # LHS
-#        dx = 1./Nij
-#        phi_edges = (phi_tmp[0:-1] + phi_tmp[1:])/2.
-##        curr_dens = -self.scond(i, j)*np.diff(phi_tmp, 1)/dx
-#        # XXX -- Temp dependence!
-#        scond_vec = self.ndD["scond"][l][i, j]*np.exp(-1*(phi_edges -
-#                phi_s_local))
-#        curr_dens = -scond_vec*np.diff(phi_tmp, 1)/dx
-#        return np.diff(curr_dens, 1)/dx
-#
-#    def mu_reg_sln(self, c, Omga):
-#        return np.array([ Omga*(1-2*c[i])
-#                + self.ndD["T"]*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
-#                for i in range(len(c)) ])
-#
-#    def R_BV(self, k0, alpha, c_sld, act_O, act_R, eta, T):
-#        gamma_ts = (1./(1-c_sld))
-#        ecd = ( k0 * act_O**(1-alpha)
-#                * act_R**(alpha) / gamma_ts )
-#        Rate = ( ecd *
-#            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
-#        return Rate
-#
-#    def R_Marcus(self, k0, lmbda, c_lyte, c_sld, eta, T):
-#        if type(c_sld) == np.ndarray:
-#            c_sld = np.array([Max(eps, c_sld[i]) for i in
-#                range(len(c_sld))])
-#        else:
-#            c_sld = Max(eps, c_sld)
-#        alpha = 0.5*(1 + (T/lmbda) * np.log(Max(eps, c_lyte)/c_sld))
-#        # We'll assume c_e = 1 (at the standard state for electrons)
-##        ecd = ( k0 * np.exp(-lmbda/(4.*T)) *
-##        ecd = ( k0 *
-#        ecd = ( k0 * (1-c_sld) *
-#                c_lyte**((3-2*alpha)/4.) *
-#                c_sld**((1+2*alpha)/4.) )
-#        Rate = ( ecd * np.exp(-eta**2/(4.*T*lmbda)) *
-#            (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
-#        return Rate
-#
-#    def MHC_kfunc(self, eta, lmbda):
-#        a = 1. + np.sqrt(lmbda)
-#        if type(eta) == pyCore.adouble:
-#            ERF = Erf
-#        else:
-#            ERF = spcl.erf
-#        # evaluate with eta for oxidation, -eta for reduction
-#        return (np.sqrt(np.pi*lmbda) / (1 + np.exp(-eta))
-#                * (1. - ERF((lmbda - np.sqrt(a + eta**2))
-#                    / (2*np.sqrt(lmbda)))))
-#
-#    def R_MHC(self, k0, lmbda, eta, T, c_sld, c_lyte):
-#        # See Zeng, Smith, Bai, Bazant 2014
-#        # Convert to "MHC overpotential"
-#        eta_f = eta + T*np.log(c_lyte/c_sld)
-#        gamma_ts = 1./(1. - c_sld)
-#        if type(eta) == np.ndarray:
-#            Rate = np.empty(len(eta), dtype=object)
-#            for i, etaval in enumerate(eta):
-#                krd = k0*self.MHC_kfunc(-eta_f[i], lmbda)
-#                kox = k0*self.MHC_kfunc(eta_f[i], lmbda)
-#                Rate[i] = (1./gamma_ts[i])*(krd*c_lyte - kox*c_sld[i])
-#        else:
-#            krd = k0*self.MHC_kfunc(-eta_f, lmbda)
-#            kox = k0*self.MHC_kfunc(eta_f, lmbda)
-#            Rate = (1./gamma_ts)*(krd*c_lyte - kox*c_sld)
-#        return Rate
-#
-#    def MX(self, mat, objvec):
-#        if type(mat) is not sprs.csr.csr_matrix:
-#            raise Exception("MX function designed for csr mult")
-#        n = objvec.shape[0]
-#        if (type(objvec[0]) == pyCore.adouble):
-#            out = np.empty(n, dtype=object)
-#        else:
-#            out = np.zeros(n, dtype=float)
-#        # Loop through the rows
-#        for i in range(n):
-#            low = mat.indptr[i]
-#            up = mat.indptr[i+1]
-#            if up > low:
-#                out[i] = np.sum(
-#                        mat.data[low:up] * objvec[mat.indices[low:up]] )
-#            else:
-#                out[i] = 0.0
-#        return out
-#
-#    def get_unit_solid_discr(self, solidShape, solidType, Nij):
-#        if solidShape == "C3" and solidType in ["ACR"]:
-#            r_vec = None
-#            # For 1D particle, the vol fracs are simply related to the
-#            # length discretization
-#            volfrac_vec = (1./Nij) * np.ones(Nij)  # scaled to 1D particle volume
-#            return r_vec, volfrac_vec
-#        if solidType in ["homog", "homog_sdn"]:
-#            r_vec = None
-#            volfrac_vec = np.ones(1)
-#            return r_vec, volfrac_vec
-#        if solidShape == "sphere" and solidType in ["diffn", "CHR"]:
-#            Rs = 1.
-#            dr = Rs/(Nij - 1)
-#            r_vec = np.linspace(0, Rs, Nij)
-#            vol_vec = 4*np.pi*(r_vec**2 * dr + (1./12)*dr**3)
-#            vol_vec[0] = 4*np.pi*(1./24)*dr**3
-#            vol_vec[-1] = (4./3)*np.pi*(Rs**3 - (Rs - dr/2.)**3)
-#            Vp = 4./3.*np.pi*Rs**3
-#            volfrac_vec = vol_vec/Vp
-#            return r_vec, volfrac_vec
-#        if solidShape == "cylinder" and solidType in ["diffn", "CHR"]:
-#            Rs = 1.
-#            h = 1.
-#            dr = Rs / (Nij - 1)
-#            r_vec = np.linspace(0, Rs, Nij)
-#            vol_vec = np.pi * h * 2 * r_vec * dr
-#            vol_vec[0] = np.pi * h * dr**2 / 4.
-#            vol_vec[-1] = np.pi * h * (Rs * dr - dr**2 / 4.)
-#            Vp = np.pi * Rs**2 * h
-#            volfrac_vec = vol_vec / Vp
-#            return r_vec, volfrac_vec
-#        else:
-#            raise NotImplementedError("Fix shape volumes!")
+            # Vector of phi values and c at faces
+            phitmp = np.empty(Nlyte + 2, dtype=object)
+            phitmp[1:-1] = phivec
+            # If we don't have a full anode, assume no rxn resistance at a
+            # lithium anode, and measure relative to Li
+            if Nvol["a"] == 0:
+                phitmp[0] = self.phi_applied()
+            else: # porous anode -- no flux into anode current collector
+                phitmp[0] = phitmp[1]
+            # No flux into cathode current collector from the electrolyte
+            phitmp[-1] = phitmp[-2]
+            # We need average values of c_lyte for the current densities
+            # at the finite volume boundaries
+            c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
+
+            # current density in electrolyte
+            i_edges = -poros_edges * kappa(c_edges) * (
+                    np.diff(phitmp)/dxd1 -
+                    nu/nup*(1-tp0(c_edges)) *
+                    thermFac(c_edges) *
+                    np.diff(np.log(ctmp))/dxd1
+                    )
+            # RHS for mass conservation equation
+            RHS_c = (
+                    np.diff(poros_edges * D(c_edges) *
+                        np.diff(ctmp)/dxd1)/dxd2
+                    +
+                    1./(zp*nup)*np.diff((1-tp0(c_edges))*i_edges)/dxd2
+                    )
+            # RHS for charge conservation equation
+            RHS_phi = -np.diff(i_edges)/dxd2
+            return (RHS_c, RHS_phi)
 
 class simMPET(daeSimulation):
     def __init__(self, ndD_s=None, ndD_e=None):

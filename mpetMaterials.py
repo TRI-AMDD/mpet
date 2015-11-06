@@ -46,11 +46,12 @@ class mod1D1var(daeModel):
                 "Average concentration in active particle")
         self.dcbardt = daeVariable("dcbardt", no_t, self,
                 "Rate of particle filling")
-        if self.ndD["simSurfCond"]:
+        if (self.ndD["type"] == "ACR") and self.ndD["simSurfCond"]:
             self.phi = daeVariable("phi", elec_pot_t, self,
                     "Electric potential within the particle",
                     [self.Dmn])
         else:
+            self.ndD["simSurfCond"] = False
             self.phi = False
 
         # Ports
@@ -59,7 +60,7 @@ class mod1D1var(daeModel):
                 eInletPort, self, "Inlet port from electrolyte")
         self.portInBulk = mpetPorts.portFromBulk("portInBulk",
                 eInletPort, self, "Inlet port from e- conducting phase")
-        self.phi_lyte = self.portInLyte.phi_lyte()
+        self.mu_lyte = self.portInLyte.mu_lyte()
         self.c_lyte = self.portInLyte.c_lyte()
         self.phi_m = self.portInBulk.phi_m()
 
@@ -130,7 +131,7 @@ class mod1D1var(daeModel):
         except KeyError:
             ndD['delPhiEqFit'] = ndD['dphi_eq_ref'] = ndD['delPhiFunc'] = False
         # Get variables for this particle/electrode volume
-        phi_lyte = self.phi_lyte
+        mu_lyte = self.mu_lyte
         phi_m = self.phi_m
         c_lyte = self.c_lyte
         cbar = self.cbar() # only used for ACR/CHR
@@ -163,11 +164,14 @@ class mod1D1var(daeModel):
         # If we're also simulating potential drop along the solid,
         # use that instead of self.phi_c(i)
         if ndD["simSurfCond"]:
-            phi = np.empty(N, dtype=object)
-            phi[:] = [self.phi(k) for k in range(N)]
+            phi_sld = np.empty(N, dtype=object)
+            phi_sld[:] = [self.phi(k) for k in range(N)]
         else:
-            phi = phi_m
-        mu_O = T*np.log(Max(eps, act_O)) + phi_lyte - phi
+            phi_sld = phi_m
+        # XXX -- Fix for SM (pass mu_lyte from main model)
+        # such that mu_O = mu_lyte - phi_sld
+#        mu_O = T*np.log(Max(eps, act_O)) + phi_lyte - phi_sld
+        mu_O = mu_lyte - phi_sld
 
         # Calculate chemical potential of reduced state
 #        if Type in ["ACR", "homog", "homog_sdn"]:
@@ -194,11 +198,10 @@ class mod1D1var(daeModel):
 #                eta = (phi - phi_lyte) - delta_phi_eq
 #            else:
 #                eta = mu_R - mu_O
-            eta = get_eta(c, act_O, mu_R, mu_O, T,
-                    ndD["delPhiEqFit"], ndD["dphi_eq_ref"],
-                    ndD["delPhiFunc"])
-            Rxn = get_rxn_rate(eta, c, act_R, c_lyte, act_O, k0,
-                    T, ndD["rxnType"], lmbda, alpha)
+            eta = get_eta(c, mu_O, ndD["delPhiEqFit"], mu_R, T,
+                    ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+            Rxn = get_rxn_rate(eta, c, c_lyte, k0,
+                    T, ndD["rxnType"], act_R, act_O, lmbda, alpha)
             M = sprs.eye(N, N, format="csr")
             return (M, Rxn)
 
@@ -278,12 +281,13 @@ class mod1D1var(daeModel):
                 c_surf = c_sld[-1]
                 act_R_surf = np.exp(mu_R_surf/T)
             # Figure out overpotential
-            eta = get_eta(c_surf, act_O, mu_R_surf, mu_O, T,
-                    ndD["delPhiEqFit"], ndD["dphi_eq_ref"],
-                    ndD["delPhiFunc"])
+            eta = get_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+                    ndD["dphi_eq_ref"], ndD["delPhiFunc"])
 #            Rxn = get_rxn_rate(eta, c, act_R_surf, c_lyte, act_O)
-            Rxn = get_rxn_rate(eta, c_surf, act_R_surf, c_lyte,
-                    act_O, k0, T, ndD["rxnType"], lmbda, alpha)
+#            Rxn = get_rxn_rate(eta, c_surf, act_R_surf, c_lyte,
+#                    act_O, k0, T, ndD["rxnType"], lmbda, alpha)
+            Rxn = get_rxn_rate(eta, c_surf, c_lyte, k0,
+                    T, ndD["rxnType"], act_R_surf, act_O, lmbda, alpha)
 #            if delPhiEqFit:
 #                material = ndD['material'][l]
 #                fits = delta_phi_fits.DPhiFits(ndD["T"])
@@ -316,8 +320,8 @@ class mod1D1var(daeModel):
             RHS = np.diff(Flux_vec*area_vec)
             return (M, RHS)
 
-def get_rxn_rate(eta, c_sld, act_R, c_lyte, act_O, k0, T, rxnType,
-        lmbda=None, alpha=None):
+def get_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
+        act_R=None, act_O=None, lmbda=None, alpha=None):
 #    ndD = self.ndD
 #    rxnType = ndD["rxnType"]
 #    k0 = ndD["k0"]
@@ -329,9 +333,13 @@ def get_rxn_rate(eta, c_sld, act_R, c_lyte, act_O, k0, T, rxnType,
     elif rxnType == "MHC":
         k0_MHC = k0/MHC_kfunc(0., lmbda)
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
+    elif rxnType == "BV_mod01":
+        Rxn = R_BV_mod01(k0, alpha, c_surf, c_lyte, eta, T)
+    elif rxnType == "BV_mod02":
+        Rxn = R_BV_mod02(k0, alpha, c_surf, c_lyte, eta, T)
     return Rate
 
-def get_eta(c, act_O, mu_R, mu_O, T, delPhiEqFit, dphi_eq_ref=None,
+def get_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
         material=None):
     if delPhiEqFit:
 #        material = ndD['material'][l]
@@ -340,11 +348,10 @@ def get_eta(c, act_O, mu_R, mu_O, T, delPhiEqFit, dphi_eq_ref=None,
 #                + np.log(act_O))
         fits = delta_phi_fits.DPhiFits(T)
         phifunc = fits.materialData[material]
-        delta_phi_eq = (phifunc(c, dphi_eq_ref)
-                + np.log(act_O))
-        eta = (phi - phi_lyte) - delta_phi_eq
-    else:
-        eta = mu_R - mu_O
+        delta_phi_eq = phifunc(c, dphi_eq_ref)
+        mu_R = -delta_phi_eq
+#        eta = (phi - phi_lyte) - delta_phi_eq
+    eta = mu_R - mu_O
     return eta
 
 def get_unit_solid_discr(Shape, Type, N):
@@ -432,6 +439,22 @@ def R_BV(k0, alpha, c_sld, act_O, act_R, eta, T):
     gamma_ts = (1./(1-c_sld))
     ecd = ( k0 * act_O**(1-alpha)
             * act_R**(alpha) / gamma_ts )
+    Rate = ( ecd *
+        (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+    return Rate
+
+def R_BV_mod01(k0, alpha, c_sld, c_lyte, eta, T):
+    # Fuller, Doyle, Newman 1994, Mn2O4
+    ecd = ( k0 * c_lyte**(1-alpha) * (1.0 - c_sld)**(1 - alpha) *
+            c_sld**alpha )
+    Rate = ( ecd *
+        (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
+    return Rate
+
+def R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T):
+    # Fuller, Doyle, Newman 1994, carbon coke
+    ecd = ( k0 * c_lyte**(1-alpha) * (0.5 - c_sld)**(1 - alpha) *
+            c_sld**alpha )
     Rate = ( ecd *
         (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
     return Rate
