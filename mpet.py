@@ -34,6 +34,9 @@ eps = -1e-12
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
         lowerBound=0, upperBound=1, initialGuess=0.25,
         absTolerance=1e-6)
+conc_t = daeVariableType(name="conc_t", units=unit(),
+        lowerBound=0, upperBound=1e20, initialGuess=1.00,
+        absTolerance=1e-6)
 elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
@@ -80,7 +83,7 @@ class modMPET(daeModel):
         for l in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[l] = daeVariable("c_lyte_{l}".format(l=l),
-                    mole_frac_t, self,
+                    conc_t, self,
                     "Concentration in the electrolyte in " +
                     "electrode {l}".format(l=l),
                     [self.DmnCell[l]])
@@ -105,7 +108,7 @@ class modMPET(daeModel):
                 mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
         if Nvol["s"] >= 1: # If we have a separator
-            self.c_lyte["s"] = daeVariable("c_lyte_s", mole_frac_t, self,
+            self.c_lyte["s"] = daeVariable("c_lyte_s", conc_t, self,
                     "Concentration in the electrolyte in the separator",
                     [self.DmnCell["s"]])
             self.phi_lyte["s"] = daeVariable("phi_lyte_s", elec_pot_t, self,
