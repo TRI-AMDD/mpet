@@ -55,7 +55,6 @@ class modMPET(daeModel):
         # Domains where variables are distributed
         self.DmnCell = {} # domains over full cell dimensions
         self.DmnPart = {} # domains over particles in each cell volume
-#        self.DmnPartSub = {} # domains within individual particles
         if Nvol["s"] >= 1: # If we have a separator
             self.DmnCell["s"] = daeDomain("DmnCell_s", self, unit(),
                     "Simulated volumes in the separator")
@@ -70,21 +69,10 @@ class modMPET(daeModel):
                     "volume in electrode {l}".format(l=l))
             Nv = Nvol[l]
             Np = Npart[l]
-#            Nsld_mat = np.empty((Nv, Np), dtype=object)
-#            for i in range(Nv):
-#                for j in range(Np):
-#                    Nsld_mat[i, j] = daeDomain("trode{l}_vol{i}_part{j}".format(
-#                        i=i, j=j, l=l), self, unit(),
-#                        "Number of discretizations for particle "
-#                        + "j in volume i".format(i=i,j=j))
-#            self.DmnPartSub[l] = Nsld_mat
 
         # Variables
         self.c_lyte = {}
         self.phi_lyte = {}
-#        self.c_sld = {}
-#        self.phi_sld = {}
-#        self.cbar_sld = {}
         self.phi_bulk = {}
         self.phi_part = {}
         self.j_plus = {}
@@ -101,37 +89,6 @@ class modMPET(daeModel):
                     "Electrostatic potential in electrolyte in " +
                     "electrode {l}".format(l=l),
                     [self.DmnCell[l]])
-#            # Concentration in electrode active particles
-#            Nv = Nvol[l]
-#            Np = Npart[l]
-#            self.c_sld[l] = np.empty((Nv, Np), dtype=object)
-#            for i in range(Nv):
-#                for j in range(Np):
-#                    self.c_sld[l][i, j] = daeVariable(
-#                            "c_sld_trode{l}vol{i}part{j}".format(
-#                            i=i, j=j, l=l), mole_frac_t, self,
-#                            "Concentration in each solid particle",
-#                            [self.DmnPartSub[l][i, j]])
-#            # Potential in electrode active particles
-#            # Only make a variable of solid potentials if we have to
-#            # -- it's a lot of equations to keep track of for nothing
-#            # if we don't need it.
-#            if ndD['simSurfCond'][l]:
-#                self.phi_sld[l] = np.empty((Nv, Np), dtype=object)
-#                for i in range(Nv):
-#                    for j in range(Np):
-#                        self.phi_sld[l][i, j] = daeVariable(
-#                                "p_sld_trode{l}_vol{i}_part{j}".format(
-#                                i=i, j=j, l=l), elec_pot_t, self,
-#                                "Electrostatic potential in each solid particle",
-#                                [self.DmnPartSub[l][i, j]])
-#            else:
-#                self.phi_sld[l] = False
-#            # Average active particle concentrations
-#            self.cbar_sld[l] = daeVariable("cbar_sld_{l}".format(l=l),
-#                    mole_frac_t, self,
-#                    "Average concentration in each particle",
-#                    [self.DmnCell[l], self.DmnPart[l]])
             self.phi_bulk[l] = daeVariable("phi_bulk_{l}".format(l=l),
                     elec_pot_t, self,
                     "Electrostatic potential in the bulk solid",
@@ -207,7 +164,6 @@ class modMPET(daeModel):
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
         Nlyte = np.sum(Nvol.values())
-#        psd_num = ndD["psd_num"]
         # External function -- erf -- prepare to store external
         # function objects. For some reason, each external function
         # object that gets created has to stay 'alive' as an attribute
@@ -236,21 +192,6 @@ class modMPET(daeModel):
 #                        previous_output, _position_) for _position_
 #                        in range(Nsld)]
 
-#        # Define the average concentration in each particle (algebraic
-#        # equations)
-#        for l in trodes:
-#            for i in range(Nvol[l]):
-#                for j in range(Npart[l]):
-#                    Nij = psd_num[l][i, j]
-#                    eq = self.CreateEquation("cbar_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
-#                    r_vec, volfrac_vec = self.get_unit_solid_discr(
-#                            ndD['solidShape'][l],
-#                            ndD['solidType'][l], Nij)
-#                    eq.Residual = self.cbar_sld[l](i, j)
-#                    for k in range(Nij):
-#                        eq.Residual -= self.c_sld[l][i, j](k)*volfrac_vec[k]
-##                    eq.BuildJacobianExpressions = True
-
         # Define the overall filling fraction in the electrodes
         for l in trodes:
             eq = self.CreateEquation("ffrac_{l}".format(l=l))
@@ -265,7 +206,6 @@ class modMPET(daeModel):
                     # For some reason the following slower, so
                     # it's helpful to factor out the Vtot sum:
                     # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
-#                    tmp += self.cbar_sld[l](i, j) * Vpart
                     tmp += self.particles[l][i, j].cbar() * Vpart
             eq.Residual -= tmp
 
@@ -280,15 +220,6 @@ class modMPET(daeModel):
                 for j in range(Npart[l]):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][l][i, j]
-#                    Nij = psd_num[l][i, j]
-#                    r_vec, volfrac_vec = self.get_unit_solid_discr(
-#                            ndD['solidShape'][l],
-#                            ndD['solidType'][l], Nij)
-#                    tmp = 0
-#                    for k in range(Nij):
-#                        tmp += (self.c_sld[l][i, j].dt(k) *
-#                                volfrac_vec[k])
-#                    res += tmp * Vj
                     res += self.particles[l][i, j].dcbardt() * Vj
                 eq.Residual = self.j_plus[l](i) - res
 
@@ -298,15 +229,6 @@ class modMPET(daeModel):
                 eq = self.CreateEquation("portout_c_trode{l}vol{i}".format(i=i,l=l))
                 eq.Residual = (self.c_lyte[l](i) -
                         self.portsOutLyte[l][i].c_lyte())
-#                eq = self.CreateEquation("portout_mu_trode{l}vol{i}".format(i=i,l=l))
-#                if ndD["elyteModelType"] == "SM":
-#                    mu_lyte = self.phi_lyte[l](i)
-#                elif ndD["elyteModelType"] == "dilute":
-#                    # Note -- Use of self.portsOutLyte[l][i].c_lyte() here
-#                    # isntead of simply self.c_lyte[l](i) seemed to
-#                    # help with initialization (?)
-#                    mu_lyte = ndD["T"]*np.log(self.portsOutLyte[l][i].c_lyte()) + self.phi_lyte[l](i)
-#                eq.Residual = (mu_lyte - self.portsOutLyte[l][i].mu_lyte())
                 eq = self.CreateEquation("portout_p_trode{l}vol{i}".format(i=i,l=l))
                 phi_lyte = self.phi_lyte[l](i)
                 eq.Residual = (phi_lyte - self.portsOutLyte[l][i].phi_lyte())
@@ -315,46 +237,6 @@ class modMPET(daeModel):
                             "portout_pm_trode{l}vol{i}part{j}".format(i=i,j=j,l=l))
                     eq.Residual = (self.phi_part[l](i, j) -
                             self.portsOutBulk[l][i, j].phi_m())
-
-#        # Solid active particle concentrations, potential, and bulk
-#        # solid potential
-#        for l in trodes:
-#            # Solid active particles concentration/potential
-#            for i in range(Nvol[l]):
-#                # Calculate the solid concentration rates of change
-#                for j in range(Npart[l]):
-#                    # Prepare the RHS function
-#                    Nij = psd_num[l][i, j]
-#                    # Note Mmat is often the identity matrix...
-#                    (Mmat, RHS_c_sld_ij) = self.calc_sld_dcs_dt(l, i, j)
-#                    dcdt_vec = np.empty(Nij, dtype=object)
-#                    dcdt_vec[0:Nij] = [self.c_sld[l][i, j].dt(k) for k in range(Nij)]
-#                    LHS_vec = self.MX(Mmat, dcdt_vec)
-##                    noisevec = self.noise_local[l][i, j] # NOISE
-#                    # Set up equations: Mmat*dcdt = RHS
-#                    for k in range(Nij):
-#                        eq = self.CreateEquation(
-#                                "dcsdt_trode{l}vol{i}part{j}discr{k}".format(
-#                                    i=i,j=j,k=k,l=l))
-##                        eq.Residual = self.c_sld[i, j].dt(k) - RHS_c_sld_ij[k]
-#                        eq.Residual = LHS_vec[k] - RHS_c_sld_ij[k]
-##                        eq.Residual = (LHS_vec[k] - RHS_c_sld_ij[k] +
-##                                noisevec[k]()) # NOISE
-#
-#                # Also calculate the potential drop along cathode
-#                # particle surfaces, if desired
-#                simSurfCathCond = ndD['simSurfCond'][l]
-#                if simSurfCathCond:
-#                    # Conservation of charge in the solid particles with
-#                    # Ohm's Law
-#                    LHS = self.calc_part_surf_LHS(l, i, j)
-#                    k0_part = ndD["k0"][l][i, j]
-#                    for k in range(Nij):
-#                        eq = self.CreateEquation(
-#                                "charge_cons_trode{l}vol{i}part{j}discr{k}".format(
-#                                    i=i,j=j,k=k,l=l))
-#                        RHS = self.c_sld[l][i, j].dt(k) / k0_part
-#                        eq.Residual = LHS[k] - RHS
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
@@ -413,20 +295,10 @@ class modMPET(daeModel):
                     else:
                         G_r = ndD["G"][l][i, j + 1]
                         phi_r = self.phi_part[l](i, j + 1)
-#                    # Find average dcs/dt for this particle
-#                    Nij = psd_num[l][i, j]
-#                    r_vec, volfrac_vec = self.get_unit_solid_discr(
-#                            ndD['solidShape'][l],
-#                            ndD['solidType'][l], Nij)
-#                    dcsbardt = 0
-#                    for k in range(Nij):
-#                        dcsbardt += (self.c_sld[l][i, j].dt(k) *
-#                                volfrac_vec[k])
                     # charge conservation equation around this particle
                     eq = self.CreateEquation("phi_ac_trode{l}vol{i}part{j}".format(i=i,l=l,j=j))
                     if simPartCond:
                         # -dcsbar/dt = I_l - I_r
-#                        eq.Residual = dcsbardt + (
                         eq.Residual = (
                                 self.particles[l][i, j].dcsbardt() + (
                                 (-G_l * (phi_n - phi_l)) -
