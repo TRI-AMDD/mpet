@@ -141,15 +141,18 @@ class mpetIO():
                 dD["B"] = P.getfloat('Material', 'B')
                 dD["Vstd"] = P.getfloat('Material', 'Vstd')
             dD["rho_s"] = P.getfloat('Material', 'rho_s')
+            ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
             if Type not in ["ACR", "homog", "homog_sdn"]:
                 dD["Dsld"] = P.getfloat('Material', 'Dsld')
             if Type in ["CHR"]:
                 dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
             if Type in ["ACR"]:
                 ndD["cwet"] = P.getfloat('Material', 'cwet')
-            if Type in ["diffn", "homog"]:
-                ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
+#            if Type in ["diffn", "homog"]:
+            if ndD["delPhiEqFit"]:
                 ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
+            else:
+                ndD["delPhiFunc"] = None
 
             # Reactions
             ndD["rxnType"] = P.get('Reactions', 'rxnType')
