@@ -68,9 +68,26 @@ class mod1D1var(daeModel):
 
     def DeclareEquations(self):
         ndD = self.ndD
-        N = ndD["N"]
+        N = ndD["N"] # number of grid points in particle
+        T = ndD["T"] # nondimensional temperature
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
+
+        # Figure out mu_O, mu of the oxidized state
+        # phi in the electron conducting phase
+        if ndD["simSurfCond"]:
+            phi_sld = np.empty(N, dtype=object)
+            phi_sld[:] = [self.phi(k) for k in range(N)]
+        else:
+            phi_sld = self.phi_m
+        # mu of the ionic species
+        if self.ndD_s["elyteModelType"] == "SM":
+            mu_lyte = self.phi_lyte
+            act_lyte = None
+        elif self.ndD_s["elyteModelType"] == "dilute":
+            act_lyte = self.c_lyte
+            mu_lyte = T*np.log(act_lyte) + self.phi_lyte
+        mu_O = mu_lyte - phi_sld
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -84,16 +101,12 @@ class mod1D1var(daeModel):
         for k in range(N):
             eq.Residual -= self.c.dt(k) * volfrac_vec[k]
 
-        # Equations for concentration evolution
-        (Mmat, RHS_c) = self.calc_dcdt()
-        dcdt_vec = np
-        dcdt_vec = np.empty(N, dtype=object)
-        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
-        LHS_vec = MX(Mmat, dcdt_vec)
-        for k in range(N):
-            eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            eq.Residual = LHS_vec[k] - RHS_c[k]
-#            eq.Residual = (LHS_vec[k] - RHS_c[k] + noisevec[k]()) # NOISE
+        c = np.empty(N, dtype=object)
+        c[:] = [self.c(k) for k in range(N)]
+        # Equations for 1D particles of 1 field varible
+        self.sldDynamics1D1var(c, mu_O, act_lyte)
+#        # Equations for 0D particles of 1 field variables
+#        self.sldDynamics0D1var(c, mu_O, act_lyte)
 
         # Equations for potential drop along particle, if desired
         if ndD['simSurfCond']:
@@ -121,103 +134,47 @@ class mod1D1var(daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def calc_dcdt(self):
-        # Get some useful information
+    def sldDynamics0D1var(self, c, mu_O, act_lyte):
         ndD = self.ndD
-        Type = ndD['type']
-        Shape = ndD['shape']
-        T = ndD["T"]
-        try:
-            delPhiEqFit = ndD['delPhiEqFit']
-        except KeyError:
-            ndD['delPhiEqFit'] = ndD['dphi_eq_ref'] = ndD['delPhiFunc'] = False
-        # Get variables for this particle/electrode volume
-#        mu_lyte = self.mu_lyte
-        phi_lyte = self.phi_lyte
-        phi_m = self.phi_m
-        c_lyte = self.c_lyte
-        if self.ndD_s["elyteModelType"] == "SM":
-            mu_lyte = phi_lyte
-        elif self.ndD_s["elyteModelType"] == "dilute":
-            mu_lyte = T*np.log(c_lyte) + phi_lyte
-        cbar = self.cbar() # only used for ACR/CHR
-        # Get the relevant parameters for this particle
-        k0 = ndD["k0"]
-        lmbda = ndD["lambda"] # Only used for Marcus/MHC
-        alpha = ndD["alpha"] # Only used for BV
-        try:
-            kappa = ndD["kappa"] # only used for ACR/CHR
-        except KeyError:
-            pass
-        try:
-            Omga = ndD["Omga"]
-        except KeyError:
-            pass
-        try:
-            Ds = ndD["Dsld"] # Only used for "diffn" or "CHR"
-        except KeyError:
-            pass
-        # Number of volumes in current particle
         N = ndD["N"]
-        # Concentration (profile?) in the solid
-        c = np.empty(N, dtype=object)
-        c[:] = [self.c(k) for k in range(N)]
-        # Assume dilute electrolyte
-        act_O = c_lyte
-        # If we're also simulating potential drop along the solid,
-        # use that instead of self.phi_c(i)
-        if ndD["simSurfCond"]:
-            phi_sld = np.empty(N, dtype=object)
-            phi_sld[:] = [self.phi(k) for k in range(N)]
-        else:
-            phi_sld = phi_m
-        # XXX -- Fix for SM (pass mu_lyte from main model)
-        # such that mu_O = mu_lyte - phi_sld
-#        mu_O = T*np.log(Max(eps, act_O)) + phi_lyte - phi_sld
-        mu_O = mu_lyte - phi_sld
+        T = ndD["T"]
+        c_surf = c
+        mu_R_surf = act_R_surf = None
+        if not ndD["delPhiEqFit"]:
+            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T)
+            act_R_surf = np.exp(mu_R_surf / T)
+        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
 
-        # Calculate chemical potential of reduced state
-#        if Type in ["ACR", "homog", "homog_sdn"]:
-        if Type in ["ACR"]:
-            # Make a blank array to allow for boundary conditions
-            ctmp = np.empty(N + 2, dtype=object)
-            ctmp[1:-1] = c
-            ctmp[0] = ndD["cwet"]
-            ctmp[-1] = ndD["cwet"]
-            dxs = 1./N
-            curv = np.diff(ctmp, 2)/(dxs**2)
-            mu_R = ( mu_reg_sln(c, Omga, T) - kappa*curv
-                    + ndD["B"]*(c - cbar) )
-            # XXX -- Temp dependence!
-            act_R = np.exp(mu_R/T)
-#            # eta = electrochem pot_R - electrochem pot_O
-#            # eta = mu_R - mu_O
-#            if delPhiEqFit:
-#                material = ndD['material'][l]
-#                fits = delta_phi_fits.DPhiFits(ndD["T"])
-#                phifunc = fits.materialData[material]
-#                delta_phi_eq = (phifunc(c[-1], ndD["dphi_eq_ref"])
-#                        + np.log(act_O))
-#                eta = (phi - phi_lyte) - delta_phi_eq
-#            else:
-#                eta = mu_R - mu_O
-            eta = get_eta(c, mu_O, ndD["delPhiEqFit"], mu_R, T,
-                    ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-            Rxn = get_rxn_rate(eta, c, c_lyte, k0,
-                    T, ndD["rxnType"], act_R, act_O, lmbda, alpha)
-            M = sprs.eye(N, N, format="csr")
-            return (M, Rxn)
+        dcdt_vec = np.empty(N, dtype=object)
+        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
+        LHS_vec = dcdt_vec
+        for k in range(N):
+            eq = self.CreateEquation("dcsdt")
+            eq.Residual = LHS_vec[k] - Rxn[k]
+        return
 
-        elif Type in ["diffn", "CHR"]:
+    def sldDynamics1D1var(self, c, mu_O, act_lyte):
+        ndD = self.ndD
+        N = ndD["N"]
+        T = ndD["T"]
+        r_vec, volfrac_vec = get_unit_solid_discr(
+                ndD['shape'], ndD['type'], N)
+        # Equations for concentration evolution
+        # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
+        if ndD['shape'] == "C3":
+            Mmat = sprs.eye(N, N, format="csr")
+        elif ndD['shape'] in ["sphere", "cylinder"]:
             # For discretization background, see Zeng & Bazant 2013
             # Mass matrix is common for spherical shape, diffn or CHR
             Rs = 1. # (non-dimensionalized by itself)
-            r_vec, volfrac_vec = get_unit_solid_discr(
-                    Shape, Type, N)
             edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-            if Shape == "sphere":
+            if ndD['shape'] == "sphere":
                 Vp = 4./3. * np.pi * Rs**3
-            elif Shape == "cylinder":
+            elif ndD['shape'] == "cylinder":
                 Vp = np.pi * Rs**2  # per unit height
             vol_vec = Vp * volfrac_vec
             dr = r_vec[1] - r_vec[0]
@@ -225,59 +182,63 @@ class mod1D1var(daeModel):
                     shape=(N, N), format="csr")
             M1[1, 0] = M1[-2, -1] = 1./4
             M2 = sprs.diags(vol_vec, 0, format="csr")
-            if Shape == "sphere":
-                M = M1*M2
-            elif Shape == "cylinder":
-                M = M2
+            if ndD['shape'] == "sphere":
+                Mmat = M1*M2
+            elif ndD['shape'] == "cylinder":
+                Mmat = M2
 
-            # Chemical potentials, reactions first
-            # Diffn
-            if Type in ["diffn"]:
-                # Take the surface concentration
-                c_surf = c[-1]
-                # Assuming dilute solid
-                act_R_surf = c_surf
-                mu_R_surf = T*np.log(Max(eps, act_R_surf))
+        # Get solid particle chemical potential, overpotential, reaction rate
+        c_surf = mu_R_surf = act_R_surf = None
+        if ndD["type"] in ["ACR"]:
+            c_surf = c
+            mu_R_surf = calc_mu_ACR(c, self.cbar(), ndD["Omga"], ndD["B"],
+                    ndD["kappa"], T, ndD["cwet"])
+            act_R_surf = np.exp(mu_R_surf / T)
+        elif ndD["type"] in ["diffn", "CHR"]:
+            c_surf = c[-1]
+        elif ndD["type"] in ["CHR"]:
+            mu_R = calc_mu_CHR(c, self.cbar(), Omga, ndD["B"],
+                    ndD["kappa"], T, ndD["beta_s"],
+                    ndD['shape'], dr, r_vec, Rs)
+            mu_R_surf = mu_R[-1]
+            act_R_surf = np.exp(mu_R_surf / T)
+        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
 
-            # CHR
-            elif Type in ["CHR"]:
-                # mu_R is like for ACR, except kappa*curv term
-                mu_R = ( mu_reg_sln(c, Omga, T) +
-                        ndD["B"]*(c - cbar) )
-                # Surface conc gradient given by natural BC
-                beta_s = ndD["beta_s"]
-                curv_c = calc_curv_c(c, dr, r_vec, Rs, beta_s,
-                        particleShape)
-                mu_R -= kappa*curv_c
-                mu_R_surf = mu_R[-1]
-                # With chem potentials, can now calculate fluxes
-                # Take the surface concentration
-                c_surf = c_sld[-1]
-                act_R_surf = np.exp(mu_R_surf/T)
-            # Figure out overpotential
-            eta = get_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
-                    ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-            Rxn = get_rxn_rate(eta, c_surf, c_lyte, k0,
-                    T, ndD["rxnType"], act_R_surf, act_O, lmbda, alpha)
-            # Finish up RHS discretization at particle surface
+        # Get solid particle fluxes (if any) and RHS
+        if ndD["type"] in ["ACR"]:
+            RHS = Rxn
+        elif ndD["type"] in ["diffn", "CHR"]:
             Flux_bc = ndD["delta_L"] * Rxn
-            if Type in ["diffn"]:
-                Flux_vec = calc_Flux_diffn(c, Ds, Flux_bc, dr, T)
-            elif Type in ["CHR"]:
-                Flux_vec = calc_Flux_CHR(c, mu_R, Ds, Flux_bc, dr, T)
-            if Shape == "sphere":
+            if ndD["type"] == "diffn":
+                Flux_vec = calc_Flux_diffn(c, ndD["Dsld"], Flux_bc, dr, T)
+            elif ndD["type"] == "CHR":
+                Flux_vec = calc_Flux_CHR(c, mu_R, ndD["Dsld"], Flux_bc, dr, T)
+            if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
-            elif Shape == "cylinder":
+            elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = np.diff(Flux_vec*area_vec)
-            return (M, RHS)
+            RHS = np.diff(Flux_vec * area_vec)
 
-def get_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
-        act_R=None, act_O=None, lmbda=None, alpha=None):
+        dcdt_vec = np.empty(N, dtype=object)
+        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
+        LHS_vec = MX(Mmat, dcdt_vec)
+        for k in range(N):
+            eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
+            eq.Residual = LHS_vec[k] - RHS[k]
+#            eq.Residual = (LHS_vec[k] - RHS_c[k] + noisevec[k]()) # NOISE
+
+        return
+
+def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
+        act_R=None, act_lyte=None, lmbda=None, alpha=None):
     if rxnType == "Marcus":
         Rate = R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
     elif rxnType == "BV":
-        Rate = R_BV(k0, alpha, c_sld, act_O, act_R, eta, T)
+        Rate = R_BV(k0, alpha, c_sld, act_lyte, act_R, eta, T)
     elif rxnType == "MHC":
         k0_MHC = k0/MHC_kfunc(0., lmbda)
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
@@ -287,7 +248,7 @@ def get_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         Rate = R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T)
     return Rate
 
-def get_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
+def calc_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
         material=None):
     if delPhiEqFit:
         fits = delta_phi_fits.DPhiFits(T)
@@ -331,6 +292,26 @@ def get_unit_solid_discr(Shape, Type, N):
         return r_vec, volfrac_vec
     else:
         raise NotImplementedError("Fix shape volumes!")
+
+def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
+        r_vec, Rs):
+    mu_R = ( mu_reg_sln(c, Omga, T) +
+            ndD["B"]*(c - cbar) )
+    curv = calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape)
+    mu_R -= kappa*curv
+    return mu_R
+
+def calc_mu_ACR(c, cbar, Omga, B, kappa, T, cwet, ISfuncs=None):
+    N = len(c)
+    ctmp = np.empty(N + 2, dtype=object)
+    ctmp[1:-1] = c
+    ctmp[0] = cwet
+    ctmp[-1] = cwet
+    dxs = 1./N
+    curv = np.diff(ctmp, 2)/(dxs**2)
+    mu_R = ( mu_reg_sln(c, Omga, T) - kappa*curv
+            + B*(c - cbar) )
+    return mu_R
 
 def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
     N = len(c)
@@ -377,9 +358,9 @@ def mu_reg_sln(c, Omga, T):
             + T*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
             for i in range(len(c)) ])
 
-def R_BV(k0, alpha, c_sld, act_O, act_R, eta, T):
+def R_BV(k0, alpha, c_sld, act_lyte, act_R, eta, T):
     gamma_ts = (1./(1-c_sld))
-    ecd = ( k0 * act_O**(1-alpha)
+    ecd = ( k0 * act_lyte**(1-alpha)
             * act_R**(alpha) / gamma_ts )
     Rate = ( ecd *
         (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) )
