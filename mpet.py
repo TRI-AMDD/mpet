@@ -383,12 +383,6 @@ class modMPET(daeModel):
             else:
                 eq.Residual -= dx * self.j_plus[limtrode](i)
 
-        Dp = self.D['Dp']
-        Dm = self.D['Dm']
-        zp = self.D['zp']
-        zm = self.D['zm']
-        Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
-        td = self.D['L_ac'][1]**2 / Damb
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
