@@ -142,10 +142,8 @@ class modMPET(daeModel):
                         eOutletPort, self,
                         "Bulk electrode port to particles")
                     solidType = ndD_e[l]["indvPart"][i, j]['type']
-                    if solidType in ["homog", "homog_sdn"]:
-                        pMod = mpetMaterials.mod0D1var
-                    elif solidType in ["ACR", "CHR", "diffn"]:
-                        pMod = mpetMaterials.mod1D1var
+                    if solidType in ["ACR", "CHR", "diffn", "homog", "homog_sdn"]:
+                        pMod = mpetMaterials.mod1var
                     else:
                         raise NotImplementedError("no model for given solid type")
                     self.particles[l][i, j] = pMod(

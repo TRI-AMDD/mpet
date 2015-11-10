@@ -27,7 +27,7 @@ class mod0D1var(daeModel):
             ndD_s=None):
         daeModel.__init__(self, Name, Parent, Description)
 
-class mod1D1var(daeModel):
+class mod1var(daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
             ndD_s=None):
         daeModel.__init__(self, Name, Parent, Description)
@@ -103,10 +103,12 @@ class mod1D1var(daeModel):
 
         c = np.empty(N, dtype=object)
         c[:] = [self.c(k) for k in range(N)]
-        # Equations for 1D particles of 1 field varible
-        self.sldDynamics1D1var(c, mu_O, act_lyte)
-#        # Equations for 0D particles of 1 field variables
-#        self.sldDynamics0D1var(c, mu_O, act_lyte)
+        if ndD["type"] in ["ACR", "diffn", "CHR"]:
+            # Equations for 1D particles of 1 field varible
+            self.sldDynamics1D1var(c, mu_O, act_lyte)
+        elif ndD["type"] in ["homog", "homog_sdn"]:
+            # Equations for 0D particles of 1 field variables
+            self.sldDynamics0D1var(c, mu_O, act_lyte)
 
         # Equations for potential drop along particle, if desired
         if ndD['simSurfCond']:
@@ -264,12 +266,10 @@ def get_unit_solid_discr(Shape, Type, N):
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-        return r_vec, volfrac_vec
-#    if Type in ["homog", "homog_sdn"]:
-#        r_vec = None
-#        volfrac_vec = np.ones(1)
-#        return r_vec, volfrac_vec
-    if Shape == "sphere":
+    elif Type in ["homog", "homog_sdn"]:
+        r_vec = None
+        volfrac_vec = np.ones(1)
+    elif Shape == "sphere":
         Rs = 1.
         dr = Rs/(N - 1)
         r_vec = np.linspace(0, Rs, N)
@@ -278,8 +278,7 @@ def get_unit_solid_discr(Shape, Type, N):
         vol_vec[-1] = (4./3)*np.pi*(Rs**3 - (Rs - dr/2.)**3)
         Vp = 4./3.*np.pi*Rs**3
         volfrac_vec = vol_vec/Vp
-        return r_vec, volfrac_vec
-    if Shape == "cylinder":
+    elif Shape == "cylinder":
         Rs = 1.
         h = 1.
         dr = Rs / (N - 1)
@@ -289,9 +288,9 @@ def get_unit_solid_discr(Shape, Type, N):
         vol_vec[-1] = np.pi * h * (Rs * dr - dr**2 / 4.)
         Vp = np.pi * Rs**2 * h
         volfrac_vec = vol_vec / Vp
-        return r_vec, volfrac_vec
     else:
         raise NotImplementedError("Fix shape volumes!")
+    return r_vec, volfrac_vec
 
 def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
         r_vec, Rs):
