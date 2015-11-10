@@ -1,6 +1,5 @@
 import sys
 import os
-import time
 
 import numpy as np
 import scipy.io as sio
@@ -99,6 +98,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
+    figsize = (6, 4.5)
 
     # Plot defaults
     axtickfsize = 18
@@ -115,6 +115,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     mpl.rcParams['legend.fontsize'] = legfsize
     mpl.rcParams['lines.linewidth'] = lwidth
     mpl.rcParams['lines.markersize'] = markersize
+    mpl.rcParams['lines.markeredgewidth'] = 0.1
+#    mpl.rcParams['text.usetex'] = True
 
     # Print relevant simulation info
     if print_flag:
@@ -226,17 +228,21 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for rxnp")
-        fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
-                sharey=True)
-        k0 = dD['k0'][l]
-        sol_c_str_base = pfx + "c_sld_trode{l}vol{{j}}part{{i}}".format(l=l)
+#        scl = 0.5
+        scl = 1.4
+        figsize = (scl*4.6, scl*3)
+        fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
+                sharey=True, figsize=figsize)
+        k0 = dD_e[l]['k0']
+        sol_c_str_base = (pfx + "partTrode{l}vol{i}part{j}.".format(l=l)
+                + 'c')
         sol_p_str = pfx + "phi_{l}".format(l=l)
         lyte_c_str = pfx + "c_lyte_{l}".format(l=l)
         lyte_p_str = pfx + "phi_lyte_{l}".format(l=l)
         ylim = (0, 1.01)
         ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
-        datax = times
-#        datax = ffvec
+#        datax = times*td
+        datax = ffvec
         for i in range(Npart[l]):
             for j in range(Nvol[l]):
                 sol_str = sol_c_str_base.format(i=i, j=j)
@@ -463,7 +469,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 sol[i, j] = str_base.format(l=l, i=i, j=j)
                 lens[i, j] = psd_len[l][j, i]
                 # Remove axis ticks
-                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+#                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
 #                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
                 datay = data[sol[i, j]][0]
                 numy = len(datay)
@@ -639,7 +645,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def init():
             for indx, l in enumerate(lvec):
 #                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
-                cbar_mat = dataCbar[l][0, :, :]
+                if ndD_e[l]['type'] in ndD_s['1varTypes']:
+                    cbar_mat = dataCbar[l][0, :, :]
+                elif ndD_e[l]['type'] in ndD_s['2varTypes']:
+                    cbar_mat = 0.5*(
+                            data[pfx + 'c1bar_sld_{l}'.format(l=l)][0] +
+                            data[pfx + 'c2bar_sld_{l}'.format(l=l)][0])
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
                 ttl.set_text('')
@@ -650,7 +661,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def animate(tind):
             for indx, l in enumerate(lvec):
 #                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
-                cbar_mat = dataCbar[l][tind, :, :]
+                if ndD_e[l]['type'] in ndD_s['1varTypes']:
+                    cbar_mat = dataCbar[l][tind, :, :]
+                elif ndD_e[l]['type'] in ndD_s['2varTypes']:
+                    cbar_mat = 0.5*(
+                            data[pfx + 'c1bar_sld_{l}'.format(l=l)][tind] +
+                            data[pfx + 'c2bar_sld_{l}'.format(l=l)][tind])
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
             t_current = times[tind]
@@ -708,7 +724,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     ani = manim.FuncAnimation(fig, animate, frames=numtimes,
             interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
-        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=30)
+        ani.save("mpet_{type}.mp4".format(type=plot_type),
+                fps=25, bitrate=5500,
+#                writer='alzkes',
+#                savefig_kwargs={'bbox_inches' : 'tight'},
+                )
 #                extra_args=['-vcodec', 'libx264'])
 
     return fig, ax, ani

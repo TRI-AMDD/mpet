@@ -40,6 +40,11 @@ class mpetIO():
         ndD_s = {}
         ndD_e = {}
 
+        # General particle classification
+        ndD_s["2varTypes"] = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
+        ndD_s["1varTypes"] = ["ACR", "diffn", "CHR", "homog",
+                "homog_sdn"]
+
         # Simulation Parameters
         ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
         dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
@@ -135,24 +140,33 @@ class mpetIO():
                 dD["scond"] = P.getfloat('Conductivity', 'scond')
 
             # Material
-            if Type not in ["diffn"]:
+            # 1var and 2var parameters
+#            if Type not in ["diffn"]:
+            if Type in ["ACR", "CHR", "homog", "homog_sdn"]:
                 dD["Omga"] = P.getfloat('Material', 'Omega_a')
                 dD["kappa"] = P.getfloat('Material', 'kappa')
                 dD["B"] = P.getfloat('Material', 'B')
                 dD["Vstd"] = P.getfloat('Material', 'Vstd')
             dD["rho_s"] = P.getfloat('Material', 'rho_s')
             ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
-            if Type not in ["ACR", "homog", "homog_sdn"]:
-                dD["Dsld"] = P.getfloat('Material', 'Dsld')
-            if Type in ["CHR"]:
-                dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
-            if Type in ["ACR"]:
-                ndD["cwet"] = P.getfloat('Material', 'cwet')
-#            if Type in ["diffn", "homog"]:
             if ndD["delPhiEqFit"]:
                 ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
             else:
                 ndD["delPhiFunc"] = None
+#            if Type not in ["ACR", "homog", "homog_sdn"]:
+            if Type in ["diffn", "CHR", "CHR2"]:
+                dD["Dsld"] = P.getfloat('Material', 'Dsld')
+            if Type in ["CHR", "CHR2"]:
+                dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
+            if Type in ["ACR"]:
+                ndD["cwet"] = P.getfloat('Material', 'cwet')
+#            if Type in ["diffn", "homog"]:
+
+            # 2var (extra) parameters
+            if Type in ["CHR2"]:
+                dD["Omgb"] = P.getfloat('Material', 'Omega_b')
+                dD["Omgc"] = P.getfloat('Material', 'Omega_c')
+                dD["EvdW"] = P.getfloat('Material', 'EvdW')
 
             # Reactions
             ndD["rxnType"] = P.get('Reactions', 'rxnType')

@@ -142,7 +142,9 @@ class modMPET(daeModel):
                         eOutletPort, self,
                         "Bulk electrode port to particles")
                     solidType = ndD_e[l]["indvPart"][i, j]['type']
-                    if solidType in ["ACR", "CHR", "diffn", "homog", "homog_sdn"]:
+                    if solidType in ndD_s["2varTypes"]:
+                        pMod = mpetMaterials.mod2var
+                    elif solidType in ndD_s["1varTypes"]:
                         pMod = mpetMaterials.mod1var
                     else:
                         raise NotImplementedError("no model for given solid type")
@@ -381,6 +383,12 @@ class modMPET(daeModel):
             else:
                 eq.Residual -= dx * self.j_plus[limtrode](i)
 
+        Dp = self.D['Dp']
+        Dm = self.D['Dm']
+        zp = self.D['zp']
+        zm = self.D['zm']
+        Damb = ((zp+zm)*Dp*Dm)/(zp*Dp+zm*Dm)
+        td = self.D['L_ac'][1]**2 / Damb
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
@@ -391,6 +399,8 @@ class modMPET(daeModel):
             eq = self.CreateEquation("applied_potential")
             eq.Residual = self.phi_applied() - ndD["Vset"]*(
                     1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+#                    1)
+#                    np.tanh(Time()/(45.0)))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -579,12 +589,25 @@ class simMPET(daeSimulation):
                 else: # cathode
                     self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
                 for j in range(Npart[l]):
-                    # Guess initial value for the average solid concentrations
-                    self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
-                    # Set initial solid concentration values
                     Nij = ndD_s["psd_num"][l][i, j]
-                    for k in range(Nij):
-                        self.m.particles[l][i, j].c.SetInitialCondition(k, cs0)
+                    # Guess initial value for the average solid concentrations
+                    # and set initial value for solid concentrations
+                    solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
+                    if solidType in ndD_s["1varTypes"]:
+                        self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
+                        for k in range(Nij):
+                            self.m.particles[l][i, j].c.SetInitialCondition(k, cs0)
+                    elif solidType in ndD_s["2varTypes"]:
+                        self.m.particles[l][i, j].c1bar.SetInitialGuess(cs0)
+                        self.m.particles[l][i, j].c2bar.SetInitialGuess(cs0)
+                        epsrnd = 0.0001
+                        rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
+                        rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
+                        rnd1 -= np.mean(rnd1)
+                        rnd2 -= np.mean(rnd2)
+                        for k in range(Nij):
+                            self.m.c1_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd1[k])
+                            self.m.c2_sld_ac[l][i, j].SetInitialCondition(k, cs0+rnd2[k])
         # Electrolyte
         c_lyte_init = ndD_s['c0']
         phi_guess = 0.
@@ -621,6 +644,42 @@ class simMPET(daeSimulation):
                 # This implies that the simulation stopped at the
                 # "discontinuity".
                 break
+
+class LogRatio(daeScalarExternalFunction):
+    """
+    Class to make a piecewise function that evaluates
+    log(c/(1-c)). However, near the edges (close to zero and one),
+    extend the function linearly to avoid negative log errors and
+    allow concentrations above one and below zero.
+    """
+    def __init__(self, Name, Model, units, c):
+        arguments = {}
+        arguments["c"] = c
+        daeScalarExternalFunction.__init__(self, Name, Model, units,
+                arguments)
+
+    def Calculate(self, values):
+        c = values["c"]
+        cVal = c.Value
+        EPS = 1e-6
+        cL = EPS
+        cH = 1 - EPS
+        if cVal < cL:
+            logRatio = (1./(cL*(1-cL)))*(cVal-cL) + np.log(cL/(1-cL))
+        elif cVal > cH:
+            logRatio = (1./(cH*(1-cH)))*(cVal-cH) + np.log(cH/(1-cH))
+        else:
+            logRatio = np.log(cVal/(1-cVal))
+        logRatio = adouble(logRatio)
+        if c.Derivative != 0:
+            if cVal < cL:
+                logRatio.Derivative = 1./(cL*(1-cL))
+            elif cVal > cH:
+                logRatio.Derivative = 1./(cH*(1-cH))
+            else:
+                logRatio.Derivative = 1./(cVal*(1-cVal))
+            logRatio.Derivative *= c.Derivative
+        return logRatio
 
 class noise(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, time_vec,

@@ -22,10 +22,221 @@ elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
         lowerBound=-1e20, upperBound=1e20, initialGuess=0,
         absTolerance=1e-5)
 
-class mod0D1var(daeModel):
+class mod2var(daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
             ndD_s=None):
         daeModel.__init__(self, Name, Parent, Description)
+        if (ndD is None) or (ndD_s is None):
+            raise Exception("Need input parameter dictionary")
+        self.ndD = ndD
+        self.ndD_s = ndD_s
+
+        # Domain
+        self.Dmn = daeDomain("discretizationDomain", self, unit(),
+                "discretization domain")
+
+        # Variables
+        self.c1 =  daeVariable("c1", mole_frac_t, self,
+                "Concentration in 'layer' 1 of active particle",
+                [self.Dmn])
+        self.c2 =  daeVariable("c2", mole_frac_t, self,
+                "Concentration in 'layer' 2 of active particle",
+                [self.Dmn])
+        self.c1bar = daeVariable("c1bar", mole_frac_t, self,
+                "Average concentration in 'layer' 1 of active particle")
+        self.c2bar = daeVariable("c2bar", mole_frac_t, self,
+                "Average concentration in 'layer' 2 of active particle")
+        self.dcbardt = daeVariable("dcbardt", no_t, self,
+                "Rate of particle filling")
+
+        # Ports
+        self.portInLyte = mpetPorts.portFromElyte("portInLyte",
+                eInletPort, self, "Inlet port from electrolyte")
+        self.portInBulk = mpetPorts.portFromBulk("portInBulk",
+                eInletPort, self, "Inlet port from e- conducting phase")
+        self.phi_lyte = self.portInLyte.phi_lyte()
+        self.c_lyte = self.portInLyte.c_lyte()
+        self.phi_m = self.portInBulk.phi_m()
+
+    def DeclareEquations(self):
+        ndD = self.ndD
+        N = ndD["N"] # number of grid points in particle
+        T = ndD["T"] # nondimensional temperature
+        r_vec, volfrac_vec = get_unit_solid_discr(
+                ndD['shape'], ndD['type'], N)
+
+        # Prepare the Ideal Solution log ratio terms
+        self.ISfuncs1 = np.array(
+                [LogRatio("LR1", self, unit(), self.c1(k)) for k in
+                    range(N)])
+        self.ISfuncs2 = np.array(
+                [LogRatio("LR2", self, unit(), self.c2(k)) for k in
+                    range(N)])
+
+        # Figure out mu_O, mu of the oxidized state
+        # phi in the electron conducting phase
+        phi_sld = self.phi_m
+        # mu of the ionic species
+        if self.ndD_s["elyteModelType"] == "SM":
+            mu_lyte = self.phi_lyte
+            act_lyte = None
+        elif self.ndD_s["elyteModelType"] == "dilute":
+            act_lyte = self.c_lyte
+            mu_lyte = T*np.log(act_lyte) + self.phi_lyte
+        mu_O = mu_lyte - phi_sld
+
+        # Define average filling fraction in particle
+        eq1 = self.CreateEquation("c1bar")
+        eq2 = self.CreateEquation("c2bar")
+        eq1.Residual = self.c1bar()
+        eq2.Residual = self.c2bar()
+        for k in range(N):
+            eq1.Residual -= self.c1(k) * volfrac_vec[k]
+            eq2.Residual -= self.c2(k) * volfrac_vec[k]
+
+        # Define average rate of filling of particle
+        eq = self.CreateEquation("dcbardt")
+        eq.Residual = self.dcbardt()
+        for k in range(N):
+            eq.Residual -= 0.5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
+
+        c1 = np.empty(N, dtype=object)
+        c2 = np.empty(N, dtype=object)
+        c1[:] = [self.c1(k) for k in range(N)]
+        c2[:] = [self.c2(k) for k in range(N)]
+        if ndD["type"] in ["diffn2", "CHR2"]:
+            # Equations for 1D particles of 1 field varible
+            self.sldDynamics1D2var(c1, c2, mu_O, act_lyte,
+                    self.ISfuncs1, self.ISfuncs2)
+        elif ndD["type"] in ["homog2", "homog2_sdn"]:
+            # Equations for 0D particles of 1 field variables
+            self.sldDynamics0D2var(c1, c2, mu_O, act_lyte,
+                    self.ISfuncs1, self.ISfuncs2)
+
+        for eq in self.Equations:
+            eq.CheckUnitsConsistency = False
+
+    def sldDynamics0D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
+            ISfuncs2):
+        raise NotImplementedError("0D 2var not implemented")
+        ndD = self.ndD
+        N = ndD["N"]
+        T = ndD["T"]
+        c_surf = c
+        mu_R_surf = act_R_surf = None
+        if not ndD["delPhiEqFit"]:
+            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T)
+            act_R_surf = np.exp(mu_R_surf / T)
+        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
+
+        dcdt_vec = np.empty(N, dtype=object)
+        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
+        LHS_vec = dcdt_vec
+        for k in range(N):
+            eq = self.CreateEquation("dcsdt")
+            eq.Residual = LHS_vec[k] - Rxn[k]
+        return
+
+    def sldDynamics1D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
+            ISfuncs2):
+        ndD = self.ndD
+        N = ndD["N"]
+        T = ndD["T"]
+        r_vec, volfrac_vec = get_unit_solid_discr(
+                ndD['shape'], ndD['type'], N)
+        # Equations for concentration evolution
+        # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
+        if ndD['shape'] == "C3":
+            Mmat = sprs.eye(N, N, format="csr")
+        elif ndD['shape'] in ["sphere", "cylinder"]:
+            # For discretization background, see Zeng & Bazant 2013
+            # Mass matrix is common for spherical shape, diffn or CHR
+            Rs = 1. # (non-dimensionalized by itself)
+            edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
+            if ndD['shape'] == "sphere":
+                Vp = 4./3. * np.pi * Rs**3
+            elif ndD['shape'] == "cylinder":
+                Vp = np.pi * Rs**2  # per unit height
+            vol_vec = Vp * volfrac_vec
+            dr = r_vec[1] - r_vec[0]
+            M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
+                    shape=(N, N), format="csr")
+            M1[1, 0] = M1[-2, -1] = 1./4
+            M2 = sprs.diags(vol_vec, 0, format="csr")
+            if ndD['shape'] == "sphere":
+                Mmat = M1*M2
+            elif ndD['shape'] == "cylinder":
+                Mmat = M2
+
+        # Get solid particle chemical potential, overpotential, reaction rate
+        c1_surf = mu1_R_surf = act1_R_surf = None
+        c2_surf = mu2_R_surf = act2_R_surf = None
+        if ndD["type"] in ["diffn2", "CHR2"]:
+            c1_surf = c1[-1]
+            c2_surf = c2[-1]
+        if ndD["type"] in ["CHR2"]:
+            mu1_R, mu2_R = calc_mu_CHR2(c1, c2, self.c1bar(),
+                    self.c2bar(), ndD["Omga"], ndD["Omgb"],
+                    ndD["Omgc"], ndD["B"], ndD["kappa"], ndD["EvdW"],
+                    ndD["beta_s"], T, ndD["shape"], ISfuncs1,
+                    ISfuncs2)
+            mu1_R_surf, mu2_R_surf = mu1_R[-1], mu2_R[-1]
+            act1_R_surf = np.exp(mu1_R_surf/T)
+            act2_R_surf = np.exp(mu2_R_surf/T)
+        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act1_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
+        Rxn2 = calc_rxn_rate(eta2, c2_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act2_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
+
+        # Get solid particle fluxes (if any) and RHS
+        if ndD["type"] in ["diffn2", "CHR2"]:
+            Flux1_bc = 0.5 * ndD["delta_L"] * Rxn1
+            Flux2_bc = 0.5 * ndD["delta_L"] * Rxn2
+            if ndD["type"] == "diffn":
+                Flux1_vec, Flux2_vec = calc_Flux_diffn2(c1, c2,
+                        ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
+            elif ndD["type"] == "CHR":
+                Flux1_vec, Flux2_vec = calc_Flux_CHR2(c1, c2, mu1_R, mu2_R,
+                        ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
+            if ndD["shape"] == "sphere":
+                area_vec = 4*np.pi*edges**2
+            elif ndD["shape"] == "cylinder":
+                area_vec = 2*np.pi*edges  # per unit height
+            RHS1 = np.diff(Flux1_vec * area_vec)
+            RHS2 = np.diff(Flux2_vec * area_vec)
+#            kinterlayer = 1e2
+#            interLayerRxn = (kinterlayer * (1 - c1_sld) *
+#                    (1 - c2_sld) * (act1_R - act2_R))
+#            RxnTerm1 = -interLayerRxn
+#            RxnTerm2 = interLayerRxn
+            RxnTerm1 = 0
+            RxnTerm2 = 0
+            RHS1 += RxnTerm1
+            RHS2 += RxnTerm2
+
+        dc1dt_vec = np.empty(N, dtype=object)
+        dc2dt_vec = np.empty(N, dtype=object)
+        dc1dt_vec[0:N] = [self.c1.dt(k) for k in range(N)]
+        dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
+        LHS1_vec = MX(Mmat, dc1dt_vec)
+        LHS2_vec = MX(Mmat, dc2dt_vec)
+        for k in range(N):
+            eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
+            eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
+            eq1.Residual = LHS1_vec[k] - RHS1[k]
+            eq2.Residual = LHS2_vec[k] - RHS2[k]
+#            eq.Residual = (LHS_vec[k] - RHS_c[k] + noisevec[k]()) # NOISE
+        return
 
 class mod1var(daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -198,8 +409,8 @@ class mod1var(daeModel):
             act_R_surf = np.exp(mu_R_surf / T)
         elif ndD["type"] in ["diffn", "CHR"]:
             c_surf = c[-1]
-        elif ndD["type"] in ["CHR"]:
-            mu_R = calc_mu_CHR(c, self.cbar(), Omga, ndD["B"],
+        if ndD["type"] in ["CHR"]:
+            mu_R = calc_mu_CHR(c, self.cbar(), ndD["Omga"], ndD["B"],
                     ndD["kappa"], T, ndD["beta_s"],
                     ndD['shape'], dr, r_vec, Rs)
             mu_R_surf = mu_R[-1]
