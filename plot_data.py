@@ -627,10 +627,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # initial state of the system.
         dataCbar = {}
         for trode in trodes:
-            dataCbar[trode] = np.zeros((numtimes, Nvol[l], Npart[l]))
+            dataCbar[trode] = np.zeros((numtimes, Nvol[trode], Npart[trode]))
             for tInd in range(numtimes):
-                for i in range(Nvol[l]):
-                    for j in range(Npart[l]):
+                for i in range(Nvol[trode]):
+                    for j in range(Npart[trode]):
                         dataStr = (pfx +
                                 'partTrode{t}vol{i}part{j}.'.format(t=trode,i=i,j=j)
                                 + 'cbar')
