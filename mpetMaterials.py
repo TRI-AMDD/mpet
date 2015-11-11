@@ -446,6 +446,93 @@ class mod1var(daeModel):
 
         return
 
+class LogRatio(daeScalarExternalFunction):
+    """
+    Class to make a piecewise function that evaluates
+    log(c/(1-c)). However, near the edges (close to zero and one),
+    extend the function linearly to avoid negative log errors and
+    allow concentrations above one and below zero.
+    """
+    def __init__(self, Name, Model, units, c):
+        arguments = {}
+        arguments["c"] = c
+        daeScalarExternalFunction.__init__(self, Name, Model, units,
+                arguments)
+
+    def Calculate(self, values):
+        c = values["c"]
+        cVal = c.Value
+        EPS = 1e-6
+        cL = EPS
+        cH = 1 - EPS
+        if cVal < cL:
+            logRatio = (1./(cL*(1-cL)))*(cVal-cL) + np.log(cL/(1-cL))
+        elif cVal > cH:
+            logRatio = (1./(cH*(1-cH)))*(cVal-cH) + np.log(cH/(1-cH))
+        else:
+            logRatio = np.log(cVal/(1-cVal))
+        logRatio = adouble(logRatio)
+        if c.Derivative != 0:
+            if cVal < cL:
+                logRatio.Derivative = 1./(cL*(1-cL))
+            elif cVal > cH:
+                logRatio.Derivative = 1./(cH*(1-cH))
+            else:
+                logRatio.Derivative = 1./(cVal*(1-cVal))
+            logRatio.Derivative *= c.Derivative
+        return logRatio
+
+class noise(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, time, time_vec,
+            noise_data, previous_output, position):
+        arguments = {}
+        self.counter = 0
+        self.saved = 0
+        self.previous_output = previous_output
+        self.time_vec = time_vec
+        self.noise_data = noise_data
+        self.interp = sint.interp1d(time_vec, noise_data, axis=0)
+#        self.tlo = time_vec[0]
+#        self.thi = time_vec[-1]
+#        self.numnoise = len(time_vec)
+        arguments["time"] = time
+        self.position = position
+        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
+
+    def Calculate(self, values):
+        time = values["time"]
+        # A derivative for Jacobian is requested - return always 0.0
+        if time.Derivative != 0:
+            return adouble(0)
+        # Store the previous time value to prevent excessive
+        # interpolation.
+        if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
+            self.saved += 1
+            return adouble(float(self.previous_output[1][self.position]))
+        noise_vec = self.interp(time.Value)
+        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
+        self.counter += 1
+        return adouble(noise_vec[self.position])
+#        indx = (float(time.Value - self.tlo)/(self.thi-self.tlo) *
+#                (self.numnoise - 1))
+#        ilo = np.floor(indx)
+#        ihi = np.ceil(indx)
+#        # If we're exactly at a time in time_vec
+#        if ilo == ihi:
+#            noise_vec = self.noise_data[ilo, :]
+#        else:
+#            noise_vec = (self.noise_data[ilo, :] +
+#                    (time.Value - self.time_vec[ilo]) /
+#                    (self.time_vec[ihi] - self.time_vec[ilo]) *
+#                    (self.noise_data[ihi, :] - self.noise_data[ilo, :])
+#                    )
+#        # previous_output is a reference to a common object and must
+#        # be updated here - not deleted.  using self.previous_output = []
+#        # it will delete the common object and create a new one
+#        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
+#        self.counter += 1
+#        return adouble(float(noise_vec[self.position]))
+
 def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         act_R=None, act_lyte=None, lmbda=None, alpha=None):
     if rxnType == "Marcus":
@@ -506,10 +593,28 @@ def get_unit_solid_discr(Shape, Type, N):
 def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
         r_vec, Rs):
     mu_R = ( mu_reg_sln(c, Omga, T) +
-            ndD["B"]*(c - cbar) )
+            B*(c - cbar) )
     curv = calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape)
     mu_R -= kappa*curv
     return mu_R
+
+def calc_mu_CHR2(c1, c2, c1bar, c2bar, Omga, Omgb, Omgc, B, kappa,
+        EvdW, beta_s, T, particleShape, dr, r_vec, Rs, ISfuncs1=None,
+        ISfuncs2=None):
+    N = len(c1)
+    mu1_R = ( mu_reg_sln(c1, Omga, T, ISfuncs1) +
+            B*(c1 - c1bar) )
+    mu2_R = ( mu_reg_sln(c2, Omga, T, ISfuncs2) +
+            B*(c2 - c2bar) )
+    mu1_R += EvdW * (30 * c1**2 * (1-c1)**2)
+    mu2_R += EvdW * (30 * c2**2 * (1-c2)**2)
+    curv1 = calc_curv_c(c1, dr, r_vec, Rs, beta_s, particleShape)
+    curv2 = calc_curv_c(c2, dr, r_vec, Rs, beta_s, particleShape)
+    mu1_R -= kappa*curv1
+    mu2_R -= kappa*curv2
+    mu1_R += Omgb*c2 + Omgc*c2*(1-c2)*(1-2*c1)
+    mu2_R += Omgb*c1 + Omgc*c1*(1-c1)*(1-2*c2)
+    return mu1_R, mu2_R
 
 def calc_mu_ACR(c, cbar, Omga, B, kappa, T, cwet, ISfuncs=None):
     N = len(c)
@@ -543,6 +648,34 @@ def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     Flux_vec[1:N] = (Ds/T * (1-c_edges) * c_edges *
             np.diff(mu)/dr)
     return Flux_vec
+
+def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
+    if type(c1[0]) == pyCore.adouble:
+        MIN, MAX = Min, Max
+    else:
+        MIN, MAX = min, max
+    N = len(c1)
+    Flux1_vec = np.empty(N+1, dtype=object)
+    Flux2_vec = np.empty(N+1, dtype=object)
+    Flux1_vec[0] = 0. # symmetry at r=0
+    Flux2_vec[0] = 0. # symmetry at r=0
+    c1_edges = 2*(c1[0:-1] * c1[1:])/(c1[0:-1] + c1[1:])
+    c2_edges = 2*(c2[0:-1] * c2[1:])/(c2[0:-1] + c2[1:])
+    # keep the concentrations between 0 and 1
+    c1_edges = np.array([MAX(1e-6, c1_edges[i]) for i in
+            range(len(c1_edges))])
+    c1_edges = np.array([MIN((1-1e-6), c1_edges[i]) for i in
+            range(len(c1_edges))])
+    c2_edges = np.array([MAX(1e-6, c2_edges[i]) for i in
+            range(len(c1_edges))])
+    c2_edges = np.array([MIN((1-1e-6), c2_edges[i]) for i in
+            range(len(c1_edges))])
+    cbar_edges = 0.5*(c1_edges + c2_edges)
+    Flux1_vec[1:N] = (Ds/T * (1 - c1_edges)**(1.0) * c1_edges *
+            np.diff(mu1_R)/dr)
+    Flux2_vec[1:N] = (Ds/T * (1 - c2_edges)**(1.0) * c2_edges *
+            np.diff(mu2_R)/dr)
+    return Flux1_vec, Flux2_vec
 
 def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)

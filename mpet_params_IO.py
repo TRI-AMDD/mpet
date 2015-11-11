@@ -142,7 +142,8 @@ class mpetIO():
             # Material
             # 1var and 2var parameters
 #            if Type not in ["diffn"]:
-            if Type in ["ACR", "CHR", "homog", "homog_sdn"]:
+            if Type in ["ACR", "CHR", "CHR2", "homog", "homog2",
+                    "homog_sdn", "homog2_sdn"]:
                 dD["Omga"] = P.getfloat('Material', 'Omega_a')
                 dD["kappa"] = P.getfloat('Material', 'kappa')
                 dD["B"] = P.getfloat('Material', 'B')
@@ -154,7 +155,7 @@ class mpetIO():
             else:
                 ndD["delPhiFunc"] = None
 #            if Type not in ["ACR", "homog", "homog_sdn"]:
-            if Type in ["diffn", "CHR", "CHR2"]:
+            if Type in ["diffn", "diffn2", "CHR", "CHR2"]:
                 dD["Dsld"] = P.getfloat('Material', 'Dsld')
             if Type in ["CHR", "CHR2"]:
                 dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
@@ -181,7 +182,7 @@ class mpetIO():
         # Post-processing
         self.test_system_input(dD_s, ndD_s)
         for trode in ndD_s["trodes"]:
-            self.test_electrode_input(dD_e[trode], ndD_e[trode])
+            self.test_electrode_input(dD_e[trode], ndD_e[trode], ndD_s)
         psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(
                 dD_s, ndD_s, dD_e, ndD_e)
         G = self.distr_G(dD_s, ndD_s)
@@ -398,11 +399,11 @@ class mpetIO():
             if solidType in ["ACR"]:
                 psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer)
                 psd_len[trode] = solidDisc*psd_num[trode]
-            elif solidType in ["CHR", "diffn"]:
+            elif solidType in ["CHR", "diffn", "CHR2", "diffn2"]:
                 psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer) + 1
                 psd_len[trode] = solidDisc*(psd_num[trode] - 1)
             # For homogeneous particles (only one "volume" per particle)
-            elif solidType in ["homog", "homog_sdn"]:
+            elif solidType in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
                 # Each particle is only one volume
                 psd_num[trode] = np.ones(psd_raw[trode].shape).astype(np.integer)
                 # The lengths are given by the original length distr.
@@ -478,7 +479,7 @@ class mpetIO():
             raise Exception("Must have at least one porous electrode")
         return
 
-    def test_electrode_input(self, dD, ndD):
+    def test_electrode_input(self, dD, ndD, ndD_s):
         T298 = isClose(ndD['T'], 1.)
         solidType = ndD['type']
         solidShape = ndD['shape']
@@ -489,7 +490,8 @@ class mpetIO():
         if (solidType in ["CHR", "diffn"] and solidShape not in
                 ["sphere", "cylinder"]):
             raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-        if solidType not in ["ACR", "CHR", "homog", "homog_sdn", "diffn"]:
+        if (solidType not in ndD_s["1varTypes"]) and (solidType not in
+                ndD_s["2varTypes"]):
             raise NotImplementedError("Input solidType not defined")
         if solidShape not in ["C3", "sphere", "cylinder"]:
             raise NotImplementedError("Input solidShape not defined")
