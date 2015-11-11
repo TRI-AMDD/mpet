@@ -7,7 +7,7 @@ mpet.py
     - Windows: try python(x,y) -- https://code.google.com/p/pythonxy
 
 2. Install DAE Tools
-(http://sourceforge.net/projects/daetools/files/1.3.0-beta2/)
+(http://sourceforge.net/projects/daetools/files/1.4.0/)
 
 3. Copy params_default.cfg to params.cfg
 
