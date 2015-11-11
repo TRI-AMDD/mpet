@@ -48,7 +48,7 @@ class DPhiFits():
         """
         del_phi_eq = self.eokT*(
                 4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
-                0.105734*(1/((1.00167 - y)**(0.379571)) - 1.576) -
+                0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994) -
                 0.045*np.exp(-71.69*y**8) +
                 0.01*np.exp(-200*(y - 0.19))
                 ) - del_phi_ref
@@ -72,7 +72,10 @@ class DPhiFits():
         This function was obtained from
         Fuller, Doyle, Newman, 1994
         """
-        del_phi_eq = self.eokT*(-0.132 + 1.41*np.exp(-3.52*y)) - del_phi_ref
+        c1 = -0.132056
+        c2 = 1.40854
+        c3 = -3.52312
+        del_phi_eq = self.eokT*(c1 + c2*np.exp(c3*y)) - del_phi_ref
         return del_phi_eq
 
     def LiC6(self, y, del_phi_ref):
