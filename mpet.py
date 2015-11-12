@@ -499,7 +499,7 @@ class modMPET(daeModel):
             if Nvol["a"] == 0:
                 ctmp[0] = ctmp[1] + (self.current() *
                     ndD["epsbeta"][limtrode] *
-                    (1-ndD["SM_tp0"](ctmp[1]))) * (
+                    (1-tp0(ctmp[1]))) * (
                         dxvec[0]/(poros_edges[0]*D(ctmp[1])))
             else: # porous anode -- no elyte flux at anode current collector
                 ctmp[0] = ctmp[1]
