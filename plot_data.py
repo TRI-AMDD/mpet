@@ -371,41 +371,38 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot electrolyte concentration or potential
-    elif plot_type == "elytec" or plot_type == "elytep":
+    elif plot_type in ["elytec", "elytep", "elytecf", "elytepf"]:
+        fplot = (True if plot_type[-1] == "f" else False)
+        t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
-        if data_only:
+        if data_only and not fplot:
             raise NotImplemented("no data-only output for elytec/p")
-        fig, ax = plt.subplots()
-        if plot_type == "elytec":
+        if plot_type in ["elytec", "elytecf"]:
             ymin = 0
             ymax = 2.2
-            ax.set_ylabel('Concentration of electrolyte [nondim]')
+            ylbl = 'Concentration of electrolyte [nondim]'
             sep = pfx + 'c_lyte_s'
             anode = pfx + 'c_lyte_a'
             cath = pfx + 'c_lyte_c'
-        elif plot_type == "elytep":
+        elif plot_type in ["elytep", "elytepf"]:
             ymin = -50
             ymax = 50
-            ax.set_ylabel('Potential of electrolyte [nondim]')
+            ylbl = 'Potential of electrolyte [nondim]'
             sep = pfx + 'phi_lyte_s'
             anode = pfx + 'phi_lyte_a'
             cath = pfx + 'phi_lyte_c'
-        ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
-        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
-                transform = ax.transAxes, verticalalignment="center",
-                horizontalalignment="center")
-        datay = data[cath][0]
+        datay = data[cath][t0ind]
         L_c = dD_s['L']["c"] * Lfac
         Ltot = L_c
         if Nvol["s"]:
-            datay_s = data[sep][0]
+            datay_s = data[sep][t0ind]
             datay = np.hstack((datay_s, datay))
             L_s = dD_s['L']["s"] * Lfac
             Ltot += L_s
         else:
             L_s = 0
         if "a" in trodes:
-            datay_a = data[anode][0]
+            datay_a = data[anode][t0ind]
             datay = np.hstack((datay_a, datay))
             L_a = dD_s['L']["a"] * Lfac
             Ltot += L_a
@@ -415,6 +412,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         xmin = 0
         xmax = Ltot
         datax = cellsvec
+        if data_only:
+            return datax, datay
+        fig, ax = plt.subplots()
+        ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
+        ax.set_ylabel(ylbl)
+        ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
+                transform = ax.transAxes, verticalalignment="center",
+                horizontalalignment="center")
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
