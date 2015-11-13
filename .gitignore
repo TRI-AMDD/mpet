@@ -10,6 +10,7 @@
 *.zip
 params*
 !params_default.cfg
+!configDefaults/*
 sim_output*
 archive/
 history/
