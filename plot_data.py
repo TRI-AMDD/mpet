@@ -451,10 +451,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     if type2c:
                         lines1[i, j].set_ydata(np.ma.array(datax, mask=True))
                         lines2[i, j].set_ydata(np.ma.array(datax, mask=True))
-                        return tuple(np.vstack((lines1, lines2)).reshape(-1))
                     else:
                         lines[i, j].set_ydata(np.ma.array(datax, mask=True))
-                        return tuple(lines.reshape(-1))
+            if type2c:
+                return tuple(np.vstack((lines1, lines2)).reshape(-1))
+            else:
+                return tuple(lines.reshape(-1))
         def animate(tind):
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
@@ -463,11 +465,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         datay2 = data[sol2[i, j]][tind]
                         lines1[i, j].set_ydata(datay1)
                         lines2[i, j].set_ydata(datay2)
-                        return tuple(np.vstack((lines1, lines2)).reshape(-1))
                     else:
                         datay = data[sol[i, j]][tind]
                         lines[i, j].set_ydata(datay)
-                        return tuple(lines.reshape(-1))
+            if type2c:
+                return tuple(np.vstack((lines1, lines2)).reshape(-1))
+            else:
+                return tuple(lines.reshape(-1))
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
