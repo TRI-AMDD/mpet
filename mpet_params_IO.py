@@ -304,6 +304,10 @@ class mpetIO():
             if Type not in ["diffn"]:
                 ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
                 ndD_e[trode]["B"] = dD_e[trode]['B']/(k*Tref*dD_e[trode]['rho_s'])
+            if Type in ["CHR2"]:
+                ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
+                ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*Tref)
+                ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*Tref)
 #            lens = dD["psd_len"][trode]
 #            areas = dD["psd_area"][trode]
 #            vols = dD["psd_vol"][trode]
@@ -327,7 +331,7 @@ class mpetIO():
                     if Type not in ["diffn"]:
                         ndD_tmp["kappa"] = (dD_e[trode]['kappa'] /
                                 (k*Tref*dD_e[trode]['rho_s']*plen**2))
-                    if Type in ["CHR"]:
+                    if Type in ["CHR", "CHR2"]:
                         ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
                                 plen * dD_e[trode]['rho_s'] /
                                 dD_e[trode]['kappa'])

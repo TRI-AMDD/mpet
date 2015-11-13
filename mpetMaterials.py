@@ -42,6 +42,8 @@ class mod2var(daeModel):
         self.c2 =  daeVariable("c2", mole_frac_t, self,
                 "Concentration in 'layer' 2 of active particle",
                 [self.Dmn])
+        self.cbar = daeVariable("cbar", mole_frac_t, self,
+                "Average concentration in active particle")
         self.c1bar = daeVariable("c1bar", mole_frac_t, self,
                 "Average concentration in 'layer' 1 of active particle")
         self.c2bar = daeVariable("c2bar", mole_frac_t, self,
@@ -85,7 +87,7 @@ class mod2var(daeModel):
             mu_lyte = T*np.log(act_lyte) + self.phi_lyte
         mu_O = mu_lyte - phi_sld
 
-        # Define average filling fraction in particle
+        # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")
         eq2 = self.CreateEquation("c2bar")
         eq1.Residual = self.c1bar()
@@ -93,6 +95,8 @@ class mod2var(daeModel):
         for k in range(N):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
+        eq = self.CreateEquation("cbar")
+        eq.Residual = self.cbar() - 0.5*(self.c1bar() + self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
@@ -148,6 +152,8 @@ class mod2var(daeModel):
         T = ndD["T"]
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
+        dr = r_vec[1] - r_vec[0]
+        Rs = 1. # (non-dimensionalized by itself)
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         if ndD['shape'] == "C3":
@@ -155,14 +161,12 @@ class mod2var(daeModel):
         elif ndD['shape'] in ["sphere", "cylinder"]:
             # For discretization background, see Zeng & Bazant 2013
             # Mass matrix is common for spherical shape, diffn or CHR
-            Rs = 1. # (non-dimensionalized by itself)
             edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
             if ndD['shape'] == "sphere":
                 Vp = 4./3. * np.pi * Rs**3
             elif ndD['shape'] == "cylinder":
                 Vp = np.pi * Rs**2  # per unit height
             vol_vec = Vp * volfrac_vec
-            dr = r_vec[1] - r_vec[0]
             M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                     shape=(N, N), format="csr")
             M1[1, 0] = M1[-2, -1] = 1./4
@@ -182,8 +186,8 @@ class mod2var(daeModel):
             mu1_R, mu2_R = calc_mu_CHR2(c1, c2, self.c1bar(),
                     self.c2bar(), ndD["Omga"], ndD["Omgb"],
                     ndD["Omgc"], ndD["B"], ndD["kappa"], ndD["EvdW"],
-                    ndD["beta_s"], T, ndD["shape"], ISfuncs1,
-                    ISfuncs2)
+                    ndD["beta_s"], T, ndD["shape"], dr, r_vec, Rs,
+                    ISfuncs1, ISfuncs2)
             mu1_R_surf, mu2_R_surf = mu1_R[-1], mu2_R[-1]
             act1_R_surf = np.exp(mu1_R_surf/T)
             act2_R_surf = np.exp(mu2_R_surf/T)
@@ -202,10 +206,10 @@ class mod2var(daeModel):
         if ndD["type"] in ["diffn2", "CHR2"]:
             Flux1_bc = 0.5 * ndD["delta_L"] * Rxn1
             Flux2_bc = 0.5 * ndD["delta_L"] * Rxn2
-            if ndD["type"] == "diffn":
+            if ndD["type"] == "diffn2":
                 Flux1_vec, Flux2_vec = calc_Flux_diffn2(c1, c2,
                         ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
-            elif ndD["type"] == "CHR":
+            elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_Flux_CHR2(c1, c2, mu1_R, mu2_R,
                         ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
@@ -659,6 +663,8 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec = np.empty(N+1, dtype=object)
     Flux1_vec[0] = 0. # symmetry at r=0
     Flux2_vec[0] = 0. # symmetry at r=0
+    Flux1_vec[-1] = Flux1_bc
+    Flux2_vec[-1] = Flux2_bc
     c1_edges = 2*(c1[0:-1] * c1[1:])/(c1[0:-1] + c1[1:])
     c2_edges = 2*(c2[0:-1] * c2[1:])/(c2[0:-1] + c2[1:])
     # keep the concentrations between 0 and 1
@@ -679,7 +685,7 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
 
 def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)
-    curv = np.empty(N, dtype=ojbect)
+    curv = np.empty(N, dtype=object)
     if particleShape == "sphere":
         curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
         curv[1:N-1] = (np.diff(c, 2)/dr**2 +
@@ -696,10 +702,14 @@ def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
         raise NotImplementedError("calc_curv_c only for sphere and cylinder")
     return curv
 
-def mu_reg_sln(c, Omga, T):
-    return np.array([ Omga*(1-2*c[i])
-            + T*Log(Max(eps, c[i])/Max(eps, 1-c[i]))
-            for i in range(len(c)) ])
+def mu_reg_sln(c, Omga, T, ISfunc=None):
+    enthalpyTerm = np.array([Omga*(1-2*c[i]) for i in range(len(c))])
+    if (type(c[0]) == pyCore.adouble) and (ISfunc is not None):
+        ISterm = T*np.array([ISfunc[i]() for i in range(len(c))])
+    else:
+        ISterm = T*np.array([np.log(c[i]/(1-c[i])) for i in
+            range(len(c))])
+    return ISterm + enthalpyTerm
 
 def R_BV(k0, alpha, c_sld, act_lyte, act_R, eta, T):
     gamma_ts = (1./(1-c_sld))
