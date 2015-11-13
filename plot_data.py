@@ -10,6 +10,7 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
 import mpet_params_IO
+import elyte_CST
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
     pfx = 'mpet.'
@@ -371,49 +372,95 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot electrolyte concentration or potential
-    elif plot_type in ["elytec", "elytep", "elytecf", "elytepf"]:
+    elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
+            "elytei", "elyteif", "elytedivi", "elytedivif"]:
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
         if data_only and not fplot:
             raise NotImplemented("no data-only output for elytec/p")
-        if plot_type in ["elytec", "elytecf"]:
-            ymin = 0
-            ymax = 2.2
-            ylbl = 'Concentration of electrolyte [nondim]'
-            sep = pfx + 'c_lyte_s'
-            anode = pfx + 'c_lyte_a'
-            cath = pfx + 'c_lyte_c'
-        elif plot_type in ["elytep", "elytepf"]:
-            ymin = -50
-            ymax = 50
-            ylbl = 'Potential of electrolyte [nondim]'
-            sep = pfx + 'phi_lyte_s'
-            anode = pfx + 'phi_lyte_a'
-            cath = pfx + 'phi_lyte_c'
-        datay = data[cath][t0ind]
+        datax = cellsvec
+        c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
+        c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
+        c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
+        datay_c = data[c_cath]
+        datay_p = data[p_cath]
         L_c = dD_s['L']["c"] * Lfac
         Ltot = L_c
         if Nvol["s"]:
-            datay_s = data[sep][t0ind]
-            datay = np.hstack((datay_s, datay))
+            datay_s_c = data[c_sep]
+            datay_s_p = data[p_sep]
+            datay_c = np.hstack((datay_s_c, datay_c))
+            datay_p = np.hstack((datay_s_p, datay_p))
             L_s = dD_s['L']["s"] * Lfac
             Ltot += L_s
         else:
             L_s = 0
         if "a" in trodes:
-            datay_a = data[anode][t0ind]
-            datay = np.hstack((datay_a, datay))
+            datay_a_c = data[c_anode]
+            datay_a_p = data[p_anode]
+            datay_c = np.hstack((datay_a_c, datay_c))
+            datay_p = np.hstack((datay_a_p, datay_p))
             L_a = dD_s['L']["a"] * Lfac
             Ltot += L_a
         else:
             L_a = 0
-        numy = len(datay)
         xmin = 0
         xmax = Ltot
-        datax = cellsvec
+        if plot_type in ["elytec", "elytecf"]:
+            ymin = 0
+            ymax = 2.2
+            ylbl = 'Concentration of electrolyte [nondim]'
+#            sep = pfx + 'c_lyte_s'
+#            anode = pfx + 'c_lyte_a'
+#            cath = pfx + 'c_lyte_c'
+            datay = datay_c
+        elif plot_type in ["elytep", "elytepf"]:
+            ymin = -50
+            ymax = 50
+            ylbl = 'Potential of electrolyte [nondim]'
+#            sep = pfx + 'phi_lyte_s'
+#            anode = pfx + 'phi_lyte_a'
+#            cath = pfx + 'phi_lyte_c'
+            datay = datay_p
+        elif plot_type in ["elytei", "elyteif", "elytedivi",
+            "elytedivif"]:
+            ymin = -5.
+            ymax = 5.
+            ylbl = 'Current density of electrolyte [nondim]'
+            dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
+            dxd2 = dxvec[1:-1]
+            c_edges = (2*datay_c[:, 1:]*datay_c[:, :-1])/(datay_c[:, 1:] +
+                    datay_c[:, :-1] + 1e-20)
+            porosTmp = porosvec**(1.5)
+            poros_edges = (2*porosTmp[1:]*porosTmp[:-1])/(porosTmp[1:]
+                    + porosTmp[:-1] + 1e-20)
+            if ndD_s["elyteModelType"] == "SM":
+                D_lyte, kappa_lyte, thermFac_lyte, tp0, Dref = (
+                        elyte_CST.getProps(ndD_s["SMset"]))
+                print "elyte Dref:", Dref
+                i_edges = -poros_edges*kappa_lyte(c_edges) * (
+                        np.diff(datay_p, axis=1)/dxd1 -
+                        (ndD_s["nup"]+ndD_s["num"])/ndD_s["nup"] *
+                        (1 - tp0(c_edges)) *
+                        thermFac_lyte(c_edges) *
+                        np.diff(np.log(datay_c), axis=1)/dxd1
+                        )
+            elif ndD_s["elyteModelType"] == "dilute":
+                Dp, Dm = ndD_s["Dp"], ndD_s["Dm"]
+                zp, zm = ndD_s["zp"], ndD_s["zm"]
+                i_edges = (-(Dp - Dm)*np.diff(datay_c, axis=1)/dxd1
+                        - (zp*Dm - zm*Dm)*c_edges*np.diff(datay_p, axis=1)/dxd1
+                        )
+            if plot_type in ["elytei", "elyteif"]:
+                datax = (cellsvec[:-1] + cellsvec[1:])/2.
+                datay = i_edges
+            elif plot_type in ["elytedivi", "elytedivif"]:
+                datax = cellsvec[1:-1]
+                datay = np.diff(i_edges, axis=1) / dxd2
+        numy = len(datay[t0ind])
         if data_only:
-            return datax, datay
+            return datax, datay[t0ind]
         fig, ax = plt.subplots()
         ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
         ax.set_ylabel(ylbl)
@@ -423,7 +470,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay, '-')
+        line1, = ax.plot(datax, datay[t0ind, :], '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         def init():
@@ -431,113 +478,113 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ttl.set_text('')
             return line1, ttl
         def animate(tind):
-            datay = data[cath][tind]
-            if Nvol["s"]:
-                datay_s = data[sep][tind]
-                datay = np.hstack((datay_s, datay))
-            if "a" in trodes:
-                datay_a = data[anode][tind]
-                datay = np.hstack((datay_a, datay))
-            line1.set_ydata(datay)
+#            datay = data[cath][tind]
+#            if Nvol["s"]:
+#                datay_s = data[sep][tind]
+#                datay = np.hstack((datay_s, datay))
+#            if "a" in trodes:
+#                datay_a = data[anode][tind]
+#                datay = np.hstack((datay_a, datay))
+            line1.set_ydata(datay[tind])
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
             ttl.set_text(ttl_fmt.format(perc=tfrac))
             return line1, ttl
 
     # Plot all solid concentrations or potentials
-    elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c",
-            "csld_col_c", "csld_col_a"]:
+    elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c"]:
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
                 sharey=True)
         sol = np.empty((Npart[l], Nvol[l]), dtype=object)
+        sol1 = np.empty((Npart[l], Nvol[l]), dtype=object)
+        sol2 = np.empty((Npart[l], Nvol[l]), dtype=object)
         lens = np.zeros((Npart[l], Nvol[l]))
         lines = np.empty((Npart[l], Nvol[l]), dtype=object)
-        fills = np.empty((Npart[l], Nvol[l], 3), dtype=object)
+        lines1 = np.empty((Npart[l], Nvol[l]), dtype=object)
+        lines2 = np.empty((Npart[l], Nvol[l]), dtype=object)
+        partStr = "partTrode{l}vol{j}part{i}."
+        type2c = False
         if plot_type in ["csld_a", "csld_col_a", "csld_c", "csld_col_c"]:
 #            str_base = pfx + "c_sld_trode{l}vol{j}part{i}"
-            str_base = pfx + "partTrode{l}vol{j}part{i}." + "c"
+            if ndD_e[l]["type"] in ndD_s["1varTypes"]:
+                str_base = pfx + partStr + "c"
+            elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
+                type2c = True
+                str1_base = pfx + partStr + "c1"
+                str2_base = pfx + partStr + "c2"
             ylim = (0, 1.01)
 #        elif plot_type in ["csld_c", "csld_col_c"]:
 #            str_base = pfx + "c_sld_trode1vol{j}part{i}"
 #            ylim = (0, 1.01)
         elif plot_type in ["phisld_a", "phisld_c"]: # plot_type == "phisld"
-            str_base = pfx + "partTrode{l}vol{j}part{i}." + "phi"
+            str_base = pfx + partStr + "phi"
             ylim = (-10, 20)
 #        elif plot_type == "phisld_c":
 #            str_base = pfx + "p_sld_trode1vol{j}part{i}"
 #            ylim = (-10, 20)
         for i in range(Npart[l]):
             for j in range(Nvol[l]):
-                sol[i, j] = str_base.format(l=l, i=i, j=j)
                 lens[i, j] = psd_len[l][j, i]
+                if type2c:
+#                    sol[i, j] = [str1_base.format(l=l, i=i, j=j),
+#                                str2_base.format(l=l, i=i, j=j)]
+#                    datay1 = data[sol[i, j][0]][0]
+#                    datay2 = data[sol[i, j][1]][0]
+                    sol1[i, j] = str1_base.format(l=l, i=i, j=j)
+                    sol2[i, j] = str2_base.format(l=l, i=i, j=j)
+                    datay1 = data[sol1[i, j]][0]
+                    datay2 = data[sol2[i, j]][0]
+                    numy = len(datay1)
+                    datax = np.linspace(0, lens[i, j], numy)
+                    line1, = ax[i, j].plot(datax, datay1)
+                    line2, = ax[i, j].plot(datax, datay2)
+                    lines1[i, j] = line1
+                    lines2[i, j] = line2
+                else:
+                    sol[i, j] = str_base.format(l=l, i=i, j=j)
+                    datay = data[sol[i, j]][0]
+                    numy = len(datay)
+                    datax = np.linspace(0, lens[i, j], numy)
+                    line, = ax[i, j].plot(datax, datay)
+                    lines[i, j] = line
                 # Remove axis ticks
 #                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
 #                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
-                datay = data[sol[i, j]][0]
-                numy = len(datay)
-                datax = np.linspace(0, lens[i, j], numy)
                 ax[i, j].set_ylim(ylim)
                 ax[i, j].set_xlim((0, lens[i, j]))
-                line, = ax[i, j].plot(datax, datay)
-                lines[i, j] = line
-                if plot_type in ["csld_col_c", "csld_col_a"]:
-                    fill1 = ax[i, j].fill_between(datax, ylim[0],
-                            ylim[1], facecolor='red', alpha=0.9,
-                            where=datay>to_red)
-                    fill2 = ax[i, j].fill_between(datax, ylim[0],
-                            ylim[1], facecolor='yellow', alpha=0.9,
-                            where=((datay<to_red) & (datay>to_yellow)))
-                    fill3 = ax[i, j].fill_between(datax, ylim[0],
-                            ylim[1], facecolor='green', alpha=0.9,
-                            where=datay<to_yellow)
-                    fills[i, j, :] = [fill1, fill2, fill3]
+                print datax
         def init():
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
-                    datax = np.zeros(data[sol[i, j]][0].shape)
-                    lines[i, j].set_ydata(np.ma.array(datax, mask=True))
-                    if plot_type in ["csld_col_c", "csld_col_a"]:
-                        fill1 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='red', alpha=0.0)
-                        fill2 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='yellow', alpha=0.0)
-                        fill3 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='green', alpha=0.0)
-                        fills[i, j, :] = [fill1, fill2, fill3]
-#            if plot_type == "csld_col":
-            if plot_type in ["csld_col_c", "csld_col_a"]:
-#                collection = mcollect.PatchCollection(fills.reshape(-1))
-#                return tuple(collection)
-                return tuple(fills.reshape(-1))
-            else:
-                return tuple(lines.reshape(-1))
+#                    datax = np.zeros(data[sol[i, j]][0].shape)
+#                    datax = np.zeros(data[sol[i, j]][0].shape)
+                    if type2c:
+                        lines1[i, j].set_ydata(np.ma.array(datax, mask=True))
+                        lines2[i, j].set_ydata(np.ma.array(datax, mask=True))
+                        return tuple(np.vstack((lines1, lines2)).reshape(-1))
+                    else:
+                        lines[i, j].set_ydata(np.ma.array(datax, mask=True))
+                        return tuple(lines.reshape(-1))
         def animate(tind):
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
-                    datay = data[sol[i, j]][tind]
-                    lines[i, j].set_ydata(datay)
-                    datax = lines[i, j].get_xdata()
-                    if plot_type in ["csld_col_c", "csld_col_a"]:
-                        fill1 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='red', alpha=0.9,
-                                where=datay>to_red)
-                        fill2 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='yellow', alpha=0.9,
-                                where=((datay<to_red) & (datay>to_yellow)))
-                        fill3 = ax[i, j].fill_between(datax, ylim[0],
-                                ylim[1], facecolor='green', alpha=0.9,
-                                where=datay<to_yellow)
-                        fills[i, j, :] = [fill1, fill2, fill3]
-#            if plot_type == "csld_col":
-            if plot_type in ["csld_col_c", "csld_col_a"]:
-#                collection = mcollect.PatchCollection(fills.reshape(-1))
-#                return tuple(collection)
-                return tuple(fills.reshape(-1))
-            else:
-                return tuple(lines.reshape(-1))
+                    if type2c:
+#                        datay1 = data[sol[i, j][0]][tind]
+#                        datay2 = data[sol[i, j][1]][tind]
+#                        lines[i, j][0].set_ydata(datay1)
+#                        lines[i, j][1].set_ydata(datay2)
+                        datay1 = data[sol1[i, j]][tind]
+                        datay2 = data[sol2[i, j]][tind]
+                        lines1[i, j].set_ydata(datay1)
+                        lines2[i, j].set_ydata(datay2)
+                        return tuple(np.vstack((lines1, lines2)).reshape(-1))
+                    else:
+                        datay = data[sol[i, j]][tind]
+                        lines[i, j].set_ydata(datay)
+                        return tuple(lines.reshape(-1))
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
