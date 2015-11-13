@@ -396,6 +396,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot all solid concentrations or potentials
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c"]:
+        t0ind = 0
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
@@ -427,8 +428,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 if type2c:
                     sol1[i, j] = str1_base.format(l=l, i=i, j=j)
                     sol2[i, j] = str2_base.format(l=l, i=i, j=j)
-                    datay1 = data[sol1[i, j]][0]
-                    datay2 = data[sol2[i, j]][0]
+                    datay1 = data[sol1[i, j]][t0ind]
+                    datay2 = data[sol2[i, j]][t0ind]
                     numy = len(datay1)
                     datax = np.linspace(0, lens[i, j], numy)
                     line1, = ax[i, j].plot(datax, datay1)
@@ -437,7 +438,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     lines2[i, j] = line2
                 else:
                     sol[i, j] = str_base.format(l=l, i=i, j=j)
-                    datay = data[sol[i, j]][0]
+                    datay = data[sol[i, j]][t0ind]
                     numy = len(datay)
                     datax = np.linspace(0, lens[i, j], numy)
                     line, = ax[i, j].plot(datax, datay)
@@ -449,10 +450,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
                     if type2c:
-                        lines1[i, j].set_ydata(np.ma.array(datax, mask=True))
-                        lines2[i, j].set_ydata(np.ma.array(datax, mask=True))
+                        numy = len(data[sol1[i, j]][t0ind])
+                        maskTmp = np.zeros(numy)
+                        lines1[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines2[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
                     else:
-                        lines[i, j].set_ydata(np.ma.array(datax, mask=True))
+                        numy = len(data[sol[i, j]][t0ind])
+                        maskTmp = np.zeros(numy)
+                        lines[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
             else:
