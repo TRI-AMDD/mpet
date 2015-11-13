@@ -224,90 +224,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 line, = ax[i, j].plot(times, datay)
         return fig, ax
 
-    # Plot misc stuff about reactions
-    if plot_type in ["rxnp_c", "rxnp_a"]:
-        l = plot_type[-1]
-        if data_only:
-            raise NotImplemented("no data-only output for rxnp")
-#        scl = 0.5
-        scl = 1.4
-        figsize = (scl*4.6, scl*3)
-        fig, ax = plt.subplots(Npart_ac[l], Nvol_ac[l], squeeze=False,
-                sharey=True, figsize=figsize)
-        k0 = dD_e[l]['k0']
-        sol_c_str_base = (pfx + "partTrode{l}vol{i}part{j}.".format(l=l)
-                + 'c')
-        sol_p_str = pfx + "phi_{l}".format(l=l)
-        lyte_c_str = pfx + "c_lyte_{l}".format(l=l)
-        lyte_p_str = pfx + "phi_lyte_{l}".format(l=l)
-        ylim = (0, 1.01)
-        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
-#        datax = times*td
-        datax = ffvec
-        for i in range(Npart[l]):
-            for j in range(Nvol[l]):
-                sol_str = sol_c_str_base.format(i=i, j=j)
-                # Remove axis ticks
-#                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-                csld = data[sol_str]
-                c_lyte = data[lyte_c_str][:,j]
-                phi_lyte = data[lyte_p_str][:,j]
-                phi_m = data[sol_p_str][:,j]
-#                csld = csld[:, 50]
-                Omga = data[pfx + "Omga_{l}".format(l=l)][0][j][i]
-                def mu_reg_sln(csld, Omga):
-                    return Omga*(1-2*csld) + np.log(csld/(1-csld))
-#                # homog particles
-#                mu_R = Omga*(1-2*csld) + 1*np.log(csld/(1-csld))
-#                # ACR particles
-#                sld_pt_indx = 50
-#                Nij = csld.shape[1]
-#                cbar = np.tile(np.sum(csld, axis=1)/Nij, [Nij, 1]).transpose()
-#                cstmp = np.zeros((len(datax), Nij + 2))
-#                cstmp[:, 1:-1] = csld
-#                cstmp[0] = D['cwet_ac'][l]
-#                cstmp[-1] = D['cwet_ac'][l]
-#                dxs = 1./Nij
-#                curv = np.diff(cstmp,2)/(dxs**2)
-#                kappa = data[pfx + "kappa_{l}".format(l=l)][i, j]
-#                B = data[pfx + "B_ac"][0][l]
-#                mu_R = ( mu_reg_sln(csld, Omga) - kappa*curv
-#                    + B*(csld - cbar) )
-#                mu_R = mu_R[:, sld_pt_indx]
-#                act_R = np.exp(mu_R)
-#                eta = (mu_R + phi_m) - (mu_O + phi_lyte)
-#                BVgamma_ts = 1./(1-csld[:, sld_pt_indx])
-                # diffn with delPhiEqFit
-                csurf = csld[:,-1]
-                import delta_phi_fits
-                dphi_eq_ref = data[pfx + "dphi_eq_ref_ac"][0][l]
-                fits = delta_phi_fits.DPhiFits(D)
-                phifunc = fits.materialData[D["material_ac"][l]]
-                dphi_eq = phifunc(csurf, dphi_eq_ref)
-                eta = phi_m - phi_lyte - dphi_eq
-                act_R = csurf
-                BVgamma_ts = 1./(1-csurf)
-                # General
-                act_O = c_lyte
-                mu_O = np.log(act_O)
-#                eta = np.linspace(-20, 20, 70)
-                BValpha = ndD['alpha'][l]
-                BVecd = ( k0 * act_O**(1-BValpha)
-                    * act_R**(BValpha) / BVgamma_ts )
-                BVrate = ( BVecd *
-                    (np.exp(-BValpha*eta/1) - np.exp((1-BValpha)*eta/1)) )
-#                Malpha = 0.5*(1 + (1/lmbda) * np.log(c_lyte/csld))
-#                Mecd = ( k0 *
-#                    c_lyte**((3-2*Malpha)/4.) *
-#                    csld**((1+2*Malpha)/4.) )
-#                Meta2 = np.exp(-eta**2/(4.*1*lmbda))
-#                Mrate = ( Mecd * np.exp(-eta**2/(4.*1*lmbda)) *
-#                    (np.exp(-Malpha*eta/1) - np.exp((1-Malpha)*eta/1)) )
-                line, = ax[i, j].plot(datax, BVecd)
-        if save_flag:
-            fig.savefig("Rxn_out.png", bbox_inches="tight")
-        return fig, ax
-
     # Plot SoC profile
     if plot_type in ["soc_c", "soc_a"]:
         l = plot_type[-1]
@@ -411,17 +327,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ymin = 0
             ymax = 2.2
             ylbl = 'Concentration of electrolyte [nondim]'
-#            sep = pfx + 'c_lyte_s'
-#            anode = pfx + 'c_lyte_a'
-#            cath = pfx + 'c_lyte_c'
             datay = datay_c
         elif plot_type in ["elytep", "elytepf"]:
             ymin = -50
             ymax = 50
             ylbl = 'Potential of electrolyte [nondim]'
-#            sep = pfx + 'phi_lyte_s'
-#            anode = pfx + 'phi_lyte_a'
-#            cath = pfx + 'phi_lyte_c'
             datay = datay_p
         elif plot_type in ["elytei", "elyteif", "elytedivi",
             "elytedivif"]:
@@ -478,13 +388,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ttl.set_text('')
             return line1, ttl
         def animate(tind):
-#            datay = data[cath][tind]
-#            if Nvol["s"]:
-#                datay_s = data[sep][tind]
-#                datay = np.hstack((datay_s, datay))
-#            if "a" in trodes:
-#                datay_a = data[anode][tind]
-#                datay = np.hstack((datay_a, datay))
             line1.set_ydata(datay[tind])
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
@@ -508,7 +411,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         partStr = "partTrode{l}vol{j}part{i}."
         type2c = False
         if plot_type in ["csld_a", "csld_col_a", "csld_c", "csld_col_c"]:
-#            str_base = pfx + "c_sld_trode{l}vol{j}part{i}"
             if ndD_e[l]["type"] in ndD_s["1varTypes"]:
                 str_base = pfx + partStr + "c"
             elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
@@ -516,23 +418,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 str1_base = pfx + partStr + "c1"
                 str2_base = pfx + partStr + "c2"
             ylim = (0, 1.01)
-#        elif plot_type in ["csld_c", "csld_col_c"]:
-#            str_base = pfx + "c_sld_trode1vol{j}part{i}"
-#            ylim = (0, 1.01)
-        elif plot_type in ["phisld_a", "phisld_c"]: # plot_type == "phisld"
+        elif plot_type in ["phisld_a", "phisld_c"]:
             str_base = pfx + partStr + "phi"
             ylim = (-10, 20)
-#        elif plot_type == "phisld_c":
-#            str_base = pfx + "p_sld_trode1vol{j}part{i}"
-#            ylim = (-10, 20)
         for i in range(Npart[l]):
             for j in range(Nvol[l]):
                 lens[i, j] = psd_len[l][j, i]
                 if type2c:
-#                    sol[i, j] = [str1_base.format(l=l, i=i, j=j),
-#                                str2_base.format(l=l, i=i, j=j)]
-#                    datay1 = data[sol[i, j][0]][0]
-#                    datay2 = data[sol[i, j][1]][0]
                     sol1[i, j] = str1_base.format(l=l, i=i, j=j)
                     sol2[i, j] = str2_base.format(l=l, i=i, j=j)
                     datay1 = data[sol1[i, j]][0]
@@ -551,16 +443,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     line, = ax[i, j].plot(datax, datay)
                     lines[i, j] = line
                 # Remove axis ticks
-#                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-#                ax[i, j].yaxis.set_major_locator(plt.NullLocator())
                 ax[i, j].set_ylim(ylim)
                 ax[i, j].set_xlim((0, lens[i, j]))
-                print datax
         def init():
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
-#                    datax = np.zeros(data[sol[i, j]][0].shape)
-#                    datax = np.zeros(data[sol[i, j]][0].shape)
                     if type2c:
                         lines1[i, j].set_ydata(np.ma.array(datax, mask=True))
                         lines2[i, j].set_ydata(np.ma.array(datax, mask=True))
@@ -572,10 +459,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
                     if type2c:
-#                        datay1 = data[sol[i, j][0]][tind]
-#                        datay2 = data[sol[i, j][1]][tind]
-#                        lines[i, j][0].set_ydata(datay1)
-#                        lines[i, j][1].set_ydata(datay2)
                         datay1 = data[sol1[i, j]][tind]
                         datay2 = data[sol2[i, j]][tind]
                         lines1[i, j].set_ydata(datay1)
