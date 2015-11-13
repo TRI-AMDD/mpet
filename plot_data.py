@@ -580,12 +580,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def init():
             for indx, l in enumerate(lvec):
 #                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
-                if ndD_e[l]['type'] in ndD_s['1varTypes']:
-                    cbar_mat = dataCbar[l][0, :, :]
-                elif ndD_e[l]['type'] in ndD_s['2varTypes']:
-                    cbar_mat = 0.5*(
-                            data[pfx + 'c1bar_sld_{l}'.format(l=l)][0] +
-                            data[pfx + 'c2bar_sld_{l}'.format(l=l)][0])
+                cbar_mat = dataCbar[l][0, :, :]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
                 ttl.set_text('')
@@ -596,12 +591,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         def animate(tind):
             for indx, l in enumerate(lvec):
 #                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
-                if ndD_e[l]['type'] in ndD_s['1varTypes']:
-                    cbar_mat = dataCbar[l][tind, :, :]
-                elif ndD_e[l]['type'] in ndD_s['2varTypes']:
-                    cbar_mat = 0.5*(
-                            data[pfx + 'c1bar_sld_{l}'.format(l=l)][tind] +
-                            data[pfx + 'c2bar_sld_{l}'.format(l=l)][tind])
+                cbar_mat = dataCbar[l][tind, :, :]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
             t_current = times[tind]
