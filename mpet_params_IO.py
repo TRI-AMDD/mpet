@@ -61,6 +61,7 @@ class mpetIO():
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
         ndD_s["tsteps"] = P_s.getfloat('Sim Params', 'tsteps')
         Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
+        Rser = dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
         ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
                        "c": P_s.getint('Sim Params', 'Nvol_c'),
                        "s": P_s.getint('Sim Params', 'Nvol_s')}
@@ -134,7 +135,6 @@ class mpetIO():
             dD["disc"] = P.getfloat('Particles', 'discretization')
             Shape = ndD["shape"] = P.get('Particles', 'shape')
             dD["thickness"] = P.getfloat('Particles', 'thickness')
-            ndD["T"] = Tabs / Tref
             if Type in ["ACR"]:
                 ndD["simSurfCond"] = P.getboolean('Conductivity', 'simSurfCond')
                 dD["scond"] = P.getfloat('Conductivity', 'scond')
@@ -182,7 +182,7 @@ class mpetIO():
         # Post-processing
         self.test_system_input(dD_s, ndD_s)
         for trode in ndD_s["trodes"]:
-            self.test_electrode_input(dD_e[trode], ndD_e[trode], ndD_s)
+            self.test_electrode_input(dD_e[trode], ndD_e[trode], dD_s, ndD_s)
         psd_raw, psd_num, psd_len, psd_area, psd_vol = self.distr_part(
                 dD_s, ndD_s, dD_e, ndD_e)
         G = self.distr_G(dD_s, ndD_s)
@@ -218,6 +218,7 @@ class mpetIO():
 
         # Some nondimensional parameters
         T = ndD_s["T"] = Tabs / Tref
+        ndD_s["Rser"] = dD_s["Rser"] * e/(k*Tref) * (3600./td) * CrateCurr
         ndD_s["Dp"] = Dp / Damb
         ndD_s["Dm"] = Dm / Damb
         cref = 1000. # mol/m^3 = 1 M
@@ -478,8 +479,8 @@ class mpetIO():
             raise Exception("Must have at least one porous electrode")
         return
 
-    def test_electrode_input(self, dD, ndD, ndD_s):
-        T298 = isClose(ndD['T'], 1.)
+    def test_electrode_input(self, dD, ndD, dD_s, ndD_s):
+        T298 = isClose(dD_s['Tabs'], 298.)
         solidType = ndD['type']
         solidShape = ndD['shape']
 #        if ndD['simSurfCond'] and solidType != "ACR":

@@ -63,7 +63,7 @@ class mod2var(daeModel):
     def DeclareEquations(self):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
-        T = ndD["T"] # nondimensional temperature
+        T = self.ndD_s["T"] # nondimensional temperature
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
 
@@ -125,7 +125,7 @@ class mod2var(daeModel):
         raise NotImplementedError("0D 2var not implemented")
         ndD = self.ndD
         N = ndD["N"]
-        T = ndD["T"]
+        T = self.ndD_s["T"]
         c_surf = c
         mu_R_surf = act_R_surf = None
         if not ndD["delPhiEqFit"]:
@@ -149,7 +149,7 @@ class mod2var(daeModel):
             ISfuncs2):
         ndD = self.ndD
         N = ndD["N"]
-        T = ndD["T"]
+        T = self.ndD_s["T"]
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
         dr = r_vec[1] - r_vec[0]
@@ -284,7 +284,7 @@ class mod1var(daeModel):
     def DeclareEquations(self):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
-        T = ndD["T"] # nondimensional temperature
+        T = self.ndD_s["T"] # nondimensional temperature
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
 
@@ -354,7 +354,7 @@ class mod1var(daeModel):
     def sldDynamics0D1var(self, c, mu_O, act_lyte):
         ndD = self.ndD
         N = ndD["N"]
-        T = ndD["T"]
+        T = self.ndD_s["T"]
         c_surf = c
         mu_R_surf = act_R_surf = None
         if not ndD["delPhiEqFit"]:
@@ -377,7 +377,7 @@ class mod1var(daeModel):
     def sldDynamics1D1var(self, c, mu_O, act_lyte):
         ndD = self.ndD
         N = ndD["N"]
-        T = ndD["T"]
+        T = self.ndD_s["T"]
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
         # Equations for concentration evolution

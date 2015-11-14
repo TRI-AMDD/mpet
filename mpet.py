@@ -116,6 +116,8 @@ class modMPET(daeModel):
                     [self.DmnCell["s"]])
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
+        self.phi_cell = daeVariable("phi_cell", elec_pot_t, self,
+                "Voltage between electrodes (phi_applied less series resistance)")
         self.current = daeVariable("current", no_t, self,
                 "Total current of the cell")
         self.dummyVar = daeVariable("dummyVar", no_t, self, "dummyVar")
@@ -256,7 +258,7 @@ class modMPET(daeModel):
                 if l == "a": # anode
                     # Potential at the current collector is from
                     # simulation
-                    phi_tmp[0] = self.phi_applied()
+                    phi_tmp[0] = self.phi_cell()
                     # No current passes into the electrolyte
                     phi_tmp[-1] = phi_tmp[-2]
                 else: # cathode
@@ -274,7 +276,7 @@ class modMPET(daeModel):
                             RHS_phi_tmp[i])
                 else:
                     if l == "a": # anode
-                        eq.Residual = self.phi_bulk[l](i) - self.phi_applied()
+                        eq.Residual = self.phi_bulk[l](i) - self.phi_cell()
                     else: # cathode
                         eq.Residual = self.phi_bulk[l](i) - ndD["phi_cathode"]
 
@@ -313,7 +315,7 @@ class modMPET(daeModel):
             eq = self.CreateEquation("c_lyte")
             eq.Residual = self.c_lyte["c"].dt(0) - 0
             eq = self.CreateEquation("phi_lyte")
-            eq.Residual = self.phi_lyte["c"](0) - self.phi_applied()
+            eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
             # Calculate RHS for electrolyte equations
             c_lyte = np.empty(Nlyte, dtype=object)
@@ -380,6 +382,12 @@ class modMPET(daeModel):
                 eq.Residual += dx * self.j_plus[limtrode](i)
             else:
                 eq.Residual -= dx * self.j_plus[limtrode](i)
+        # Define the measured voltage, offset by the "applied" voltage
+        # by any series resistance.
+        # phi_cell = phi_applied - I*R
+        eq = self.CreateEquation("Masured_Voltage")
+        eq.Residual = self.phi_cell() - (
+                self.phi_applied() - ndD["Rser"]*self.current())
 
         if self.profileType == "CC":
             # Total Current Constraint Equation
@@ -471,7 +479,7 @@ class modMPET(daeModel):
             # If we don't have a full anode, assume no rxn resistance at a
             # lithium anode, and measure relative to Li
             if Nvol["a"] == 0:
-                phitmp[0] = self.phi_applied()
+                phitmp[0] = self.phi_cell()
             else: # porous anode -- no flux into anode current collector
                 phitmp[0] = phitmp[1]
             # No flux into cathode current collector from the electrolyte
@@ -510,7 +518,7 @@ class modMPET(daeModel):
             # If we don't have a full anode, assume no rxn resistance at a
             # lithium anode, and measure relative to Li
             if Nvol["a"] == 0:
-                phitmp[0] = self.phi_applied()
+                phitmp[0] = self.phi_cell()
             else: # porous anode -- no flux into anode current collector
                 phitmp[0] = phitmp[1]
             # No flux into cathode current collector from the electrolyte
