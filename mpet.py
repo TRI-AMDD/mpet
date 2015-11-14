@@ -169,33 +169,6 @@ class modMPET(daeModel):
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
         Nlyte = np.sum(Nvol.values())
-        # External function -- erf -- prepare to store external
-        # function objects. For some reason, each external function
-        # object that gets created has to stay 'alive' as an attribute
-        # of the model, but we won't have to keep track of indexing.
-        self.erfvec = []
-
-#        # Prepare the noise
-#        # maybe "numnoise" should be a parameter?
-#        numnoise = 200/10.
-#        noise_prefac = 2e-4
-#        # a vector going from 0 to the max simulation time.
-#        time_vec = np.linspace(0, (1./self.currset.GetValue()), numnoise)
-#        # daeScalarExternalFunction (noise interpolation done as vector)
-#        self.noise_local = np.empty(2, dtype=object)
-#        for l in trodes:
-#            self.noise_local[l] = np.empty((Nvol_ac[l], Npart_ac[l]),
-#                    dtype=object)
-#            for i in range(Nvol_ac[l]):
-#                for j in range(Npart_ac[l]):
-#                    Nsld = Nsld_mat_ac[l][i, j]
-#                    noise_data = noise_prefac*np.random.randn(numnoise, Nsld)
-#                    # Previous_output is common for all external functions
-#                    previous_output = []
-#                    self.noise_local[l][i, j] = [noise("Noise{l}{i}{j}".format(l=l,i=i,j=j), self,
-#                        unit(), Time(), time_vec, noise_data,
-#                        previous_output, _position_) for _position_
-#                        in range(Nsld)]
 
         # Define the overall filling fraction in the electrodes
         for l in trodes:

@@ -75,6 +75,22 @@ class mod2var(daeModel):
                 [LogRatio("LR2", self, unit(), self.c2(k)) for k in
                     range(N)])
 
+#        # Prepare noise
+#        numnoise = 200/10.
+#        noise_prefac = 2e-4
+#        tvec = np.linspace(0., ndD_s["tend"], numnoise)
+#        noise_data1 = noise_prefac*np.random.randn(numnoise, N)
+#        noise_data2 = noise_prefac*np.random.randn(numnoise, N)
+#        # Previous_output is common for all external functions
+#        previous_output1 = []
+#        previous_output2 = []
+#        self.noise1 = [noise("noise", self, unit(), Time(), tvec,
+#            noise_data, previous_output1, _position_) for
+#            _position_ in range(N)]
+#        self.noise2 = [noise("noise", self, unit(), Time(), tvec,
+#            noise_data, previous_output2, _position_) for
+#            _position_ in range(N)]
+
         # Figure out mu_O, mu of the oxidized state
         # phi in the electron conducting phase
         phi_sld = self.phi_m
@@ -287,6 +303,22 @@ class mod1var(daeModel):
         T = self.ndD_s["T"] # nondimensional temperature
         r_vec, volfrac_vec = get_unit_solid_discr(
                 ndD['shape'], ndD['type'], N)
+
+        # Prepare the Ideal Solution log ratio terms
+        self.ISfuncs = np.array(
+                [LogRatio("LR", self, unit(), self.c1(k)) for k in
+                    range(N)])
+
+#        # Prepare noise
+#        numnoise = 200/10.
+#        noise_prefac = 2e-4
+#        tvec = np.linspace(0., ndD_s["tend"], numnoise)
+#        noise_data = noise_prefac*np.random.randn(numnoise, N)
+#        # Previous_output is common for all external functions
+#        previous_output = []
+#        self.noise = [noise("noise", self, unit(), Time(), tvec,
+#            noise_data, previous_output, _position_) for
+#            _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
         # phi in the electron conducting phase
