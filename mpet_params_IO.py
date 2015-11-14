@@ -237,7 +237,6 @@ class mpetIO():
         dD_s["psd_vol"] = {}
         dD_s["G"] = {}
         ndD_s["G"] = {}
-        ndD_s["psd_vol_FracTot"] = {}
         ndD_s["psd_vol_FracVol"] = {}
         ndD_s["L"] = {}
         ndD_s["L"]["s"] = dD_s["L"]["s"] / Lref
@@ -266,10 +265,6 @@ class mpetIO():
             dD_s["psd_area"][trode] = psd_area[trode]
             dD_s["psd_vol"][trode] = psd_vol[trode]
             dD_s["G"][trode] = G[trode]
-            # Fraction of individual particle volume compared to total
-            # particle volume
-            ndD_s["psd_vol_FracTot"][trode] = (dD_s["psd_vol"][trode] /
-                    np.sum(dD_s["psd_vol"][trode]))
             # Sums of all particle volumes within each simulated
             # electrode volume
             Vuvec = np.sum(dD_s["psd_vol"][trode], axis=1)

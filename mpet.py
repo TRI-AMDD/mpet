@@ -199,17 +199,15 @@ class modMPET(daeModel):
         for l in trodes:
             eq = self.CreateEquation("ffrac_{l}".format(l=l))
             eq.Residual = self.ffrac[l]()
+            dx = 1./Nvol[l]
             # Make a float of Vtot, total particle volume in electrode
             # Note: for some reason, even when "factored out", it's a bit
             # slower to use Sum(self.psd_vol_ac[l].array([], [])
             tmp = 0
             for i in range(Nvol[l]):
                 for j in range(Npart[l]):
-                    Vpart = ndD["psd_vol_FracTot"][l][i, j]
-                    # For some reason the following slower, so
-                    # it's helpful to factor out the Vtot sum:
-                    # eq.Residual -= self.cbar_sld_ac[l](i, j) * (Vpart/Vtot)
-                    tmp += self.particles[l][i, j].cbar() * Vpart
+                    Vj = ndD["psd_vol_FracVol"][l][i, j]
+                    tmp += self.particles[l][i, j].cbar() * Vj * dx
             eq.Residual -= tmp
 
         # Define dimensionless j_plus for each electrode volume
