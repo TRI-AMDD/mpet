@@ -17,19 +17,9 @@ class portFromElyte(daePort):
                 "Concentration in the electrolyte")
         self.phi_lyte = daeVariable("phi_lyte", elec_pot_t, self,
                 "Electric potential in the electrolyte")
-#        self.mu_lyte = daeVariable("mu_lyte", elec_pot_t, self,
-#                "Electrochemical potential in the electrolyte")
 
 class portFromBulk(daePort):
     def __init__(self, Name, PortType, Model, Description=""):
         daePort.__init__(self, Name, PortType, Model, Description)
         self.phi_m = daeVariable("phi_m", elec_pot_t, self,
                 "Electric potential in the e- conducting phase")
-
-class portFromParticle(daePort):
-    def __init__(self, Name, PortType, Model, Description=""):
-        daePort.__init__(self, Name, PortType, Model, Description)
-        self.cbar = daeVariable("cbar", mole_frac_t, self,
-                "Average concentration of particle")
-        self.dcbardt = daeVariable("dcbardt", no_t, self,
-                "Rate of particle filling")

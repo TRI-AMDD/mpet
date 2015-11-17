@@ -10,10 +10,6 @@ import time
 import subprocess
 
 import numpy as np
-import scipy.sparse as sprs
-import scipy.special as spcl
-import scipy.interpolate as sint
-#import scipy.io as sio
 
 from daetools.pyDAE import *
 from daetools.pyDAE.data_reporters import *
