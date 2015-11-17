@@ -163,6 +163,7 @@ class mpetIO():
             if Type in ["ACR"]:
                 ndD["cwet"] = P.getfloat('Material', 'cwet')
 #            if Type in ["diffn", "homog"]:
+            ndD["logPad"] = P.getboolean('Material', 'logPad')
 
             # 2var (extra) parameters
             if Type in ["CHR2"]:

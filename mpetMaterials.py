@@ -68,12 +68,14 @@ class mod2var(daeModel):
                 ndD['shape'], ndD['type'], N)
 
         # Prepare the Ideal Solution log ratio terms
-        self.ISfuncs1 = np.array(
-                [LogRatio("LR1", self, unit(), self.c1(k)) for k in
-                    range(N)])
-        self.ISfuncs2 = np.array(
-                [LogRatio("LR2", self, unit(), self.c2(k)) for k in
-                    range(N)])
+        self.ISfuncs1 = self.ISfuncs2 = None
+        if ndD["logPad"]:
+            self.ISfuncs1 = np.array(
+                    [LogRatio("LR1", self, unit(), self.c1(k)) for k in
+                        range(N)])
+            self.ISfuncs2 = np.array(
+                    [LogRatio("LR2", self, unit(), self.c2(k)) for k in
+                        range(N)])
 
 #        # Prepare noise
 #        numnoise = 200/10.
@@ -297,9 +299,11 @@ class mod1var(daeModel):
                 ndD['shape'], ndD['type'], N)
 
         # Prepare the Ideal Solution log ratio terms
-        self.ISfuncs = np.array(
-                [LogRatio("LR", self, unit(), self.c(k)) for k in
-                    range(N)])
+        self.ISfuncs = None
+        if ndD["logPad"]:
+            self.ISfuncs = np.array(
+                    [LogRatio("LR", self, unit(), self.c(k)) for k in
+                        range(N)])
 
 #        # Prepare noise
 #        numnoise = 200/10.
@@ -338,10 +342,10 @@ class mod1var(daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if ndD["type"] in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sldDynamics1D1var(c, mu_O, act_lyte)
+            self.sldDynamics1D1var(c, mu_O, act_lyte, self.ISfuncs)
         elif ndD["type"] in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sldDynamics0D1var(c, mu_O, act_lyte)
+            self.sldDynamics0D1var(c, mu_O, act_lyte, self.ISfuncs)
 
         # Equations for potential drop along particle, if desired
         if ndD['simSurfCond']:
@@ -369,14 +373,14 @@ class mod1var(daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D1var(self, c, mu_O, act_lyte):
+    def sldDynamics0D1var(self, c, mu_O, act_lyte, ISfuncs):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
         c_surf = c
         mu_R_surf = act_R_surf = None
         if not ndD["delPhiEqFit"]:
-            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T)
+            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
             act_R_surf = np.exp(mu_R_surf / T)
         eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
                 ndD["dphi_eq_ref"], ndD["delPhiFunc"])
@@ -392,7 +396,7 @@ class mod1var(daeModel):
             eq.Residual = LHS_vec[k] - Rxn[k]
         return
 
-    def sldDynamics1D1var(self, c, mu_O, act_lyte):
+    def sldDynamics1D1var(self, c, mu_O, act_lyte, ISfuncs):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -427,14 +431,14 @@ class mod1var(daeModel):
         if ndD["type"] in ["ACR"]:
             c_surf = c
             mu_R_surf = calc_mu_ACR(c, self.cbar(), ndD["Omga"], ndD["B"],
-                    ndD["kappa"], T, ndD["cwet"])
+                    ndD["kappa"], T, ndD["cwet"], ISfuncs)
             act_R_surf = np.exp(mu_R_surf / T)
         elif ndD["type"] in ["diffn", "CHR"]:
             c_surf = c[-1]
         if ndD["type"] in ["CHR"]:
             mu_R = calc_mu_CHR(c, self.cbar(), ndD["Omga"], ndD["B"],
                     ndD["kappa"], T, ndD["beta_s"],
-                    ndD['shape'], dr, r_vec, Rs)
+                    ndD['shape'], dr, r_vec, Rs, ISfuncs)
             mu_R_surf = mu_R[-1]
             act_R_surf = np.exp(mu_R_surf / T)
         eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
@@ -613,7 +617,7 @@ def get_unit_solid_discr(Shape, Type, N):
     return r_vec, volfrac_vec
 
 def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
-        r_vec, Rs):
+        r_vec, Rs, ISfuncs):
     mu_R = ( mu_reg_sln(c, Omga, T) +
             B*(c - cbar) )
     curv = calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape)
