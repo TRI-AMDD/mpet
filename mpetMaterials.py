@@ -82,8 +82,8 @@ class mod2var(daeModel):
         self.noise1 = self.noise2 = None
         if ndD["noise"]:
             numnoise = 200/10.
-            noise_prefac = 2e-4
-            tvec = np.linspace(0., self.ndD_s["tend"], numnoise)
+            noise_prefac = 1e-5
+            tvec = np.linspace(0., 1.05*self.ndD_s["tend"], numnoise)
             noise_data1 = noise_prefac*np.random.randn(numnoise, N)
             noise_data2 = noise_prefac*np.random.randn(numnoise, N)
             # Previous_output is common for all external functions
@@ -318,8 +318,8 @@ class mod1var(daeModel):
         self.noise = None
         if ndD["noise"]:
             numnoise = 200/10.
-            noise_prefac = 2e-4
-            tvec = np.linspace(0., self.ndD_s["tend"], numnoise)
+            noise_prefac = 1e-5
+            tvec = np.linspace(0., 1.05*self.ndD_s["tend"], numnoise)
             noise_data = noise_prefac*np.random.randn(numnoise, N)
             # Previous_output is common for all external functions
             previous_output = []
@@ -664,6 +664,8 @@ def calc_mu_ACR(c, cbar, Omga, B, kappa, T, cwet, ISfuncs=None):
     ctmp[1:-1] = c
     ctmp[0] = cwet
     ctmp[-1] = cwet
+#    ctmp[0] = ctmp[1]
+#    ctmp[-1] = ctmp[-2]
     dxs = 1./N
     curv = np.diff(ctmp, 2)/(dxs**2)
     mu_R = ( mu_reg_sln(c, Omga, T, ISfuncs) - kappa*curv
