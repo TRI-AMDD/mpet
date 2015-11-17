@@ -92,16 +92,8 @@ class mod2var(daeModel):
 #            _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
-        # phi in the electron conducting phase
-        phi_sld = self.phi_m
-        # mu of the ionic species
-        if self.ndD_s["elyteModelType"] == "SM":
-            mu_lyte = self.phi_lyte
-            act_lyte = None
-        elif self.ndD_s["elyteModelType"] == "dilute":
-            act_lyte = self.c_lyte
-            mu_lyte = T*np.log(act_lyte) + self.phi_lyte
-        mu_O = mu_lyte - phi_sld
+        mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
+                self.ndD_s["elyteModelType"])
 
         # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")
@@ -306,7 +298,7 @@ class mod1var(daeModel):
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs = np.array(
-                [LogRatio("LR", self, unit(), self.c1(k)) for k in
+                [LogRatio("LR", self, unit(), self.c(k)) for k in
                     range(N)])
 
 #        # Prepare noise
@@ -327,14 +319,8 @@ class mod1var(daeModel):
             phi_sld[:] = [self.phi(k) for k in range(N)]
         else:
             phi_sld = self.phi_m
-        # mu of the ionic species
-        if self.ndD_s["elyteModelType"] == "SM":
-            mu_lyte = self.phi_lyte
-            act_lyte = None
-        elif self.ndD_s["elyteModelType"] == "dilute":
-            act_lyte = self.c_lyte
-            mu_lyte = T*np.log(act_lyte) + self.phi_lyte
-        mu_O = mu_lyte - phi_sld
+        mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
+                self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -714,6 +700,16 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[1:N] = (Ds/T * (1 - c2_edges)**(1.0) * c2_edges *
             np.diff(mu2_R)/dr)
     return Flux1_vec, Flux2_vec
+
+def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
+    if elyteModelType == "SM":
+        mu_lyte = phi_lyte
+        act_lyte = None
+    elif elyteModelType == "dilute":
+        act_lyte = c_lyte
+        mu_lyte = T*np.log(act_lyte) + phi_lyte
+    mu_O = mu_lyte - phi_sld
+    return mu_O, act_lyte
 
 def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)
