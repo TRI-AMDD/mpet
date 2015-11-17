@@ -1,3 +1,4 @@
+import os
 import ConfigParser
 import pickle
 
@@ -18,6 +19,10 @@ class mpetIO():
         P_e = {}
         # cathode config
         paramfile_c = P_s.get('Electrodes', 'cathode')
+        # Look in the same directory as the input paramfile, wherever
+        # that is.
+        paramfileLoc = os.path.split(paramfile)[0]
+        paramfile_c = os.path.join(paramfileLoc, paramfile_c)
         P_c = ConfigParser.RawConfigParser()
         P_c.optionxform = str
         P_c.read(paramfile_c)
@@ -26,6 +31,7 @@ class mpetIO():
         # anode config
         if P_s.getint('Sim Params', 'Nvol_a') >= 1:
             paramfile_a = P_s.get('Electrodes', 'anode')
+            paramfile_a = os.path.join(paramfileLoc, paramfile_a)
             P_a = ConfigParser.RawConfigParser()
             P_a.optionxform = str
             P_a.read(paramfile_a)
