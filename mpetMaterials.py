@@ -4,6 +4,7 @@
 import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
+import scipy.interpolate as sint
 
 from daetools.pyDAE import *
 from daetools.pyDAE.data_reporters import *
@@ -77,21 +78,23 @@ class mod2var(daeModel):
                     [LogRatio("LR2", self, unit(), self.c2(k)) for k in
                         range(N)])
 
-#        # Prepare noise
-#        numnoise = 200/10.
-#        noise_prefac = 2e-4
-#        tvec = np.linspace(0., ndD_s["tend"], numnoise)
-#        noise_data1 = noise_prefac*np.random.randn(numnoise, N)
-#        noise_data2 = noise_prefac*np.random.randn(numnoise, N)
-#        # Previous_output is common for all external functions
-#        previous_output1 = []
-#        previous_output2 = []
-#        self.noise1 = [noise("noise", self, unit(), Time(), tvec,
-#            noise_data, previous_output1, _position_) for
-#            _position_ in range(N)]
-#        self.noise2 = [noise("noise", self, unit(), Time(), tvec,
-#            noise_data, previous_output2, _position_) for
-#            _position_ in range(N)]
+        # Prepare noise
+        self.noise1 = self.noise2 = None
+        if ndD["noise"]:
+            numnoise = 200/10.
+            noise_prefac = 2e-4
+            tvec = np.linspace(0., self.ndD_s["tend"], numnoise)
+            noise_data1 = noise_prefac*np.random.randn(numnoise, N)
+            noise_data2 = noise_prefac*np.random.randn(numnoise, N)
+            # Previous_output is common for all external functions
+            previous_output1 = []
+            previous_output2 = []
+            self.noise1 = [noise("noise", self, unit(), Time(), tvec,
+                noise_data, previous_output1, _position_) for
+                _position_ in range(N)]
+            self.noise2 = [noise("noise", self, unit(), Time(), tvec,
+                noise_data, previous_output2, _position_) for
+                _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
@@ -121,17 +124,19 @@ class mod2var(daeModel):
         if ndD["type"] in ["diffn2", "CHR2"]:
             # Equations for 1D particles of 1 field varible
             self.sldDynamics1D2var(c1, c2, mu_O, act_lyte,
-                    self.ISfuncs1, self.ISfuncs2)
+                    self.ISfuncs1, self.ISfuncs2,
+                    self.noise1, self.noise2)
         elif ndD["type"] in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
             self.sldDynamics0D2var(c1, c2, mu_O, act_lyte,
-                    self.ISfuncs1, self.ISfuncs2)
+                    self.ISfuncs1, self.ISfuncs2,
+                    self.noise1, self.noise2)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
     def sldDynamics0D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
-            ISfuncs2):
+            ISfuncs2, noise1, noise2):
         raise NotImplementedError("0D 2var not implemented")
         ndD = self.ndD
         N = ndD["N"]
@@ -139,7 +144,7 @@ class mod2var(daeModel):
         c_surf = c
         mu_R_surf = act_R_surf = None
         if not ndD["delPhiEqFit"]:
-            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T)
+            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
             act_R_surf = np.exp(mu_R_surf / T)
         eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
                 ndD["dphi_eq_ref"], ndD["delPhiFunc"])
@@ -153,10 +158,12 @@ class mod2var(daeModel):
         for k in range(N):
             eq = self.CreateEquation("dcsdt")
             eq.Residual = LHS_vec[k] - Rxn[k]
+            if ndD["noise"]:
+                eq.Residual += noise1[k]()
         return
 
     def sldDynamics1D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
-            ISfuncs2):
+            ISfuncs2, noise1, noise2):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -249,7 +256,9 @@ class mod2var(daeModel):
             eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
             eq1.Residual = LHS1_vec[k] - RHS1[k]
             eq2.Residual = LHS2_vec[k] - RHS2[k]
-#            eq.Residual = (LHS_vec[k] - RHS_c[k] + noisevec[k]()) # NOISE
+            if ndD["noise"]:
+                eq1.Residual += noise1[k]()
+                eq2.Residual += noise2[k]()
         return
 
 class mod1var(daeModel):
@@ -305,16 +314,18 @@ class mod1var(daeModel):
                     [LogRatio("LR", self, unit(), self.c(k)) for k in
                         range(N)])
 
-#        # Prepare noise
-#        numnoise = 200/10.
-#        noise_prefac = 2e-4
-#        tvec = np.linspace(0., ndD_s["tend"], numnoise)
-#        noise_data = noise_prefac*np.random.randn(numnoise, N)
-#        # Previous_output is common for all external functions
-#        previous_output = []
-#        self.noise = [noise("noise", self, unit(), Time(), tvec,
-#            noise_data, previous_output, _position_) for
-#            _position_ in range(N)]
+        # Prepare noise
+        self.noise = None
+        if ndD["noise"]:
+            numnoise = 200/10.
+            noise_prefac = 2e-4
+            tvec = np.linspace(0., self.ndD_s["tend"], numnoise)
+            noise_data = noise_prefac*np.random.randn(numnoise, N)
+            # Previous_output is common for all external functions
+            previous_output = []
+            self.noise = [noise("noise", self, unit(), Time(), tvec,
+                noise_data, previous_output, _position_) for
+                _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
         # phi in the electron conducting phase
@@ -342,10 +353,12 @@ class mod1var(daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if ndD["type"] in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sldDynamics1D1var(c, mu_O, act_lyte, self.ISfuncs)
+            self.sldDynamics1D1var(c, mu_O, act_lyte, self.ISfuncs,
+                    self.noise)
         elif ndD["type"] in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sldDynamics0D1var(c, mu_O, act_lyte, self.ISfuncs)
+            self.sldDynamics0D1var(c, mu_O, act_lyte, self.ISfuncs,
+                    self.noise)
 
         # Equations for potential drop along particle, if desired
         if ndD['simSurfCond']:
@@ -373,7 +386,7 @@ class mod1var(daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D1var(self, c, mu_O, act_lyte, ISfuncs):
+    def sldDynamics0D1var(self, c, mu_O, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -394,9 +407,11 @@ class mod1var(daeModel):
         for k in range(N):
             eq = self.CreateEquation("dcsdt")
             eq.Residual = LHS_vec[k] - Rxn[k]
+            if ndD["noise"]:
+                eq.Residual += noise[k]()
         return
 
-    def sldDynamics1D1var(self, c, mu_O, act_lyte, ISfuncs):
+    def sldDynamics1D1var(self, c, mu_O, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -468,7 +483,8 @@ class mod1var(daeModel):
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
             eq.Residual = LHS_vec[k] - RHS[k]
-#            eq.Residual = (LHS_vec[k] - RHS_c[k] + noisevec[k]()) # NOISE
+            if ndD["noise"]:
+                eq.Residual += noise[k]()
 
         return
 
@@ -618,7 +634,7 @@ def get_unit_solid_discr(Shape, Type, N):
 
 def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
         r_vec, Rs, ISfuncs):
-    mu_R = ( mu_reg_sln(c, Omga, T) +
+    mu_R = ( mu_reg_sln(c, Omga, T, ISfuncs) +
             B*(c - cbar) )
     curv = calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape)
     mu_R -= kappa*curv
@@ -650,7 +666,7 @@ def calc_mu_ACR(c, cbar, Omga, B, kappa, T, cwet, ISfuncs=None):
     ctmp[-1] = cwet
     dxs = 1./N
     curv = np.diff(ctmp, 2)/(dxs**2)
-    mu_R = ( mu_reg_sln(c, Omga, T) - kappa*curv
+    mu_R = ( mu_reg_sln(c, Omga, T, ISfuncs) - kappa*curv
             + B*(c - cbar) )
     return mu_R
 

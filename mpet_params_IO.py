@@ -164,6 +164,7 @@ class mpetIO():
                 ndD["cwet"] = P.getfloat('Material', 'cwet')
 #            if Type in ["diffn", "homog"]:
             ndD["logPad"] = P.getboolean('Material', 'logPad')
+            ndD["noise"] = P.getboolean('Material', 'noise')
 
             # 2var (extra) parameters
             if Type in ["CHR2"]:
