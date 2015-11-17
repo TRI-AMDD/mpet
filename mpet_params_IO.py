@@ -70,6 +70,7 @@ class mpetIO():
         ndD_s["trodes"] = ["c"]
         if ndD_s["Nvol"]["a"] >= 1:
             ndD_s["trodes"].append("a")
+        dD_s["k0_foil"] = P_s.getfloat('Electrodes', 'k0_foil')
 
         # Particle info
         dD_s["psd_mean"] = {"a": P_s.getfloat('Particles', 'mean_a'),
@@ -229,6 +230,7 @@ class mpetIO():
         ndD_s["tend"] = dD_s["tend"] / td
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
             ndD_s["tend"] = ndD_s["capFrac"] / ndD_s["currset"]
+        ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./CrateCurr) * (td/3600.)
 
         # parameters which depend on the electrode
         dD_s["psd_raw"] = {}
