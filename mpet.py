@@ -7,7 +7,8 @@ import shutil
 import errno
 import ConfigParser
 import time
-import subprocess
+import subprocess as subp
+import glob
 
 import numpy as np
 
@@ -745,17 +746,19 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         IO.writeDicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
 
     # Store info about this script
-    try:
-        # Git option, if it works -- commit info and current diff
-        p1 = subprocess.Popen(['git', 'rev-parse', '--short', 'HEAD'],
-                stdout=subprocess.PIPE)
-        out1, err1 = p1.communicate()
-        p2 = subprocess.Popen(['git', 'diff'],
-                stdout=subprocess.PIPE)
-        out2, err2 = p2.communicate()
-        p3 = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                stdout=subprocess.PIPE)
-        out3, err3 = p3.communicate()
+    # mpet.py script directory
+    localDir = os.path.dirname(os.path.abspath(__file__))
+    # Git option, if it works -- commit info and current diff
+    p1 = subp.Popen(['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
+            stdout=subp.PIPE, stderr=subp.PIPE)
+    out1, err1 = p1.communicate()
+    p2 = subp.Popen(['git', '-C', localDir, 'diff'],
+            stdout=subp.PIPE, stderr=subp.PIPE)
+    out2, err2 = p2.communicate()
+    p3 = subp.Popen(['git', '-C', localDir, 'rev-parse', '--abbrev-ref', 'HEAD'],
+            stdout=subp.PIPE, stderr=subp.PIPE)
+    out3, err3 = p3.communicate()
+    if out1 != "":
         # Store commit info to file, as well as how to patch if
         # there's a diff
         with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
@@ -769,9 +772,13 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             print >> fo, "$ python[2] mpet.py input_params.cfg"
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
             print >> fo, out2
-    except:
-        # At least keep a copy of this file with the output
-        shutil.copy(os.path.basename(__file__), outdir)
+    else:
+        # At least keep a copy of the python files in this directory with the output
+        snapshotDir = os.path.join(outdir, "simSnapshot")
+        os.makedirs(snapshotDir)
+        pyFiles = glob.glob(os.path.join(localDir, "*.py"))
+        for pyFile in pyFiles:
+            shutil.copy(pyFile, snapshotDir)
     try:
         shutil.copy("/etc/daetools/daetools.cfg", outdir)
     except:
