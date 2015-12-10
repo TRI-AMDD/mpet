@@ -147,6 +147,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 np.array(dD_s['psd_stddev']["c"])*Lfac)
 #        print "reg sln params:"
 #        print ndD["Omga"]
+        print "ndim B_c:", ndD_e["c"]["B"]
         if Nvol["s"]: print "Nvol_s:", Nvol["s"]
         print "Nvol_c:", Nvol["c"]
         if Nvol["a"]: print "Nvol_a:", Nvol["a"]
