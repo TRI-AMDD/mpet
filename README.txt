@@ -4,7 +4,7 @@ mpet.py
 
 1. Install python, numpy, scipy, matplotlib
     - Linux: try using your package manager.
-    - Windows: try python(x,y) -- https://code.google.com/p/pythonxy
+    - Windows: try WinPython -- https://winpython.github.io/
 
 2. Install DAE Tools
 (http://sourceforge.net/projects/daetools/files/1.4.0/)
