@@ -1,0 +1,56 @@
+The MIT License (MIT)
+
+Copyright (c) 2015 Raymond B. Smith
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+When the Software is used in academic works, cite the following papers which
+detail its development:
+
+1. Ferguson, T. and Bazant, M. Z., 2012, Nonequilibrium Thermodynamics
+of Porous Electrodes, J. Electrochem. Soc., 159 (12) A1967-A1985
+
+2. Bazant, M. Z., 2013, Theory of Chemical Kinetics and Charge
+Transfer based on Nonequilibrium Thermodynamics,
+Acc. Chem. Res., 46 (5) 1144-1160
+
+3. Li Y., El Gabaly, F., Ferguson, T., Smith, R., Bartlet, N.,
+Sugar, J., Fenton K. R., Cogswell, D., Kilcoyne A. L., Tyliszczak, T.,
+Bazant, M. Z., Chueh, W., 2014, Current-Induced Transition from
+Particle-by-Particle to Concurrent Intercalation in Phase-Separating
+Battery Electrodes, Nature Materials, 13 (12) 1149-1156
+
+as well as the following papers when using specific electrode material models:
+
+LiFePO4:
+
+1. Cogswell, D. and Bazant, M. Z., 2012, Coherency Strain and the
+Kinetics of Phase Separation in LiFePO4 Nanoparticles, ACS Nano,
+6 (3) 2215-2225
+
+2. Ferguson, T. and Bazant, M. Z., 2014, Phase Transformation Dynamics
+in Porous Battery Electrodes, 146 89-97
+
+Graphite:
+
+1. Ferguson, T. and Bazant, M. Z., 2014, Phase Transformation Dynamics
+in Porous Battery Electrodes, 146 89-97
+
+2. Smith, R. and Bazant, M. Z., Intercalation Kinetics in Multiphse
+Layered Materials, to be published
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

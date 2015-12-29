@@ -2,12 +2,23 @@
 *.mat
 *.m4v
 *.mp4
+*.avi
 *.png
 *.pdf
 *.pyc
-params.m
-params.cfg
-sim_output
+*.csv
+*.zip
+params*
+!params_default.cfg
+!configDefaults/*
+sim_output*
+archive/
+history/
+movies_figs/
+bai_LFP_data/
+graphite_data/
 
 py_mat_compare
 data_capacity.txt
+mpettest.m
+outputNotes.txt
