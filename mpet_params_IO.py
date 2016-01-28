@@ -204,9 +204,8 @@ class mpetIO():
         tp = ndD_s["tp"] = zp*Dp / (zp*Dp - zm*Dm)
         # Diffusive time scale
         if ndD_s["elyteModelType"] == "dilute":
-            td = dD_s["td"] = Lref**2 / Damb
-        elif ndD_s["elyteModelType"] == "SM":
-            td = dD_s["td"] = Lref**2 / Dref
+            Dref = dD_s["Dref"] = Damb
+        td = dD_s["td"] = Lref**2 / Dref
 
         # maximum concentration in electrode solids, mol/m^3
         # and electrode capacity ratio
@@ -222,15 +221,15 @@ class mpetIO():
             # flat plate anode with assumed infinite supply of metal
             ndD_s['z'] = 0.
         limtrode = ("c" if ndD_s["z"] < 1 else "a")
-        CrateCurr = dD_e[limtrode]["cap"] / 3600. # A/m^2
+        CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600. # A/m^2
         dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
 
         # Some nondimensional parameters
         T = ndD_s["T"] = Tabs / Tref
         ndD_s["Rser"] = dD_s["Rser"] * e/(k*Tref) * (3600./td) * CrateCurr
-        ndD_s["Dp"] = Dp / Damb
-        ndD_s["Dm"] = Dm / Damb
-        cref = 1000. # mol/m^3 = 1 M
+        ndD_s["Dp"] = Dp / Dref
+        ndD_s["Dm"] = Dm / Dref
+        cref = dD_s["cref"] = 1000. # mol/m^3 = 1 M
         ndD_s["c0"] = c0 / cref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"]*td/3600
