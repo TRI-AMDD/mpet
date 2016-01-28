@@ -137,29 +137,42 @@ class mod2var(daeModel):
 
     def sldDynamics0D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
             ISfuncs2, noise1, noise2):
-        raise NotImplementedError("0D 2var not implemented")
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        c_surf = c
-        mu_R_surf = act_R_surf = None
+        c1_surf = c1
+        c2_surf = c2
+        mu1_R_surf = act1_R_surf = None
+        mu2_R_surf = act2_R_surf = None
         if not ndD["delPhiEqFit"]:
-            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
-            act_R_surf = np.exp(mu_R_surf / T)
-        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs)
+            act1_R_surf = np.exp(mu1_R_surf / T)
+            act2_R_surf = np.exp(mu2_R_surf / T)
+        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
                 ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
+                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act1_R_surf, act_lyte, ndD["lambda"],
+                ndD["alpha"])
+        Rxn2 = calc_rxn_rate(eta2, c2_surf, self.c_lyte, ndD["k0"],
+                T, ndD["rxnType"], act2_R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
 
-        dcdt_vec = np.empty(N, dtype=object)
-        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
-        LHS_vec = dcdt_vec
+        dc1dt_vec = np.empty(N, dtype=object)
+        dc2dt_vec = np.empty(N, dtype=object)
+        dc1dt_vec[0:N] = [self.c1.dt(k) for k in range(N)]
+        dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
+        LHS1_vec = dc1dt_vec
+        LHS2_vec = dc2dt_vec
         for k in range(N):
-            eq = self.CreateEquation("dcsdt")
-            eq.Residual = LHS_vec[k] - Rxn[k]
+            eq1 = self.CreateEquation("dc1sdt")
+            eq2 = self.CreateEquation("dc2sdt")
+            eq1.Residual = LHS1_vec[k] - Rxn1[k]
+            eq2.Residual = LHS2_vec[k] - Rxn2[k]
             if ndD["noise"]:
-                eq.Residual += noise1[k]()
+                eq1.Residual += noise1[k]()
+                eq2.Residual += noise2[k]()
         return
 
     def sldDynamics1D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
