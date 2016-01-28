@@ -506,8 +506,8 @@ class mpetIO():
             raise NotImplementedError("Input solidShape not defined")
         if solidType == "homog_sdn" and not T298:
             raise NotImplementedError("homog_snd req. Tabs=298")
-        if ndD["rxnType"] == "BV" and ndD_s["elyteModelType"] == "SM":
-            raise Exception("BV currently requires dilute elyte model")
+#        if ndD["rxnType"] == "BV" and ndD_s["elyteModelType"] == "SM":
+#            raise Exception("BV currently requires dilute elyte model")
         try:
             if ndD['delPhiEqFit']:
                 if ndD['delPhiFunc'] == "LiMn2O4" and not T298:

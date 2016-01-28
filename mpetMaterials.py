@@ -726,7 +726,7 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
 def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     if elyteModelType == "SM":
         mu_lyte = phi_lyte
-        act_lyte = None
+        act_lyte = c_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
