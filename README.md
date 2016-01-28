@@ -47,6 +47,10 @@ The software will save the simulation output data in a folder called
       - `cbar_{full,c,a}` -- average solid concentrations (movie)
       - `bulkp_{c,a}` -- macroscopic electrode solid phise potential (movie)
       - `soc_{c,a}` -- electrode state of charge
+2.  Alternatively, convert the output to plain text (csv) format using
+    `python[2] outmat2txt.py sim_output` (or replace `sim_output` with
+    any subfolder in the `history` folder. Then analyze using whatever
+    tools you prefer.
 
 If you want to save output to a movie (or figure), add `save` as an extra
 argument to `plot_data.py`: `python2 plot_data.py sim_output cbar save`.

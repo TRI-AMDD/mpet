@@ -40,6 +40,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     k = dD_s['k']                      # Boltzmann constant, J/(K Li)
     Tref = dD_s['Tref']                # Temp, K
     e = dD_s['e']                      # Charge of proton, C
+    N_A = dD_s['N_A']                  # particles/mol
+    F = dD_s['F']                      # C/mol
     td = dD_s["td"]
     Etheta = {"a" : 0.}
     for trode in trodes:
@@ -49,16 +51,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         else:
             Etheta[trode] = (k*Tref/e) * ndD_e[trode]["dphi_eq_ref"]
     Vstd = Etheta["c"] - Etheta["a"]
-#    for l in trodes:
-#        # Replace the standard potential if a fit voltage curve was used.
-#        # Use the value that the simulation used in initialization.
-#        if ndD['delPhiEqFit'][l]:
-#            Vstd[l] = ndD["dphi_eq_ref"][l]*(k*Tref/e)
     Nvol = ndD_s["Nvol"]
     Npart = ndD_s["Npart"]
-#    solidType = ndD["solidType"]
-#    solidShape = ndD["solidShape"]
-#    rxnType = ndD["rxnType"]
     psd_len = dD_s["psd_len"]
     # Discretization (and associated porosity)
     Lfac = 1e6
@@ -66,7 +60,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     dxc = ndD_s["L"]["c"]/Nvol["c"]
     dxvec = np.array(Nvol["c"] * [dxc])
     porosvec = np.array(Nvol["c"] * [ndD_s["poros"]["c"]])
-#    L_c = dD['L']["c"] * Lfac
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
     if Nvol["s"]:
         dxs = ndD_s["L"]["s"]/Nvol["s"]
@@ -74,7 +67,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         dxvec = np.hstack((dxvec_s, dxvec))
         poros_s = np.array(Nvol["s"] * [ndD_s["poros"]["s"]])
         porosvec = np.hstack((poros_s, porosvec))
-#        L_s = dD['L']["s"] * Lfac
         cellsvec += dD_s["L"]["s"] / dD_s["L"]["c"]
         cellsvec_s = dxs*np.arange(Nvol["s"]) + dxs/2.
         cellsvec = np.hstack((cellsvec_s, cellsvec))
@@ -84,11 +76,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         dxvec = np.hstack((dxvec_a, dxvec))
         poros_a = np.array(Nvol["a"] * [ndD_s["poros"]["a"]])
         porosvec = np.hstack((poros_a, porosvec))
-#        L_a = dD['L']["a"] * Lfac
         cellsvec += dD_s["L"]["a"] / dD_s["L"]["c"]
         cellsvec_a = dxa*np.arange(Nvol["a"]) + dxa/2.
         cellsvec = np.hstack((cellsvec_a, cellsvec))
-    cellsvec *= dD_s["L"]["c"] * Lfac
+    cellsvec *= dD_s["Lref"] * Lfac
+    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * dD_s["Lref"] * Lfac
     # Extract the reported simulation times
     times = data[pfx + 'phi_applied_times'][0]
     numtimes = len(times)
@@ -184,21 +176,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #            else:
 #                print l + " surface conductivity loss: No"
 
+    if plot_type in ["params"]:
+        return ndD_s, dD_s, ndD_e, dD_e
+    if plot_type in ["discData"]:
+        return cellsvec/Lfac, facesvec/Lfac
+
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
         voltage = (Vstd -
                 (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
-        if data_only:
-            return ffvec, voltage
         fig, ax = plt.subplots()
         if plot_type == "v":
+            if data_only:
+                return ffvec, voltage
             ax.plot(ffvec, voltage)
             xmin = 0.
             xmax = 1.
             ax.set_xlim((xmin, xmax))
             ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         elif plot_type == "vt":
+            if data_only:
+                return times*td, voltage
             ax.plot(times*td, voltage)
             ax.set_xlabel("Time [s]")
         ax.set_ylabel("Voltage [V]")
@@ -277,7 +276,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ffvec = data[pfx + 'ffrac_c'][0]
         if data_only:
             return times*td, current
-#        print times*td, current
         fig, ax = plt.subplots()
         ax.plot(times*td, current)
         xmin = np.min(ffvec)
@@ -294,8 +292,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
-        if data_only and not fplot:
-            raise NotImplemented("no data-only output for elytec/p")
         datax = cellsvec
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
@@ -327,20 +323,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if plot_type in ["elytec", "elytecf"]:
             ymin = 0
             ymax = 2.2
-            ylbl = 'Concentration of electrolyte [nondim]'
-            datay = datay_c
+            ylbl = 'Concentration of electrolyte [M]'
+            datay = datay_c * dD_s["cref"] / 1000.
         elif plot_type in ["elytep", "elytepf"]:
             ymin = -50
             ymax = 50
-            ylbl = 'Potential of electrolyte [nondim]'
-            datay = datay_p
+            ylbl = 'Potential of electrolyte [V]'
+            datay = datay_p * k*Tref/e
         elif plot_type in ["elytei", "elyteif", "elytedivi",
             "elytedivif"]:
-            ymin = -5.
-            ymax = 5.
-            ylbl = 'Current density of electrolyte [nondim]'
             dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
-            dxd2 = dxvec[1:-1]
+            dxd2 = dxvec
             c_edges = (2*datay_c[:, 1:]*datay_c[:, :-1])/(datay_c[:, 1:] +
                     datay_c[:, :-1] + 1e-20)
             porosTmp = porosvec**(1.5)
@@ -349,7 +342,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             if ndD_s["elyteModelType"] == "SM":
                 D_lyte, kappa_lyte, thermFac_lyte, tp0, Dref = (
                         elyte_CST.getProps(ndD_s["SMset"]))
-                print "elyte Dref:", Dref
                 i_edges = -poros_edges*kappa_lyte(c_edges) * (
                         np.diff(datay_p, axis=1)/dxd1 -
                         (ndD_s["nup"]+ndD_s["num"])/ndD_s["nup"] *
@@ -363,15 +355,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 i_edges = (-(Dp - Dm)*np.diff(datay_c, axis=1)/dxd1
                         - (zp*Dm - zm*Dm)*c_edges*np.diff(datay_p, axis=1)/dxd1
                         )
+            i_CCs = np.zeros((numtimes, 1))
+            i_edges = np.hstack((i_CCs, i_edges, i_CCs))
             if plot_type in ["elytei", "elyteif"]:
-                datax = (cellsvec[:-1] + cellsvec[1:])/2.
-                datay = i_edges
+                ylbl = r'Current density of electrolyte [A/m$^2$]'
+                datax = facesvec
+                datay = i_edges * (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"])
             elif plot_type in ["elytedivi", "elytedivif"]:
-                datax = cellsvec[1:-1]
+                ylbl = r'Divergence of Current density of electrolyte [A/m$^3$]'
+                datax = cellsvec
                 datay = np.diff(i_edges, axis=1) / dxd2
-        numy = len(datay[t0ind])
+                datay *= (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"]**2)
+        if fplot:
+            datay = datay[t0ind]
         if data_only:
-            return datax, datay[t0ind]
+            return datax, datay
+        dataMin, dataMax = np.min(datay), np.max(datay)
+        dataRange = dataMax - dataMin
+        ymin = dataMin - 0.05*dataRange
+        ymax = dataMax + 0.05*dataRange
         fig, ax = plt.subplots()
         ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
         ax.set_ylabel(ylbl)
@@ -384,6 +386,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         line1, = ax.plot(datax, datay[t0ind, :], '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
+        if fplot:
+            return fig, ax
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
             ttl.set_text('')
@@ -481,14 +485,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
-        if data_only:
-            raise NotImplemented("no data-only output for cbar")
         if plot_type[-1] == "l":
             lvec = ["a", "c"]
         elif plot_type[-1] == "a":
             lvec = ["a"]
         else:
             lvec = ["c"]
+        dataCbar = {}
+        for trode in trodes:
+            dataCbar[trode] = np.zeros((numtimes, Nvol[trode], Npart[trode]))
+            for tInd in range(numtimes):
+                for i in range(Nvol[trode]):
+                    for j in range(Npart[trode]):
+                        dataStr = (pfx +
+                                'partTrode{t}vol{i}part{j}.'.format(t=trode,i=i,j=j)
+                                + 'cbar')
+                        dataCbar[trode][tInd, i, j] = (
+                                data[dataStr][0][tInd])
+        if data_only:
+            return dataCbar
         # Set up colors.
         # Define if you want smooth or discrete color changes
         # Option: "smooth" or "discrete"
@@ -576,20 +591,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ax.add_collection(collection[indx])
         # Have a "background" image of rectanges representing the
         # initial state of the system.
-        dataCbar = {}
-        for trode in trodes:
-            dataCbar[trode] = np.zeros((numtimes, Nvol[trode], Npart[trode]))
-            for tInd in range(numtimes):
-                for i in range(Nvol[trode]):
-                    for j in range(Npart[trode]):
-                        dataStr = (pfx +
-                                'partTrode{t}vol{i}part{j}.'.format(t=trode,i=i,j=j)
-                                + 'cbar')
-                        dataCbar[trode][tInd, i, j] = (
-                                data[dataStr][0][tInd])
         def init():
             for indx, l in enumerate(lvec):
-#                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][0]
                 cbar_mat = dataCbar[l][0, :, :]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
@@ -600,7 +603,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return out
         def animate(tind):
             for indx, l in enumerate(lvec):
-#                cbar_mat = data[pfx + 'cbar_sld_{l}'.format(l=l)][tind]
                 cbar_mat = dataCbar[l][tind, :, :]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
@@ -615,8 +617,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Plot cathode potential
     elif plot_type in ["bulkp_c", "bulkp_a"]:
         l = plot_type[-1]
-        if data_only:
-            raise NotImplemented("no data-only output for bulkp")
+        t0ind = 0
         mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
@@ -626,24 +627,23 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 horizontalalignment="center")
         bulkp = pfx + 'phi_bulk_{l}'.format(l=l)
         Ltrode = dD_s['L'][l] * Lfac
-        datay = data[bulkp][0]
-        ymin = np.min(data[bulkp]) - 0.2
-        ymax = np.max(data[bulkp]) + 0.2
-        numy = len(datay)
-        xmin = 0
-        xmax = Ltrode
-        datax = np.linspace(xmin, xmax, numy)
-        ax.set_ylim((ymin, ymax))
-        ax.set_xlim((xmin, xmax))
+        datay = data[bulkp]
+        ymin = np.min(datay) - 0.2
+        ymax = np.max(datay) + 0.2
+        if l == "a":
+            datax = cellsvec[:Nvol["a"]]
+        elif l == "c":
+            datax = cellsvec[-Nvol["c"]:]
+        if data_only:
+            return datax, datay
         # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay)
+        line1, = ax.plot(datax, datay[t0ind])
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
             ttl.set_text('')
             return line1, ttl
         def animate(tind):
-            datay = data[bulkp][tind]
-            line1.set_ydata(datay)
+            line1.set_ydata(datay[tind])
             t_current = times[tind]
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
             ttl.set_text(ttl_fmt.format(perc=tfrac))
