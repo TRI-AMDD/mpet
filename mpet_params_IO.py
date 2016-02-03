@@ -236,7 +236,7 @@ class mpetIO():
         ndD_s["Vset"] = dD_s["Vset"] * e/(k*Tref)
         ndD_s["tend"] = dD_s["tend"] / td
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
-            ndD_s["tend"] = ndD_s["capFrac"] / ndD_s["currset"]
+            ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
         ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./CrateCurr) * (td/3600.)
 
         # parameters which depend on the electrode
