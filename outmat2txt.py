@@ -205,7 +205,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
                         datay = data[sol]
                         filename = fnameSolBase.format(l=Trode,i=i,j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
-                                delimiter=dlm, header=solStr)
+                                delimiter=dlm, header=solHdr)
 
     if cbarData:
         cbarDict = plot_data.show_data(indir, plot_type="cbar_full",

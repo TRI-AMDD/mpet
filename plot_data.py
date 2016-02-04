@@ -329,7 +329,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ymin = -50
             ymax = 50
             ylbl = 'Potential of electrolyte [V]'
-            datay = datay_p * k*Tref/e
+            datay = datay_p*(k*Tref/e) - Vstd
         elif plot_type in ["elytei", "elyteif", "elytedivi",
             "elytedivif"]:
             dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
