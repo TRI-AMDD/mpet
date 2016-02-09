@@ -89,11 +89,11 @@ class mod2var(daeModel):
             # Previous_output is common for all external functions
             previous_output1 = []
             previous_output2 = []
-            self.noise1 = [noise("noise", self, unit(), Time(), tvec,
-                noise_data, previous_output1, _position_) for
+            self.noise1 = [noise("noise1", self, unit(), Time(), tvec,
+                noise_data1, previous_output1, _position_) for
                 _position_ in range(N)]
-            self.noise2 = [noise("noise", self, unit(), Time(), tvec,
-                noise_data, previous_output2, _position_) for
+            self.noise2 = [noise("noise2", self, unit(), Time(), tvec,
+                noise_data2, previous_output2, _position_) for
                 _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
