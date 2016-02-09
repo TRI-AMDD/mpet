@@ -145,7 +145,8 @@ class mod2var(daeModel):
         mu1_R_surf = act1_R_surf = None
         mu2_R_surf = act2_R_surf = None
         if not ndD["delPhiEqFit"]:
-            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs)
+            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs1)
+            mu2_R_surf = mu_reg_sln(c2_surf, ndD["Omga"], T, ISfuncs2)
             act1_R_surf = np.exp(mu1_R_surf / T)
             act2_R_surf = np.exp(mu2_R_surf / T)
         eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
@@ -619,7 +620,7 @@ def get_unit_solid_discr(Shape, Type, N):
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-    elif Type in ["homog", "homog_sdn"]:
+    elif Type in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
         r_vec = None
         volfrac_vec = np.ones(1)
     elif Shape == "sphere":
