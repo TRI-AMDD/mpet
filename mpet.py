@@ -262,7 +262,7 @@ class modMPET(daeModel):
                         phi_l = self.phi_bulk[l](i)
                     else:
                         phi_l = self.phi_part[l](i, j - 1)
-                    if j == (Npart[l] - 1): # No particle at and of "chain"
+                    if j == (Npart[l] - 1): # No particle at end of "chain"
                         G_r = 0
                         phi_r = phi_n
                     else:
@@ -356,7 +356,7 @@ class modMPET(daeModel):
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
-        eq = self.CreateEquation("Masured_Voltage")
+        eq = self.CreateEquation("Measured_Voltage")
         eq.Residual = self.phi_cell() - (
                 self.phi_applied() - ndD["Rser"]*self.current())
 
