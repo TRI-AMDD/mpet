@@ -399,6 +399,40 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ttl.set_text(ttl_fmt.format(perc=tfrac))
             return line1, ttl
 
+    # Plot solid particle-average concentrations
+    elif plot_type in ["cbarLine_c", "cbarLine_a"]:
+        l = plot_type[-1]
+        fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
+                sharey=True)
+        partStr = "partTrode{l}vol{{j}}part{{i}}.".format(l=l)
+        type2c = False
+        if ndD_e[l]["type"] in ndD_s["1varTypes"]:
+            str_base = pfx + partStr + "cbar"
+        elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
+            type2c = True
+            str1_base = pfx + partStr + "c1bar"
+            str2_base = pfx + partStr + "c2bar"
+        ylim = (0, 1.01)
+        datax = times
+        for i in range(Npart[l]):
+            for j in range(Nvol[l]):
+                if type2c:
+                    sol1_str = str1_base.format(i=i, j=j)
+                    sol2_str = str2_base.format(i=i, j=j)
+                    # Remove axis ticks
+                    ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    datay1 = data[sol1_str][0]
+                    datay2 = data[sol2_str][0]
+                    line1, = ax[i, j].plot(times, datay1)
+                    line2, = ax[i, j].plot(times, datay2)
+                else:
+                    sol_str = str_base.format(i=i, j=j)
+                    # Remove axis ticks
+                    ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    datay = data[sol_str][0]
+                    line, = ax[i, j].plot(times, datay)
+        return fig, ax
+
     # Plot all solid concentrations or potentials
     elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c"]:
         t0ind = 0
