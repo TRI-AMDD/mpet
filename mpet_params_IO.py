@@ -138,45 +138,35 @@ class mpetIO():
             ndD = {}
             P = P_e[trode]
 
+            # Particles
             Type = ndD["type"] = P.get('Particles', 'type')
             dD["disc"] = P.getfloat('Particles', 'discretization')
             Shape = ndD["shape"] = P.get('Particles', 'shape')
             dD["thickness"] = P.getfloat('Particles', 'thickness')
-            if Type in ["ACR"]:
-                ndD["simSurfCond"] = P.getboolean('Conductivity', 'simSurfCond')
-                dD["scond"] = P.getfloat('Conductivity', 'scond')
+            # Conductivity
+            ndD["simSurfCond"] = P.getboolean('Conductivity', 'simSurfCond')
+            dD["scond"] = P.getfloat('Conductivity', 'scond')
 
             # Material
-            # 1var and 2var parameters
-#            if Type not in ["diffn"]:
-            if Type in ["ACR", "CHR", "CHR2", "homog", "homog2",
-                    "homog_sdn", "homog2_sdn"]:
-                dD["Omga"] = P.getfloat('Material', 'Omega_a')
-                dD["kappa"] = P.getfloat('Material', 'kappa')
-                dD["B"] = P.getfloat('Material', 'B')
-                dD["Vstd"] = P.getfloat('Material', 'Vstd')
+            # both 1var and 2var parameters
+            dD["Omga"] = P.getfloat('Material', 'Omega_a')
+            dD["Omgb"] = P.getfloat('Material', 'Omega_b')
+            dD["Omgc"] = P.getfloat('Material', 'Omega_c')
+            dD["kappa"] = P.getfloat('Material', 'kappa')
+            dD["B"] = P.getfloat('Material', 'B')
+            dD["EvdW"] = P.getfloat('Material', 'EvdW')
             dD["rho_s"] = P.getfloat('Material', 'rho_s')
+            dD["Vstd"] = P.getfloat('Material', 'Vstd')
+            dD["Dsld"] = P.getfloat('Material', 'Dsld')
             ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
+            dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
+            ndD["cwet"] = P.getfloat('Material', 'cwet')
             if ndD["delPhiEqFit"]:
                 ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
             else:
                 ndD["delPhiFunc"] = None
-#            if Type not in ["ACR", "homog", "homog_sdn"]:
-            if Type in ["diffn", "diffn2", "CHR", "CHR2"]:
-                dD["Dsld"] = P.getfloat('Material', 'Dsld')
-            if Type in ["CHR", "CHR2"]:
-                dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
-            if Type in ["ACR"]:
-                ndD["cwet"] = P.getfloat('Material', 'cwet')
-#            if Type in ["diffn", "homog"]:
             ndD["logPad"] = P.getboolean('Material', 'logPad')
             ndD["noise"] = P.getboolean('Material', 'noise')
-
-            # 2var (extra) parameters
-            if Type in ["CHR2"]:
-                dD["Omgb"] = P.getfloat('Material', 'Omega_b')
-                dD["Omgc"] = P.getfloat('Material', 'Omega_c')
-                dD["EvdW"] = P.getfloat('Material', 'EvdW')
 
             # Reactions
             ndD["rxnType"] = P.get('Reactions', 'rxnType')
@@ -296,7 +286,8 @@ class mpetIO():
 
             ## Electrode particle parameters
             Type = ndD_e[trode]['type']
-            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
+#            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
+            if ndD_e[trode]["delPhiEqFit"]:
                 material = ndD_e[trode]['delPhiFunc']
                 fits = delta_phi_fits.DPhiFits(ndD_s["T"])
                 phifunc = fits.materialData[material]
@@ -306,13 +297,11 @@ class mpetIO():
                 ndD_e[trode]["dphi_eq_ref"] = 0.
                 ndD_s["phiRef"][trode] = (e/(k*Tref))*dD_e[trode]["Vstd"]
             lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*Tref)
-            if Type not in ["diffn"]:
-                ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
-                ndD_e[trode]["B"] = dD_e[trode]['B']/(k*Tref*dD_e[trode]['rho_s'])
-            if Type in ["CHR2"]:
-                ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
-                ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*Tref)
-                ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*Tref)
+            ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
+            ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
+            ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*Tref)
+            ndD_e[trode]["B"] = dD_e[trode]['B']/(k*Tref*dD_e[trode]['rho_s'])
+            ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*Tref)
 #            lens = dD["psd_len"][trode]
 #            areas = dD["psd_area"][trode]
 #            vols = dD["psd_vol"][trode]
@@ -333,22 +322,18 @@ class mpetIO():
                     plen = dD_s["psd_len"][trode][i, j]
                     parea = dD_s["psd_area"][trode][i, j]
                     pvol = dD_s["psd_vol"][trode][i, j]
-                    if Type not in ["diffn"]:
-                        ndD_tmp["kappa"] = (dD_e[trode]['kappa'] /
-                                (k*Tref*dD_e[trode]['rho_s']*plen**2))
-                    if Type in ["CHR", "CHR2"]:
-                        ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
-                                plen * dD_e[trode]['rho_s'] /
-                                dD_e[trode]['kappa'])
-                    if Type in ["ACR"]:
-                        ndD_tmp["scond"] = (dD_e[trode]['scond'] * (k*Tref) /
-                                (dD_e[trode]['k0']*e*plen**2))
-                    if Type not in ["ACR", "homog", "homog_sdn"]:
-                        ndD_tmp["Dsld"] = dD_e[trode]['Dsld']*td/plen**2
+                    ndD_tmp["kappa"] = (dD_e[trode]['kappa'] /
+                            (k*Tref*dD_e[trode]['rho_s']*plen**2))
+                    ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
+                            plen * dD_e[trode]['rho_s'] /
+                            dD_e[trode]['kappa'])
+                    ndD_tmp["scond"] = (dD_e[trode]['scond'] * (k*Tref) /
+                            (dD_e[trode]['k0']*e*plen**2))
+                    ndD_tmp["Dsld"] = dD_e[trode]['Dsld']*td/plen**2
                     ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*td
                             / (F*dD_e[trode]["csmax"]))
                     ndD_tmp["delta_L"] = pvol/(parea*plen)
-                    if Type == "homog_sdn":
+                    if Type in ["homog_sdn", "homog2_sdn"]:
                         ndD_tmp["Omga"] = self.size2regsln(plen)
 #            ndD["kappa"][trode] = (dD['kappa'][trode] /
 #                    (k*Tref*dD['rho_s'][trode]*lens**2))
