@@ -369,10 +369,11 @@ class modMPET(daeModel):
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            eq.Residual = self.phi_applied() - ndD["Vset"]*(
-                    1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
-#                    1)
-#                    np.tanh(Time()/(45.0)))
+            eq.Residual = self.phi_applied() - (ndD["Vset"]
+                    * (1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+#                    * 1
+#                    * np.tanh(Time()/(45.0)))
+                    )
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
