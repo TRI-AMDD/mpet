@@ -413,22 +413,33 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             str1_base = pfx + partStr + "c1bar"
             str2_base = pfx + partStr + "c2bar"
         ylim = (0, 1.01)
-        datax = times
+        datax = times*td
+        xLblNCutoff = 4
+        xLbl = "Time [s]"
+        yLbl = "Particle Average Filling Fraction"
         for i in range(Npart[l]):
             for j in range(Nvol[l]):
                 if type2c:
                     sol1_str = str1_base.format(i=i, j=j)
                     sol2_str = str2_base.format(i=i, j=j)
-                    # Remove axis ticks
-                    ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    if Nvol[l] > xLblNCutoff:
+                        # Remove axis ticks
+                        ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    else:
+                        ax[i, j].set_xlabel(xLbl)
+                        ax[i, j].set_ylabel(yLbl)
                     datay1 = data[sol1_str][0]
                     datay2 = data[sol2_str][0]
                     line1, = ax[i, j].plot(times, datay1)
                     line2, = ax[i, j].plot(times, datay2)
                 else:
                     sol_str = str_base.format(i=i, j=j)
-                    # Remove axis ticks
-                    ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    if Nvol[l] > xLblNCutoff:
+                        # Remove axis ticks
+                        ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                    else:
+                        ax[i, j].set_xlabel(xLbl)
+                        ax[i, j].set_ylabel(yLbl)
                     datay = data[sol_str][0]
                     line, = ax[i, j].plot(times, datay)
         return fig, ax
