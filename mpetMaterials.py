@@ -147,6 +147,8 @@ class mod2var(daeModel):
         if not ndD["delPhiEqFit"]:
             mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs1)
             mu2_R_surf = mu_reg_sln(c2_surf, ndD["Omga"], T, ISfuncs2)
+            mu1_R_surf += ndD["Omgb"]*c2 + ndD["Omgc"]*c2*(1-c2)*(1-2*c1)
+            mu2_R_surf += ndD["Omgb"]*c1 + ndD["Omgc"]*c1*(1-c1)*(1-2*c2)
             act1_R_surf = np.exp(mu1_R_surf / T)
             act2_R_surf = np.exp(mu2_R_surf / T)
         eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
