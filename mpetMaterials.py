@@ -81,8 +81,8 @@ class mod2var(daeModel):
         # Prepare noise
         self.noise1 = self.noise2 = None
         if ndD["noise"]:
-            numnoise = 200/10.
-            noise_prefac = 1e-5
+            numnoise = 200
+            noise_prefac = 1e-7
             tvec = np.linspace(0., 1.05*self.ndD_s["tend"], numnoise)
             noise_data1 = noise_prefac*np.random.randn(numnoise, N)
             noise_data2 = noise_prefac*np.random.randn(numnoise, N)
@@ -333,8 +333,8 @@ class mod1var(daeModel):
         # Prepare noise
         self.noise = None
         if ndD["noise"]:
-            numnoise = 200/10.
-            noise_prefac = 1e-5
+            numnoise = 200
+            noise_prefac = 1e-7
             tvec = np.linspace(0., 1.05*self.ndD_s["tend"], numnoise)
             noise_data = noise_prefac*np.random.randn(numnoise, N)
             # Previous_output is common for all external functions

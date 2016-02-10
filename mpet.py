@@ -363,8 +363,9 @@ class modMPET(daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            eq.Residual = self.current() - ndD["currset"]*(
-                    1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+            eq.Residual = self.current() - (ndD["currset"]
+                    * (1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+                    )
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
