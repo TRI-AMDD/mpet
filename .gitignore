@@ -17,10 +17,12 @@ history/
 movies_figs/
 bai_LFP_data/
 graphite_data/
+oldParams/
 
 py_mat_compare
 data_capacity.txt
 mpettest.m
 outputNotes.txt
+todo.txt
 
 .remarkrc
