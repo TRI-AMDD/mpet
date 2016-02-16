@@ -788,6 +788,11 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     try:
         shutil.copy("/etc/daetools/daetools.cfg", outdir)
     except:
+        cfgdir = os.path.join(os.environ["HOME"], ".daetools")
+        try:
+            shutil.copy(os.path.join(cfgdir, "daetools.cfg"), outdir)
+        except:
+            pass
         pass
 
     # Carry out the simulation
