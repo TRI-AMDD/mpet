@@ -5,7 +5,6 @@ import sys
 import os
 import shutil
 import errno
-import ConfigParser
 import time
 import subprocess as subp
 import glob
@@ -20,12 +19,9 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
 import mpet_params_IO
-import delta_phi_fits
 import mpetPorts
 import mpetMaterials
 import elyte_CST
-
-eps = -1e-12
 
 # Define some variable types
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),

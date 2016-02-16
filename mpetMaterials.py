@@ -7,8 +7,6 @@ import scipy.special as spcl
 import scipy.interpolate as sint
 
 from daetools.pyDAE import *
-from daetools.pyDAE.data_reporters import *
-from daetools.solvers.superlu import pySuperLU
 
 import delta_phi_fits
 import mpetPorts
