@@ -698,13 +698,13 @@ def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
 
 def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     N = len(c)
-    Flux_vec = np.empty(N+1, dtype=ojbect)
+    Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0 # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = 2*(c[0:-1] * c[1:])/(c[0:-1] + c[1:])
     # Keep the concentration between 0 and 1
-    c_edges = np.array([Max(1e-6, c_edges[i]) for i in range(N)])
-    c_edges = np.array([Min(1-1e-6, c_edges[i]) for i in range(N)])
+    c_edges = np.array([Max(1e-6, c_edges[i]) for i in range(N-1)])
+    c_edges = np.array([Min(1-1e-6, c_edges[i]) for i in range(N-1)])
     Flux_vec[1:N] = (Ds/T * (1-c_edges) * c_edges *
             np.diff(mu)/dr)
     return Flux_vec
