@@ -13,6 +13,7 @@ class DPhiFits():
         self.materialData['LiMn2O4_2'] = self.LiMn2O4_2
         self.materialData['LiC6'] = self.LiC6
         self.materialData['LiC6_2'] = self.LiC6_2
+        self.materialData['LiC6_2step'] = self.LiC6_2step
         self.materialData['LiC6_coke'] = self.LiC6_coke
         self.materialData['LiC6_coke2'] = self.LiC6_coke2
         self.materialData['NCA1'] = self.NCA1
@@ -92,13 +93,19 @@ class DPhiFits():
                 0.0175*np.tanh((y - 0.5692)/0.0875)) - del_phi_ref
         return del_phi_eq
 
+    def stepDown(self, x, xc, delta):
+        return 0.5*(-np.tanh((x - xc)/delta) + 1)
+    def stepUp(self, x, xc, delta):
+        return 0.5*(np.tanh((x - xc)/delta) + 1)
+
     def LiC6_2(self, y, del_phi_ref):
         """
         Fit \Delta\phi^{eq} for Li_y C_6 as a function of y.
         This can only return values for Tabs = 298 K
         This function was obtained indirectly from Bernardi and Go 2011
         """
-        stepDown = lambda x, xc, strch: 0.5*(-np.tanh((x - xc)/strch) + 1)
+#        stepDown = lambda x, xc, strch: 0.5*(-np.tanh((x - xc)/strch) + 1)
+        stepDown = self.stepDown
         p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
         sfac = 0.3
         del_phi_eq = self.eokT*(p1*stepDown(y, 1., sfac*0.02)
@@ -107,12 +114,45 @@ class DPhiFits():
                 + (p4 - p3)*stepDown(y, 0., sfac*0.08333)) - del_phi_ref
         return del_phi_eq
 
+    def LiC6_2step(self, y, del_phi_ref):
+        """
+        Fit function to the OCV predicted by the phase separating
+        2-variable graphite model.
+        """
+        Vstd = 0.12
+        Vstep = 0.0359646
+        stepUp = self.stepUp
+        stepDown = self.stepDown
+        edgeLen = 0.024
+        lEdge = edgeLen
+        rEdge = 1 - edgeLen
+        width = 0.001
+        lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)))
+                * stepDown(y, lEdge, width))
+        rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)))
+                * stepUp(y, rEdge, width))
+        del_phi_eq = self.eokT*(
+                Vstd
+                + Vstep*(stepDown(y, 0.5, 0.013) - 1)
+                + self.kToe*(lSide + rSide)
+                ) - del_phi_ref
+#        del_phi_eq = self.eokT*(-y) - del_phi_ref
+#        del_phi_eq = (-80.1-y) - del_phi_ref
+#        del_phi_eq = (0.*y) - del_phi_ref
+#        del_phi_eq = (-np.sin(10*y)) - del_phi_ref
+#        del_phi_eq = (20*y**2) - del_phi_ref
+#        del_phi_eq = (np.exp(-30*y)) - del_phi_ref
+#        del_phi_eq = -self.T*np.log(y) - del_phi_ref
+#        del_phi_eq = -self.T*np.log(1/(1-y)) - del_phi_ref
+#        del_phi_eq = -self.T*np.log(y/(1-y)) - del_phi_ref
+        return del_phi_eq
+
     def idealSolid(self, y, del_phi_ref):
-        del_phi_eq = -T*np.log(y/(1-y)) - del_phi_ref
+        del_phi_eq = -self.T*np.log(y/(1-y)) - del_phi_ref
         return del_phi_eq
 
     def Li(self, y, del_phi_ref):
-        del_phi_eq = 0.
+        del_phi_eq = 0.*y
         return del_phi_eq
 
     def NCA1(self, y, del_phi_ref):
