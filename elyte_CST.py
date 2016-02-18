@@ -47,10 +47,8 @@ def LiClO4_PC():
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, kappa_ndim, thermFac, tp0, Dref
 
-def valoen_bernardi():
-    """ Set of parameters from Bernardi and Go 2011, indirectly from
-    Valoen and Reimers 2005
-    """
+def valoen_reimers():
+    """ Set of parameters from Valoen and Reimers 2005 """
     def tp0(c):
         return 0.38
     def D(c):
@@ -58,6 +56,30 @@ def valoen_bernardi():
     def thermFac(c):
         tmp = 0.601 - 0.24*c**(0.5) + 0.982*(1 - 0.0052*(Tref - 294))*c**(1.5)
         return tmp/(1-tp0(c))
+    def kappa(c):
+        (k00, k01, k02,
+                k10, k11, k12,
+                k20, k21) = (
+                -10.5, 0.0740, -6.96e-5,
+                0.668, -0.0178, 2.80e-5,
+                0.494, -8.86e-4)
+        out = c * (k00 + k01*Tref + k02*Tref**2
+                + k10*c + k11*c*Tref + k12*c*Tref**2
+                + k20*c**2 + k21*c**2*Tref)**2 # mS/cm
+        out *= 0.1 # S/m
+        return out
+    Dref = D(cref)
+    D_ndim = lambda c: D(c) / Dref
+    kappa_ndim = lambda c: kappa(c) * (
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+    return D_ndim, kappa_ndim, thermFac, tp0, Dref
+
+def valoen_bernardi():
+    """ Set of parameters from Bernardi and Go 2011, indirectly from
+    Valoen and Reimers 2005. The only change from Valoen and Reimers
+    is the conductivity.
+    """
+    D_ndim, Ign, thermFac, tp0, Dref = valoen_reimers()
     def kappa(c):
         (k00, k01, k02,
                 k10, k11, k12,
@@ -70,8 +92,6 @@ def valoen_bernardi():
                 + k20*c**2 + k21*c**2*Tref)**2 # mS/cm
         out *= 0.1 # S/m
         return out
-    Dref = D(cref)
-    D_ndim = lambda c: D(c) / Dref
     kappa_ndim = lambda c: kappa(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, kappa_ndim, thermFac, tp0, Dref
@@ -109,5 +129,7 @@ def getProps(elytePropSet):
         return valoen_bernardi()
     elif elytePropSet == "LiClO4_PC":
         return LiClO4_PC()
+    elif elytePropSet == "valoen_reimers":
+        return valoen_reimers()
     else:
         raise NotImplementedError("Unrecognized elytePropSet")
