@@ -378,8 +378,8 @@ class modMPET(daeModel):
             # Set the condition to terminate the simulation upon reaching
             # a cutoff voltage.
             self.stopCondition = (
-                    ((Abs(self.phi_applied()) <= ndD["phimin"]) |
-                        (Abs(self.phi_applied()) >= ndD["phimax"]))
+                    ((self.phi_applied() <= ndD["phimin"]) |
+                        (self.phi_applied() >= ndD["phimax"]))
                     & (self.dummyVar() < 1))
             self.ON_CONDITION(self.stopCondition,
                     setVariableValues = [(self.dummyVar, 2)])
