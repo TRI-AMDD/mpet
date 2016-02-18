@@ -45,11 +45,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     td = dD_s["td"]
     Etheta = {"a" : 0.}
     for trode in trodes:
-        Type = ndD_e[trode]['type']
-        if Type not in ["diffn"]:
-            Etheta[trode] = dD_e[trode]["Vstd"]
-        else:
+        if ndD_e[trode]["delPhiEqFit"]:
             Etheta[trode] = (k*Tref/e) * ndD_e[trode]["dphi_eq_ref"]
+        else:
+            Etheta[trode] = dD_e[trode]["Vstd"]
     Vstd = Etheta["c"] - Etheta["a"]
     Nvol = ndD_s["Nvol"]
     Npart = ndD_s["Npart"]
@@ -383,10 +382,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_ylim((ymin, ymax))
         ax.set_xlim((xmin, xmax))
         # returns tuble of line objects, thus comma
-        line1, = ax.plot(datax, datay[t0ind, :], '-')
+        if fplot:
+            line1, = ax.plot(datax, datay, '-')
+        else:
+            line1, = ax.plot(datax, datay[t0ind, :], '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         if fplot:
+            print "time =", times[t0ind]*td, "s"
+            if save_flag:
+                fig.savefig("mpet_{pt}.png".format(pt=plot_type), bbox_inches="tight")
             return fig, ax
         def init():
             line1.set_ydata(np.ma.array(datax, mask=True))
