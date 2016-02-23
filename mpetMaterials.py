@@ -13,14 +13,6 @@ import mpetPorts
 
 eps = -1e-12
 
-# Define some variable types
-mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-        lowerBound=0, upperBound=1, initialGuess=0.25,
-        absTolerance=1e-6)
-elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
-        lowerBound=-1e20, upperBound=1e20, initialGuess=0,
-        absTolerance=1e-5)
-
 class mod2var(daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
             ndD_s=None):
@@ -34,6 +26,14 @@ class mod2var(daeModel):
         self.Dmn = daeDomain("discretizationDomain", self, unit(),
                 "discretization domain")
 
+        # Define some variable types
+        atol = ndD_s["absTol"]
+        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
+                lowerBound=0, upperBound=1, initialGuess=0.25,
+                absTolerance=atol)
+        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
+                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
+                absTolerance=atol)
         # Variables
         self.c1 =  daeVariable("c1", mole_frac_t, self,
                 "Concentration in 'layer' 1 of active particle",
@@ -289,6 +289,14 @@ class mod1var(daeModel):
         self.Dmn = daeDomain("discretizationDomain", self, unit(),
                 "discretization domain")
 
+        # Define some variable types
+        atol = ndD_s["absTol"]
+        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
+                lowerBound=0, upperBound=1, initialGuess=0.25,
+                absTolerance=atol)
+        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
+                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
+                absTolerance=atol)
         # Variables
         self.c =  daeVariable("c", mole_frac_t, self,
                 "Concentration in active particle",

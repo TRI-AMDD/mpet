@@ -54,14 +54,16 @@ class mpetIO():
         # Simulation Parameters
         ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
         dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+        dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
+        dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
         try:
-            dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
+            ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
         except ConfigParser.NoOptionError:
-            dD_s["Vmax"] = 1e10
+            ndD_s["relTol"] = 1e-6
         try:
-            dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+            ndD_s["absTol"] = P_s.getfloat('Sim Params', 'absTol')
         except ConfigParser.NoOptionError:
-            dD_s["Vmin"] = -1e10
+            ndD_s["absTol"] = 1e-6
         dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
         ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')

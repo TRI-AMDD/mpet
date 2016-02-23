@@ -23,17 +23,6 @@ import mpetPorts
 import mpetMaterials
 import elyte_CST
 
-# Define some variable types
-mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-        lowerBound=0, upperBound=1, initialGuess=0.25,
-        absTolerance=1e-6)
-conc_t = daeVariableType(name="conc_t", units=unit(),
-        lowerBound=0, upperBound=1e20, initialGuess=1.00,
-        absTolerance=1e-6)
-elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
-        lowerBound=-1e20, upperBound=1e20, initialGuess=0,
-        absTolerance=1e-5)
-
 
 class modMPET(daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
@@ -66,6 +55,17 @@ class modMPET(daeModel):
             Nv = Nvol[l]
             Np = Npart[l]
 
+        # Define some variable types
+        atol = ndD_s["absTol"]
+        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
+                lowerBound=0, upperBound=1, initialGuess=0.25,
+                absTolerance=atol)
+        conc_t = daeVariableType(name="conc_t", units=unit(),
+                lowerBound=0, upperBound=1e20, initialGuess=1.00,
+                absTolerance=atol)
+        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
+                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
+                absTolerance=atol)
         # Variables
         self.c_lyte = {}
         self.phi_lyte = {}
@@ -676,7 +676,7 @@ def consoleRun(ndD_s, ndD_e, outdir):
     simulation.m.SetReportingOn(True)
 
     # Set relative tolerances
-    daesolver.RelativeTolerance = 1e-6
+    daesolver.RelativeTolerance = ndD_s["relTol"]
 
     # Set the time horizon and the reporting interval
     simulation.TimeHorizon = ndD_s["tend"]
