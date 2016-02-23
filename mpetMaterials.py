@@ -788,8 +788,10 @@ def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
             gamma_ts = (1./(c_sld*(1-c_sld)))
         ecd = ( k0 * act_lyte**(1-alpha)
                 * act_R**(alpha) / gamma_ts )
-    elif rxnType in ["BV_mod01", "BV_mod02"]:
-        if rxnType == "BV_mod01":
+    elif rxnType in ["BV_raw", "BV_mod01", "BV_mod02"]:
+        if rxnType == "BV_raw":
+            ecd = k0
+        elif rxnType == "BV_mod01":
             ecd = ( k0 * c_lyte**(1-alpha)
                     * (1.0 - c_sld)**(1 - alpha) * c_sld**alpha )
         elif rxnType == "BV_mod02":
