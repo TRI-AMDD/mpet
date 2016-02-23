@@ -601,15 +601,12 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         act_R=None, act_lyte=None, lmbda=None, alpha=None):
     if rxnType == "Marcus":
         Rate = R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
-    elif rxnType in ["BV", "BV_gMod01"]:
-        Rate = R_BV(k0, alpha, c_sld, act_lyte, act_R, eta, T, rxnType)
+    elif rxnType[0:2] == "BV":
+        Rate = R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R,
+                eta, T, rxnType)
     elif rxnType == "MHC":
         k0_MHC = k0/MHC_kfunc(0., lmbda)
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
-    elif rxnType == "BV_mod01":
-        Rate = R_BV_mod01(k0, alpha, c_sld, c_lyte, eta, T)
-    elif rxnType == "BV_mod02":
-        Rate = R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T)
     return Rate
 
 def calc_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
@@ -783,32 +780,22 @@ def mu_reg_sln(c, Omga, T, ISfunc=None):
             range(len(c))])
     return ISterm + enthalpyTerm
 
-def BVfunc(alpha, eta, T):
-    BVrate = np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)
-    return BVrate
-
-def R_BV(k0, alpha, c_sld, act_lyte, act_R, eta, T, rxnType):
-    if rxnType == "BV":
-        gamma_ts = (1./(1-c_sld))
-    elif rxnType == "BV_gMod01":
-        gamma_ts = (1./(c_sld*(1-c_sld)))
-    ecd = ( k0 * act_lyte**(1-alpha)
-            * act_R**(alpha) / gamma_ts )
-    Rate = ecd * BVfunc(alpha, eta, T)
-    return Rate
-
-def R_BV_mod01(k0, alpha, c_sld, c_lyte, eta, T):
-    # Fuller, Doyle, Newman 1994, Mn2O4
-    ecd = ( k0 * c_lyte**(1-alpha) * (1.0 - c_sld)**(1 - alpha) *
-            c_sld**alpha )
-    Rate = ecd * BVfunc(alpha, eta, T)
-    return Rate
-
-def R_BV_mod02(k0, alpha, c_sld, c_lyte, eta, T):
-    # Fuller, Doyle, Newman 1994, carbon coke
-    ecd = ( k0 * c_lyte**(1-alpha) * (0.5 - c_sld)**(1 - alpha) *
-            c_sld**alpha )
-    Rate = ecd * BVfunc(alpha, eta, T)
+def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
+    if rxnType in ["BV", "BV_gMod01"]:
+        if rxnType == "BV":
+            gamma_ts = (1./(1-c_sld))
+        elif rxnType == "BV_gMod01":
+            gamma_ts = (1./(c_sld*(1-c_sld)))
+        ecd = ( k0 * act_lyte**(1-alpha)
+                * act_R**(alpha) / gamma_ts )
+    elif rxnType in ["BV_mod01", "BV_mod02"]:
+        if rxnType == "BV_mod01":
+            ecd = ( k0 * c_lyte**(1-alpha)
+                    * (1.0 - c_sld)**(1 - alpha) * c_sld**alpha )
+        elif rxnType == "BV_mod02":
+            ecd = ( k0 * c_lyte**(1-alpha)
+                    * (0.5 - c_sld)**(1 - alpha) * c_sld**alpha )
+    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
 
 def R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T):
