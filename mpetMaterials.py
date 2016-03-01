@@ -305,13 +305,6 @@ class mod1var(daeModel):
                 "Average concentration in active particle")
         self.dcbardt = daeVariable("dcbardt", no_t, self,
                 "Rate of particle filling")
-        if (self.ndD["type"] == "ACR") and self.ndD["simSurfCond"]:
-            self.phi = daeVariable("phi", elec_pot_t, self,
-                    "Electric potential within the particle",
-                    [self.Dmn])
-        else:
-            self.ndD["simSurfCond"] = False
-            self.phi = False
 
         # Ports
         self.portInLyte = mpetPorts.portFromElyte("portInLyte",
@@ -350,12 +343,6 @@ class mod1var(daeModel):
                 _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
-        # phi in the electron conducting phase
-        if ndD["simSurfCond"]:
-            phi_sld = np.empty(N, dtype=object)
-            phi_sld[:] = [self.phi(k) for k in range(N)]
-        else:
-            phi_sld = self.phi_m
         mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
                 self.ndD_s["elyteModelType"])
 
@@ -381,29 +368,6 @@ class mod1var(daeModel):
             # Equations for 0D particles of 1 field variables
             self.sldDynamics0D1var(c, mu_O, act_lyte, self.ISfuncs,
                     self.noise)
-
-        # Equations for potential drop along particle, if desired
-        if ndD['simSurfCond']:
-            # Conservation of charge in the solid particles with
-            # Ohm's Law
-#            LHS = self.calc_part_surf_LHS()
-            phi_tmp = np.empty(N + 2, dtype=object)
-            phi_tmp[1:-1] = [self.phi(k) for k in range(N)]
-            # BC's -- touching e- supply on both sides
-            phi_tmp[0] = self.phi_m
-            phi_tmp[-1] = self.phi_m
-            dx = 1./N
-            phi_edges (phi_tmp[0:-1] + phi_tmp[1:])/2.
-            scond_vec = ndD["scond"] * np.exp(-1*(phi_edges - self.phi_m))
-            curr_dens = -scond_vec * (np.diff(phi_tmp, 1) / dx)
-            LHS = np.diff(curr_dens, 1)/dx
-            k0_part = ndD["k0"]
-            for k in range(N):
-                eq = self.CreateEquation(
-                        "charge_cons_discr{k}".format(
-                            i=i,j=j,k=k,l=l))
-                RHS = self.c.dt(k) / k0_part
-                eq.Residual = LHS[k] - RHS
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

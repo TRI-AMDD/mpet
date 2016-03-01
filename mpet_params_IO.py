@@ -145,9 +145,6 @@ class mpetIO():
             dD["disc"] = P.getfloat('Particles', 'discretization')
             Shape = ndD["shape"] = P.get('Particles', 'shape')
             dD["thickness"] = P.getfloat('Particles', 'thickness')
-            # Conductivity
-            ndD["simSurfCond"] = P.getboolean('Conductivity', 'simSurfCond')
-            dD["scond"] = P.getfloat('Conductivity', 'scond')
 
             # Material
             # both 1var and 2var parameters
@@ -255,7 +252,6 @@ class mpetIO():
 #        ndD_s["k0"] = {}
 #        ndD_s["beta_s"] = {}
 #        ndD_s["delta_L"] = {}
-#        ndD_s["scond"] = {}
 #        ndD_s["Dsld"] = {}
 #        ndD_s["Omga"] = {}
         for trode in ndD_s["trodes"]:
@@ -329,8 +325,6 @@ class mpetIO():
                     ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
                             plen * dD_e[trode]['rho_s'] /
                             dD_e[trode]['kappa'])
-                    ndD_tmp["scond"] = (dD_e[trode]['scond'] * (k*Tref) /
-                            (dD_e[trode]['k0']*e*plen**2))
                     ndD_tmp["Dsld"] = dD_e[trode]['Dsld']*td/plen**2
                     ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*td
                             / (F*dD_e[trode]["csmax"]))
@@ -345,8 +339,6 @@ class mpetIO():
 #            ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*lens*
 #                    dD['rho_s'][trode]/dD['kappa'][trode])
 #            ndD["delta_L"][trode] = vols/(areas*lens)
-#            ndD["scond"][trode] = (dD['scond'][trode] * (k*Tref) /
-#                    (dD['k0'][trode]*e*lens**2))
 #            ndD["Dsld"][trode] = dD['Dsld'][trode]*td/lens**2
 #            solidType = ndD["solidType"][trode]
 #            if solidType in ["homog", "ACR", "CHR", "diffn"]:
@@ -479,8 +471,6 @@ class mpetIO():
         T298 = isClose(dD_s['Tabs'], 298.)
         solidType = ndD['type']
         solidShape = ndD['shape']
-#        if ndD['simSurfCond'] and solidType != "ACR":
-#            raise Exception("simSurfCond req. ACR")
         if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
             raise Exception("ACR and homog_sdn req. C3 shape")
         if (solidType in ["CHR", "diffn"] and solidShape not in
