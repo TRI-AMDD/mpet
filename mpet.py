@@ -269,7 +269,7 @@ class modMPET(daeModel):
                     if simPartCond:
                         # -dcsbar/dt = I_l - I_r
                         eq.Residual = (
-                                self.particles[l][i, j].dcsbardt() + (
+                                self.particles[l][i, j].dcbardt() + (
                                 (-G_l * (phi_n - phi_l)) -
                                 (-G_r * (phi_r - phi_n))))
                     else:
