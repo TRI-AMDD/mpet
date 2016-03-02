@@ -781,15 +781,23 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
+    if sys.platform in ["linux", "linux2"]:
+        cfgLoc = os.path.join("/", "etc", "daetools", "daetools.cfg")
+    elif sys.platform in ["win32"]:
+        cfgLoc = os.path.join("/", "daetools", "daetools.cfg")
+    elif sys.platform in ["cygwin"]:
+        cfgLoc = os.path.join("/", "cygdrive", "c", "daetools", "daetools.cfg")
     try:
-        shutil.copy("/etc/daetools/daetools.cfg", outdir)
+        shutil.copy(cfgLoc, outdir)
     except:
-        cfgdir = os.path.join(os.environ["HOME"], ".daetools")
-        try:
-            shutil.copy(os.path.join(cfgdir, "daetools.cfg"), outdir)
-        except:
+        if sys.platform in ["linux", "linux2"]:
+            try:
+                cfgdir = os.path.join(os.environ["HOME"], ".daetools")
+                shutil.copy(os.path.join(cfgdir, "daetools.cfg"), outdir)
+            except:
+                pass
+        else:
             pass
-        pass
 
     # Carry out the simulation
     consoleRun(ndD_s, ndD_e, outdir)
