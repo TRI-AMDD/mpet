@@ -32,6 +32,12 @@ The software will save the simulation output data in a folder called
 - processed, dimensional and nondimensional parameters as
   Python-pickled dictionary objects
 
+Note, if you are seeing errors about reaching the maximum number of
+steps with suggestions about scaling your tolerances, try increasing
+the IDAS:MaxNumSteps parameter to 100000. This can be found in the
+`daetools.cfg` file. In Linux, this file is found within
+`/etc/daetools`, and in Windows, it is within `C:\daetools`.
+
 ## Analysis
 
 1.  Analyze output with `plot_data.py` (pass output data directory, then
