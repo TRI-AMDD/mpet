@@ -516,12 +516,13 @@ class modMPET(daeModel):
         return (RHS_c, RHS_phi)
 
 class simMPET(daeSimulation):
-    def __init__(self, ndD_s=None, ndD_e=None):
+    def __init__(self, ndD_s=None, ndD_e=None, tScale=None):
         daeSimulation.__init__(self)
         if (ndD_s is None) or (ndD_e is None):
             raise Exception("Need input parameter dictionaries")
         self.ndD_s = ndD_s
         self.ndD_e = ndD_e
+        self.tScale = tScale
         # Define the model we're going to simulate
         self.m = modMPET("mpet", ndD_s=ndD_s, ndD_e=ndD_e)
 
@@ -599,12 +600,13 @@ class simMPET(daeSimulation):
         terminates when the specified condition is satisfied.
         """
         time = 0.
+        tScale = self.tScale
         while self.CurrentTime < self.TimeHorizon:
             nextTime = time + self.ReportingInterval
             if nextTime > self.TimeHorizon:
                 nextTime = self.TimeHorizon
             self.Log.Message("Integrating from {t0:.2f} to {t1:.2f} s ...".format(
-                t0=self.CurrentTime, t1=nextTime), 0)
+                t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
             time = self.IntegrateUntilTime(nextTime,
                     eStopAtModelDiscontinuity, True)
             self.ReportData(self.CurrentTime)
@@ -660,11 +662,11 @@ def setupDataReporters(simulation, outdir):
         pass
     return datareporter
 
-def consoleRun(ndD_s, ndD_e, outdir):
+def consoleRun(ndD_s, ndD_e, tScale, outdir):
     # Create Log, Solver, DataReporter and Simulation object
     log          = daePythonStdOutLog()
     daesolver    = daeIDAS()
-    simulation   = simMPET(ndD_s, ndD_e)
+    simulation   = simMPET(ndD_s, ndD_e, tScale)
     datareporter = setupDataReporters(simulation, outdir)
 
     # Use SuperLU direct sparse LA solver
@@ -800,7 +802,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             pass
 
     # Carry out the simulation
-    consoleRun(ndD_s, ndD_e, outdir)
+    consoleRun(ndD_s, ndD_e, dD_s["td"], outdir)
 
     # Final output for user
     if paramfile == "params_default.cfg":
