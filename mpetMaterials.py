@@ -60,6 +60,7 @@ class mod2var(daeModel):
         self.phi_m = self.portInBulk.phi_m()
 
     def DeclareEquations(self):
+        daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
@@ -316,6 +317,7 @@ class mod1var(daeModel):
         self.phi_m = self.portInBulk.phi_m()
 
     def DeclareEquations(self):
+        daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
