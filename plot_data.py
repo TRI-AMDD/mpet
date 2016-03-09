@@ -205,7 +205,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot surface conc.
-    if plot_type in ["surf_c", "surf_a"]:
+    if plot_type[:-2] in ["surf"]:
         l = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for surf")
@@ -224,7 +224,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot SoC profile
-    if plot_type in ["soc_c", "soc_a"]:
+    if plot_type[:-2] in ["soc"]:
         l = plot_type[-1]
         ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
         if data_only:
@@ -405,18 +405,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return line1, ttl
 
     # Plot solid particle-average concentrations
-    elif plot_type in ["cbarLine_c", "cbarLine_a"]:
+    elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
         l = plot_type[-1]
         fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
                 sharey=True)
         partStr = "partTrode{l}vol{{j}}part{{i}}.".format(l=l)
         type2c = False
         if ndD_e[l]["type"] in ndD_s["1varTypes"]:
-            str_base = pfx + partStr + "cbar"
+            if plot_type[:-2] in ["cbarLine"]:
+                str_base = pfx + partStr + "cbar"
+            elif plot_type[:-2] in ["dcbardtLine"]:
+                str_base = pfx + partStr + "dcbardt"
         elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
             type2c = True
-            str1_base = pfx + partStr + "c1bar"
-            str2_base = pfx + partStr + "c2bar"
+            if plot_type[:-2] in ["cbarLine"]:
+                str1_base = pfx + partStr + "c1bar"
+                str2_base = pfx + partStr + "c2bar"
+            elif plot_type[:-2] in ["dcbardtLine"]:
+                str1_base = pfx + partStr + "dc1bardt"
+                str2_base = pfx + partStr + "dc2bardt"
         ylim = (0, 1.01)
         datax = times*td
         xLblNCutoff = 4
@@ -450,23 +457,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot all solid concentrations or potentials
-    elif plot_type in ["csld_c", "csld_a", "phisld_a", "phisld_c"]:
+    elif plot_type[:-2] in ["csld", "phisld"]:
         t0ind = 0
         l = plot_type[-1]
+        Nv, Np = Nvol[l], Npart[l]
+        partStr = "partTrode{l}vol{j}part{i}."
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
-        fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
+        fig, ax = plt.subplots(Np, Nv, squeeze=False,
                 sharey=True)
-        sol = np.empty((Npart[l], Nvol[l]), dtype=object)
-        sol1 = np.empty((Npart[l], Nvol[l]), dtype=object)
-        sol2 = np.empty((Npart[l], Nvol[l]), dtype=object)
-        lens = np.zeros((Npart[l], Nvol[l]))
-        lines = np.empty((Npart[l], Nvol[l]), dtype=object)
-        lines1 = np.empty((Npart[l], Nvol[l]), dtype=object)
-        lines2 = np.empty((Npart[l], Nvol[l]), dtype=object)
-        partStr = "partTrode{l}vol{j}part{i}."
+        sol = np.empty((Np, Nv), dtype=object)
+        sol1 = np.empty((Np, Nv), dtype=object)
+        sol2 = np.empty((Np, Nv), dtype=object)
+        lens = np.zeros((Np, Nv))
+        lines = np.empty((Np, Nv), dtype=object)
+        lines1 = np.empty((Np, Nv), dtype=object)
+        lines2 = np.empty((Np, Nv), dtype=object)
         type2c = False
-        if plot_type in ["csld_a", "csld_col_a", "csld_c", "csld_col_c"]:
+        if plot_type[:-2] in ["csld", "csld_col"]:
             if ndD_e[l]["type"] in ndD_s["1varTypes"]:
                 str_base = pfx + partStr + "c"
             elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
@@ -477,8 +485,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         elif plot_type in ["phisld_a", "phisld_c"]:
             str_base = pfx + partStr + "phi"
             ylim = (-10, 20)
-        for i in range(Npart[l]):
-            for j in range(Nvol[l]):
+        for i in range(Np):
+            for j in range(Nv):
                 lens[i, j] = psd_len[l][j, i]
                 if type2c:
                     sol1[i, j] = str1_base.format(l=l, i=i, j=j)
@@ -665,7 +673,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return out
 
     # Plot cathode potential
-    elif plot_type in ["bulkp_c", "bulkp_a"]:
+    elif plot_type[:-2] in ["bulkp"]:
         l = plot_type[-1]
         t0ind = 0
         mpl.animation.Animation._blit_draw = _blit_draw
