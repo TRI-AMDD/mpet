@@ -129,7 +129,6 @@ class muRfuncs():
 
     def LiC6_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bernardi and Go 2011 """
-#        stepDown = lambda x, xc, strch: 0.5*(-np.tanh((x - xc)/strch) + 1)
         stepDown = self.stepDown
         p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
         sfac = 0.3
@@ -163,15 +162,6 @@ class muRfuncs():
                 + Vstep*(stepDown(y, 0.5, 0.013) - 1)
                 + self.kToe*(lSide + rSide)
                 )
-#        del_phi_eq = self.eokT*(-y) - del_phi_ref
-#        del_phi_eq = (-80.1-y) - del_phi_ref
-#        del_phi_eq = (0.*y) - del_phi_ref
-#        del_phi_eq = (-np.sin(10*y)) - del_phi_ref
-#        del_phi_eq = (20*y**2) - del_phi_ref
-#        del_phi_eq = (np.exp(-30*y)) - del_phi_ref
-#        del_phi_eq = -self.T*np.log(y) - del_phi_ref
-#        del_phi_eq = -self.T*np.log(1/(1-y)) - del_phi_ref
-#        del_phi_eq = -self.T*np.log(y/(1-y)) - del_phi_ref
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -216,26 +206,10 @@ class muRfuncs():
         """ Helper function: Should not be called directly from
         simulation. Call a specific material instead. """
         T = self.T
-#        try:
-#            y[0]
-#            vec = True
-#        except TypeError:
-#            vec = False
-#        if vec:
-#            ytest = y[0]
-#        else:
-#            ytest = y
-#        if (type(ytest) == pyCore.adouble) and (ISfuncs is not None):
         if ISfuncs is not None:
             # Input must be a vector when using ISfuncs
-#            if not vec:
-#                raise Exception("idealSolid with ISfuncs and scalar input")
             muR = T*np.array([ISfuncs[i]() for i in range(len(y))])
         else:
-#            if vec:
-#                mu_IS = T*np.array([np.log(y[i]/(1-y[i])) for i in
-#                    range(len(y))])
-#            else:
             muR = T*np.log(y/(1-y))
         return muR
 
@@ -279,26 +253,12 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-#    def nonHomogRoundWetting2(self, y, ybar, B, kappa, beta_s,
-#            shape, r_vec):
-#        """ Helper function """
-#        y1, y2 = y
-#        y1bar, y2bar = ybar
-#        dr = r_vec[1] - r_vec[0]
-#        Rs = 1.
-#        curv1 = calc_curv(y1, dr, r_vec, Rs, beta_s, shape)
-#        curv2 = calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
-#        muR1_nh = B*(y1 - y1bar) - kappa*curv1
-#        muR2_nh = B*(y2 - y2bar) - kappa*curv2
-#        return muR1_nh, muR2_nh
-
     def generalRegSln(self, y, ybar, ISfuncs):
         """ Helper function """
         ptype = self.ndD["type"]
         Omga = self.ndD["Omga"]
         N = len(y)
         muR = self.regSln(y, Omga, ISfuncs)
-#        if "homog" not in ptype:
         if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
@@ -323,7 +283,6 @@ class muRfuncs():
         EvdW = self.ndD["EvdW"]
         N = len(y[0])
         muR1, muR2 = self.regSln2(y, Omga, Omgb, Omgc, EvdW, ISfuncs)
-#        if "homog" not in ptype:
         if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]

@@ -143,19 +143,8 @@ class mod2var(daeModel):
                     (c1_surf, c2_surf),
                     (self.c1bar(), self.c2bar()),
                     T, ndD, ISfuncs))
-#        if not ndD["delPhiEqFit"]:
-#            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs1)
-#            mu2_R_surf = mu_reg_sln(c2_surf, ndD["Omga"], T, ISfuncs2)
-#            mu1_R_surf += ndD["Omgb"]*c2 + ndD["Omgc"]*c2*(1-c2)*(1-2*c1)
-#            mu2_R_surf += ndD["Omgb"]*c1 + ndD["Omgc"]*c1*(1-c1)*(1-2*c2)
-#            act1_R_surf = np.exp(mu1_R_surf / T)
-#            act2_R_surf = np.exp(mu2_R_surf / T)
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
-#        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-#        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
                 T, ndD["rxnType"], act1R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
@@ -220,19 +209,6 @@ class mod2var(daeModel):
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
             mu2R_surf, act2R_surf = mu2R[-1], act2R[-1]
-#        if ndD["type"] in ["CHR2"]:
-#            mu1_R, mu2_R = calc_mu_CHR2(c1, c2, self.c1bar(),
-#                    self.c2bar(), ndD["Omga"], ndD["Omgb"],
-#                    ndD["Omgc"], ndD["B"], ndD["kappa"], ndD["EvdW"],
-#                    ndD["beta_s"], T, ndD["shape"], dr, r_vec, Rs,
-#                    ISfuncs1, ISfuncs2)
-#            mu1_R_surf, mu2_R_surf = mu1_R[-1], mu2_R[-1]
-#            act1_R_surf = np.exp(mu1_R_surf/T)
-#            act2_R_surf = np.exp(mu2_R_surf/T)
-#        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-#        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
         Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
@@ -444,15 +420,7 @@ class mod1var(daeModel):
             c_surf = c[-1]
             muR_surf = muR[-1]
             actR_surf = actR[-1]
-#        if ndD["type"] in ["CHR"]:
-#            mu_R = calc_mu_CHR(c, self.cbar(), ndD["Omga"], ndD["B"],
-#                    ndD["kappa"], T, ndD["beta_s"],
-#                    ndD['shape'], dr, r_vec, Rs, ISfuncs)
-#            mu_R_surf = mu_R[-1]
-#            act_R_surf = np.exp(mu_R_surf / T)
         eta = calc_eta(muR_surf, muO)
-#        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
                 T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
@@ -582,18 +550,7 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
     return Rate
 
-#def calc_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
-#        material=None):
 def calc_eta(muR, muO):
-#    # First calculate muR
-#    muRfunc = muRfuncs.muRfuncs(T, ndD).muRfunc
-#    muR = muRfunc(c, cbar, muR_ref, ISfuncs)
-#    if delPhiEqFit:
-#        fits = delta_phi_fits.DPhiFits(T)
-#        phifunc = fits.materialData[material]
-#        delta_phi_eq = phifunc(c, dphi_eq_ref)
-#        mu_R = -delta_phi_eq
-#    eta = mu_R - mu_O
     return muR - muO
 
 def get_unit_solid_discr(Shape, Type, N):
@@ -602,7 +559,6 @@ def get_unit_solid_discr(Shape, Type, N):
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-#    elif Type in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
     elif "homog" in Type:
         r_vec = None
         volfrac_vec = np.ones(1)
@@ -628,46 +584,6 @@ def get_unit_solid_discr(Shape, Type, N):
     else:
         raise NotImplementedError("Fix shape volumes!")
     return r_vec, volfrac_vec
-
-def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
-        r_vec, Rs, ISfuncs):
-    mu_R = ( mu_reg_sln(c, Omga, T, ISfuncs) +
-            B*(c - cbar) )
-    curv = calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape)
-    mu_R -= kappa*curv
-    return mu_R
-
-def calc_mu_CHR2(c1, c2, c1bar, c2bar, Omga, Omgb, Omgc, B, kappa,
-        EvdW, beta_s, T, particleShape, dr, r_vec, Rs, ISfuncs1=None,
-        ISfuncs2=None):
-#    N = len(c1)
-    mu1_R = ( mu_reg_sln(c1, Omga, T, ISfuncs1) +
-            B*(c1 - c1bar) )
-    mu2_R = ( mu_reg_sln(c2, Omga, T, ISfuncs2) +
-            B*(c2 - c2bar) )
-    mu1_R += EvdW * (30 * c1**2 * (1-c1)**2)
-    mu2_R += EvdW * (30 * c2**2 * (1-c2)**2)
-    curv1 = calc_curv_c(c1, dr, r_vec, Rs, beta_s, particleShape)
-    curv2 = calc_curv_c(c2, dr, r_vec, Rs, beta_s, particleShape)
-    mu1_R -= kappa*curv1
-    mu2_R -= kappa*curv2
-    mu1_R += Omgb*c2 + Omgc*c2*(1-c2)*(1-2*c1)
-    mu2_R += Omgb*c1 + Omgc*c1*(1-c1)*(1-2*c2)
-    return mu1_R, mu2_R
-
-def calc_mu_ACR(c, cbar, Omga, B, kappa, T, cwet, ISfuncs=None):
-    N = len(c)
-    ctmp = np.empty(N + 2, dtype=object)
-    ctmp[1:-1] = c
-    ctmp[0] = cwet
-    ctmp[-1] = cwet
-#    ctmp[0] = ctmp[1]
-#    ctmp[-1] = ctmp[-2]
-    dxs = 1./N
-    curv = np.diff(ctmp, 2)/(dxs**2)
-    mu_R = ( mu_reg_sln(c, Omga, T, ISfuncs) - kappa*curv
-            + B*(c - cbar) )
-    return mu_R
 
 def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
     N = len(c)
