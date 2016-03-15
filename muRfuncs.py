@@ -82,7 +82,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def LiMn2O4_ss2(self, y, ybar, muR_ref):
+    def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Fuller, Doyle, Newman, 1994 """
         # OCV in V vs Li/Li+
         OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
@@ -93,7 +93,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def LiC6_coke_ss(self, y, ybar, muR_ref):
+    def LiC6_coke_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Doyle, Newman, 1996 """
         OCV = (-0.16 + 1.32*np.exp(-3.0*y) +
                 10.*np.exp(-2000.*y))
@@ -101,7 +101,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def LiC6_coke_ss2(self, y, ybar, muR_ref):
+    def LiC6_coke_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Fuller, Doyle, Newman, 1994 """
         c1 = -0.132056
         c2 = 1.40854
@@ -111,7 +111,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def LiC6_ss(self, y, ybar, muR_ref):
+    def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Safari, Delacourt 2011 """
         OCV = (0.6379 + 0.5416*np.exp(-305.5309*y) +
                 0.044*np.tanh(-(y - 0.1958)/0.1088) -
@@ -127,7 +127,7 @@ class muRfuncs():
     def stepUp(self, x, xc, delta):
         return 0.5*(np.tanh((x - xc)/delta) + 1)
 
-    def LiC6_ss2(self, y, ybar, muR_ref):
+    def LiC6_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bernardi and Go 2011 """
 #        stepDown = lambda x, xc, strch: 0.5*(-np.tanh((x - xc)/strch) + 1)
         stepDown = self.stepDown
@@ -141,7 +141,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def LiC6_2step_ss(self, y, ybar, muR_ref):
+    def LiC6_2step_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """
         Fit function to the OCV predicted by the phase separating
         2-variable graphite model (LiC6 function in this class).
@@ -176,12 +176,12 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def Li_ss(self, y, ybar, muR_ref):
+    def Li_ss(self, y, ybar, muR_ref, ISfuncs=None):
         muR = 0.*y + muR_ref
         actR = 0.*y + 1.
         return muR, actR
 
-    def NCA_ss1(self, y, ybar, muR_ref):
+    def NCA_ss1(self, y, ybar, muR_ref, ISfuncs=None):
         """
         This function was obtained from Dan Cogswell's fit of Samsung
         data.
@@ -192,7 +192,7 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def NCA_ss2(self, y, ybar, muR_ref):
+    def NCA_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """
         Li_q Ni(0.8)Co(0.15)Al(0.05)O2
         as a function of y. Here, y actually represents a practical
