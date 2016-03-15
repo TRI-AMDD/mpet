@@ -76,6 +76,7 @@ class mod2var(daeModel):
             self.ISfuncs2 = np.array(
                     [LogRatio("LR2", self, unit(), self.c2(k)) for k in
                         range(N)])
+        ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
         # Prepare noise
         self.noise1 = self.noise2 = None
@@ -94,6 +95,7 @@ class mod2var(daeModel):
             self.noise2 = [noise("noise2", self, unit(), Time(), tvec,
                 noise_data2, previous_output2, _position_) for
                 _position_ in range(N)]
+        noises = (self.noise1, self.noise2)
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
@@ -122,43 +124,43 @@ class mod2var(daeModel):
         c2[:] = [self.c2(k) for k in range(N)]
         if ndD["type"] in ["diffn2", "CHR2"]:
             # Equations for 1D particles of 1 field varible
-            self.sldDynamics1D2var(c1, c2, mu_O, act_lyte,
-                    self.ISfuncs1, self.ISfuncs2,
-                    self.noise1, self.noise2)
+            self.sldDynamics1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
         elif ndD["type"] in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sldDynamics0D2var(c1, c2, mu_O, act_lyte,
-                    self.ISfuncs1, self.ISfuncs2,
-                    self.noise1, self.noise2)
+            self.sldDynamics0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
-            ISfuncs2, noise1, noise2):
+    def sldDynamics0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
         c1_surf = c1
         c2_surf = c2
-        mu1_R_surf = act1_R_surf = None
-        mu2_R_surf = act2_R_surf = None
-        if not ndD["delPhiEqFit"]:
-            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs1)
-            mu2_R_surf = mu_reg_sln(c2_surf, ndD["Omga"], T, ISfuncs2)
-            mu1_R_surf += ndD["Omgb"]*c2 + ndD["Omgc"]*c2*(1-c2)*(1-2*c1)
-            mu2_R_surf += ndD["Omgb"]*c1 + ndD["Omgc"]*c1*(1-c1)*(1-2*c2)
-            act1_R_surf = np.exp(mu1_R_surf / T)
-            act2_R_surf = np.exp(mu2_R_surf / T)
-        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        (mu1R_surf, mu2R_surf), (act1R_surf, act2R_surf) = (
+                calc_muR(
+                    (c1_surf, c2_surf),
+                    (self.c1bar(), self.c2bar()),
+                    T, ndD, ISfuncs))
+#        if not ndD["delPhiEqFit"]:
+#            mu1_R_surf = mu_reg_sln(c1_surf, ndD["Omga"], T, ISfuncs1)
+#            mu2_R_surf = mu_reg_sln(c2_surf, ndD["Omga"], T, ISfuncs2)
+#            mu1_R_surf += ndD["Omgb"]*c2 + ndD["Omgc"]*c2*(1-c2)*(1-2*c1)
+#            mu2_R_surf += ndD["Omgb"]*c1 + ndD["Omgc"]*c1*(1-c1)*(1-2*c2)
+#            act1_R_surf = np.exp(mu1_R_surf / T)
+#            act2_R_surf = np.exp(mu2_R_surf / T)
+        eta1 = calc_eta(mu1R_surf, muO)
+        eta2 = calc_eta(mu2R_surf, muO)
+#        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+#        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act1_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], act1R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
         Rxn2 = calc_rxn_rate(eta2, c2_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act2_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], act2R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
 
         dc1dt_vec = np.empty(N, dtype=object)
@@ -167,6 +169,7 @@ class mod2var(daeModel):
         dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
         LHS1_vec = dc1dt_vec
         LHS2_vec = dc2dt_vec
+        noise1, noise2 = noises
         for k in range(N):
             eq1 = self.CreateEquation("dc1sdt")
             eq2 = self.CreateEquation("dc2sdt")

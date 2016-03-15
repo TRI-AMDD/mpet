@@ -252,10 +252,10 @@ class muRfuncs():
         ISfuncs1, ISfuncs2 = ISfuncs
         muR1 = self.regSln(y1, Omga, ISfuncs1)
         muR2 = self.regSln(y2, Omga, ISfuncs2)
-        muR1 += Omgb*c2 + Omgc*c2*(1-c2)*(1-2*c1)
-        muR2 += Omgb*c1 + Omgc*c1*(1-c1)*(1-2*c2)
-        muR1 += EvdW * (30 * c1**2 * (1-c1)**2)
-        muR2 += EvdW * (30 * c2**2 * (1-c2)**2)
+        muR1 += Omgb*y2 + Omgc*y2*(1-y2)*(1-2*y1)
+        muR2 += Omgb*y1 + Omgc*y1*(1-y1)*(1-2*y2)
+        muR1 += EvdW * (30 * y1**2 * (1-y1)**2)
+        muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
     def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, cwet):
@@ -279,18 +279,18 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-    def nonHomogRoundWetting2(self, y, ybar, B, kappa, beta_s,
-            shape, r_vec):
-        """ Helper function """
-        y1, y2 = y
-        y1bar, y2bar = ybar
-        dr = r_vec[1] - r_vec[0]
-        Rs = 1.
-        curv1 = calc_curv(y1, dr, r_vec, Rs, beta_s, shape)
-        curv2 = calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
-        muR1_nh = B*(y1 - y1bar) - kappa*curv1
-        muR2_nh = B*(y2 - y2bar) - kappa*curv2
-        return muR1_nh, muR2_nh
+#    def nonHomogRoundWetting2(self, y, ybar, B, kappa, beta_s,
+#            shape, r_vec):
+#        """ Helper function """
+#        y1, y2 = y
+#        y1bar, y2bar = ybar
+#        dr = r_vec[1] - r_vec[0]
+#        Rs = 1.
+#        curv1 = calc_curv(y1, dr, r_vec, Rs, beta_s, shape)
+#        curv2 = calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
+#        muR1_nh = B*(y1 - y1bar) - kappa*curv1
+#        muR2_nh = B*(y2 - y2bar) - kappa*curv2
+#        return muR1_nh, muR2_nh
 
     def generalRegSln(self, y, ybar, ISfuncs):
         """ Helper function """
@@ -321,9 +321,9 @@ class muRfuncs():
         Omgb = self.ndD["Omgb"]
         Omgc = self.ndD["Omgc"]
         EvdW = self.ndD["EvdW"]
-        muR12 = self.regSln2(y, Omga, Omgb, Omgc, EvdW, ISfuncs)
+        muR1, muR2 = self.regSln2(y, Omga, Omgb, Omgc, EvdW, ISfuncs)
 #        if "homog" not in ptype:
-        if ("homog" not in ptype) and (len(y) > 1):
+        if ("homog" not in ptype) and (len(y[0]) > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
             B = self.ndD["B"]
@@ -331,9 +331,11 @@ class muRfuncs():
             N = len(y)
             r_vec = mpetMaterials.get_unit_solid_discr(shape,
                     ptype, N)[0]
-            muR += self.nonHomogRoundWetting(y, ybar, B,
+            muR1 += self.nonHomogRoundWetting(y[0], ybar[0], B,
                     kappa, beta_s, shape, r_vec)
-        return muR
+            muR2 += self.nonHomogRoundWetting(y[1], ybar[1], B,
+                    kappa, beta_s, shape, r_vec)
+        return (muR1, muR2)
 
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
@@ -343,10 +345,10 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
-    def LiC6(self, y, ybar, muR_ref, ISfuncs=None):
+    def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
-        muR1, muR2 = self.getnRegSln2(y, ybar, ISfuncs)
+        muR1, muR2 = self.generalRegSln2(y, ybar, ISfuncs)
         actR1 = np.exp(muR1/self.T)
         actR2 = np.exp(muR2/self.T)
         muR1 += muRtheta + muR_ref

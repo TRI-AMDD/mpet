@@ -284,7 +284,6 @@ class mpetIO():
                     (F*dD_e[trode]["csmax"]*vols))
 
             ## Electrode particle parameters
-            Type = ndD_e[trode]['type']
 #            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
 #            material = ndD_e[trode]['muRfunc']
 #            muRfuncs = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode])
@@ -298,8 +297,15 @@ class mpetIO():
             muRfunc = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
             cs0bar = ndD_s["cs0"][trode]
             cs0 = np.array([cs0bar])
+            Type = ndD_e[trode]['type']
+            if Type in ndD_s["2varTypes"]:
+                cs0 = (cs0, cs0)
+                cs0bar = (cs0bar, cs0bar)
             muRrefout = muRfunc(cs0, cs0bar, 0.)
-            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0]
+            if Type in ndD_s["2varTypes"]:
+                ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0][0]
+            elif Type in ndD_s["1varTypes"]:
+                ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0]
             ndD_s["phiRef"][trode] = -ndD_e[trode]["muR_ref"][0]
 #            lens = dD["psd_len"][trode]
 #            areas = dD["psd_area"][trode]
