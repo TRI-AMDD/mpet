@@ -359,8 +359,8 @@ class mpetIO():
 
         # Set up voltage cutoff values
         ndDVref = ndD_s["phiRef"]["c"] - ndD_s["phiRef"]["a"]
-        ndD_s["phimin"] = -((e/(k*Tref))*dD_s["Vmax"] - ndDVref)
-        ndD_s["phimax"] = -((e/(k*Tref))*dD_s["Vmin"] - ndDVref)
+        ndD_s["phimin"] = -((e/(k*Tref))*dD_s["Vmax"] + ndDVref)
+        ndD_s["phimax"] = -((e/(k*Tref))*dD_s["Vmin"] + ndDVref)
 
         return dD_s, ndD_s, dD_e, ndD_e
 
