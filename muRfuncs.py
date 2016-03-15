@@ -258,16 +258,16 @@ class muRfuncs():
         muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
-    def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, cwet):
+    def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
-        ctmp = np.empty(N+2, dtype=object)
+        ytmp = np.empty(N+2, dtype=object)
         ytmp[1:-1] = y
         ytmp[0] = ywet
         ytmp[-1] = ywet
         dxs = 1./N
-        curv = np.diff(ctmp, 2)/(dxs**2)
-        muR_nh = kappa*curv + B*(y - ybar)
+        curv = np.diff(ytmp, 2)/(dxs**2)
+        muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
 
     def nonHomogRoundWetting(self, y, ybar, B, kappa, beta_s, shape,
