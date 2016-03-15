@@ -4,7 +4,7 @@ import pickle
 
 import numpy as np
 
-import delta_phi_fits
+import muRfuncs
 import elyte_CST
 
 class mpetIO():
@@ -155,15 +155,16 @@ class mpetIO():
             dD["B"] = P.getfloat('Material', 'B')
             dD["EvdW"] = P.getfloat('Material', 'EvdW')
             dD["rho_s"] = P.getfloat('Material', 'rho_s')
-            dD["Vstd"] = P.getfloat('Material', 'Vstd')
-            dD["Dsld"] = P.getfloat('Material', 'Dsld')
-            ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
+#            dD["Vstd"] = P.getfloat('Material', 'Vstd')
+            dD["D"] = P.getfloat('Material', 'D')
+#            ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
             dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
             ndD["cwet"] = P.getfloat('Material', 'cwet')
-            if ndD["delPhiEqFit"]:
-                ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
-            else:
-                ndD["delPhiFunc"] = None
+#            if ndD["delPhiEqFit"]:
+#                ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
+#            else:
+#                ndD["delPhiFunc"] = None
+            ndD["muRfunc"] = P.get('Material', 'muRfunc')
             ndD["logPad"] = P.getboolean('Material', 'logPad')
             ndD["noise"] = P.getboolean('Material', 'noise')
 
@@ -285,21 +286,21 @@ class mpetIO():
             ## Electrode particle parameters
             Type = ndD_e[trode]['type']
 #            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
-            if ndD_e[trode]["delPhiEqFit"]:
-                material = ndD_e[trode]['delPhiFunc']
-                fits = delta_phi_fits.DPhiFits(ndD_s["T"])
-                phifunc = fits.materialData[material]
-                ndD_e[trode]["dphi_eq_ref"] = phifunc(ndD_s['cs0'][trode], 0)
-                ndD_s["phiRef"][trode] = ndD_e[trode]["dphi_eq_ref"]
-            else:
-                ndD_e[trode]["dphi_eq_ref"] = 0.
-                ndD_s["phiRef"][trode] = (e/(k*Tref))*dD_e[trode]["Vstd"]
+#            material = ndD_e[trode]['muRfunc']
+#            muRfuncs = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode])
+#            muRfunc = muRfuncs.materialData[material]
             lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*Tref)
             ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
             ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
             ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*Tref)
             ndD_e[trode]["B"] = dD_e[trode]['B']/(k*Tref*dD_e[trode]['rho_s'])
             ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*Tref)
+            muRfunc = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
+            cs0bar = ndD_s["cs0"][trode]
+            cs0 = np.array([cs0bar])
+            muRrefout = muRfunc(cs0, cs0bar, 0.)
+            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0]
+            ndD_s["phiRef"][trode] = -ndD_e[trode]["muR_ref"][0]
 #            lens = dD["psd_len"][trode]
 #            areas = dD["psd_area"][trode]
 #            vols = dD["psd_vol"][trode]
@@ -325,7 +326,7 @@ class mpetIO():
                     ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
                             plen * dD_e[trode]['rho_s'] /
                             dD_e[trode]['kappa'])
-                    ndD_tmp["Dsld"] = dD_e[trode]['Dsld']*td/plen**2
+                    ndD_tmp["D"] = dD_e[trode]['D']*td/plen**2
                     ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*td
                             / (F*dD_e[trode]["csmax"]))
                     ndD_tmp["delta_L"] = pvol/(parea*plen)
@@ -469,6 +470,8 @@ class mpetIO():
 
     def test_electrode_input(self, dD, ndD, dD_s, ndD_s):
         T298 = isClose(dD_s['Tabs'], 298.)
+        if not T298:
+            raise NotImplementedError("Temperature dependence not supported")
         solidType = ndD['type']
         solidShape = ndD['shape']
         if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
@@ -485,18 +488,6 @@ class mpetIO():
             raise NotImplementedError("homog_snd req. Tabs=298")
 #        if ndD["rxnType"] == "BV" and ndD_s["elyteModelType"] == "SM":
 #            raise Exception("BV currently requires dilute elyte model")
-        try:
-            if ndD['delPhiEqFit']:
-                if ndD['delPhiFunc'] == "LiMn2O4" and not T298:
-                    raise Exception("LiMn204 req. Tabs = 298 K")
-                if ndD['delPhiFunc'] == "LiC6" and not T298:
-                    raise Exception("LiC6 req. Tabs = 298 K")
-                if ndD['delPhiFunc'] == "NCA1" and not T298:
-                    raise Exception("NCA1 req. Tabs = 298 K")
-                if solidType not in ["diffn", "homog"]:
-                    raise NotImplementedError("delPhiEqFit req. solidType = diffn or homog")
-        except KeyError:
-            pass
         return
 
     def writeConfigFile(self, P, filename="input_params.cfg"):

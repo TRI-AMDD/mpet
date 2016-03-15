@@ -8,7 +8,7 @@ import scipy.interpolate as sint
 
 from daetools.pyDAE import *
 
-import delta_phi_fits
+import muRfuncs
 import mpetPorts
 
 eps = -1e-12
@@ -374,19 +374,22 @@ class mod1var(daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D1var(self, c, mu_O, act_lyte, ISfuncs, noise):
+    def sldDynamics0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
         c_surf = c
-        mu_R_surf = act_R_surf = None
-        if not ndD["delPhiEqFit"]:
-            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
-            act_R_surf = np.exp(mu_R_surf / T)
-        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+#        muR_surf = actR_surf = None
+#        muR = ndD["muRfunc"]
+#        if not ndD["delPhiEqFit"]:
+#            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
+#            act_R_surf = np.exp(mu_R_surf / T)
+        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+#        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        eta = calc_eta(muR_surf, muO)
         Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
 
         dcdt_vec = np.empty(N, dtype=object)
@@ -575,15 +578,19 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
     return Rate
 
-def calc_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
-        material=None):
-    if delPhiEqFit:
-        fits = delta_phi_fits.DPhiFits(T)
-        phifunc = fits.materialData[material]
-        delta_phi_eq = phifunc(c, dphi_eq_ref)
-        mu_R = -delta_phi_eq
-    eta = mu_R - mu_O
-    return eta
+#def calc_eta(c, mu_O, delPhiEqFit, mu_R=None, T=None, dphi_eq_ref=None,
+#        material=None):
+def calc_eta(muR, muO):
+#    # First calculate muR
+#    muRfunc = muRfuncs.muRfuncs(T, ndD).muRfunc
+#    muR = muRfunc(c, cbar, muR_ref, ISfuncs)
+#    if delPhiEqFit:
+#        fits = delta_phi_fits.DPhiFits(T)
+#        phifunc = fits.materialData[material]
+#        delta_phi_eq = phifunc(c, dphi_eq_ref)
+#        mu_R = -delta_phi_eq
+#    eta = mu_R - mu_O
+    return muR - muO
 
 def get_unit_solid_discr(Shape, Type, N):
     if Shape == "C3" and Type in ["ACR"]:
@@ -591,7 +598,8 @@ def get_unit_solid_discr(Shape, Type, N):
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-    elif Type in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
+#    elif Type in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
+    elif "homog" in Type:
         r_vec = None
         volfrac_vec = np.ones(1)
     elif Shape == "sphere":
@@ -628,7 +636,7 @@ def calc_mu_CHR(c, cbar, Omga, B, kappa, T, beta_s, particleShape, dr,
 def calc_mu_CHR2(c1, c2, c1bar, c2bar, Omga, Omgb, Omgc, B, kappa,
         EvdW, beta_s, T, particleShape, dr, r_vec, Rs, ISfuncs1=None,
         ISfuncs2=None):
-    N = len(c1)
+#    N = len(c1)
     mu1_R = ( mu_reg_sln(c1, Omga, T, ISfuncs1) +
             B*(c1 - c1bar) )
     mu2_R = ( mu_reg_sln(c2, Omga, T, ISfuncs2) +
@@ -718,24 +726,30 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
 
-def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
-    N = len(c)
-    curv = np.empty(N, dtype=object)
-    if particleShape == "sphere":
-        curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
-        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (c[2:] - c[0:-2])/(dr*r_vec[1:-1]))
-        curv[N-1] = ((2./Rs)*beta_s +
-                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-    elif particleShape == "cylinder":
-        curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
-        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (c[2:] - c[0:-2])/(2 * dr*r_vec[1:-1]))
-        curv[N-1] = ((1./Rs)*beta_s +
-                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-    else:
-        raise NotImplementedError("calc_curv_c only for sphere and cylinder")
-    return curv
+def calc_muR(c, cbar, T, ndD, ISfuncs=None):
+    muRfunc = muRfuncs.muRfuncs(T, ndD).muRfunc
+    muR_ref = ndD["muR_ref"]
+    muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
+    return muR, actR
+
+#def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
+#    N = len(c)
+#    curv = np.empty(N, dtype=object)
+#    if particleShape == "sphere":
+#        curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
+#        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
+#                (c[2:] - c[0:-2])/(dr*r_vec[1:-1]))
+#        curv[N-1] = ((2./Rs)*beta_s +
+#                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
+#    elif particleShape == "cylinder":
+#        curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
+#        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
+#                (c[2:] - c[0:-2])/(2 * dr*r_vec[1:-1]))
+#        curv[N-1] = ((1./Rs)*beta_s +
+#                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
+#    else:
+#        raise NotImplementedError("calc_curv_c only for sphere and cylinder")
+#    return curv
 
 def mu_ideal_sln(c, T, ISfuncs=None):
     if (type(c[0]) == pyCore.adouble) and (ISfuncs is not None):

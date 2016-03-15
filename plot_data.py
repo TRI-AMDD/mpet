@@ -45,10 +45,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     td = dD_s["td"]
     Etheta = {"a" : 0.}
     for trode in trodes:
-        if ndD_e[trode]["delPhiEqFit"]:
-            Etheta[trode] = (k*Tref/e) * ndD_e[trode]["dphi_eq_ref"]
-        else:
-            Etheta[trode] = dD_e[trode]["Vstd"]
+#        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
+        Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
     Vstd = Etheta["c"] - Etheta["a"]
     Nvol = ndD_s["Nvol"]
     Npart = ndD_s["Npart"]
