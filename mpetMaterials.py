@@ -180,8 +180,7 @@ class mod2var(daeModel):
                 eq2.Residual += noise2[k]()
         return
 
-    def sldDynamics1D2var(self, c1, c2, mu_O, act_lyte, ISfuncs1,
-            ISfuncs2, noise1, noise2):
+    def sldDynamics1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -215,26 +214,32 @@ class mod2var(daeModel):
         c1_surf = mu1_R_surf = act1_R_surf = None
         c2_surf = mu2_R_surf = act2_R_surf = None
         if ndD["type"] in ["diffn2", "CHR2"]:
+            (mu1R, mu2R), (act1R, act2R) = calc_muR((c1, c2),
+                    (self.c1bar(), self.c2bar()), T, ndD, ISfuncs)
             c1_surf = c1[-1]
             c2_surf = c2[-1]
-        if ndD["type"] in ["CHR2"]:
-            mu1_R, mu2_R = calc_mu_CHR2(c1, c2, self.c1bar(),
-                    self.c2bar(), ndD["Omga"], ndD["Omgb"],
-                    ndD["Omgc"], ndD["B"], ndD["kappa"], ndD["EvdW"],
-                    ndD["beta_s"], T, ndD["shape"], dr, r_vec, Rs,
-                    ISfuncs1, ISfuncs2)
-            mu1_R_surf, mu2_R_surf = mu1_R[-1], mu2_R[-1]
-            act1_R_surf = np.exp(mu1_R_surf/T)
-            act2_R_surf = np.exp(mu2_R_surf/T)
-        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
-        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+            mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
+            mu2R_surf, act2R_surf = mu2R[-1], act2R[-1]
+#        if ndD["type"] in ["CHR2"]:
+#            mu1_R, mu2_R = calc_mu_CHR2(c1, c2, self.c1bar(),
+#                    self.c2bar(), ndD["Omga"], ndD["Omgb"],
+#                    ndD["Omgc"], ndD["B"], ndD["kappa"], ndD["EvdW"],
+#                    ndD["beta_s"], T, ndD["shape"], dr, r_vec, Rs,
+#                    ISfuncs1, ISfuncs2)
+#            mu1_R_surf, mu2_R_surf = mu1_R[-1], mu2_R[-1]
+#            act1_R_surf = np.exp(mu1_R_surf/T)
+#            act2_R_surf = np.exp(mu2_R_surf/T)
+#        eta1 = calc_eta(c1_surf, mu_O, ndD["delPhiEqFit"], mu1_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+#        eta2 = calc_eta(c2_surf, mu_O, ndD["delPhiEqFit"], mu2_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+        eta1 = calc_eta(mu1R_surf, muO)
+        eta2 = calc_eta(mu2R_surf, muO)
         Rxn1 = calc_rxn_rate(eta1, c1_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act1_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], act1R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
         Rxn2 = calc_rxn_rate(eta2, c2_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act2_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], act2R_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
 
         # Get solid particle fluxes (if any) and RHS
@@ -243,10 +248,10 @@ class mod2var(daeModel):
             Flux2_bc = 0.5 * ndD["delta_L"] * Rxn2
             if ndD["type"] == "diffn2":
                 Flux1_vec, Flux2_vec = calc_Flux_diffn2(c1, c2,
-                        ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
+                        ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
-                Flux1_vec, Flux2_vec = calc_Flux_CHR2(c1, c2, mu1_R, mu2_R,
-                        ndD["Dsld"], Flux1_bc, Flux2_bc, dr, T)
+                Flux1_vec, Flux2_vec = calc_Flux_CHR2(c1, c2, mu1R, mu2R,
+                        ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -269,6 +274,7 @@ class mod2var(daeModel):
         dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
         LHS1_vec = MX(Mmat, dc1dt_vec)
         LHS2_vec = MX(Mmat, dc2dt_vec)
+        noise1, noise2 = noises
         for k in range(N):
             eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
             eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))

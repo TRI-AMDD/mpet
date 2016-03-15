@@ -296,9 +296,10 @@ class muRfuncs():
         """ Helper function """
         ptype = self.ndD["type"]
         Omga = self.ndD["Omga"]
+        N = len(y)
         muR = self.regSln(y, Omga, ISfuncs)
 #        if "homog" not in ptype:
-        if ("homog" not in ptype) and (len(y) > 1):
+        if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
             B = self.ndD["B"]
@@ -307,7 +308,6 @@ class muRfuncs():
                 muR += self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.ndD["beta_s"]
-                N = len(y)
                 r_vec = mpetMaterials.get_unit_solid_discr(shape,
                         ptype, N)[0]
                 muR += self.nonHomogRoundWetting(y, ybar, B, kappa,
@@ -321,14 +321,14 @@ class muRfuncs():
         Omgb = self.ndD["Omgb"]
         Omgc = self.ndD["Omgc"]
         EvdW = self.ndD["EvdW"]
+        N = len(y[0])
         muR1, muR2 = self.regSln2(y, Omga, Omgb, Omgc, EvdW, ISfuncs)
 #        if "homog" not in ptype:
-        if ("homog" not in ptype) and (len(y[0]) > 1):
+        if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
             B = self.ndD["B"]
             beta_s = self.ndD["beta_s"]
-            N = len(y)
             r_vec = mpetMaterials.get_unit_solid_discr(shape,
                     ptype, N)[0]
             muR1 += self.nonHomogRoundWetting(y[0], ybar[0], B,
