@@ -379,14 +379,7 @@ class mod1var(daeModel):
         N = ndD["N"]
         T = self.ndD_s["T"]
         c_surf = c
-#        muR_surf = actR_surf = None
-#        muR = ndD["muRfunc"]
-#        if not ndD["delPhiEqFit"]:
-#            mu_R_surf = mu_reg_sln(c, ndD["Omga"], T, ISfuncs)
-#            act_R_surf = np.exp(mu_R_surf / T)
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
-#        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
-#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         eta = calc_eta(muR_surf, muO)
         Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
                 T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
@@ -402,7 +395,7 @@ class mod1var(daeModel):
                 eq.Residual += noise[k]()
         return
 
-    def sldDynamics1D1var(self, c, mu_O, act_lyte, ISfuncs, noise):
+    def sldDynamics1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -436,21 +429,23 @@ class mod1var(daeModel):
         c_surf = mu_R_surf = act_R_surf = None
         if ndD["type"] in ["ACR"]:
             c_surf = c
-            mu_R_surf = calc_mu_ACR(c, self.cbar(), ndD["Omga"], ndD["B"],
-                    ndD["kappa"], T, ndD["cwet"], ISfuncs)
-            act_R_surf = np.exp(mu_R_surf / T)
+            muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
         elif ndD["type"] in ["diffn", "CHR"]:
+            muR, actR = calc_muR(c, self.cbar(), T, ndD, ISfuncs)
             c_surf = c[-1]
-        if ndD["type"] in ["CHR"]:
-            mu_R = calc_mu_CHR(c, self.cbar(), ndD["Omga"], ndD["B"],
-                    ndD["kappa"], T, ndD["beta_s"],
-                    ndD['shape'], dr, r_vec, Rs, ISfuncs)
-            mu_R_surf = mu_R[-1]
-            act_R_surf = np.exp(mu_R_surf / T)
-        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
-                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
+            muR_surf = muR[-1]
+            actR_surf = actR[-1]
+#        if ndD["type"] in ["CHR"]:
+#            mu_R = calc_mu_CHR(c, self.cbar(), ndD["Omga"], ndD["B"],
+#                    ndD["kappa"], T, ndD["beta_s"],
+#                    ndD['shape'], dr, r_vec, Rs, ISfuncs)
+#            mu_R_surf = mu_R[-1]
+#            act_R_surf = np.exp(mu_R_surf / T)
+        eta = calc_eta(muR_surf, muO)
+#        eta = calc_eta(c_surf, mu_O, ndD["delPhiEqFit"], mu_R_surf, T,
+#                ndD["dphi_eq_ref"], ndD["delPhiFunc"])
         Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
-                T, ndD["rxnType"], act_R_surf, act_lyte, ndD["lambda"],
+                T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
 
         # Get solid particle fluxes (if any) and RHS
@@ -459,9 +454,9 @@ class mod1var(daeModel):
         elif ndD["type"] in ["diffn", "CHR"]:
             Flux_bc = ndD["delta_L"] * Rxn
             if ndD["type"] == "diffn":
-                Flux_vec = calc_Flux_diffn(c, ndD["Dsld"], Flux_bc, dr, T)
+                Flux_vec = calc_Flux_diffn(c, ndD["D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_Flux_CHR(c, mu_R, ndD["Dsld"], Flux_bc, dr, T)
+                Flux_vec = calc_Flux_CHR(c, muR, ndD["D"], Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
