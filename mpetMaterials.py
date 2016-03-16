@@ -172,30 +172,10 @@ class mod2var(daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
-        dr = r_vec[1] - r_vec[0]
-        Rs = 1. # (non-dimensionalized by itself)
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
-        if ndD['shape'] == "C3":
-            Mmat = sprs.eye(N, N, format="csr")
-        elif ndD['shape'] in ["sphere", "cylinder"]:
-            # For discretization background, see Zeng & Bazant 2013
-            # Mass matrix is common for spherical shape, diffn or CHR
-            edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-            if ndD['shape'] == "sphere":
-                Vp = 4./3. * np.pi * Rs**3
-            elif ndD['shape'] == "cylinder":
-                Vp = np.pi * Rs**2  # per unit height
-            vol_vec = Vp * volfrac_vec
-            M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
-                    shape=(N, N), format="csr")
-            M1[1, 0] = M1[-2, -1] = 1./4
-            M2 = sprs.diags(vol_vec, 0, format="csr")
-            if ndD['shape'] == "sphere":
-                Mmat = M1*M2
-            elif ndD['shape'] == "cylinder":
-                Mmat = M2
+        Mmat = get_Mmat(ndD['shape'], N)
+        dr, edges = get_dr_edges(ndD['shape'], N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
         c1_surf = mu1_R_surf = act1_R_surf = None
@@ -381,30 +361,10 @@ class mod1var(daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
-        if ndD['shape'] == "C3":
-            Mmat = sprs.eye(N, N, format="csr")
-        elif ndD['shape'] in ["sphere", "cylinder"]:
-            # For discretization background, see Zeng & Bazant 2013
-            # Mass matrix is common for spherical shape, diffn or CHR
-            Rs = 1. # (non-dimensionalized by itself)
-            edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-            if ndD['shape'] == "sphere":
-                Vp = 4./3. * np.pi * Rs**3
-            elif ndD['shape'] == "cylinder":
-                Vp = np.pi * Rs**2  # per unit height
-            vol_vec = Vp * volfrac_vec
-            dr = r_vec[1] - r_vec[0]
-            M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
-                    shape=(N, N), format="csr")
-            M1[1, 0] = M1[-2, -1] = 1./4
-            M2 = sprs.diags(vol_vec, 0, format="csr")
-            if ndD['shape'] == "sphere":
-                Mmat = M1*M2
-            elif ndD['shape'] == "cylinder":
-                Mmat = M2
+        Mmat = get_Mmat(ndD['shape'], N)
+        dr, edges = get_dr_edges(ndD['shape'], N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
         c_surf = mu_R_surf = act_R_surf = None
@@ -559,7 +519,7 @@ def get_unit_solid_discr(Shape, N):
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
     elif Shape == "sphere":
-        Rs = 1.
+        Rs = 1. # (non-dimensionalized by itself)
         dr = Rs/(N - 1)
         r_vec = np.linspace(0, Rs, N)
         vol_vec = 4*np.pi*(r_vec**2 * dr + (1./12)*dr**3)
@@ -568,7 +528,7 @@ def get_unit_solid_discr(Shape, N):
         Vp = 4./3.*np.pi*Rs**3
         volfrac_vec = vol_vec/Vp
     elif Shape == "cylinder":
-        Rs = 1.
+        Rs = 1. # (non-dimensionalized by itself)
         h = 1.
         dr = Rs / (N - 1)
         r_vec = np.linspace(0, Rs, N)
@@ -580,6 +540,39 @@ def get_unit_solid_discr(Shape, N):
     else:
         raise NotImplementedError("Fix shape volumes!")
     return r_vec, volfrac_vec
+
+def get_dr_edges(shape, N):
+    r_vec = get_unit_solid_discr(shape, N)[0]
+    dr = edges = None
+    if r_vec is not None:
+        Rs = 1.
+        dr = r_vec[1] - r_vec[0]
+        edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
+    return dr, edges
+
+def get_Mmat(shape, N):
+    r_vec, volfrac_vec = get_unit_solid_discr(shape, N)
+    if shape == "C3":
+        Mmat = sprs.eye(N, N, format="csr")
+    elif shape in ["sphere", "cylinder"]:
+        dr = r_vec[1] - r_vec[0]
+        Rs = 1.
+        # For discretization background, see Zeng & Bazant 2013
+        # Mass matrix is common for spherical shape, diffn or CHR
+        if shape == "sphere":
+            Vp = 4./3. * np.pi * Rs**3
+        elif shape == "cylinder":
+            Vp = np.pi * Rs**2  # per unit height
+        vol_vec = Vp * volfrac_vec
+        M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
+                shape=(N, N), format="csr")
+        M1[1, 0] = M1[-2, -1] = 1./4
+        M2 = sprs.diags(vol_vec, 0, format="csr")
+        if shape == "sphere":
+            Mmat = M1*M2
+        elif shape == "cylinder":
+            Mmat = M2
+    return Mmat
 
 def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
     N = len(c)
