@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
-import mpet_params_IO
+import mpetParamsIO
 import elyte_CST
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -26,7 +26,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Read in the parameters used to define the simulation
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(indir, paramFileName)
-    IO = mpet_params_IO.mpetIO()
+    IO = mpetParamsIO.mpetIO()
     dD_s, ndD_s = IO.readDicts(os.path.join(indir, "input_dict_system"))
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]

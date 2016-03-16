@@ -18,7 +18,7 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.trilinos import pyTrilinos
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
-import mpet_params_IO
+import mpetParamsIO
 import mpetPorts
 import mpetMaterials
 import elyte_CST
@@ -711,7 +711,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    IO = mpet_params_IO.mpetIO()
+    IO = mpetParamsIO.mpetIO()
     P_s, P_e = IO.getConfigs(paramfile)
     dD_s, ndD_s, dD_e, ndD_e = IO.getDictsFromConfigs(P_s, P_e)
 
