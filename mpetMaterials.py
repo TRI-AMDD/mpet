@@ -64,8 +64,7 @@ class mod2var(daeModel):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
-        r_vec, volfrac_vec = get_unit_solid_discr(
-                ndD['shape'], ndD['type'], N)
+        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs1 = self.ISfuncs2 = None
@@ -173,8 +172,7 @@ class mod2var(daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        r_vec, volfrac_vec = get_unit_solid_discr(
-                ndD['shape'], ndD['type'], N)
+        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
         dr = r_vec[1] - r_vec[0]
         Rs = 1. # (non-dimensionalized by itself)
         # Equations for concentration evolution
@@ -306,8 +304,7 @@ class mod1var(daeModel):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
-        r_vec, volfrac_vec = get_unit_solid_discr(
-                ndD['shape'], ndD['type'], N)
+        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs = None
@@ -384,8 +381,7 @@ class mod1var(daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        r_vec, volfrac_vec = get_unit_solid_discr(
-                ndD['shape'], ndD['type'], N)
+        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         if ndD['shape'] == "C3":
@@ -553,15 +549,15 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
 def calc_eta(muR, muO):
     return muR - muO
 
-def get_unit_solid_discr(Shape, Type, N):
-    if Shape == "C3" and Type in ["ACR"]:
+def get_unit_solid_discr(Shape, N):
+    if N == 1: # homog particle, hopefully
+        r_vec = None
+        volfrac_vec = np.ones(1)
+    elif Shape == "C3":
         r_vec = None
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-    elif "homog" in Type:
-        r_vec = None
-        volfrac_vec = np.ones(1)
     elif Shape == "sphere":
         Rs = 1.
         dr = Rs/(N - 1)
