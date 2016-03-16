@@ -686,6 +686,8 @@ def mu_reg_sln(c, Omga, T, ISfunc=None):
 
 def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
     if rxnType in ["BV", "BV_gMod01"]:
+        if act_R is None:
+            act_R = c_sld/(1-c_sld)
         if rxnType == "BV":
             gamma_ts = (1./(1-c_sld))
         elif rxnType == "BV_gMod01":
