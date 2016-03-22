@@ -122,14 +122,8 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
-    def stepDown(self, x, xc, delta):
-        return 0.5*(-np.tanh((x - xc)/delta) + 1)
-    def stepUp(self, x, xc, delta):
-        return 0.5*(np.tanh((x - xc)/delta) + 1)
-
     def LiC6_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bernardi and Go 2011 """
-        stepDown = self.stepDown
         p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
         sfac = 0.3
         OCV = (p1*stepDown(y, 1., sfac*0.02)
@@ -147,8 +141,6 @@ class muRfuncs():
         """
         Vstd = 0.12
         Vstep = 0.0359646
-        stepUp = self.stepUp
-        stepDown = self.stepDown
         edgeLen = 0.024
         lEdge = edgeLen
         rEdge = 1 - edgeLen
@@ -313,6 +305,11 @@ class muRfuncs():
         muR1 += muRtheta + muR_ref
         muR2 += muRtheta + muR_ref
         return (muR1, muR2), (actR1, actR2)
+
+def stepDown(x, xc, delta):
+    return 0.5*(-np.tanh((x - xc)/delta) + 1)
+def stepUp(x, xc, delta):
+    return 0.5*(np.tanh((x - xc)/delta) + 1)
 
 def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)
