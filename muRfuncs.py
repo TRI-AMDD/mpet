@@ -53,6 +53,7 @@ class muRfuncs():
         materialData['NCA_ss2'] = self.NCA_ss2
         materialData['LiFePO4'] = self.LiFePO4
         materialData['LiC6'] = self.LiC6
+        materialData['LiC6_1param'] = self.LiC6_1param
         self.muRfunc = materialData[ndD["muRfunc"]]
 
     def get_muR_from_OCV(self, OCV, muR_ref):
@@ -224,6 +225,18 @@ class muRfuncs():
         muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
+    def regSln2well(self, y, Omga, Omgb, ISfuncs=None):
+        """ Helper function """
+        width = 5e-2
+        tailScl = 5e-2
+        muLtail = -tailScl*1./(y**(0.8))
+        muRtail = tailScl*1./((1-y)**(0.8))
+        slpScl = 0.45
+        muLlin = slpScl*Omga*4*(0.26-y)*stepDown(y, 0.5, width)
+        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
+        muR = muLtail + muRtail + muLlin + muRlin
+        return muR
+
     def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
@@ -286,6 +299,27 @@ class muRfuncs():
                     kappa, beta_s, shape, r_vec)
         return (muR1, muR2)
 
+    def doubleWellGraphite1Param(self, y, ybar, ISfuncs):
+        """ Helper function """
+        ptype = self.ndD["type"]
+        Omga = self.ndD["Omga"]
+        Omgb = self.ndD["Omgb"]
+        N = len(y)
+        muR = self.regSln2well(y, Omga, Omgb, ISfuncs)
+        if ("homog" not in ptype) and (N > 1):
+            shape = self.ndD["shape"]
+            kappa = self.ndD["kappa"]
+            B = self.ndD["B"]
+            if shape == "C3":
+                cwet = self.ndD["cwet"]
+                muR += self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
+            elif shape in ["cylinder", "sphere"]:
+                beta_s = self.ndD["beta_s"]
+                r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
+                muR += self.nonHomogRoundWetting(y, ybar, B, kappa,
+                        beta_s, shape, r_vec)
+        return muR
+
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
@@ -303,6 +337,13 @@ class muRfuncs():
         muR1 += muRtheta + muR_ref
         muR2 += muRtheta + muR_ref
         return (muR1, muR2), (actR1, actR2)
+
+    def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = -self.eokT*0.12
+        muR = self.doubleWellGraphite1Param(y, ybar, ISfuncs)
+        actR = np.exp(muR/self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
 
 def stepDown(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
