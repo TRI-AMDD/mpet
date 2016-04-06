@@ -260,8 +260,7 @@ class muRfuncs():
                 muR += self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.ndD["beta_s"]
-                r_vec = mpetMaterials.get_unit_solid_discr(shape,
-                        ptype, N)[0]
+                r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
                 muR += self.nonHomogRoundWetting(y, ybar, B, kappa,
                         beta_s, shape, r_vec)
         return muR
@@ -280,8 +279,7 @@ class muRfuncs():
             kappa = self.ndD["kappa"]
             B = self.ndD["B"]
             beta_s = self.ndD["beta_s"]
-            r_vec = mpetMaterials.get_unit_solid_discr(shape,
-                    ptype, N)[0]
+            r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
             muR1 += self.nonHomogRoundWetting(y[0], ybar[0], B,
                     kappa, beta_s, shape, r_vec)
             muR2 += self.nonHomogRoundWetting(y[1], ybar[1], B,
