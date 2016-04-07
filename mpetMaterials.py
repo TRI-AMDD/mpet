@@ -641,25 +641,6 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR
 
-#def calc_curv_c(c, dr, r_vec, Rs, beta_s, particleShape):
-#    N = len(c)
-#    curv = np.empty(N, dtype=object)
-#    if particleShape == "sphere":
-#        curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
-#        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-#                (c[2:] - c[0:-2])/(dr*r_vec[1:-1]))
-#        curv[N-1] = ((2./Rs)*beta_s +
-#                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-#    elif particleShape == "cylinder":
-#        curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
-#        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-#                (c[2:] - c[0:-2])/(2 * dr*r_vec[1:-1]))
-#        curv[N-1] = ((1./Rs)*beta_s +
-#                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-#    else:
-#        raise NotImplementedError("calc_curv_c only for sphere and cylinder")
-#    return curv
-
 def mu_ideal_sln(c, T, ISfuncs=None):
     if (type(c[0]) == pyCore.adouble) and (ISfuncs is not None):
         mu_IS = T*np.array([ISfunc[i]() for i in range(len(c))])
