@@ -229,12 +229,31 @@ class muRfuncs():
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
-        muLtail = -tailScl*1./(y**(0.8))
-        muRtail = tailScl*1./((1-y)**(0.8))
+        muLtail = -tailScl*1./(y**(0.85))
+        muRtail = tailScl*1./((1-y)**(0.85))
         slpScl = 0.45
         muLlin = slpScl*Omga*4*(0.26-y)*stepDown(y, 0.5, width)
         muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
         muR = muLtail + muRtail + muLlin + muRlin
+        return muR
+
+    def regSln2wellGraphite(self, y, Omga, Omgb, ISfuncs=None):
+        """ Helper function """
+        width = 5e-2
+        tailScl = 5e-2
+        slpScl = 0.45
+        muLtail = -tailScl*1./(y**(0.85))
+        muRtail = tailScl*1./((1-y)**(0.85))
+        muLlin = (slpScl*Omga*12*(0.40-y)
+                * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
+        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
+        muLMod = (0.
+#                + 25*(np.tanh((y-0.05)/0.01) - 1)
+                + 40*(-np.exp(-y/0.015))
+                + 0.75*(np.tanh((y-0.17)/0.02) - 1)
+                + 1.0*(np.tanh((y-0.22)/0.040) - 1)
+                )*stepDown(y, 0.35, width)
+        muR = muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
     def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, ywet):
@@ -305,7 +324,8 @@ class muRfuncs():
         Omga = self.ndD["Omga"]
         Omgb = self.ndD["Omgb"]
         N = len(y)
-        muR = self.regSln2well(y, Omga, Omgb, ISfuncs)
+#        muR = self.regSln2well(y, Omga, Omgb, ISfuncs)
+        muR = self.regSln2wellGraphite(y, Omga, Omgb, ISfuncs)
         if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
