@@ -51,8 +51,10 @@ class muRfuncs():
         materialData['Li_ss'] = self.Li_ss
         materialData['NCA_ss1'] = self.NCA_ss1
         materialData['NCA_ss2'] = self.NCA_ss2
+        materialData['testIS_ss'] = self.testIS_ss
         materialData['LiFePO4'] = self.LiFePO4
         materialData['LiC6'] = self.LiC6
+        materialData['testRS'] = self.testRS
         self.muRfunc = materialData[ndD["muRfunc"]]
 
     def get_muR_from_OCV(self, OCV, muR_ref):
@@ -190,6 +192,12 @@ class muRfuncs():
         actR = self.get_actR_None(y)
         return muR, actR
 
+    def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
+        OCV = -self.kToe*np.log(y/(1-y))
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = self.get_actR_None(y)
+        return muR, actR
+
     ######
     # Functions based on thermodynamic models
     ######
@@ -303,6 +311,13 @@ class muRfuncs():
         muR1 += muRtheta + muR_ref
         muR2 += muRtheta + muR_ref
         return (muR1, muR2), (actR1, actR2)
+
+    def testRS(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = 0.
+        muR = self.generalRegSln(y, ybar, ISfuncs)
+        actR = np.exp(muR/self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
 
 def stepDown(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
