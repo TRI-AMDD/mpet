@@ -198,8 +198,10 @@ class mod2var(daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["diffn2", "CHR2"]:
-            Flux1_bc = 0.5 * ndD["delta_L"] * Rxn1
-            Flux2_bc = 0.5 * ndD["delta_L"] * Rxn2
+            # Positive reaction (reduction, intercalation) is negative
+            # flux of Li at the surface.
+            Flux1_bc = -0.5 * ndD["delta_L"] * Rxn1
+            Flux2_bc = -0.5 * ndD["delta_L"] * Rxn2
             if ndD["type"] == "diffn2":
                 Flux1_vec, Flux2_vec = calc_Flux_diffn2(c1, c2,
                         ndD["D"], Flux1_bc, Flux2_bc, dr, T)
@@ -210,8 +212,8 @@ class mod2var(daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS1 = np.diff(Flux1_vec * area_vec)
-            RHS2 = np.diff(Flux2_vec * area_vec)
+            RHS1 = -np.diff(Flux1_vec * area_vec)
+            RHS2 = -np.diff(Flux2_vec * area_vec)
 #            kinterlayer = 1e2
 #            interLayerRxn = (kinterlayer * (1 - c1_sld) *
 #                    (1 - c2_sld) * (act1_R - act2_R))
@@ -385,7 +387,9 @@ class mod1var(daeModel):
         if ndD["type"] in ["ACR"]:
             RHS = Rxn
         elif ndD["type"] in ["diffn", "CHR"]:
-            Flux_bc = ndD["delta_L"] * Rxn
+            # Positive reaction (reduction, intercalation) is negative
+            # flux of Li at the surface.
+            Flux_bc = -ndD["delta_L"] * Rxn
             if ndD["type"] == "diffn":
                 Flux_vec = calc_Flux_diffn(c, ndD["D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
@@ -394,7 +398,7 @@ class mod1var(daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = np.diff(Flux_vec * area_vec)
+            RHS = -np.diff(Flux_vec * area_vec)
 
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
@@ -558,7 +562,7 @@ def get_Mmat(shape, N):
         dr = r_vec[1] - r_vec[0]
         Rs = 1.
         # For discretization background, see Zeng & Bazant 2013
-        # Mass matrix is common for spherical shape, diffn or CHR
+        # Mass matrix is common for each shape, diffn or CHR
         if shape == "sphere":
             Vp = 4./3. * np.pi * Rs**3
         elif shape == "cylinder":
@@ -579,7 +583,7 @@ def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0 # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    Flux_vec[1:N] = Ds/T * np.diff(c)/dr
+    Flux_vec[1:N] = -Ds/T * np.diff(c)/dr
     return Flux_vec
 
 def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
@@ -591,7 +595,7 @@ def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     # Keep the concentration between 0 and 1
     c_edges = np.array([Max(1e-6, c_edges[i]) for i in range(N-1)])
     c_edges = np.array([Min(1-1e-6, c_edges[i]) for i in range(N-1)])
-    Flux_vec[1:N] = (Ds/T * (1-c_edges) * c_edges *
+    Flux_vec[1:N] = -(Ds/T * (1-c_edges) * c_edges *
             np.diff(mu)/dr)
     return Flux_vec
 
@@ -619,9 +623,9 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
     c2_edges = np.array([MIN((1-1e-6), c2_edges[i]) for i in
             range(len(c1_edges))])
     cbar_edges = 0.5*(c1_edges + c2_edges)
-    Flux1_vec[1:N] = (Ds/T * (1 - c1_edges)**(1.0) * c1_edges *
+    Flux1_vec[1:N] = -(Ds/T * (1 - c1_edges)**(1.0) * c1_edges *
             np.diff(mu1_R)/dr)
-    Flux2_vec[1:N] = (Ds/T * (1 - c2_edges)**(1.0) * c2_edges *
+    Flux2_vec[1:N] = -(Ds/T * (1 - c2_edges)**(1.0) * c2_edges *
             np.diff(mu2_R)/dr)
     return Flux1_vec, Flux2_vec
 
