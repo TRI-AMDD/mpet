@@ -572,10 +572,7 @@ def get_Mmat(shape, N):
                 shape=(N, N), format="csr")
         M1[1, 0] = M1[-2, -1] = 1./4
         M2 = sprs.diags(vol_vec, 0, format="csr")
-        if shape == "sphere":
-            Mmat = M1*M2
-        elif shape == "cylinder":
-            Mmat = M2
+        Mmat = M1*M2
     return Mmat
 
 def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
