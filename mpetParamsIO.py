@@ -223,7 +223,6 @@ class mpetIO():
         ndD_s["c0"] = c0 / cref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"]*td/3600
-        ndD_s["Vset"] = dD_s["Vset"] * e/(k*Tref)
         ndD_s["tend"] = dD_s["tend"] / td
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
@@ -359,6 +358,7 @@ class mpetIO():
 
         # Set up voltage cutoff values
         ndDVref = ndD_s["phiRef"]["c"] - ndD_s["phiRef"]["a"]
+        ndD_s["Vset"] = -((e/(k*Tref))*dD_s["Vset"] + ndDVref)
         ndD_s["phimin"] = -((e/(k*Tref))*dD_s["Vmax"] + ndDVref)
         ndD_s["phimax"] = -((e/(k*Tref))*dD_s["Vmin"] + ndDVref)
 
