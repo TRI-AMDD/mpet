@@ -349,7 +349,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             elif ndD_s["elyteModelType"] == "dilute":
                 Dp, Dm = ndD_s["Dp"], ndD_s["Dm"]
                 zp, zm = ndD_s["zp"], ndD_s["zm"]
-                i_edges = (-(Dp - Dm)*np.diff(datay_c, axis=1)/dxd1
+                i_edges = poros_edges*(-(Dp - Dm)*np.diff(datay_c, axis=1)/dxd1
                         - (zp*Dm - zm*Dm)*c_edges*np.diff(datay_p, axis=1)/dxd1
                         )
             i_CCs = np.zeros((numtimes, 1))
