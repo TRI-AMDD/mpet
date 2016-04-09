@@ -107,6 +107,12 @@ class modMPET(daeModel):
             self.phi_lyte["s"] = daeVariable("phi_lyte_s", elec_pot_t, self,
                     "Electrostatic potential in electrolyte in separator",
                     [self.DmnCell["s"]])
+        self.c_lyteGP = daeVariable("c_lyteGP", conc_t, self,
+                "Concentration in the electrolyte in " +
+                "the boundary condition ghost point")
+        self.phi_lyteGP = daeVariable("phi_lyteGP", elec_pot_t, self,
+                "Electrostatic potential in electrolyte in " +
+                "the boundary condition ghost point")
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
         self.phi_cell = daeVariable("phi_cell", elec_pot_t, self,
@@ -427,37 +433,35 @@ class modMPET(daeModel):
         modType = ndD["elyteModelType"]
         if modType == "SM":
             D, kappa, thermFac, tp0 = elyte_CST.getProps(ndD["SMset"])[:-1]
-        # Apply concentration boundary conditions
+        # Apply concentration and potential boundary conditions
         ctmp = np.empty(Nlyte + 2, dtype=object)
         ctmp[1:-1] = cvec
-        # If we don't have a real anode, the total current flowing
-        # into the electrolyte is set
-        if Nvol["a"] == 0:
-            if modType == "dilute":
-                ctmp[0] = ( ctmp[1] + (self.current() *
-                    ndD["epsbeta"][limtrode] *
-                    (1-ndD["tp"])*dxvec[0])/poros_edges[0] )
-            elif modType == "SM":
-                ctmp[0] = ctmp[1] + (self.current() *
-                    ndD["epsbeta"][limtrode] *
-                    (1-tp0(ctmp[1]))) * (
-                        dxvec[0]/(poros_edges[0]*D(ctmp[1])))
-        else: # porous anode -- no elyte flux at anode current collector
-            ctmp[0] = ctmp[1]
-        # No electrolyte flux at the cathode current collector
-        ctmp[-1] = ctmp[-2]
-
-        # Apply phi boundary conditions
+        ctmp[0] = self.c_lyteGP()
         phitmp = np.empty(Nlyte + 2, dtype=object)
         phitmp[1:-1] = phivec
-        # If we don't have a full anode, assume we have a Li foil
-        # electrode with BV kinetics and the specified rate
-        # constant.
+        phitmp[0] = self.phi_lyteGP()
+        # If we don't have a real anode:
+        # 1) the total current flowing into the electrolyte is set
+        # 2) assume we have a Li foil with BV kinetics and the
+        # specified rate constant
+        eqC = self.CreateEquation("GhostPointC")
+        eqP = self.CreateEquation("GhostPointP")
+
         if Nvol["a"] == 0:
+            # Concentration BC from mass flux
+            cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
+            if modType == "dilute":
+                Dwall, tp0wall = 1., ndD["tp"]
+            elif modType == "SM":
+                Dwall, tp0wall = D(cWall), tp0(cWall)
+            currWall = self.current()*ndD["epsbeta"][limtrode]
+            eqC.Residual = (poros_edges[0]*Dwall*(ctmp[1]-ctmp[0])/dxvec[0]
+                    + currWall*(1-tp0wall))
+
+            # Phi BC from BV at the foil
             # We assume BV kinetics with alpha = 0.5,
             # exchange current density, ecd = k0_foil * c_lyte**(0.5)
-            c_surf = 0.5 * (ctmp[0] + ctmp[1])
-            ecd = ndD["k0_foil"]*c_surf**0.5
+            ecd = ndD["k0_foil"]*cWall**0.5
             # -current = ecd*(exp(-eta/2) - exp(eta/2))
             # note negative current because positive current is
             # oxidation here
@@ -468,22 +472,23 @@ class modMPET(daeModel):
 #            # Infinitely fast anode kinetics
 #            eta = 0.
             # eta = mu_R - mu_O = -mu_O (evaluated at interface)
-            # mu_O = [T*ln(c) +] phi_lyte - phi_cell = -eta
-            # phi_lyte = -eta + phi_cell [- T*ln(c)]
-            phi_surf = -eta + self.phi_cell()
+            # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
+            # phiWall = -eta + phi_cell [- T*ln(c)]
+            phiWall = -eta + self.phi_cell()
             if modType == "dilute":
-                phi_surf -= ndD["T"]*np.log(c_surf)
-            # phi_lyte = 0.5 * (phitmp[0] + phitmp[1])
-            # phitmp[0] = 2*phi_lyte - phitmp[1]
-            phitmp[0] = 2*phi_surf - phitmp[1]
-        else: # porous anode -- no flux into anode current collector
-            phitmp[0] = phitmp[1]
-        # No flux into cathode current collector from the electrolyte
+                phiWall -= ndD["T"]*np.log(cWall)
+            # phiWall = 0.5 * (phitmp[0] + phitmp[1])
+            eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
+        else: # porous anode -- no elyte flux at anode current collector
+            eqC.Residual = ctmp[0] - ctmp[1]
+            eqP.Residual = phitmp[0] - phitmp[1]
+        # No electrolyte flux at the cathode current collector
+        ctmp[-1] = ctmp[-2]
         phitmp[-1] = phitmp[-2]
+
         # We need average values of c_lyte for the current densities
         # at the finite volume boundaries
         c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
-
         # current density in the electrolyte
         if modType == "dilute":
             Dp = ndD["Dp"]
