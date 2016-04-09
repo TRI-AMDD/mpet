@@ -107,12 +107,20 @@ class modMPET(daeModel):
             self.phi_lyte["s"] = daeVariable("phi_lyte_s", elec_pot_t, self,
                     "Electrostatic potential in electrolyte in separator",
                     [self.DmnCell["s"]])
-        self.c_lyteGP = daeVariable("c_lyteGP", conc_t, self,
-                "Concentration in the electrolyte in " +
-                "the boundary condition ghost point")
-        self.phi_lyteGP = daeVariable("phi_lyteGP", elec_pot_t, self,
-                "Electrostatic potential in electrolyte in " +
-                "the boundary condition ghost point")
+        # Note if we're doing a single electrode volume simulation
+        # It will be in a perfect bath of electrolyte at the applied
+        # potential.
+        if Nvol["a"] == 0 and Nvol["s"] == 0 and Nvol["c"] == 1:
+            self.SVsim = True
+        else:
+            self.SVsim = False
+        if not self.SVsim:
+            self.c_lyteGP = daeVariable("c_lyteGP", conc_t, self,
+                    "Concentration in the electrolyte in " +
+                    "the boundary condition ghost point")
+            self.phi_lyteGP = daeVariable("phi_lyteGP", elec_pot_t, self,
+                    "Electrostatic potential in electrolyte in " +
+                    "the boundary condition ghost point")
         self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
         self.phi_cell = daeVariable("phi_cell", elec_pot_t, self,
@@ -283,7 +291,7 @@ class modMPET(daeModel):
 
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
-        if Nvol["a"] == 0 and Nvol["s"] == 0 and Nvol["c"] == 1:
+        if self.SVsim:
             eq = self.CreateEquation("c_lyte")
             eq.Residual = self.c_lyte["c"].dt(0) - 0
             eq = self.CreateEquation("phi_lyte")
