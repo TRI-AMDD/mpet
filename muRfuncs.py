@@ -220,7 +220,7 @@ class muRfuncs():
         muR = muR_IS + enthalpyTerm
         return muR
 
-    def regSln2(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
+    def graphite2paramHomog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
         """ Helper function """
         y1, y2 = y
         ISfuncs1, ISfuncs2 = ISfuncs
@@ -253,51 +253,52 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-    def generalRegSln(self, y, ybar, ISfuncs):
+    def generalNonHomog(self, y, ybar):
         """ Helper function """
         ptype = self.ndD["type"]
-        Omga = self.ndD["Omga"]
         N = len(y)
-        muR = self.regSln(y, Omga, ISfuncs)
+        mod1var, mod2var = False, False
+        if type(y) == np.ndarray:
+            mod1var = True
+        elif type(y) == tuple and len(y) == 2 and type(y[0] == np.ndarray):
+            mod2var = True
+        else:
+            raise Exception("Uknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
             B = self.ndD["B"]
             if shape == "C3":
-                cwet = self.ndD["cwet"]
-                muR += self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
+                if mod1var:
+                    cwet = self.ndD["cwet"]
+                    muR_nh = self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
+                elif mod2var:
+                    raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.ndD["beta_s"]
                 r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
-                muR += self.nonHomogRoundWetting(y, ybar, B, kappa,
-                        beta_s, shape, r_vec)
-        return muR
-
-    def generalRegSln2(self, y, ybar, ISfuncs):
-        """ Helper function """
-        ptype = self.ndD["type"]
-        Omga = self.ndD["Omga"]
-        Omgb = self.ndD["Omgb"]
-        Omgc = self.ndD["Omgc"]
-        EvdW = self.ndD["EvdW"]
-        N = len(y[0])
-        muR1, muR2 = self.regSln2(y, Omga, Omgb, Omgc, EvdW, ISfuncs)
-        if ("homog" not in ptype) and (N > 1):
-            shape = self.ndD["shape"]
-            kappa = self.ndD["kappa"]
-            B = self.ndD["B"]
-            beta_s = self.ndD["beta_s"]
-            r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
-            muR1 += self.nonHomogRoundWetting(y[0], ybar[0], B,
-                    kappa, beta_s, shape, r_vec)
-            muR2 += self.nonHomogRoundWetting(y[1], ybar[1], B,
-                    kappa, beta_s, shape, r_vec)
-        return (muR1, muR2)
+                if mod1var:
+                    muR_nh = self.nonHomogRoundWetting(y, ybar, B, kappa,
+                            beta_s, shape, r_vec)
+                elif mod2var:
+                    muR1_nh = self.nonHomogRoundWetting(y[0], ybar[0],
+                            B, kappa, beta_s, shape, r_vec)
+                    muR2_nh = self.nonHomogRoundWetting(y[1], ybar[1],
+                            B, kappa, beta_s, shape, r_vec)
+                    muR_nh = (muR1_nh, muR2_nh)
+        else: # homogeneous particle
+            if mod1var:
+                muR_nh = 0*y
+            elif mod2var:
+                muR_nh = (0*y[0], 0*y[1])
+        return muR_nh
 
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
-        muR = self.generalRegSln(y, ybar, ISfuncs)
+        muRhomog = self.regSln(y, self.ndD["Omga"], ISfuncs)
+        muRnonhomog = self.generalNonHomog(y, ybar)
+        muR = muRhomog + muRnonhomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
@@ -305,7 +306,13 @@ class muRfuncs():
     def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
-        muR1, muR2 = self.generalRegSln2(y, ybar, ISfuncs)
+        ndD = self.ndD
+        muR1homog, muR2homog = self.graphite2paramHomog(y,
+                ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"],
+                ISfuncs)
+        muR1nonhomog, muR2nonhomog = self.generalNonHomog(y, ybar)
+        muR1 = muR1homog + muR1nonHomog
+        muR2 = muR2homog + muR2nonHomog
         actR1 = np.exp(muR1/self.T)
         actR2 = np.exp(muR2/self.T)
         muR1 += muRtheta + muR_ref
@@ -314,7 +321,7 @@ class muRfuncs():
 
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
-        muR = self.generalRegSln(y, ybar, ISfuncs)
+        muR = self.regSln(y, self.ndD["Omga"], ISfuncs)
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
