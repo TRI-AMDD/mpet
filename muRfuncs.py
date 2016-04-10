@@ -256,12 +256,13 @@ class muRfuncs():
     def generalNonHomog(self, y, ybar):
         """ Helper function """
         ptype = self.ndD["type"]
-        N = len(y)
         mod1var, mod2var = False, False
         if type(y) == np.ndarray:
             mod1var = True
+            N = len(y)
         elif type(y) == tuple and len(y) == 2 and type(y[0] == np.ndarray):
             mod2var = True
+            N = len(y[0])
         else:
             raise Exception("Uknown input type")
         if ("homog" not in ptype) and (N > 1):
@@ -297,8 +298,8 @@ class muRfuncs():
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
         muRhomog = self.regSln(y, self.ndD["Omga"], ISfuncs)
-        muRnonhomog = self.generalNonHomog(y, ybar)
-        muR = muRhomog + muRnonhomog
+        muRnonHomog = self.generalNonHomog(y, ybar)
+        muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
@@ -310,7 +311,7 @@ class muRfuncs():
         muR1homog, muR2homog = self.graphite2paramHomog(y,
                 ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"],
                 ISfuncs)
-        muR1nonhomog, muR2nonhomog = self.generalNonHomog(y, ybar)
+        muR1nonHomog, muR2nonHomog = self.generalNonHomog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
         actR1 = np.exp(muR1/self.T)
