@@ -51,9 +51,11 @@ class muRfuncs():
         materialData['Li_ss'] = self.Li_ss
         materialData['NCA_ss1'] = self.NCA_ss1
         materialData['NCA_ss2'] = self.NCA_ss2
+        materialData['testIS_ss'] = self.testIS_ss
         materialData['LiFePO4'] = self.LiFePO4
         materialData['LiC6'] = self.LiC6
         materialData['LiC6_1param'] = self.LiC6_1param
+        materialData['testRS'] = self.testRS
         self.muRfunc = materialData[ndD["muRfunc"]]
 
     def get_muR_from_OCV(self, OCV, muR_ref):
@@ -187,6 +189,12 @@ class muRfuncs():
         OCV = (-self.kToe*np.log(y/(1-y))
                 + 4.12178 - 0.2338*y - 1.24566*y**2 + 1.16769*y**3
                 - 0.20745*y**4)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = self.get_actR_None(y)
+        return muR, actR
+
+    def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
+        OCV = -self.kToe*np.log(y/(1-y))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -365,6 +373,13 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
+    def testRS(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = 0.
+        muR = self.generalRegSln(y, ybar, ISfuncs)
+        actR = np.exp(muR/self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
 def stepDown(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
 def stepUp(x, xc, delta):
@@ -373,18 +388,25 @@ def stepUp(x, xc, delta):
 def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)
     curv = np.empty(N, dtype=object)
+    # Here, beta_s = n*grad(c) at the surface.
+    # beta_s = (c_N - c_{N-2})/(2*dr)
+    # c_N = c_{N_2} + 2*dr*beta_s
     if particleShape == "sphere":
         curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
         curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (c[2:] - c[0:-2])/(dr*r_vec[1:-1]))
+                (2./r_vec[1:-1])*(c[2:] - c[0:-2])/(2*dr))
         curv[N-1] = ((2./Rs)*beta_s +
                 (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
     elif particleShape == "cylinder":
         curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
         curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (c[2:] - c[0:-2])/(2 * dr*r_vec[1:-1]))
+                (1./r_vec[1:-1])*(c[2:] - c[0:-2])/(2*dr))
         curv[N-1] = ((1./Rs)*beta_s +
                 (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
+#    elif particleShape == "rod":
+#        curv[0] = (2*c[1] - 2*c[0]) / dr**2
+#        curv[1:N-1] = np.diff(c, 2)/dr**2
+#        curv[N-1] = (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2
     else:
         raise NotImplementedError("calc_curv_c only for sphere and cylinder")
     return curv
