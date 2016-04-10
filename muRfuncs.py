@@ -233,7 +233,7 @@ class muRfuncs():
         muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
-    def regSln2well(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite1paramHomog(self, y, Omga, Omgb, ISfuncs=None):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
@@ -245,7 +245,7 @@ class muRfuncs():
         muR = muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def regSln2wellGraphite(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite1paramHomog_2(self, y, Omga, Omgb, ISfuncs=None):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
@@ -326,28 +326,6 @@ class muRfuncs():
                 muR_nh = (0*y[0], 0*y[1])
         return muR_nh
 
-    def doubleWellGraphite1Param(self, y, ybar, ISfuncs):
-        """ Helper function """
-        ptype = self.ndD["type"]
-        Omga = self.ndD["Omga"]
-        Omgb = self.ndD["Omgb"]
-        N = len(y)
-#        muR = self.regSln2well(y, Omga, Omgb, ISfuncs)
-        muR = self.regSln2wellGraphite(y, Omga, Omgb, ISfuncs)
-        if ("homog" not in ptype) and (N > 1):
-            shape = self.ndD["shape"]
-            kappa = self.ndD["kappa"]
-            B = self.ndD["B"]
-            if shape == "C3":
-                cwet = self.ndD["cwet"]
-                muR += self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
-            elif shape in ["cylinder", "sphere"]:
-                beta_s = self.ndD["beta_s"]
-                r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
-                muR += self.nonHomogRoundWetting(y, ybar, B, kappa,
-                        beta_s, shape, r_vec)
-        return muR
-
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
@@ -376,7 +354,11 @@ class muRfuncs():
 
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
-        muR = self.doubleWellGraphite1Param(y, ybar, ISfuncs)
+        ndD = self.ndD
+        muRhomog = self.graphite1paramHomog_2(y, ndD["Omga"],
+                ndD["Omgb"], ISfuncs)
+        muRnonHomog = self.generalNonHomog(y, ybar)
+        muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
