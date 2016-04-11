@@ -159,15 +159,9 @@ class mpetIO():
             dD["B"] = P.getfloat('Material', 'B')
             dD["EvdW"] = P.getfloat('Material', 'EvdW')
             dD["rho_s"] = P.getfloat('Material', 'rho_s')
-#            dD["Vstd"] = P.getfloat('Material', 'Vstd')
             dD["D"] = P.getfloat('Material', 'D')
-#            ndD["delPhiEqFit"] = P.getboolean('Material', 'delPhiEqFit')
             dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
             ndD["cwet"] = P.getfloat('Material', 'cwet')
-#            if ndD["delPhiEqFit"]:
-#                ndD["delPhiFunc"] = P.get('Material', 'delPhiFunc')
-#            else:
-#                ndD["delPhiFunc"] = None
             ndD["muRfunc"] = P.get('Material', 'muRfunc')
             ndD["logPad"] = P.getboolean('Material', 'logPad')
             ndD["noise"] = P.getboolean('Material', 'noise')
@@ -245,18 +239,7 @@ class mpetIO():
         ndD_s["epsbeta"] = {}
         ndD_s["mcond"] = {}
         ndD_s["dphi_eq_ref"] = {}
-#        ndD_s["phiRef"] = { # temporary, used for Vmax, Vmin
-#                "a" : (e/(k*Tref))*dD_s["Vstd"]["a"],
-#                "c" : 0.}
         ndD_s["phiRef"] = {"a" : 0.} # temporary, used for Vmax, Vmin
-#        ndD_s["lambda"] = {}
-#        ndD_s["B"] = {}
-#        ndD_s["kappa"] = {}
-#        ndD_s["k0"] = {}
-#        ndD_s["beta_s"] = {}
-#        ndD_s["delta_L"] = {}
-#        ndD_s["Dsld"] = {}
-#        ndD_s["Omga"] = {}
         for trode in ndD_s["trodes"]:
             ## System scale parameters
             # particle size distribution and connectivity distribution
@@ -286,10 +269,6 @@ class mpetIO():
                     (F*dD_e[trode]["csmax"]*vols))
 
             ## Electrode particle parameters
-#            if Type in ["diffn", "homog"] and ndD_e[trode]["delPhiEqFit"]:
-#            material = ndD_e[trode]['muRfunc']
-#            muRfuncs = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode])
-#            muRfunc = muRfuncs.materialData[material]
             lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*Tref)
             ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
             ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
@@ -309,9 +288,6 @@ class mpetIO():
             elif Type in ndD_s["1varTypes"]:
                 ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0]
             ndD_s["phiRef"][trode] = -ndD_e[trode]["muR_ref"][0]
-#            lens = dD["psd_len"][trode]
-#            areas = dD["psd_area"][trode]
-#            vols = dD["psd_vol"][trode]
             Nvol, Npart = psd_raw[trode].shape
             # Electrode parameters which depend on the individual
             # particle (e.g. because of non-dimensionalization)
@@ -340,24 +316,6 @@ class mpetIO():
                     ndD_tmp["delta_L"] = pvol/(parea*plen)
                     if Type in ["homog_sdn", "homog2_sdn"]:
                         ndD_tmp["Omga"] = self.size2regsln(plen)
-#            ndD["kappa"][trode] = (dD['kappa'][trode] /
-#                    (k*Tref*dD['rho_s'][trode]*lens**2))
-#            k0 = ndD["k0"][trode] = (
-#                    ((areas/vols)*dD['k0'][trode]*td) /
-#                    (F*dD["csmax"][trode]))
-#            ndD["beta_s"][trode] = (dD['dgammasdc'][trode]*lens*
-#                    dD['rho_s'][trode]/dD['kappa'][trode])
-#            ndD["delta_L"][trode] = vols/(areas*lens)
-#            ndD["Dsld"][trode] = dD['Dsld'][trode]*td/lens**2
-#            solidType = ndD["solidType"][trode]
-#            if solidType in ["homog", "ACR", "CHR", "diffn"]:
-#                ndD["Omga"][trode] = (dD["Omga"][trode] / (k*Tref) *
-#                        np.ones(psd_num[trode].shape))
-#            elif solidType in ["homog_sdn"]:
-#                # Not sure about factor of nondimensional T.
-#                ndD["Omga"][trode] = T*self.size2regsln(lens)
-#            else:
-#                raise NotImplementedError("Solid types missing here")
 
         # Set up macroscopic input information.
         ndDVref = ndD_s["phiRef"]["c"] - ndD_s["phiRef"]["a"]
@@ -527,8 +485,6 @@ class mpetIO():
             raise NotImplementedError("Input solidShape not defined")
         if solidType == "homog_sdn" and not T298:
             raise NotImplementedError("homog_snd req. Tabs=298")
-#        if ndD["rxnType"] == "BV" and ndD_s["elyteModelType"] == "SM":
-#            raise Exception("BV currently requires dilute elyte model")
         return
 
     def writeConfigFile(self, P, filename="input_params.cfg"):
