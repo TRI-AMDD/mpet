@@ -30,7 +30,7 @@ class InterpTimeVector(daeScalarExternalFunction):
             ymat, previous_output, position):
         arguments = {}
         self.previous_output = previous_output
-        self.interp = sint.interp1d(tvec, ymat, axis=0)
+        self.interp = sintrp.interp1d(tvec, ymat, axis=0)
         arguments["time"] = time
         self.position = position
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
