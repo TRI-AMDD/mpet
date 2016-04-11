@@ -10,6 +10,7 @@ from daetools.pyDAE import *
 
 import muRfuncs
 import mpetPorts
+import externFuncs
 
 eps = -1e-12
 
@@ -70,11 +71,11 @@ class mod2var(daeModel):
         self.ISfuncs1 = self.ISfuncs2 = None
         if ndD["logPad"]:
             self.ISfuncs1 = np.array(
-                    [LogRatio("LR1", self, unit(), self.c1(k)) for k in
-                        range(N)])
+                    [externFuncs.LogRatio("LR1", self, unit(),
+                        self.c1(k)) for k in range(N)])
             self.ISfuncs2 = np.array(
-                    [LogRatio("LR2", self, unit(), self.c2(k)) for k in
-                        range(N)])
+                    [externFuncs.LogRatio("LR2", self, unit(),
+                        self.c2(k)) for k in range(N)])
         ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
         # Prepare noise
@@ -88,12 +89,14 @@ class mod2var(daeModel):
             # Previous_output is common for all external functions
             previous_output1 = []
             previous_output2 = []
-            self.noise1 = [noise("noise1", self, unit(), Time(), tvec,
-                noise_data1, previous_output1, _position_) for
-                _position_ in range(N)]
-            self.noise2 = [noise("noise2", self, unit(), Time(), tvec,
-                noise_data2, previous_output2, _position_) for
-                _position_ in range(N)]
+            self.noise1 = [externFuncs.InterpTimeVector("noise1",
+                self, unit(), Time(), tvec, noise_data1,
+                previous_output1, _position_) for _position_ in
+                range(N)]
+            self.noise2 = [externFuncs.InterpTimeVector("noise2",
+                self, unit(), Time(), tvec, noise_data2,
+                previous_output2, _position_) for _position_ in
+                range(N)]
         noises = (self.noise1, self.noise2)
 
         # Figure out mu_O, mu of the oxidized state
@@ -292,8 +295,8 @@ class mod1var(daeModel):
         self.ISfuncs = None
         if ndD["logPad"]:
             self.ISfuncs = np.array(
-                    [LogRatio("LR", self, unit(), self.c(k)) for k in
-                        range(N)])
+                    [externFuncs.LogRatio("LR", self, unit(),
+                        self.c(k)) for k in range(N)])
 
         # Prepare noise
         self.noise = None
@@ -304,9 +307,9 @@ class mod1var(daeModel):
             noise_data = noise_prefac*np.random.randn(numnoise, N)
             # Previous_output is common for all external functions
             previous_output = []
-            self.noise = [noise("noise", self, unit(), Time(), tvec,
-                noise_data, previous_output, _position_) for
-                _position_ in range(N)]
+            self.noise = [externFuncs.InterpTimeVector("noise", self,
+                unit(), Time(), tvec, noise_data, previous_output,
+                _position_) for _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte, self.phi_lyte, self.phi_m, T,
@@ -410,93 +413,6 @@ class mod1var(daeModel):
                 eq.Residual += noise[k]()
 
         return
-
-class LogRatio(daeScalarExternalFunction):
-    """
-    Class to make a piecewise function that evaluates
-    log(c/(1-c)). However, near the edges (close to zero and one),
-    extend the function linearly to avoid negative log errors and
-    allow concentrations above one and below zero.
-    """
-    def __init__(self, Name, Model, units, c):
-        arguments = {}
-        arguments["c"] = c
-        daeScalarExternalFunction.__init__(self, Name, Model, units,
-                arguments)
-
-    def Calculate(self, values):
-        c = values["c"]
-        cVal = c.Value
-        EPS = 1e-6
-        cL = EPS
-        cH = 1 - EPS
-        if cVal < cL:
-            logRatio = (1./(cL*(1-cL)))*(cVal-cL) + np.log(cL/(1-cL))
-        elif cVal > cH:
-            logRatio = (1./(cH*(1-cH)))*(cVal-cH) + np.log(cH/(1-cH))
-        else:
-            logRatio = np.log(cVal/(1-cVal))
-        logRatio = adouble(logRatio)
-        if c.Derivative != 0:
-            if cVal < cL:
-                logRatio.Derivative = 1./(cL*(1-cL))
-            elif cVal > cH:
-                logRatio.Derivative = 1./(cH*(1-cH))
-            else:
-                logRatio.Derivative = 1./(cVal*(1-cVal))
-            logRatio.Derivative *= c.Derivative
-        return logRatio
-
-class noise(daeScalarExternalFunction):
-    def __init__(self, Name, Model, units, time, time_vec,
-            noise_data, previous_output, position):
-        arguments = {}
-        self.counter = 0
-        self.saved = 0
-        self.previous_output = previous_output
-        self.time_vec = time_vec
-        self.noise_data = noise_data
-        self.interp = sint.interp1d(time_vec, noise_data, axis=0)
-#        self.tlo = time_vec[0]
-#        self.thi = time_vec[-1]
-#        self.numnoise = len(time_vec)
-        arguments["time"] = time
-        self.position = position
-        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
-
-    def Calculate(self, values):
-        time = values["time"]
-        # A derivative for Jacobian is requested - return always 0.0
-        if time.Derivative != 0:
-            return adouble(0)
-        # Store the previous time value to prevent excessive
-        # interpolation.
-        if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
-            self.saved += 1
-            return adouble(float(self.previous_output[1][self.position]))
-        noise_vec = self.interp(time.Value)
-        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
-        self.counter += 1
-        return adouble(noise_vec[self.position])
-#        indx = (float(time.Value - self.tlo)/(self.thi-self.tlo) *
-#                (self.numnoise - 1))
-#        ilo = np.floor(indx)
-#        ihi = np.ceil(indx)
-#        # If we're exactly at a time in time_vec
-#        if ilo == ihi:
-#            noise_vec = self.noise_data[ilo, :]
-#        else:
-#            noise_vec = (self.noise_data[ilo, :] +
-#                    (time.Value - self.time_vec[ilo]) /
-#                    (self.time_vec[ihi] - self.time_vec[ilo]) *
-#                    (self.noise_data[ihi, :] - self.noise_data[ilo, :])
-#                    )
-#        # previous_output is a reference to a common object and must
-#        # be updated here - not deleted.  using self.previous_output = []
-#        # it will delete the common object and create a new one
-#        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
-#        self.counter += 1
-#        return adouble(float(noise_vec[self.position]))
 
 def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         act_R=None, act_lyte=None, lmbda=None, alpha=None):

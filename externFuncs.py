@@ -3,12 +3,12 @@ import scipy.interpolate as sintrp
 
 from daetools.pyDAE import daeScalarExternalFunction, adouble
 
-class InterpScalar(daeScalarExternalFunction):
-    def __init__(self, Name, Model, units, time, xvec, yvec):
+class InterpTimeScalar(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, time, tvec, yvec):
         arguments = {}
         arguments["time"] = time
         self.cache = None
-        self.interp = sintrp.interp1d(xvec, yvec)
+        self.interp = sintrp.interp1d(tvec, yvec)
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
 
     def Calculate(self, values):
@@ -24,3 +24,62 @@ class InterpScalar(daeScalarExternalFunction):
         yval = float(self.interp(time.Value))
         self.cache = (time.Value, yval)
         return adouble(yval)
+
+class InterpTimeVector(daeScalarExternalFunction):
+    def __init__(self, Name, Model, units, time, tvec,
+            ymat, previous_output, position):
+        arguments = {}
+        self.previous_output = previous_output
+        self.interp = sint.interp1d(tvec, ymat, axis=0)
+        arguments["time"] = time
+        self.position = position
+        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
+
+    def Calculate(self, values):
+        time = values["time"]
+        # A derivative for Jacobian is requested - always return 0.0
+        if time.Derivative != 0:
+            return adouble(0)
+        # Store the previous time value to prevent excessive
+        # interpolation.
+        if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
+            return adouble(float(self.previous_output[1][self.position]))
+        noise_vec = self.interp(time.Value)
+        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
+        return adouble(noise_vec[self.position])
+
+class LogRatio(daeScalarExternalFunction):
+    """
+    Class to make a piecewise function that evaluates
+    log(c/(1-c)). However, near the edges (close to zero and one),
+    extend the function linearly to avoid negative log errors and
+    allow concentrations above one and below zero.
+    """
+    def __init__(self, Name, Model, units, c):
+        arguments = {}
+        arguments["c"] = c
+        daeScalarExternalFunction.__init__(self, Name, Model, units,
+                arguments)
+
+    def Calculate(self, values):
+        c = values["c"]
+        cVal = c.Value
+        EPS = 1e-6
+        cL = EPS
+        cH = 1 - EPS
+        if cVal < cL:
+            logRatio = (1./(cL*(1-cL)))*(cVal-cL) + np.log(cL/(1-cL))
+        elif cVal > cH:
+            logRatio = (1./(cH*(1-cH)))*(cVal-cH) + np.log(cH/(1-cH))
+        else:
+            logRatio = np.log(cVal/(1-cVal))
+        logRatio = adouble(logRatio)
+        if c.Derivative != 0:
+            if cVal < cL:
+                logRatio.Derivative = 1./(cL*(1-cL))
+            elif cVal > cH:
+                logRatio.Derivative = 1./(cH*(1-cH))
+            else:
+                logRatio.Derivative = 1./(cVal*(1-cVal))
+            logRatio.Derivative *= c.Derivative
+        return logRatio
