@@ -383,8 +383,8 @@ class modMPET(daeModel):
 #                    * np.tanh(Time()/(45.0)))
                     )
         elif "segments" in self.profileType:
-            self.segSet = externFuncs.InterpScalar("segSet", self, unit(),
-                    Time(), ndD["segments_tvec"],
+            self.segSet = externFuncs.InterpTimeScalar("segSet", self,
+                    unit(), Time(), ndD["segments_tvec"],
                     ndD["segments_setvec"])
             if self.profileType == "CCsegments":
                 eq = self.CreateEquation("Total_Current_Constraint")
