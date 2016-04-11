@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
-import scipy.interpolate as sint
 
 from daetools.pyDAE import *
 
@@ -299,7 +298,7 @@ class mod1var(daeModel):
         self.noise = None
         if ndD["noise"]:
             numnoise = 200
-            noise_prefac = 1e-7
+            noise_prefac = 1e-5
             tvec = np.linspace(0., 1.05*self.ndD_s["tend"], numnoise)
             noise_data = noise_prefac*np.random.randn(numnoise, N)
             # Previous_output is common for all external functions
