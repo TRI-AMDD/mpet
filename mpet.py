@@ -22,6 +22,7 @@ import mpetParamsIO
 import mpetPorts
 import mpetMaterials
 import elyte_CST
+import externFuncs
 
 
 class modMPET(daeModel):
@@ -384,6 +385,16 @@ class modMPET(daeModel):
 #                    * 1
 #                    * np.tanh(Time()/(45.0)))
                     )
+        elif "segments" in self.profileType:
+            self.segSet = externFuncs.InterpScalar("segSet", self, unit(),
+                    Time(), ndD["segments_tvec"],
+                    ndD["segments_setvec"])
+            if self.profileType == "CCsegments":
+                eq = self.CreateEquation("Total_Current_Constraint")
+                eq.Residual = self.current() - self.segSet()
+            elif self.profileType == "CVsegments":
+                eq = self.CreateEquation("applied_potential")
+                eq.Residual = self.phi_applied() - self.segSet()
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

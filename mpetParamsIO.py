@@ -1,6 +1,7 @@
 import os
 import ConfigParser
 import pickle
+import ast
 
 import numpy as np
 
@@ -54,6 +55,9 @@ class mpetIO():
         # Simulation Parameters
         ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
         dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+        segs = dD_s["segments"] = ast.literal_eval(P_s.get('Sim Params', 'segments'))
+        dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
+        numsegs = dD_s["numsegments"] = len(segs)
         dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
         dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
         try:
@@ -223,7 +227,6 @@ class mpetIO():
         ndD_s["c0"] = c0 / cref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"]*td/3600
-        ndD_s["tend"] = dD_s["tend"] / td
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
         ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./CrateCurr) * (td/3600.)
@@ -356,11 +359,43 @@ class mpetIO():
 #            else:
 #                raise NotImplementedError("Solid types missing here")
 
-        # Set up voltage cutoff values
+        # Set up macroscopic input information.
         ndDVref = ndD_s["phiRef"]["c"] - ndD_s["phiRef"]["a"]
+        # CV setpoint and voltage cutoff values
         ndD_s["Vset"] = -((e/(k*Tref))*dD_s["Vset"] + ndDVref)
         ndD_s["phimin"] = -((e/(k*Tref))*dD_s["Vmax"] + ndDVref)
         ndD_s["phimax"] = -((e/(k*Tref))*dD_s["Vmin"] + ndDVref)
+
+        # Current or voltage segments profiles
+        dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
+        dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
+        if ndD_s["profileType"] == "CVsegments":
+            dD_s["segments_setvec"][0] = -(k*Tref/e)*ndDVref
+        elif ndD_s["profileType"] == "CCsegments":
+            dD_s["segments_setvec"][0] = 0.
+        tPrev = 0.
+        for segIndx in range(numsegs):
+            tNext = tPrev + dD_s["tramp"]
+            dD_s["segments_tvec"][2*segIndx+1] = tNext
+            tPrev = tNext
+            # Factor of 60 here to convert to s
+            tNext = tPrev + (segs[segIndx][1] * 60 - dD_s["tramp"])
+            dD_s["segments_tvec"][2*segIndx+2] = tNext
+            tPrev = tNext
+            setNext = segs[segIndx][0]
+            dD_s["segments_setvec"][2*segIndx+1] = setNext
+            dD_s["segments_setvec"][2*segIndx+2] = setNext
+        ndD_s["segments_tvec"] = dD_s["segments_tvec"] / td
+        if ndD_s["profileType"] == "CCsegments":
+            ndD_s["segments_setvec"] = dD_s["segments_setvec"] * (td / 3600)
+        elif ndD_s["profileType"] == "CVsegments":
+            ndD_s["segments_setvec"] = -(
+                    (e/(k*Tref))*dD_s["segments_setvec"] + ndDVref)
+        if "segments" in ndD_s["profileType"]:
+            dD_s["tend"] = dD_s["segments_tvec"][-1]
+            # Pad the last segment so no extrapolation occurs
+            dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
+        ndD_s["tend"] = dD_s["tend"] / td
 
         return dD_s, ndD_s, dD_e, ndD_e
 
