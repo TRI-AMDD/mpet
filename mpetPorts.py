@@ -1,6 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-
 from daetools.pyDAE import *
 
 mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
