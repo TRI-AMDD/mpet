@@ -221,8 +221,6 @@ class mpetIO():
         ndD_s["c0"] = c0 / cref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"]*td/3600
-        if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
-            ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
         ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./CrateCurr) * (td/3600.)
 
         # parameters which depend on the electrode
@@ -354,6 +352,8 @@ class mpetIO():
             # Pad the last segment so no extrapolation occurs
             dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
         ndD_s["tend"] = dD_s["tend"] / td
+        if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
+            ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
         return dD_s, ndD_s, dD_e, ndD_e
 
