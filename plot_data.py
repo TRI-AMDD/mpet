@@ -14,6 +14,7 @@ import elyte_CST
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
     pfx = 'mpet.'
+    sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
     dataFileName = "output_data.mat"
@@ -23,6 +24,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         data[pfx + 'current'][0][0]
     except KeyError:
         pfx = ''
+    try:
+        data[pfx + "partTrodecvol0part0" + sStr + "c"]
+    except KeyError:
+        sStr = "."
     # Read in the parameters used to define the simulation
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(indir, paramFileName)
@@ -209,7 +214,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             raise NotImplemented("no data-only output for surf")
         fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
                 sharey=True)
-        str_base = pfx + "partTrode{l}vol{{j}}part{{i}}.".format(l=l) + "c"
+        str_base = (pfx
+                    + "partTrode{l}vol{{j}}part{{i}}".format(l=l)
+                    + sStr + "c")
         ylim = (0, 1.01)
         datax = times
         for i in range(Npart[l]):
@@ -407,7 +414,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         l = plot_type[-1]
         fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False,
                 sharey=True)
-        partStr = "partTrode{l}vol{{j}}part{{i}}.".format(l=l)
+        partStr = "partTrode{l}vol{{j}}part{{i}}".format(l=l) + sStr
         type2c = False
         if ndD_e[l]["type"] in ndD_s["1varTypes"]:
             if plot_type[:-2] in ["cbarLine"]:
@@ -459,7 +466,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         t0ind = 0
         l = plot_type[-1]
         Nv, Np = Nvol[l], Npart[l]
-        partStr = "partTrode{l}vol{j}part{i}."
+        partStr = "partTrode{l}vol{j}part{i}" + sStr
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Np, Nv, squeeze=False,
@@ -553,9 +560,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for tInd in range(numtimes):
                 for i in range(Nvol[trode]):
                     for j in range(Npart[trode]):
-                        dataStr = (pfx +
-                                'partTrode{t}vol{i}part{j}.'.format(t=trode,i=i,j=j)
-                                + 'cbar')
+                        dataStr = (pfx
+                                + "partTrode{t}vol{i}part{j}".format(t=trode,i=i,j=j)
+                                + sStr + "cbar")
                         dataCbar[trode][tInd, i, j] = (
                                 data[dataStr][0][tInd])
         if data_only:
