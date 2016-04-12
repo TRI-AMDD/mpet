@@ -646,10 +646,12 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     def WriteDataToFile(self):
         mdict = {}
         for var in self.Process.Variables:
-            # Remove the "mpet" (model name) part of the key for the
-            # output. This enables the mat file to be read by, e.g.,
-            # MATLAB.
-            dkeybase = var.Name[len("mpet")+1:]
+            # Remove the model name part of the output key for
+            # brevity.
+            dkeybase = var.Name[var.Name.index(".")+1:]
+            # Remove dots from variable keys. This enables the mat
+            # file to be read by, e.g., MATLAB.
+            dkeybase = dkeybase.replace(".", "_")
             mdict[dkeybase] = var.Values
             mdict[dkeybase + '_times'] = var.TimeValues
         try:
