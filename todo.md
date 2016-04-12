@@ -1,7 +1,15 @@
 # TODO
+- Merge master back into secondaryParticles
 - Extrapolate linearly for interp functions?
 - Add calc\_Flux\_diffn2 function to mpetMaterials
-- Rename files (mpet.py, cell.py, electrodes.py, properties/icp.py, properties/ecp.py)
+- Rename files
+    - mpet.py [main() + consoleRun() + simMpet] -> mpet.py
+    - mpet.py [setupDataReporters + MyMATDataReporter] -> datareporting.py
+    - mpet.py [modMPET] -> cell.py
+    - mpetMaterials.py [material equation models] -> electrodes.py
+    - elyteCST.py -> props\_icp.py
+    - muRfuncs -> props\_ecp.py
+- Fix "from daetools.pyDAE import \*" -> from pyDAE import dae
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
 - Crash if sim\_output exists but history does not
 - Add hash to history filename time stamp?
@@ -81,7 +89,7 @@
     - return mu\_R\_h, a\_R\_h
     - For non-ss, return muR\_h if len(c) == 1 else return full muR
     - be consistent about where ISfuncs=None or required param
-- Make diffn \_require\_ mu\_R(c) function; add ideal solid to mu\_Rfuncs file
+- Make diffn _require_ mu\_R(c) function; add ideal solid to mu\_Rfuncs file
 - No: Make separate mu\_R-internal (for non-diffn) and mu\_R-surface (for all)
 - params -- make homog call something from mu\_R\_h explicitly.
 - Fix muR & c for primary particles -- they should be called as with SM to be able to pass these separately.
