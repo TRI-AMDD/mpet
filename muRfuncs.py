@@ -296,7 +296,7 @@ class muRfuncs():
             mod2var = True
             N = len(y[0])
         else:
-            raise Exception("Uknown input type")
+            raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.ndD["shape"]
             kappa = self.ndD["kappa"]
