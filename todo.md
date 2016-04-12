@@ -2,13 +2,16 @@
 - Merge master back into secondaryParticles
 - Extrapolate linearly for interp functions?
 - Add calc\_Flux\_diffn2 function to mpetMaterials
-- Rename files
-    - mpet.py [main() + consoleRun() + simMpet] -> mpet.py
-    - mpet.py [setupDataReporters + MyMATDataReporter] -> datareporting.py
-    - mpet.py [modMPET] -> cell.py
-    - mpetMaterials.py [material equation models] -> electrodes.py
+- Reorganize and rename files
+    - mpet.[main, consoleRun[, simMPET]] -> mpet.py
+    - or: mpet.simMPET to sim.py
+    - mpet.[setupDataReporters, MyMATDataReporter] -> datareporting.py
+    - mpet.modMPET -> cell.py
+    - mpetMaterials.[material equation models] -> electrodes.py
+    - mpetMaterials.[get\_unit..., get\_dr...] + muRfuncs.calc\_curv -> geometry.py
     - elyteCST.py -> props\_icp.py
     - muRfuncs -> props\_ecp.py
+- Remove mpetMaterials.[mu\_ideal\_sln, mu\_reg\_sln]
 - Fix "from daetools.pyDAE import \*" -> from pyDAE import dae
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
 - Crash if sim\_output exists but history does not
