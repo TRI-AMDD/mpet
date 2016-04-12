@@ -289,10 +289,10 @@ class muRfuncs():
         """ Helper function """
         ptype = self.ndD["type"]
         mod1var, mod2var = False, False
-        if type(y) == np.ndarray:
+        if isinstance(y, np.ndarray):
             mod1var = True
             N = len(y)
-        elif type(y) == tuple and len(y) == 2 and type(y[0] == np.ndarray):
+        elif isinstance(y, tuple) and len(y) == 2 and isinstance(y[0], np.ndarray):
             mod2var = True
             N = len(y[0])
         else:

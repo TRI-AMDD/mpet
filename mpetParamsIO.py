@@ -453,7 +453,7 @@ class mpetIO():
         # Fit function (TRF, "SWCS" paper 2014)
         param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
         # replace values less than 2 with 2.
-        if type(param) == np.ndarray:
+        if isinstance(param, np.ndarray):
             param[param < 2] = 2.
         else:
             if param < 2:

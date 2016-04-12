@@ -509,7 +509,7 @@ def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     return Flux_vec
 
 def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
-    if type(c1[0]) == pyCore.adouble:
+    if isinstance(c1[0], pyCore.adouble):
         MIN, MAX = Min, Max
     else:
         MIN, MAX = min, max
@@ -555,7 +555,7 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     return muR, actR
 
 def mu_ideal_sln(c, T, ISfuncs=None):
-    if (type(c[0]) == pyCore.adouble) and (ISfuncs is not None):
+    if isinstance(c[0], pyCore.adouble) and (ISfuncs is not None):
         mu_IS = T*np.array([ISfunc[i]() for i in range(len(c))])
     else:
         mu_IS = T*np.array([np.log(c[i]/(1-c[i])) for i in
@@ -590,7 +590,7 @@ def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
     return Rate
 
 def R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T):
-    if type(c_sld) == np.ndarray:
+    if isinstance(c_sld, np.ndarray):
         c_sld = np.array([Max(eps, c_sld[i]) for i in
             range(len(c_sld))])
     else:
@@ -608,7 +608,7 @@ def R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T):
 
 def MHC_kfunc(eta, lmbda):
     a = 1. + np.sqrt(lmbda)
-    if type(eta) == pyCore.adouble:
+    if isinstance(eta, pyCore.adouble):
         ERF = Erf
     else:
         ERF = spcl.erf
@@ -622,7 +622,7 @@ def R_MHC(k0, lmbda, eta, T, c_sld, c_lyte):
     # Convert to "MHC overpotential"
     eta_f = eta + T*np.log(c_lyte/c_sld)
     gamma_ts = 1./(1. - c_sld)
-    if type(eta) == np.ndarray:
+    if isinstance(eta, np.ndarray):
         Rate = np.empty(len(eta), dtype=object)
         for i, etaval in enumerate(eta):
             krd = k0*MHC_kfunc(-eta_f[i], lmbda)
@@ -635,10 +635,10 @@ def R_MHC(k0, lmbda, eta, T, c_sld, c_lyte):
     return Rate
 
 def MX(mat, objvec):
-    if type(mat) is not sprs.csr.csr_matrix:
+    if not isinstance(mat, sprs.csr.csr_matrix):
         raise Exception("MX function designed for csr mult")
     n = objvec.shape[0]
-    if (type(objvec[0]) == pyCore.adouble):
+    if isinstance(objvec[0], pyCore.adouble):
         out = np.empty(n, dtype=object)
     else:
         out = np.zeros(n, dtype=float)
