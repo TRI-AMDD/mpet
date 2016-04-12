@@ -4,10 +4,10 @@
 - Add `calc\_Flux\_diffn2` function to `mpetMaterials`
 - Reorganize and rename files
     - `mpet.[main, consoleRun[, simMPET]]` -> `mpet.py`
-    - or: `mpet.simMPET` to `sim.py`
+    - or: `mpet.simMPET` -> `sim.py`
     - `mpet.[setupDataReporters, MyMATDataReporter]` -> `datareporting.py`
-    - `mpet.modMPET` -> `cell.py`
-    - `mpetMaterials.[material equation models]` -> `electrodes.py`
+    - `mpet.modMPET` -> `mod_cell.py`
+    - `mpetMaterials.[material equation models]` -> `mod_electrodes.py`
     - `mpetMaterials.[get_unit..., get_dr...]` + `muRfuncs.calc_curv` -> `geometry.py`
     - `elyteCST.py` -> `props_icp.py`
     - `muRfuncs` -> `props_ecp.py`
