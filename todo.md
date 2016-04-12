@@ -1,20 +1,20 @@
 # TODO
-- Merge master back into secondaryParticles
+- Merge master back into `secondaryParticles`
 - Extrapolate linearly for interp functions?
-- Add calc\_Flux\_diffn2 function to mpetMaterials
+- Add `calc\_Flux\_diffn2` function to `mpetMaterials`
 - Reorganize and rename files
-    - mpet.[main, consoleRun[, simMPET]] -> mpet.py
-    - or: mpet.simMPET to sim.py
-    - mpet.[setupDataReporters, MyMATDataReporter] -> datareporting.py
-    - mpet.modMPET -> cell.py
-    - mpetMaterials.[material equation models] -> electrodes.py
-    - mpetMaterials.[get\_unit..., get\_dr...] + muRfuncs.calc\_curv -> geometry.py
-    - elyteCST.py -> props\_icp.py
-    - muRfuncs -> props\_ecp.py
-- Remove mpetMaterials.[mu\_ideal\_sln, mu\_reg\_sln]
-- Fix "from daetools.pyDAE import \*" -> from pyDAE import dae
+    - `mpet.[main, consoleRun[, simMPET]]` -> `mpet.py`
+    - or: `mpet.simMPET` to `sim.py`
+    - `mpet.[setupDataReporters, MyMATDataReporter]` -> `datareporting.py`
+    - `mpet.modMPET` -> `cell.py`
+    - `mpetMaterials.[material equation models]` -> `electrodes.py`
+    - `mpetMaterials.[get_unit..., get_dr...]` + `muRfuncs.calc_curv` -> `geometry.py`
+    - `elyteCST.py` -> `props_icp.py`
+    - `muRfuncs` -> `props_ecp.py`
+- Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
+- Fix `from daetools.pyDAE import \*` -> `from pyDAE import dae`
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
-- Crash if sim\_output exists but history does not
+- Crash if `sim_output` exists but `history` does not
 - Add hash to history filename time stamp?
 - Add ability to specify input particle size distribution
 - Add seed for RNG for PSD for testing
@@ -25,11 +25,11 @@
 - Implement CH eqn (Yi or simple FV style) for rectangular.
 - Check over input checking
 - Add Dsld(c) functionality
-- Store more non-dim scales/refs via paramsIO and use in plot\_data.py
-- Move elyte calcs to a separate function and use that in plot\_data.py
-- Change behavior of mpet.py without argument -- search in configDefaults directory? throw exception?
-- Pass cref into elyte\_CST.get\_props?
-- DO NOT delete all contents of sim\_output subdir
+- Store more non-dim scales/refs via `paramsIO` and use in `plot_data.py`
+- Move elyte calcs to a separate function and use that in `plot_data.py`
+- Change behavior of `mpet.py` without argument -- search in `configDefaults` directory? throw exception?
+- Pass cref into `elyte_CST.get_props`?
+- DO NOT delete all contents of `sim_output` subdir
 - Develop a list of runs types to test
     - LFP ACR C3
     - LFP CHR sphere
