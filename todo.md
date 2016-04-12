@@ -1,0 +1,105 @@
+# TODO
+- Extrapolate linearly for interp functions?
+- Add calc_Flux_diffn2 function to mpetMaterials
+- Rename files (mpet.py, cell.py, electrodes.py, properties/icp.py, properties/ecp.py)
+- Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
+- Crash if sim_output exists but history does not
+- Add hash to history filename time stamp?
+- Add ability to specify input particle size distribution
+- Add seed for RNG for PSD for testing
+- Replace dots in variable name outputs with underscores.
+- Support py3
+- Widget to control frames in animations
+- Implement both cwet and beta_s for both geometry types -- alow input choice
+- Implement CH eqn (Yi or simple FV style) for rectangular.
+- Check over input checking
+- Add Dsld(c) functionality
+- Store more non-dim scales/refs via paramsIO and use in plot_data.py
+- Move elyte calcs to a separate function and use that in plot_data.py
+- Change behavior of mpet.py without argument -- search in configDefaults directory? throw exception?
+- Pass cref into elyte_CST.get_props
+- DO NOT delete all contents of sim_output subdir
+- Develop a list of runs types to test
+    - LFP ACR C3
+    - LFP CHR sphere
+    - LFP CHR cylinder
+    - LFP homog
+    - LFP homog_sdn (10 nm)
+    - graphite (G) homog
+    - G CHR2 cyl
+    - G CHR2 sph
+    - single volume
+    - Li foil + sep + cathode
+    - anode + sep + cathode
+    - anode + cathode
+    - cathode only
+    - SM electrolyte
+    - dilute electrolyte
+    - solid-solution sphere
+    - solid-solution cylinder
+    - particle size distribution
+    - CC/CV/CVsegments/CCsegments
+    - with Rser
+    - with bulkCond
+    - with partCond
+    - Vcutoff hi (discharge)
+    - Vcutoff lo (charge)
+    - Analytical (linear transport in sphere, cylinder, dilute elyte 1D)
+    - Plotting (all?) types
+
+# Done
+- Adjust mpet.py to set mu_lyte with the portFromElyte
+- Add BV_mod reaction rates to get_rxn_rate
+- Fix get_rxn_rate function call for _O notations to _lyte notations
+- Fix get_eta function call to have optional mu_R, T, etc.
+- Make sure poros factors are right(?) in bulk conductivity
+- Add series resistance
+- Remove mpet_matlab
+- Make default params files
+- Change c_edges to harmonic mean in all CHR flux functions
+- Set alpha/lambda to None for reaction models not requiring them
+- Add echem reaction to Li electrode (reaction resistance on that side)
+- Make "dilute" elyte model a special case of SM -- pass Dp and Dm into a SM function, generate kappa, tp
+- Make noise an input option
+- Make ISfuncs an input option
+- Test elytecons with Nvol_a = 0
+- Clean mpetPorts of unused ports
+- Reorg params_IO to not do all the if type checks; assume all inputs present
+- Don't require Omga, kappa, B for homog solidType -- require only if delPhiEqFit (mu_Rfit) = false
+- SM electrolyte activity -- figure out to work with BV
+- Add 0D2var
+- Add c1bar/c2bar plot, esp for homog2 sims
+- Make tolerances input parameters
+- Test logPad on both extremes with homog particle
+- get rid of surf cond option
+- No: Make ideal solution use Vstd input
+- No: put cref into dD, pass dD into mu_R_h fits
+- No: Change parameter dictionaries to objects? (ndD.td)
+- Eliminate Vstd!
+    - Create subfunctions in mu_R_h fits that call reg sln, ideal sln, etc. with proper constants
+- Make mu_R_h (homog mu_R) functions all in same file (ideal, reg sln, fit OCV, etc.)
+    - return mu_R_h, a_R_h
+    - For non-ss, return muR_h if len(c) == 1 else return full muR
+    - be consistent about where ISfuncs=None or required param
+- Make diffn _require_ mu_R(c) function; add ideal solid to mu_Rfuncs file
+- No: Make separate mu_R-internal (for non-diffn) and mu_R-surface (for all)
+- params -- make homog call something from mu_R_h explicitly.
+- Fix muR & c for primary particles -- they should be called as with SM to be able to pass these separately.
+- No: Rename slddynamics0D[1var,2var] to remove [ ] part
+- Make BV assume actR = ff for diffn model. Do this in calc_rxn function
+- No: Change mu_O --> muO everywhere
+- get_unit_solid_discr should NOT depend on "Type," only "Shape"
+- Move mass matrix generation out of sldDynamics functions.
+- Rename mpet_params_IO --> mpetParamsIO
+- Change Vset to actually be true set voltage (?), at least change so desc. is accurate (it's a (negative) step from eq'm init voltage)
+- muRfuncs: have regSln[2] take only (y, ISfuncs), pass muRhomg=self.regSln[2] into general[1,2]param
+- Rename noise class to InterpVector
+- Incorporate current (and voltage) steps from Karen.
+- Clean comments in mpetParamsIO.py
+- Remove "coding" comments at top of files
+- Move noise and ISfuncs classes to externFuncs.py
+    - test logPad
+    - test noise
+    - test segments
+
+# vim: set tw=0:
