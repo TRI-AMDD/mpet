@@ -24,6 +24,7 @@
 - Add Dsld(c) functionality
 - Store more non-dim scales/refs via `paramsIO` and use in `plot_data.py`
 - Move elyte calcs to a separate function and use that in `plot_data.py`
+- Move cell geometry calcs to function(s) within `geometry.py`; use in `plot_data.py`
 - Change behavior of `mpet.py` without argument -- search in `configDefaults` directory? throw exception?
 - Pass cref into `elyte_CST.get_props`?
 - DO NOT delete all contents of `sim_output` subdir, only overwrite

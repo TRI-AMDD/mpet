@@ -139,13 +139,13 @@ class mpetIO():
         elyteModelType = ndD_s["elyteModelType"] = P_s.get('Electrolyte',
                 'elyteModelType')
         SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-        Dref = dD_s["Dref"] = elyte_CST.getProps(SMset)[-1]
+        D_ref = dD_s["D_ref"] = dD_s["Dref"] = elyte_CST.getProps(SMset)[-1]
         Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
         Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
 
         # Constants
         k = dD_s["k"] = 1.381e-23 # J/(K particle)
-        Tref = dD_s["Tref"] = 298. # K
+        T_ref = dD_s["T_ref"] = dD_s["Tref"] = 298. # K
         e = dD_s["e"] = 1.602e-19 # C
         N_A = dD_s["N_A"] = 6.022e23 # particle/mol
         F = dD_s["F"] = dD_s["e"] * dD_s["N_A"] # C/mol
@@ -196,15 +196,19 @@ class mpetIO():
         G = self.distr_G(dD_s, ndD_s)
 
         # Various calculated and defined parameters
-        Lref = dD_s["Lref"] = dD_s["L"]["c"]
+        L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
+        c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000. # mol/m^3 = 1 M
         # Ambipolar diffusivity
         Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
         # Cation transference number
         tp = ndD_s["tp"] = zp*Dp / (zp*Dp - zm*Dm)
         # Diffusive time scale
         if ndD_s["elyteModelType"] == "dilute":
-            Dref = dD_s["Dref"] = Damb
-        td = dD_s["td"] = Lref**2 / Dref
+            D_ref = dD_s["D_ref"] = Damb
+        t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
+        curr_ref = dD_s["curr_ref"] = 3600. / t_ref
+        dD_s["mcond_ref"] = (L_ref**2 * F**2 * c0) / (t_ref * k * N_A * T_ref)
+        dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
 
         # maximum concentration in electrode solids, mol/m^3
         # and electrode capacity ratio
@@ -224,15 +228,14 @@ class mpetIO():
         dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
 
         # Some nondimensional parameters
-        T = ndD_s["T"] = Tabs / Tref
-        ndD_s["Rser"] = dD_s["Rser"] * e/(k*Tref) * (3600./td) * CrateCurr
-        ndD_s["Dp"] = Dp / Dref
-        ndD_s["Dm"] = Dm / Dref
-        cref = dD_s["cref"] = 1000. # mol/m^3 = 1 M
-        ndD_s["c0"] = c0 / cref
+        T = ndD_s["T"] = Tabs / T_ref
+        ndD_s["Rser"] = dD_s["Rser"] * e/(k*T_ref) * curr_ref * CrateCurr
+        ndD_s["Dp"] = Dp / D_ref
+        ndD_s["Dm"] = Dm / D_ref
+        ndD_s["c0"] = c0 / c_ref
         ndD_s["phi_cathode"] = 0.
-        ndD_s["currset"] = dD_s["Crate"]*td/3600
-        ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./CrateCurr) * (td/3600.)
+        ndD_s["currset"] = dD_s["Crate"] / curr_ref
+        ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
 
         # parameters which depend on the electrode
         dD_s["psd_raw"] = {}
@@ -244,10 +247,9 @@ class mpetIO():
         ndD_s["G"] = {}
         ndD_s["psd_vol_FracVol"] = {}
         ndD_s["L"] = {}
-        ndD_s["L"]["s"] = dD_s["L"]["s"] / Lref
+        ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
         ndD_s["epsbeta"] = {}
         ndD_s["mcond"] = {}
-        ndD_s["dphi_eq_ref"] = {}
         ndD_s["phiRef"] = {"a" : 0.} # temporary, used for Vmax, Vmin
         for trode in ndD_s["trodes"]:
             ## System scale parameters
@@ -266,24 +268,22 @@ class mpetIO():
             # volume_
             ndD_s["psd_vol_FracVol"][trode] = (dD_s["psd_vol"][trode] /
                     Vuvec[:, np.newaxis])
-            ndD_s["L"][trode] = dD_s["L"][trode]/Lref
+            ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
             ndD_s["epsbeta"][trode] = (
                     (1-ndD_s['poros'][trode]) * ndD_s['P_L'][trode] *
                     dD_e[trode]["csmax"]/c0)
-            ndD_s["mcond"][trode] = (
-                    dD_s['mcond'][trode] * (td * k * N_A * Tref) /
-                    (Lref**2 * F**2 * c0))
+            ndD_s["mcond"][trode] = dD_s['mcond'][trode] / dD_s["mcond_ref"]
             vols = dD_s["psd_vol"][trode]
-            ndD_s["G"][trode] = (dD_s["G"][trode] * (k*Tref/e) * td /
+            ndD_s["G"][trode] = (dD_s["G"][trode] * (k*T_ref/e) * t_ref /
                     (F*dD_e[trode]["csmax"]*vols))
 
             ## Electrode particle parameters
-            lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*Tref)
-            ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*Tref)
-            ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*Tref)
-            ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*Tref)
-            ndD_e[trode]["B"] = dD_e[trode]['B']/(k*Tref*dD_e[trode]['rho_s'])
-            ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*Tref)
+            lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*T_ref)
+            ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*T_ref)
+            ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*T_ref)
+            ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
+            ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*dD_e[trode]['rho_s'])
+            ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
             muRfunc = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
             cs0bar = ndD_s["cs0"][trode]
             cs0 = np.array([cs0bar])
@@ -315,12 +315,12 @@ class mpetIO():
                     parea = dD_s["psd_area"][trode][i, j]
                     pvol = dD_s["psd_vol"][trode][i, j]
                     ndD_tmp["kappa"] = (dD_e[trode]['kappa'] /
-                            (k*Tref*dD_e[trode]['rho_s']*plen**2))
+                            (k*T_ref*dD_e[trode]['rho_s']*plen**2))
                     ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
                             plen * dD_e[trode]['rho_s'] /
                             dD_e[trode]['kappa'])
-                    ndD_tmp["D"] = dD_e[trode]['D']*td/plen**2
-                    ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*td
+                    ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
+                    ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
                             / (F*dD_e[trode]["csmax"]))
                     ndD_tmp["delta_L"] = pvol/(parea*plen)
                     if Type in ["homog_sdn", "homog2_sdn"]:
@@ -329,15 +329,15 @@ class mpetIO():
         # Set up macroscopic input information.
         ndDVref = ndD_s["phiRef"]["c"] - ndD_s["phiRef"]["a"]
         # CV setpoint and voltage cutoff values
-        ndD_s["Vset"] = -((e/(k*Tref))*dD_s["Vset"] + ndDVref)
-        ndD_s["phimin"] = -((e/(k*Tref))*dD_s["Vmax"] + ndDVref)
-        ndD_s["phimax"] = -((e/(k*Tref))*dD_s["Vmin"] + ndDVref)
+        ndD_s["Vset"] = -((e/(k*T_ref))*dD_s["Vset"] + ndDVref)
+        ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
+        ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
         # Current or voltage segments profiles
         dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
         dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
         if ndD_s["profileType"] == "CVsegments":
-            dD_s["segments_setvec"][0] = -(k*Tref/e)*ndDVref
+            dD_s["segments_setvec"][0] = -(k*T_ref/e)*ndDVref
         elif ndD_s["profileType"] == "CCsegments":
             dD_s["segments_setvec"][0] = 0.
         tPrev = 0.
@@ -352,17 +352,17 @@ class mpetIO():
             setNext = segs[segIndx][0]
             dD_s["segments_setvec"][2*segIndx+1] = setNext
             dD_s["segments_setvec"][2*segIndx+2] = setNext
-        ndD_s["segments_tvec"] = dD_s["segments_tvec"] / td
+        ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
         if ndD_s["profileType"] == "CCsegments":
-            ndD_s["segments_setvec"] = dD_s["segments_setvec"] * (td / 3600)
+            ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
         elif ndD_s["profileType"] == "CVsegments":
             ndD_s["segments_setvec"] = -(
-                    (e/(k*Tref))*dD_s["segments_setvec"] + ndDVref)
+                    (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
         if "segments" in ndD_s["profileType"]:
             dD_s["tend"] = dD_s["segments_tvec"][-1]
             # Pad the last segment so no extrapolation occurs
             dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
-        ndD_s["tend"] = dD_s["tend"] / td
+        ndD_s["tend"] = dD_s["tend"] / t_ref
         if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
