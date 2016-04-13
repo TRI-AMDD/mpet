@@ -1,7 +1,6 @@
 # TODO
 - Merge `master` back into `secondaryParticles`
 - Develop a test suite
-- Extrapolate linearly for interp functions?
 - Add `calc_Flux_diffn2` function to `mpetMaterials`
 - Reorganize and rename files
     - `mpet.[main, consoleRun[, simMPET]]` -> `mpet.py`
@@ -119,5 +118,6 @@
     - test segments
 - Replace dots in variable name outputs with underscores.
 - Add seed for RNG for PSD for testing
+- Extrapolate linearly for interp functions?
 
 \# vim: set tw=0:
