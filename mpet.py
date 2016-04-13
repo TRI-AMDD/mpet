@@ -8,8 +8,8 @@ import glob
 
 import numpy as np
 
-from daetools.pyDAE import *
-from daetools.pyDAE.data_reporters import *
+import daetools.pyDAE as dae
+from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
 from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.superlu_mt import pySuperLU_MT
 #from daetools.solvers.trilinos import pyTrilinos
@@ -22,10 +22,10 @@ import elyte_CST
 import externFuncs
 
 
-class modMPET(daeModel):
+class modMPET(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
             ndD_e=None):
-        daeModel.__init__(self, Name, Parent, Description)
+        dae.daeModel.__init__(self, Name, Parent, Description)
 
         if (ndD_s is None) or (ndD_e is None):
             raise Exception("Need input parameter dictionaries")
@@ -39,15 +39,15 @@ class modMPET(daeModel):
         self.DmnCell = {} # domains over full cell dimensions
         self.DmnPart = {} # domains over particles in each cell volume
         if Nvol["s"] >= 1: # If we have a separator
-            self.DmnCell["s"] = daeDomain("DmnCell_s", self, unit(),
+            self.DmnCell["s"] = dae.daeDomain("DmnCell_s", self, dae.unit(),
                     "Simulated volumes in the separator")
         for l in trodes:
-            self.DmnCell[l] = daeDomain("DmnCell_{l}".format(l=l),
-                    self, unit(),
+            self.DmnCell[l] = dae.daeDomain("DmnCell_{l}".format(l=l),
+                    self, dae.unit(),
                     "Simulated volumes in electrode " +
                     "{l}".format(l=l))
-            self.DmnPart[l] = daeDomain("Npart_{l}".format(l=l),
-                    self, unit(),
+            self.DmnPart[l] = dae.daeDomain("Npart_{l}".format(l=l),
+                    self, dae.unit(),
                     "Particles sampled in each control " +
                     "volume in electrode {l}".format(l=l))
             Nv = Nvol[l]
@@ -55,15 +55,15 @@ class modMPET(daeModel):
 
         # Define some variable types
         atol = ndD_s["absTol"]
-        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-                lowerBound=0, upperBound=1, initialGuess=0.25,
-                absTolerance=atol)
-        conc_t = daeVariableType(name="conc_t", units=unit(),
-                lowerBound=0, upperBound=1e20, initialGuess=1.00,
-                absTolerance=atol)
-        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
-                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
-                absTolerance=atol)
+        mole_frac_t = dae.daeVariableType(
+                name="mole_frac_t", units=dae.unit(), lowerBound=0,
+                upperBound=1, initialGuess=0.25, absTolerance=atol)
+        conc_t = dae.daeVariableType(
+                name="conc_t", units=dae.unit(), lowerBound=0,
+                upperBound=1e20, initialGuess=1.00, absTolerance=atol)
+        elec_pot_t = dae.daeVariableType(
+                name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
+                upperBound=1e20, initialGuess=0, absTolerance=atol)
         # Variables
         self.c_lyte = {}
         self.phi_lyte = {}
@@ -73,36 +73,36 @@ class modMPET(daeModel):
         self.ffrac = {}
         for l in trodes:
             # Concentration/potential in electrode regions of elyte
-            self.c_lyte[l] = daeVariable("c_lyte_{l}".format(l=l),
+            self.c_lyte[l] = dae.daeVariable("c_lyte_{l}".format(l=l),
                     conc_t, self,
                     "Concentration in the electrolyte in " +
                     "electrode {l}".format(l=l),
                     [self.DmnCell[l]])
-            self.phi_lyte[l] = daeVariable("phi_lyte_{l}".format(l=l),
+            self.phi_lyte[l] = dae.daeVariable("phi_lyte_{l}".format(l=l),
                     elec_pot_t, self,
                     "Electrostatic potential in electrolyte in " +
                     "electrode {l}".format(l=l),
                     [self.DmnCell[l]])
-            self.phi_bulk[l] = daeVariable("phi_bulk_{l}".format(l=l),
+            self.phi_bulk[l] = dae.daeVariable("phi_bulk_{l}".format(l=l),
                     elec_pot_t, self,
                     "Electrostatic potential in the bulk solid",
                     [self.DmnCell[l]])
-            self.phi_part[l] = daeVariable("phi_part_{l}".format(l=l),
+            self.phi_part[l] = dae.daeVariable("phi_part_{l}".format(l=l),
                     elec_pot_t, self,
                     "Electrostatic potential at each particle",
                     [self.DmnCell[l], self.DmnPart[l]])
-            self.j_plus[l] = daeVariable("j_plus_{l}".format(l=l),
-                    no_t, self,
+            self.j_plus[l] = dae.daeVariable("j_plus_{l}".format(l=l),
+                    dae.no_t, self,
                     "Rate of reaction of positives per solid volume",
                     [self.DmnCell[l]])
-            self.ffrac[l] = daeVariable("ffrac_{l}".format(l=l),
+            self.ffrac[l] = dae.daeVariable("ffrac_{l}".format(l=l),
                 mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
         if Nvol["s"] >= 1: # If we have a separator
-            self.c_lyte["s"] = daeVariable("c_lyte_s", conc_t, self,
+            self.c_lyte["s"] = dae.daeVariable("c_lyte_s", conc_t, self,
                     "Concentration in the electrolyte in the separator",
                     [self.DmnCell["s"]])
-            self.phi_lyte["s"] = daeVariable("phi_lyte_s", elec_pot_t, self,
+            self.phi_lyte["s"] = dae.daeVariable("phi_lyte_s", elec_pot_t, self,
                     "Electrostatic potential in electrolyte in separator",
                     [self.DmnCell["s"]])
         # Note if we're doing a single electrode volume simulation
@@ -113,19 +113,19 @@ class modMPET(daeModel):
         else:
             self.SVsim = False
         if not self.SVsim:
-            self.c_lyteGP = daeVariable("c_lyteGP", conc_t, self,
+            self.c_lyteGP = dae.daeVariable("c_lyteGP", conc_t, self,
                     "Concentration in the electrolyte in " +
                     "the boundary condition ghost point")
-            self.phi_lyteGP = daeVariable("phi_lyteGP", elec_pot_t, self,
+            self.phi_lyteGP = dae.daeVariable("phi_lyteGP", elec_pot_t, self,
                     "Electrostatic potential in electrolyte in " +
                     "the boundary condition ghost point")
-        self.phi_applied = daeVariable("phi_applied", elec_pot_t, self,
+        self.phi_applied = dae.daeVariable("phi_applied", elec_pot_t, self,
                 "Overall battery voltage (at anode current collector)")
-        self.phi_cell = daeVariable("phi_cell", elec_pot_t, self,
+        self.phi_cell = dae.daeVariable("phi_cell", elec_pot_t, self,
                 "Voltage between electrodes (phi_applied less series resistance)")
-        self.current = daeVariable("current", no_t, self,
+        self.current = dae.daeVariable("current", dae.no_t, self,
                 "Total current of the cell")
-        self.dummyVar = daeVariable("dummyVar", no_t, self, "dummyVar")
+        self.dummyVar = dae.daeVariable("dummyVar", dae.no_t, self, "dummyVar")
 
         # Create models for representative particles within electrode
         # volumes and ports with which to talk to them.
@@ -141,12 +141,12 @@ class modMPET(daeModel):
             for i in range(Nv):
                 self.portsOutLyte[l][i] = mpetPorts.portFromElyte(
                         "portTrode{l}vol{i}".format(l=l,i=i),
-                        eOutletPort, self,
+                        dae.eOutletPort, self,
                         "Electrolyte port to particles")
                 for j in range(Np):
                     self.portsOutBulk[l][i, j] = mpetPorts.portFromBulk(
                         "portTrode{l}vol{i}part{j}".format(l=l,i=i,j=j),
-                        eOutletPort, self,
+                        dae.eOutletPort, self,
                         "Bulk electrode port to particles")
                     solidType = ndD_e[l]["indvPart"][i, j]['type']
                     if solidType in ndD_s["2varTypes"]:
@@ -166,7 +166,7 @@ class modMPET(daeModel):
                             self.particles[l][i, j].portInBulk)
 
     def DeclareEquations(self):
-        daeModel.DeclareEquations(self)
+        dae.daeModel.DeclareEquations(self)
 
         # Some values of domain lengths
         trodes = self.trodes
@@ -372,20 +372,20 @@ class modMPET(daeModel):
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
             eq.Residual = self.current() - (ndD["currset"]
-                    * (1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
                     )
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
             eq.Residual = self.phi_applied() - (ndD["Vset"]
-                    * (1 - np.exp(-Time()/(ndD["tend"]*1e-3)))
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
 #                    * 1
-#                    * np.tanh(Time()/(45.0)))
+#                    * np.tanh(dae.Time()/(45.0)))
                     )
         elif "segments" in self.profileType:
-            self.segSet = externFuncs.InterpTimeScalar("segSet", self,
-                    unit(), Time(), ndD["segments_tvec"],
-                    ndD["segments_setvec"])
+            self.segSet = externFuncs.InterpTimeScalar(
+                    "segSet", self, dae.unit(), dae.Time(),
+                    ndD["segments_tvec"], ndD["segments_setvec"])
             if self.profileType == "CCsegments":
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - self.segSet()
@@ -536,9 +536,9 @@ class modMPET(daeModel):
                     )
         return (RHS_c, RHS_phi)
 
-class simMPET(daeSimulation):
+class simMPET(dae.daeSimulation):
     def __init__(self, ndD_s=None, ndD_e=None, tScale=None):
-        daeSimulation.__init__(self)
+        dae.daeSimulation.__init__(self)
         if (ndD_s is None) or (ndD_e is None):
             raise Exception("Need input parameter dictionaries")
         self.ndD_s = ndD_s
@@ -629,7 +629,7 @@ class simMPET(daeSimulation):
             self.Log.Message("Integrating from {t0:.2f} to {t1:.2f} s ...".format(
                 t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
             time = self.IntegrateUntilTime(nextTime,
-                    eStopAtModelDiscontinuity, True)
+                    dae.eStopAtModelDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
             if time < nextTime:
@@ -671,7 +671,7 @@ def setupDataReporters(simulation, outdir):
     Create daeDelegateDataReporter and add data reporters:
      - daeMatlabMATFileDataReporter
     """
-    datareporter = daeDelegateDataReporter()
+    datareporter = dae.daeDelegateDataReporter()
     simulation.dr = MyMATDataReporter()
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
@@ -690,8 +690,8 @@ def setupDataReporters(simulation, outdir):
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):
     # Create Log, Solver, DataReporter and Simulation object
-    log          = daePythonStdOutLog()
-    daesolver    = daeIDAS()
+    log          = dae.daePythonStdOutLog()
+    daesolver    = dae.daeIDAS()
     simulation   = simMPET(ndD_s, ndD_e, tScale)
     datareporter = setupDataReporters(simulation, outdir)
 
