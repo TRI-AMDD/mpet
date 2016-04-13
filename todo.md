@@ -11,7 +11,6 @@
     - `mpetMaterials.[get_unit..., get_dr...]` + `muRfuncs.calc_curv` -> `geometry.py`
     - `elyteCST.py` -> `props_icp.py`
     - `muRfuncs` -> `props_ecp.py`
-- Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
 - Fix `from daetools.pyDAE import *` -> `from pyDAE import dae`
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
 - Crash if `sim_output` exists but `history` does not
@@ -119,5 +118,6 @@
 - Replace dots in variable name outputs with underscores.
 - Add seed for RNG for PSD for testing
 - Extrapolate linearly for interp functions?
+- Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
 
 \# vim: set tw=0:

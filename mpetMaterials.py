@@ -554,19 +554,6 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR
 
-def mu_ideal_sln(c, T, ISfuncs=None):
-    if isinstance(c[0], pyCore.adouble) and (ISfuncs is not None):
-        mu_IS = T*np.array([ISfunc[i]() for i in range(len(c))])
-    else:
-        mu_IS = T*np.array([np.log(c[i]/(1-c[i])) for i in
-            range(len(c))])
-    return mu_IS
-
-def mu_reg_sln(c, Omga, T, ISfunc=None):
-    enthalpyTerm = np.array([Omga*(1-2*c[i]) for i in range(len(c))])
-    ISterm = mu_ideal_sln(c, T, ISfuncs)
-    return ISterm + enthalpyTerm
-
 def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
     if rxnType in ["BV", "BV_gMod01"]:
         if act_R is None:
