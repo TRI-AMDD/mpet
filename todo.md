@@ -30,6 +30,7 @@
 - Change behavior of `mpet.py` without argument -- search in `configDefaults` directory? throw exception?
 - Pass cref into `elyte_CST.get_props`?
 - DO NOT delete all contents of `sim_output` subdir, only overwrite
+- Make a system for collecting warnings and printing them at the end of simulation.
 
 ## Test Suite List
 - Functionality that should be tested in the suite:
