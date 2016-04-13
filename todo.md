@@ -1,7 +1,8 @@
 # TODO
 - Merge master back into `secondaryParticles`
+- Develop a test suite
 - Extrapolate linearly for interp functions?
-- Add `calc\_Flux\_diffn2` function to `mpetMaterials`
+- Add `calc_Flux_diffn2` function to `mpetMaterials`
 - Reorganize and rename files
     - `mpet.[main, consoleRun[, simMPET]]` -> `mpet.py`
     - or: `mpet.simMPET` -> `sim.py`
@@ -12,7 +13,7 @@
     - `elyteCST.py` -> `props_icp.py`
     - `muRfuncs` -> `props_ecp.py`
 - Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
-- Fix `from daetools.pyDAE import \*` -> `from pyDAE import dae`
+- Fix `from daetools.pyDAE import *` -> `from pyDAE import dae`
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
 - Crash if `sim_output` exists but `history` does not
 - Add hash to history filename time stamp?
@@ -30,7 +31,9 @@
 - Change behavior of `mpet.py` without argument -- search in `configDefaults` directory? throw exception?
 - Pass cref into `elyte_CST.get_props`?
 - DO NOT delete all contents of `sim_output` subdir
-- Develop a list of runs types to test
+
+## Test Suite List
+- Functionality that should be tested in the suite:
     - LFP ACR C3
     - LFP CHR sphere
     - LFP CHR cylinder
@@ -55,7 +58,10 @@
     - with partCond
     - Vcutoff hi (discharge)
     - Vcutoff lo (charge)
-    - Analytical (linear transport in sphere, cylinder, dilute elyte 1D)
+    - Analytical comparison
+        - linear transport in sphere
+        - linear transport in cylinder
+        - dilute semi-infinite elyte
     - Plotting (all?) types
 
 # Done
