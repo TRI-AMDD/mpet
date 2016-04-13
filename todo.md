@@ -11,7 +11,6 @@
     - `mpetMaterials.[get_unit..., get_dr...]` + `muRfuncs.calc_curv` -> `geometry.py`
     - `elyteCST.py` -> `props_icp.py`
     - `muRfuncs` -> `props_ecp.py`
-- Fix `from daetools.pyDAE import *` -> `from pyDAE import dae`
 - Clarify "type" --> intra-particle transport model (homog, FSL, CH(R), AC(R))
 - Crash if `sim_output` exists but `history` does not
 - Add hash to history filename time stamp?
@@ -122,5 +121,6 @@
 - Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
 - Merge `master` back into `secondaryParticles`
 - Change `muRfuncs.get_actR_None` to use `np.empty(y.shape, dtype=object)` (or `np.empty_like`? check `np` version reasonableness)
+- Fix `from daetools.pyDAE import *` -> `import daetools.pyDAE as dae`
 
 vim: set tw=0:
