@@ -1,5 +1,5 @@
 # TODO
-- Merge master back into `secondaryParticles`
+- Merge `master` back into `secondaryParticles`
 - Develop a test suite
 - Extrapolate linearly for interp functions?
 - Add `calc_Flux_diffn2` function to `mpetMaterials`
@@ -19,7 +19,6 @@
 - Add hash to history filename time stamp?
 - Add ability to specify input particle size distribution
 - Add seed for RNG for PSD for testing
-- Replace dots in variable name outputs with underscores.
 - Support py3
 - Widget to control frames in animations
 - Implement both cwet and beta\_s for both geometry types -- alow input choice
@@ -30,7 +29,7 @@
 - Move elyte calcs to a separate function and use that in `plot_data.py`
 - Change behavior of `mpet.py` without argument -- search in `configDefaults` directory? throw exception?
 - Pass cref into `elyte_CST.get_props`?
-- DO NOT delete all contents of `sim_output` subdir
+- DO NOT delete all contents of `sim_output` subdir, only overwrite
 
 ## Test Suite List
 - Functionality that should be tested in the suite:
@@ -118,5 +117,6 @@
     - test logPad
     - test noise
     - test segments
+- Replace dots in variable name outputs with underscores.
 
 \# vim: set tw=0:
