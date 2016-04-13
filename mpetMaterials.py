@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
 
-from daetools.pyDAE import *
+import daetools.pyDAE as dae
 
 import muRfuncs
 import mpetPorts
@@ -10,54 +10,54 @@ import externFuncs
 
 eps = -1e-12
 
-class mod2var(daeModel):
+class mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
             ndD_s=None):
-        daeModel.__init__(self, Name, Parent, Description)
+        dae.daeModel.__init__(self, Name, Parent, Description)
         if (ndD is None) or (ndD_s is None):
             raise Exception("Need input parameter dictionary")
         self.ndD = ndD
         self.ndD_s = ndD_s
 
         # Domain
-        self.Dmn = daeDomain("discretizationDomain", self, unit(),
+        self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
                 "discretization domain")
 
         # Define some variable types
         atol = ndD_s["absTol"]
-        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-                lowerBound=0, upperBound=1, initialGuess=0.25,
-                absTolerance=atol)
-        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
-                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
-                absTolerance=atol)
+        mole_frac_t = dae.daeVariableType(
+                name="mole_frac_t", units=dae.unit(), lowerBound=0,
+                upperBound=1, initialGuess=0.25, absTolerance=atol)
+        elec_pot_t = dae.daeVariableType(
+                name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
+                upperBound=1e20, initialGuess=0, absTolerance=atol)
         # Variables
-        self.c1 =  daeVariable("c1", mole_frac_t, self,
+        self.c1 =  dae.daeVariable("c1", mole_frac_t, self,
                 "Concentration in 'layer' 1 of active particle",
                 [self.Dmn])
-        self.c2 =  daeVariable("c2", mole_frac_t, self,
+        self.c2 =  dae.daeVariable("c2", mole_frac_t, self,
                 "Concentration in 'layer' 2 of active particle",
                 [self.Dmn])
-        self.cbar = daeVariable("cbar", mole_frac_t, self,
+        self.cbar = dae.daeVariable("cbar", mole_frac_t, self,
                 "Average concentration in active particle")
-        self.c1bar = daeVariable("c1bar", mole_frac_t, self,
+        self.c1bar = dae.daeVariable("c1bar", mole_frac_t, self,
                 "Average concentration in 'layer' 1 of active particle")
-        self.c2bar = daeVariable("c2bar", mole_frac_t, self,
+        self.c2bar = dae.daeVariable("c2bar", mole_frac_t, self,
                 "Average concentration in 'layer' 2 of active particle")
-        self.dcbardt = daeVariable("dcbardt", no_t, self,
+        self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self,
                 "Rate of particle filling")
 
         # Ports
         self.portInLyte = mpetPorts.portFromElyte("portInLyte",
-                eInletPort, self, "Inlet port from electrolyte")
+                dae.eInletPort, self, "Inlet port from electrolyte")
         self.portInBulk = mpetPorts.portFromBulk("portInBulk",
-                eInletPort, self, "Inlet port from e- conducting phase")
+                dae.eInletPort, self, "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte()
         self.c_lyte = self.portInLyte.c_lyte()
         self.phi_m = self.portInBulk.phi_m()
 
     def DeclareEquations(self):
-        daeModel.DeclareEquations(self)
+        dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
@@ -67,10 +67,10 @@ class mod2var(daeModel):
         self.ISfuncs1 = self.ISfuncs2 = None
         if ndD["logPad"]:
             self.ISfuncs1 = np.array(
-                    [externFuncs.LogRatio("LR1", self, unit(),
+                    [externFuncs.LogRatio("LR1", self, dae.unit(),
                         self.c1(k)) for k in range(N)])
             self.ISfuncs2 = np.array(
-                    [externFuncs.LogRatio("LR2", self, unit(),
+                    [externFuncs.LogRatio("LR2", self, dae.unit(),
                         self.c2(k)) for k in range(N)])
         ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
@@ -86,11 +86,11 @@ class mod2var(daeModel):
             previous_output1 = []
             previous_output2 = []
             self.noise1 = [externFuncs.InterpTimeVector("noise1",
-                self, unit(), Time(), tvec, noise_data1,
+                self, dae.unit(), dae.Time(), tvec, noise_data1,
                 previous_output1, _position_) for _position_ in
                 range(N)]
             self.noise2 = [externFuncs.InterpTimeVector("noise2",
-                self, unit(), Time(), tvec, noise_data2,
+                self, dae.unit(), dae.Time(), tvec, noise_data2,
                 previous_output2, _position_) for _position_ in
                 range(N)]
         noises = (self.noise1, self.noise2)
@@ -240,10 +240,10 @@ class mod2var(daeModel):
                 eq2.Residual += noise2[k]()
         return
 
-class mod1var(daeModel):
+class mod1var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
             ndD_s=None):
-        daeModel.__init__(self, Name, Parent, Description)
+        dae.daeModel.__init__(self, Name, Parent, Description)
 
         if (ndD is None) or (ndD_s is None):
             raise Exception("Need input parameter dictionary")
@@ -251,37 +251,37 @@ class mod1var(daeModel):
         self.ndD_s = ndD_s
 
         # Domain
-        self.Dmn = daeDomain("discretizationDomain", self, unit(),
+        self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
                 "discretization domain")
 
         # Define some variable types
         atol = ndD_s["absTol"]
-        mole_frac_t = daeVariableType(name="mole_frac_t", units=unit(),
-                lowerBound=0, upperBound=1, initialGuess=0.25,
-                absTolerance=atol)
-        elec_pot_t = daeVariableType(name="elec_pot_t", units=unit(),
-                lowerBound=-1e20, upperBound=1e20, initialGuess=0,
-                absTolerance=atol)
+        mole_frac_t = dae.daeVariableType(
+                name="mole_frac_t", units=dae.unit(), lowerBound=0,
+                upperBound=1, initialGuess=0.25, absTolerance=atol)
+        elec_pot_t = dae.daeVariableType(
+                name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
+                upperBound=1e20, initialGuess=0, absTolerance=atol)
         # Variables
-        self.c =  daeVariable("c", mole_frac_t, self,
+        self.c =  dae.daeVariable("c", mole_frac_t, self,
                 "Concentration in active particle",
                 [self.Dmn])
-        self.cbar = daeVariable("cbar", mole_frac_t, self,
+        self.cbar = dae.daeVariable("cbar", mole_frac_t, self,
                 "Average concentration in active particle")
-        self.dcbardt = daeVariable("dcbardt", no_t, self,
+        self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self,
                 "Rate of particle filling")
 
         # Ports
         self.portInLyte = mpetPorts.portFromElyte("portInLyte",
-                eInletPort, self, "Inlet port from electrolyte")
+                dae.eInletPort, self, "Inlet port from electrolyte")
         self.portInBulk = mpetPorts.portFromBulk("portInBulk",
-                eInletPort, self, "Inlet port from e- conducting phase")
+                dae.eInletPort, self, "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte()
         self.c_lyte = self.portInLyte.c_lyte()
         self.phi_m = self.portInBulk.phi_m()
 
     def DeclareEquations(self):
-        daeModel.DeclareEquations(self)
+        dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
@@ -291,7 +291,7 @@ class mod1var(daeModel):
         self.ISfuncs = None
         if ndD["logPad"]:
             self.ISfuncs = np.array(
-                    [externFuncs.LogRatio("LR", self, unit(),
+                    [externFuncs.LogRatio("LR", self, dae.unit(),
                         self.c(k)) for k in range(N)])
 
         # Prepare noise
@@ -304,7 +304,7 @@ class mod1var(daeModel):
             # Previous_output is common for all external functions
             previous_output = []
             self.noise = [externFuncs.InterpTimeVector("noise", self,
-                unit(), Time(), tvec, noise_data, previous_output,
+                dae.unit(), dae.Time(), tvec, noise_data, previous_output,
                 _position_) for _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
