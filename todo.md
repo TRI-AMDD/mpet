@@ -1,7 +1,6 @@
 # TODO
 - Develop a test suite
 - Convert todo list to features/issues on bitbucket (?)
-- Change muRfuncs.get_actR_None to use np.empty(y.shape, dtype=object) (or np.empty_like? check np version reasonableness)
 - Add `calc_Flux_diffn2` function to `mpetMaterials`
 - Reorganize and rename files
     - `mpet.[main, consoleRun[, simMPET]]` -> `mpet.py`
@@ -121,5 +120,6 @@
 - Extrapolate linearly for interp functions?
 - Remove `mpetMaterials.[mu_ideal_sln, mu_reg_sln]`
 - Merge `master` back into `secondaryParticles`
+- Change `muRfuncs.get_actR_None` to use `np.empty(y.shape, dtype=object)` (or `np.empty_like`? check `np` version reasonableness)
 
-\# vim: set tw=0:
+vim: set tw=0:

@@ -62,7 +62,7 @@ class muRfuncs():
         return -self.eokT*OCV + muR_ref
     def get_actR_None(self, y):
         try:
-            actR = np.array(y.shape[0]*[None])
+            actR = np.empty(y.shape, dtype=object)
         except AttributeError:
             actR = None
         return actR
