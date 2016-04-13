@@ -18,7 +18,6 @@
 - Crash if `sim_output` exists but `history` does not
 - Add hash to history filename time stamp?
 - Add ability to specify input particle size distribution
-- Add seed for RNG for PSD for testing
 - Support py3
 - Widget to control frames in animations
 - Implement both cwet and beta\_s for both geometry types -- alow input choice
@@ -119,5 +118,6 @@
     - test noise
     - test segments
 - Replace dots in variable name outputs with underscores.
+- Add seed for RNG for PSD for testing
 
 \# vim: set tw=0:

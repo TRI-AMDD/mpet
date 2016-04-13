@@ -60,6 +60,9 @@ class mpetIO():
         numsegs = dD_s["numsegments"] = len(segs)
         dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
         dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+        # Should have depracation warnings to encourage users to
+        # update their params files to mirror options in
+        # configDefaults.
         try:
             ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
         except ConfigParser.NoOptionError:
@@ -68,6 +71,14 @@ class mpetIO():
             ndD_s["absTol"] = P_s.getfloat('Sim Params', 'absTol')
         except ConfigParser.NoOptionError:
             ndD_s["absTol"] = 1e-6
+        try:
+            ndD_s["randomSeed"] = P_s.getboolean('Sim Params', 'randomSeed')
+        except ConfigParser.NoOptionError:
+            ndD_s["randomSeed"] = False
+        if ndD_s["randomSeed"]:
+            # This should affect all calls to np.random throughout the
+            # simulation.
+            np.random.seed(10)
         dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
         ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
