@@ -509,7 +509,7 @@ def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     return Flux_vec
 
 def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
-    if isinstance(c1[0], pyCore.adouble):
+    if isinstance(c1[0], dae.pyCore.adouble):
         MIN, MAX = Min, Max
     else:
         MIN, MAX = min, max
@@ -595,7 +595,7 @@ def R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T):
 
 def MHC_kfunc(eta, lmbda):
     a = 1. + np.sqrt(lmbda)
-    if isinstance(eta, pyCore.adouble):
+    if isinstance(eta, dae.pyCore.adouble):
         ERF = Erf
     else:
         ERF = spcl.erf
@@ -625,7 +625,7 @@ def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):
         raise Exception("MX function designed for csr mult")
     n = objvec.shape[0]
-    if isinstance(objvec[0], pyCore.adouble):
+    if isinstance(objvec[0], dae.pyCore.adouble):
         out = np.empty(n, dtype=object)
     else:
         out = np.zeros(n, dtype=float)
