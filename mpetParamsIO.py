@@ -168,6 +168,12 @@ class mpetIO():
             ndD["muRfunc"] = P.get('Material', 'muRfunc')
             ndD["logPad"] = P.getboolean('Material', 'logPad')
             ndD["noise"] = P.getboolean('Material', 'noise')
+            try:
+                ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
+                ndD["numnoise"] = P.getint('Material', 'numnoise')
+            except ConfigParser.NoOptionError:
+                ndD["noise_prefac"] = 1e-6
+                ndD["numnoise"] = 200
 
             # Reactions
             ndD["rxnType"] = P.get('Reactions', 'rxnType')
