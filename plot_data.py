@@ -773,9 +773,13 @@ if __name__ == "__main__":
     save_flag = False
     print_flag = True
     data_only = False
+    save_only = False
     if len(sys.argv) > 3:
-        if sys.argv[3] == "save":
+        if sys.argv[3] in ["save", "saveonly"]:
             save_flag = True
+            if sys.argv[3] == "saveonly":
+                save_only = True
+                print_flag = False
         else:
             for i in range(3, len(sys.argv)):
                 plots.append(sys.argv[i])
@@ -783,4 +787,5 @@ if __name__ == "__main__":
     for plot_type in plots:
         out.append(show_data(indir, plot_type, print_flag, save_flag,
             data_only))
-    plt.show()
+    if not save_only:
+        plt.show()
