@@ -21,11 +21,11 @@ def test001(IO, testDir, baseConfigDir, simOutDir, run=True):
     P_s.set("Sim Params", "profileType", "CC")
     P_s.set("Sim Params", "Crate", "1e-2")
     IO.writeConfigFile(P_s, psys)
-    P = mpetParamsIO.getConfig(ptrodes["c"])
+    P = mpetParamsIO.getConfig(ptrode)
     P.set("Particles", "type", "ACR")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    P_s, P_e = mpetParamsIO.getConfigs(psys)
+    P_s, P_e = IO.getConfigs(psys)
     if run:
         mpet.main(psys, keepArchive=False)
         shutil.move(simOutDir, osp.join(testDir))
@@ -38,6 +38,7 @@ def main():
     simOutDir = osp.join(os.getcwd(), "sim_output")
     outdir = osp.join(suiteDir,
                       time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    os.makedirs(outdir)
     baseConfigDir = osp.join(suiteDir, "baseConfigs")
 
     # Dictionary containing info about the tests to run
@@ -45,15 +46,18 @@ def main():
     # whether to run that particular test.
     runInfo = {
             "test001" : {"fn": test001, "runFlag" : True},
-            "test002" : (test002, True),
+#            "test002" : {"fn": test002, "runFlag" : True},
             }
 
     # Make an output directory for each test
-    for testStr in runFlags.keys():
+    for testStr in runInfo.keys():
         testDir = osp.join(outdir, testStr)
+        os.makedirs(testDir)
         runInfo[testStr]["fn"](
             IO, testDir, baseConfigDir, simOutDir,
             run=runInfo[testStr]["runFlag"])
+    # Remove the history directory that mpet creates.
+    os.rmdir(osp.join(os.getcwd(), "history"))
     return
 
 if __name__ == "__main__":
