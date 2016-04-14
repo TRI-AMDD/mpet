@@ -12,9 +12,7 @@ class mpetIO():
 
     def getConfigs(self, paramfile="params.cfg"):
         # system-level config
-        P_s = ConfigParser.RawConfigParser()
-        P_s.optionxform = str
-        P_s.read(paramfile)
+        P_s = getConfig(paramfile)
 
         # electrode config(s)
         P_e = {}
@@ -24,19 +22,13 @@ class mpetIO():
         # that is.
         paramfileLoc = os.path.split(paramfile)[0]
         paramfile_c = os.path.join(paramfileLoc, paramfile_c)
-        P_c = ConfigParser.RawConfigParser()
-        P_c.optionxform = str
-        P_c.read(paramfile_c)
-        P_e["c"] = P_c
+        P_e["c"] = getConfig(paramfile_c)
 
         # anode config
         if P_s.getint('Sim Params', 'Nvol_a') >= 1:
             paramfile_a = P_s.get('Electrodes', 'anode')
             paramfile_a = os.path.join(paramfileLoc, paramfile_a)
-            P_a = ConfigParser.RawConfigParser()
-            P_a.optionxform = str
-            P_a.read(paramfile_a)
-            P_e["a"] = P_a
+            P_e["a"] = getConfig(paramfile_a)
         return P_s, P_e
 
     def getDictsFromConfigs(self, P_s, P_e):
@@ -499,9 +491,8 @@ class mpetIO():
         return
 
     def writeConfigFile(self, P, filename="input_params.cfg"):
-        fo = open(filename, "w")
-        P.write(fo)
-        fo.close()
+        with open(filename, "w") as fo:
+            P.write(fo)
         return
     def writeDicts(self, dD, ndD, filenamebase="input_dict"):
         pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
@@ -511,6 +502,13 @@ class mpetIO():
         dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
         ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
         return dD, ndD
+
+def getConfig(inFile):
+    P = ConfigParser.RawConfigParser()
+    P.optionxform = str
+    P.read(inFile)
+    return P
+
 
 def isClose(a, b):
     if np.abs(a - b) < 1e-12:
