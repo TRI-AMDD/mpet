@@ -10,7 +10,8 @@
 *.zip
 params*
 !params_default.cfg
-!configDefaults/*
+!configDefaults/*.cfg
+!tests/baseConfigs/*.cfg
 sim_output*
 archive/
 history/
