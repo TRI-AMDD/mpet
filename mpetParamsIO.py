@@ -74,6 +74,7 @@ class mpetIO():
         dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
         ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
+        ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
         ndD_s["tsteps"] = P_s.getfloat('Sim Params', 'tsteps')
         Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
         Rser = dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
