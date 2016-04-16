@@ -550,10 +550,9 @@ class simMPET(dae.daeSimulation):
         self.ndD_s = ndD_s
         self.ndD_e = ndD_e
         self.tScale = tScale
-        self.prevDir = prevDir
         ndD_s["currPrev"] = 0.
         ndD_s["phiPrev"] = 0.
-        if ndD["prevDir"] != "false":
+        if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
             IO = mpetParamsIO.mpetIO()
             self.dataPrev = sio.loadmat(
@@ -631,7 +630,7 @@ class simMPET(dae.daeSimulation):
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(0.0)
 
-        elif self.prevDir:
+        else:
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
                 self.m.ffrac[l].SetInitialGuess(
