@@ -161,6 +161,7 @@ def test008(IO, testDir, baseConfigDir, simOutDir, run=True):
     P_s.set("Sim Params", "Nvol_c", "3")
     P_s.set("Sim Params", "Npart_c", "3")
     P_s.set("Particles", "stddev_c", "25e-9")
+    P_s.set("Sim Params", "capFrac", "0.6")
     IO.writeConfigFile(P_s, psys)
     P = mpetParamsIO.getConfig(ptrode)
     P.set("Particles", "type", "homog_sdn")
@@ -350,6 +351,53 @@ def test015(IO, testDir, baseConfigDir, simOutDir, run=True):
         shutil.move(simOutDir, osp.join(testDir))
     return
 
+def test016(IO, testDir, baseConfigDir, simOutDir, run=True):
+    """ test CC continuation """
+    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
+    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = mpetParamsIO.getConfig(psys)
+    P_s.set("Sim Params", "Crate", "1e-2")
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Npart_c", "3")
+    P_s.set("Sim Params", "capFrac", "0.34")
+    test008dir = str(osp.join(testDir, "..", "test008", "sim_output"))
+    P_s.set("Sim Params", "prevDir", test008dir)
+    IO.writeConfigFile(P_s, psys)
+    P = mpetParamsIO.getConfig(ptrode)
+    P.set("Particles", "type", "homog_sdn")
+    P.set("Material", "muRfunc", "LiFePO4")
+    IO.writeConfigFile(P, ptrode)
+    if run:
+        mpet.main(psys, keepArchive=False)
+        shutil.move(simOutDir, osp.join(testDir))
+    return
+
+def test017(IO, testDir, baseConfigDir, simOutDir, run=True):
+    """ test CV continuation """
+    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
+    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = mpetParamsIO.getConfig(psys)
+    P_s.set("Sim Params", "profileType", "CV")
+    P_s.set("Sim Params", "Vset", "3.45")
+    P_s.set("Sim Params", "tend", "3e3")
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Npart_c", "3")
+    test008dir = str(osp.join(testDir, "..", "test008", "sim_output"))
+    P_s.set("Sim Params", "prevDir", test008dir)
+    IO.writeConfigFile(P_s, psys)
+    P = mpetParamsIO.getConfig(ptrode)
+    P.set("Particles", "type", "homog_sdn")
+    P.set("Material", "muRfunc", "LiFePO4")
+    IO.writeConfigFile(P, ptrode)
+    if run:
+        mpet.main(psys, keepArchive=False)
+        shutil.move(simOutDir, osp.join(testDir))
+    return
+
 def main():
     IO = mpetParamsIO.mpetIO()
     # Get the default configs
@@ -379,10 +427,12 @@ def main():
             "test013" : {"fn": test013, "runFlag" : True},
             "test014" : {"fn": test014, "runFlag" : True},
             "test015" : {"fn": test015, "runFlag" : True},
+            "test016" : {"fn": test016, "runFlag" : True},
+            "test017" : {"fn": test017, "runFlag" : True},
             }
 
     # Make an output directory for each test
-    for testStr in runInfo.keys():
+    for testStr in sorted(runInfo.keys()):
         testDir = osp.join(outdir, testStr)
         os.makedirs(testDir)
         runInfo[testStr]["fn"](
