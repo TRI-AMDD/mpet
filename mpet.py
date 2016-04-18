@@ -7,6 +7,7 @@ import subprocess as subp
 import glob
 
 import numpy as np
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
@@ -371,18 +372,24 @@ class modMPET(dae.daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            eq.Residual = self.current() - (ndD["currset"]
+            eq.Residual = self.current() - (ndD["currPrev"]
+                    + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
                     )
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            eq.Residual = self.phi_applied() - (ndD["Vset"]
+            eq.Residual = self.phi_applied() - (ndD["phiPrev"]
+                    + (ndD["Vset"] - ndD["phiPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
 #                    * 1
 #                    * np.tanh(dae.Time()/(45.0)))
                     )
         elif "segments" in self.profileType:
+            if self.profileType == "CCsegments":
+                ndD["segments_setvec"][0] = ndD["currPrev"]
+            elif self.profileType == "CVsegments":
+                ndD["segments_setvec"][0] = ndD["phiPrev"]
             self.segSet = externFuncs.InterpTimeScalar(
                     "segSet", self, dae.unit(), dae.Time(),
                     ndD["segments_tvec"], ndD["segments_setvec"])
@@ -544,6 +551,15 @@ class simMPET(dae.daeSimulation):
         self.ndD_s = ndD_s
         self.ndD_e = ndD_e
         self.tScale = tScale
+        ndD_s["currPrev"] = 0.
+        ndD_s["phiPrev"] = 0.
+        if ndD_s["prevDir"] != "false":
+            # Get the data mat file from prevDir
+            IO = mpetParamsIO.mpetIO()
+            self.dataPrev = sio.loadmat(
+                    os.path.join(ndD_s["prevDir"], "output_data.mat"))
+            ndD_s["currPrev"] = self.dataPrev["current"][0, -1]
+            ndD_s["phiPrev"] = self.dataPrev["phi_applied"][0, -1]
         # Define the model we're going to simulate
         self.m = modMPET("mpet", ndD_s=ndD_s, ndD_e=ndD_e)
 
@@ -566,53 +582,102 @@ class simMPET(dae.daeSimulation):
         Npart = ndD_s["Npart"]
         Nlyte = np.sum(Nvol.values())
         phi_cathode = ndD_s["phi_cathode"]
-        # Solids
-        for l in ndD_s["trodes"]:
-            cs0 = self.ndD_s['cs0'][l]
-            # Guess initial filling fractions
-            self.m.ffrac[l].SetInitialGuess(cs0)
-            for i in range(Nvol[l]):
-                # Guess initial volumetric reaction rates
-                self.m.j_plus[l].SetInitialGuess(i, 0.0)
-                # Guess initial value for the potential of the
-                # electrodes
-                if l == "a": # anode
-                    self.m.phi_bulk[l].SetInitialGuess(i, 0.0)
-                else: # cathode
-                    self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
-                for j in range(Npart[l]):
-                    Nij = ndD_s["psd_num"][l][i, j]
-                    # Guess initial value for the average solid concentrations
-                    # and set initial value for solid concentrations
-                    solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
-                    if solidType in ndD_s["1varTypes"]:
-                        self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
-                        for k in range(Nij):
-                            self.m.particles[l][i, j].c.SetInitialCondition(k, cs0)
-                    elif solidType in ndD_s["2varTypes"]:
-                        self.m.particles[l][i, j].c1bar.SetInitialGuess(cs0)
-                        self.m.particles[l][i, j].c2bar.SetInitialGuess(cs0)
-                        self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
-                        epsrnd = 0.0001
-                        rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
-                        rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
-                        rnd1 -= np.mean(rnd1)
-                        rnd2 -= np.mean(rnd2)
-                        for k in range(Nij):
-                            self.m.particles[l][i, j].c1.SetInitialCondition(k, cs0+rnd1[k])
-                            self.m.particles[l][i, j].c2.SetInitialCondition(k, cs0+rnd2[k])
-        # Electrolyte
-        c_lyte_init = ndD_s['c0']
-        phi_guess = 0.
-        for i in range(Nvol["s"]):
-            self.m.c_lyte["s"].SetInitialCondition(i, c_lyte_init)
-            self.m.phi_lyte["s"].SetInitialGuess(i, phi_guess)
-        for l in ndD_s["trodes"]:
-            for i in range(Nvol[l]):
-                self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
-                self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
-        # Guess the initial cell voltage
-        self.m.phi_applied.SetInitialGuess(0.0)
+        if ndD_s["prevDir"] == "false":
+            # Solids
+            for l in ndD_s["trodes"]:
+                cs0 = self.ndD_s['cs0'][l]
+                # Guess initial filling fractions
+                self.m.ffrac[l].SetInitialGuess(cs0)
+                for i in range(Nvol[l]):
+                    # Guess initial volumetric reaction rates
+                    self.m.j_plus[l].SetInitialGuess(i, 0.0)
+                    # Guess initial value for the potential of the
+                    # electrodes
+                    if l == "a": # anode
+                        self.m.phi_bulk[l].SetInitialGuess(i, 0.0)
+                    else: # cathode
+                        self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
+                    for j in range(Npart[l]):
+                        Nij = ndD_s["psd_num"][l][i, j]
+                        # Guess initial value for the average solid concentrations
+                        # and set initial value for solid concentrations
+                        solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
+                        if solidType in ndD_s["1varTypes"]:
+                            self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
+                            for k in range(Nij):
+                                self.m.particles[l][i, j].c.SetInitialCondition(k, cs0)
+                        elif solidType in ndD_s["2varTypes"]:
+                            self.m.particles[l][i, j].c1bar.SetInitialGuess(cs0)
+                            self.m.particles[l][i, j].c2bar.SetInitialGuess(cs0)
+                            self.m.particles[l][i, j].cbar.SetInitialGuess(cs0)
+                            epsrnd = 0.0001
+                            rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
+                            rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
+                            rnd1 -= np.mean(rnd1)
+                            rnd2 -= np.mean(rnd2)
+                            for k in range(Nij):
+                                self.m.particles[l][i, j].c1.SetInitialCondition(k, cs0+rnd1[k])
+                                self.m.particles[l][i, j].c2.SetInitialCondition(k, cs0+rnd2[k])
+            # Electrolyte
+            c_lyte_init = ndD_s['c0']
+            phi_guess = 0.
+            for i in range(Nvol["s"]):
+                self.m.c_lyte["s"].SetInitialCondition(i, c_lyte_init)
+                self.m.phi_lyte["s"].SetInitialGuess(i, phi_guess)
+            for l in ndD_s["trodes"]:
+                for i in range(Nvol[l]):
+                    self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
+                    self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
+            # Guess the initial cell voltage
+            self.m.phi_applied.SetInitialGuess(0.0)
+
+        else:
+            dPrev = self.dataPrev
+            for l in ndD_s["trodes"]:
+                self.m.ffrac[l].SetInitialGuess(
+                        dPrev["ffrac_" + l][0, -1])
+                for i in range(Nvol[l]):
+                    self.m.j_plus[l].SetInitialGuess(
+                            i, dPrev["j_plus_" + l][-1, i])
+                    self.m.phi_bulk[l].SetInitialGuess(
+                            i, dPrev["phi_bulk_" + l][-1, i])
+                    for j in range(Npart[l]):
+                        Nij = ndD_s["psd_num"][l][i, j]
+                        solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
+                        partStr = "partTrode{l}vol{i}part{j}_".format(
+                                l=l, i=i, j=j)
+                        if solidType in ndD_s["1varTypes"]:
+                            self.m.particles[l][i, j].cbar.SetInitialGuess(
+                                    dPrev[partStr + "cbar"][0, -1])
+                            for k in range(Nij):
+                                self.m.particles[l][i, j].c.SetInitialCondition(
+                                        k, dPrev[partStr + "c"][-1, k])
+                        elif solidType in ndD_s["2varTypes"]:
+                            self.m.particles[l][i, j].c1bar.SetInitialGuess(
+                                    dPrev[partStr + "c1bar"][0, -1])
+                            self.m.particles[l][i, j].c2bar.SetInitialGuess(
+                                    dPrev[partStr + "c2bar"][0, -1])
+                            self.m.particles[l][i, j].cbar.SetInitialGuess(
+                                    dPrev[partStr + "cbar"][0, -1])
+                            for k in range(Nij):
+                                self.m.particles[l][i, j].c1.SetInitialCondition(
+                                        k, dPrev[partStr + "c1"][-1, k])
+                                self.m.particles[l][i, j].c2.SetInitialCondition(
+                                        k, dPrev[partStr + "c2"][-1, k])
+            for i in range(Nvol["s"]):
+                self.m.c_lyte["s"].SetInitialCondition(
+                        i, dPrev["c_lyte_s"][-1, i])
+                self.m.phi_lyte["s"].SetInitialGuess(
+                        i, dPrev["phi_lyte_s"][-1, i])
+            for l in ndD_s["trodes"]:
+                for i in range(Nvol[l]):
+                    self.m.c_lyte[l].SetInitialCondition(
+                            i, dPrev["c_lyte_" + l][-1, i])
+                    self.m.phi_lyte[l].SetInitialGuess(
+                            i, dPrev["c_lyte_" + l][-1, i])
+            # Guess the initial cell voltage
+            self.m.phi_applied.SetInitialGuess(
+                    dPrev["phi_applied"][0, -1])
         self.m.dummyVar.AssignValue(0) # used for V cutoff condition
 
     def Run(self):
@@ -654,17 +719,10 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             dkeybase = dkeybase.replace(".", "_")
             mdict[dkeybase] = var.Values
             mdict[dkeybase + '_times'] = var.TimeValues
-        try:
-            import scipy.io
-            scipy.io.savemat(self.ConnectionString,
-                             mdict,
-                             appendmat=False,
-                             format='5',
-                             long_field_names=False,
-                             do_compression=False,
-                             oned_as='row')
-        except Exception, e:
-            print 'Cannot call scipy.io.savemat(); is SciPy installed?\n' + str(e)
+        sio.savemat(self.ConnectionString,
+                    mdict, appendmat=False, format='5',
+                    long_field_names=False, do_compression=False,
+                    oned_as='row')
 
 def setupDataReporters(simulation, outdir):
     """

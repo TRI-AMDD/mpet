@@ -74,6 +74,7 @@ class mpetIO():
         dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
         ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
         dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
+        ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
         ndD_s["tsteps"] = P_s.getfloat('Sim Params', 'tsteps')
         Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
         Rser = dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
@@ -252,12 +253,22 @@ class mpetIO():
         for trode in ndD_s["trodes"]:
             ## System scale parameters
             # particle size distribution and connectivity distribution
-            dD_s["psd_raw"][trode] = psd_raw[trode]
-            ndD_s["psd_num"][trode] = psd_num[trode]
-            dD_s["psd_len"][trode] = psd_len[trode]
-            dD_s["psd_area"][trode] = psd_area[trode]
-            dD_s["psd_vol"][trode] = psd_vol[trode]
-            dD_s["G"][trode] = G[trode]
+            if ndD_s["prevDir"] == "false":
+                dD_s["psd_raw"][trode] = psd_raw[trode]
+                ndD_s["psd_num"][trode] = psd_num[trode]
+                dD_s["psd_len"][trode] = psd_len[trode]
+                dD_s["psd_area"][trode] = psd_area[trode]
+                dD_s["psd_vol"][trode] = psd_vol[trode]
+                dD_s["G"][trode] = G[trode]
+            else:
+                dD_sPrev, ndD_sPrev = self.readDicts(
+                        os.path.join(ndD_s["prevDir"], "input_dict_system"))
+                dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
+                ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
+                dD_s["psd_len"][trode] = dD_sPrev["psd_len"][trode]
+                dD_s["psd_area"][trode] = dD_sPrev["psd_area"][trode]
+                dD_s["psd_vol"][trode] = dD_sPrev["psd_vol"][trode]
+                dD_s["G"][trode] = dD_sPrev["G"][trode]
             # Sums of all particle volumes within each simulated
             # electrode volume
             Vuvec = np.sum(dD_s["psd_vol"][trode], axis=1)
@@ -474,6 +485,10 @@ class mpetIO():
             raise Exception("Temp dependence not implemented")
         if ndD['Nvol']["c"] < 1:
             raise Exception("Must have at least one porous electrode")
+        if ndD["profileType"] not in ["CC", "CV", "CCsegments",
+                "CVsegments"]:
+            raise NotImplementedError("profileType {pt} unknown".format(
+                pt=ndD["profileType"]))
         return
 
     def test_electrode_input(self, dD, ndD, dD_s, ndD_s):
