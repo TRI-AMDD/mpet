@@ -12,7 +12,7 @@
 1. Copy the overall system parameters file,
    `configDefaults/params_system.cfg`, to main directory
 2. Copy at least one material parameters file from `configDefaults`
-   (e.g. `configDefaults/params_electrode.cfg`) to the main directory
+   (e.g. `configDefaults/params_electrodes.cfg`) to the main directory
 3. Edit `params_system.cfg` to suit the simulation you're trying to run. Be
    sure to reference a material parameters file for the cathode and
    optionally one (the same or separate file) for the anode.
