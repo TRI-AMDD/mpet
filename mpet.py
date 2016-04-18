@@ -7,6 +7,7 @@ import subprocess as subp
 import glob
 
 import numpy as np
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
@@ -398,6 +399,9 @@ class modMPET(dae.daeModel):
             elif self.profileType == "CVsegments":
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - self.segSet()
+        else:
+            raise NotImplementedError("profileType {pt} unknown".format(
+                pt=self.profileType))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -556,9 +560,9 @@ class simMPET(dae.daeSimulation):
             # Get the data mat file from prevDir
             IO = mpetParamsIO.mpetIO()
             self.dataPrev = sio.loadmat(
-                    os.path.join(prevDir, "output_data.mat"))
-            ndD_s["currPrev"] = self.dataPrev["current"][-1]
-            ndD_s["phiPrev"] = self.dataPrev["phi_applied"][-1]
+                    os.path.join(ndD_s["prevDir"], "output_data.mat"))
+            ndD_s["currPrev"] = self.dataPrev["current"][0, -1]
+            ndD_s["phiPrev"] = self.dataPrev["phi_applied"][0, -1]
         # Define the model we're going to simulate
         self.m = modMPET("mpet", ndD_s=ndD_s, ndD_e=ndD_e)
 
@@ -634,7 +638,7 @@ class simMPET(dae.daeSimulation):
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
                 self.m.ffrac[l].SetInitialGuess(
-                        dPrev["ffrac_" + l][-1])
+                        dPrev["ffrac_" + l][0, -1])
                 for i in range(Nvol[l]):
                     self.m.j_plus[l].SetInitialGuess(
                             i, dPrev["j_plus_" + l][-1, i])
@@ -647,17 +651,17 @@ class simMPET(dae.daeSimulation):
                                 l=l, i=i, j=j)
                         if solidType in ndD_s["1varTypes"]:
                             self.m.particles[l][i, j].cbar.SetInitialGuess(
-                                    dPrev[partStr + "cbar"][-1])
+                                    dPrev[partStr + "cbar"][0, -1])
                             for k in range(Nij):
                                 self.m.particles[l][i, j].c.SetInitialCondition(
                                         k, dPrev[partStr + "c"][-1, k])
                         elif solidType in ndD_s["2varTypes"]:
                             self.m.particles[l][i, j].c1bar.SetInitialGuess(
-                                    dPrev[partStr + "c1bar"][-1])
+                                    dPrev[partStr + "c1bar"][0, -1])
                             self.m.particles[l][i, j].c2bar.SetInitialGuess(
-                                    dPrev[partStr + "c2bar"][-1])
+                                    dPrev[partStr + "c2bar"][0, -1])
                             self.m.particles[l][i, j].cbar.SetInitialGuess(
-                                    dPrev[partStr + "cbar"][-1])
+                                    dPrev[partStr + "cbar"][0, -1])
                             for k in range(Nij):
                                 self.m.particles[l][i, j].c1.SetInitialCondition(
                                         k, dPrev[partStr + "c1"][-1, k])
@@ -675,7 +679,8 @@ class simMPET(dae.daeSimulation):
                     self.m.phi_lyte[l].SetInitialGuess(
                             i, dPrev["c_lyte_" + l][-1, i])
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(0.0)
+            self.m.phi_applied.SetInitialGuess(
+                    dPrev["phi_applied"][0, -1])
         self.m.dummyVar.AssignValue(0) # used for V cutoff condition
 
     def Run(self):
@@ -717,17 +722,10 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             dkeybase = dkeybase.replace(".", "_")
             mdict[dkeybase] = var.Values
             mdict[dkeybase + '_times'] = var.TimeValues
-        try:
-            import scipy.io
-            scipy.io.savemat(self.ConnectionString,
-                             mdict,
-                             appendmat=False,
-                             format='5',
-                             long_field_names=False,
-                             do_compression=False,
-                             oned_as='row')
-        except Exception, e:
-            print 'Cannot call scipy.io.savemat(); is SciPy installed?\n' + str(e)
+        sio.savemat(self.ConnectionString,
+                    mdict, appendmat=False, format='5',
+                    long_field_names=False, do_compression=False,
+                    oned_as='row')
 
 def setupDataReporters(simulation, outdir):
     """
