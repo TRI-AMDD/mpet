@@ -5,7 +5,7 @@
 1.  Install `python`, `numpy`, `scipy`, `matplotlib`
     - Linux: try using your package manager
     - Windows: try [WinPython](https://winpython.github.io)
-2.  Install [DAE Tools](http://sourceforge.net/projects/daetools/files/1.4.0)
+2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
 
 ## Simulation
 
