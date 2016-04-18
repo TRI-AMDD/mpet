@@ -85,6 +85,7 @@ if __name__ == '__main__':
 
     # Plot results
     data = sio.loadmat('hello_world')
+    os.remove('hello_world.mat')
     tau = data['hello_world.tau']
     t = np.linspace(0, t_final, N_t)
     tau = tau.squeeze()
