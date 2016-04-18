@@ -253,12 +253,22 @@ class mpetIO():
         for trode in ndD_s["trodes"]:
             ## System scale parameters
             # particle size distribution and connectivity distribution
-            dD_s["psd_raw"][trode] = psd_raw[trode]
-            ndD_s["psd_num"][trode] = psd_num[trode]
-            dD_s["psd_len"][trode] = psd_len[trode]
-            dD_s["psd_area"][trode] = psd_area[trode]
-            dD_s["psd_vol"][trode] = psd_vol[trode]
-            dD_s["G"][trode] = G[trode]
+            if ndD_s["prevDir"] == "false":
+                dD_s["psd_raw"][trode] = psd_raw[trode]
+                ndD_s["psd_num"][trode] = psd_num[trode]
+                dD_s["psd_len"][trode] = psd_len[trode]
+                dD_s["psd_area"][trode] = psd_area[trode]
+                dD_s["psd_vol"][trode] = psd_vol[trode]
+                dD_s["G"][trode] = G[trode]
+            else:
+                dD_sPrev, ndD_sPrev = self.readDicts(
+                        os.path.join(ndD_s["prevDir"], "input_dict_system"))
+                dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
+                ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
+                dD_s["psd_len"][trode] = dD_sPrev["psd_len"][trode]
+                dD_s["psd_area"][trode] = dD_sPrev["psd_area"][trode]
+                dD_s["psd_vol"][trode] = dD_sPrev["psd_vol"][trode]
+                dD_s["G"][trode] = dD_sPrev["G"][trode]
             # Sums of all particle volumes within each simulated
             # electrode volume
             Vuvec = np.sum(dD_s["psd_vol"][trode], axis=1)
