@@ -399,9 +399,6 @@ class modMPET(dae.daeModel):
             elif self.profileType == "CVsegments":
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - self.segSet()
-        else:
-            raise NotImplementedError("profileType {pt} unknown".format(
-                pt=self.profileType))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

@@ -475,6 +475,10 @@ class mpetIO():
             raise Exception("Temp dependence not implemented")
         if ndD['Nvol']["c"] < 1:
             raise Exception("Must have at least one porous electrode")
+        if ndD["profileType"] not in ["CC", "CV", "CCsegments",
+                "CVsegments"]:
+            raise NotImplementedError("profileType {pt} unknown".format(
+                pt=ndD["profileType"]))
         return
 
     def test_electrode_input(self, dD, ndD, dD_s, ndD_s):
