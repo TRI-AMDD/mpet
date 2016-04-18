@@ -13,8 +13,6 @@ import sys
 from time import localtime
 from time import strftime
 
-typeNone = dae.daeVariableType('typeNone', dae.unit(), 0, 1e10, 0, 1e-5)
-
 
 class modTutorial(dae.daeModel):
     """Define modTutorial class."""
@@ -22,7 +20,7 @@ class modTutorial(dae.daeModel):
     def __init__(self, Name, Parent=None, Description=''):
         """Call __init__ of base class and define variables."""
         dae.daeModel.__init__(self, Name, Parent, Description)
-        self.tau = dae.daeVariable('tau', typeNone, self, 'Time elapsed in the process')
+        self.tau = dae.daeVariable('tau', dae.no_t, self, 'Time elapsed in the process')
 
     def DeclareEquations(self):
         """Call DeclareEquations of base class and define equations."""
