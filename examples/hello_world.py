@@ -91,7 +91,7 @@ if __name__ == '__main__':
     t = np.linspace(0, t_final, N_t)
     tau = tau.squeeze()
     plt.plot(t, tau)
-    plt.xlabel('$t$')
+    plt.xlabel(r'$t$')
     plt.ylabel(r'$\tau$')
     plt.axis('tight')
     plt.show()
