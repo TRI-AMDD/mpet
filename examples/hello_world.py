@@ -37,7 +37,7 @@ class simTutorial(dae.daeSimulation):
         dae.daeSimulation.__init__(self)
         self.m = modTutorial('hello_world')
 
-    def SetupParametersAndDomains(self):
+    def SetUpParametersAndDomains(self):
         """Set up parameters and domains."""
         pass
 
