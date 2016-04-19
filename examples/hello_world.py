@@ -4,8 +4,7 @@
 
 import os
 import sys
-from time import localtime
-from time import strftime
+from time import localtime, strftime
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
