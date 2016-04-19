@@ -13,8 +13,8 @@ import numpy as np
 import scipy.io as sio
 
 
-class modTutorial(dae.daeModel):
-    """Define modTutorial class."""
+class Model(dae.daeModel):
+    """Define Model class."""
 
     def __init__(self, Name, Parent=None, Description=''):
         """Call __init__ of base class and define variables."""
@@ -29,13 +29,13 @@ class modTutorial(dae.daeModel):
         eq.CheckUnitsConsistency = False
 
 
-class simTutorial(dae.daeSimulation):
-    """Define simTutorial class."""
+class Simulation(dae.daeSimulation):
+    """Define Simulation class."""
 
     def __init__(self):
         """Call __init__ of base class and define models."""
         dae.daeSimulation.__init__(self)
-        self.m = modTutorial('hello_world')
+        self.m = Model('hello_world')
 
     def SetUpParametersAndDomains(self):
         """Set up parameters and domains."""
@@ -46,8 +46,8 @@ class simTutorial(dae.daeSimulation):
         self.m.tau.SetInitialCondition(0.0)
 
 
-def setupDataReporters(simulation):
-    """Define setupDataReporters function."""
+def matlab_data_reporter(simulation):
+    """Define matlab_data_reporter function."""
     datareporter = dae.daeDelegateDataReporter()
     simulation.dr = daeMatlabMATFileDataReporter()
     datareporter.AddDataReporter(simulation.dr)
@@ -58,17 +58,17 @@ def setupDataReporters(simulation):
     return datareporter
 
 
-def consoleRun(config):
-    """Initialize and run simulations."""
+def run(config):
+    """Define run function that initializes and runs simulations."""
     log = dae.daePythonStdOutLog()
-    daesolver = dae.daeIDAS()
-    simulation = simTutorial()
-    datareporter = setupDataReporters(simulation)
+    dae_solver = dae.daeIDAS()
+    simulation = Simulation()
+    data_reporter = matlab_data_reporter(simulation)
     simulation.TimeHorizon = config['t_final']
     simulation.ReportingInterval = config['t_interval']
     simulation.m.SetReportingOn(True)
 
-    simulation.Initialize(daesolver, datareporter, log)
+    simulation.Initialize(dae_solver, data_reporter, log)
     simulation.SolveInitial()
     simulation.Run()
     simulation.Finalize()
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     config = {}
     config['t_final'] = t_final
     config['t_interval'] = t_final / (N_t-1)
-    consoleRun(config)
+    run(config)
 
     # Plot results
     data = sio.loadmat('hello_world')
