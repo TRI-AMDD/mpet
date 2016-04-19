@@ -270,6 +270,12 @@ class mod1var(dae.daeModel):
                 "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self,
                 "Rate of particle filling")
+        if ndD["type"] not in ["ACR"]:
+            self.R_v = dae.daeVariable("R_v", dae.no_t, self,
+                "Rate of reaction (per nondim volume)")
+        else:
+            self.R_v = dae.daeVariable("R_v", dae.no_t, self,
+                "Rate of reaction (per nondim volume)", [self.Dmn])
 
         # Ports
         self.portInLyte = mpetPorts.portFromElyte("portInLyte",
@@ -344,18 +350,17 @@ class mod1var(dae.daeModel):
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
-        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
+        eta_eff = eta + ndD["delta_L"]*self.R_v()*ndD["Rfilm"]
+        Rxn = calc_rxn_rate(eta_eff, c_surf, self.c_lyte, ndD["k0"],
                 T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
+        eq = self.CreateEquation("R_v")
+        eq.Residual = self.R_v() - Rxn[0]
 
-        dcdt_vec = np.empty(N, dtype=object)
-        dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
-        LHS_vec = dcdt_vec
-        for k in range(N):
-            eq = self.CreateEquation("dcsdt")
-            eq.Residual = LHS_vec[k] - Rxn[k]
-            if ndD["noise"]:
-                eq.Residual += noise[k]()
+        eq = self.CreateEquation("dcsdt")
+        eq.Residual = self.c.dt(0) - self.R_v()
+        if ndD["noise"]:
+            eq.Residual += noise[k]()
         return
 
     def sldDynamics1D1var(self, c, muO, act_lyte, ISfuncs, noise):
@@ -378,17 +383,27 @@ class mod1var(dae.daeModel):
             muR_surf = muR[-1]
             actR_surf = actR[-1]
         eta = calc_eta(muR_surf, muO)
-        Rxn = calc_rxn_rate(eta, c_surf, self.c_lyte, ndD["k0"],
+        eta_eff = np.empty(N, dtype=object)
+        eta_eff[:] = [eta[i] + ndD["delta_L"]*self.R_v(i)*ndD["Rfilm"]
+                for i in range(N)]
+        Rxn = calc_rxn_rate(eta_eff, c_surf, self.c_lyte, ndD["k0"],
                 T, ndD["rxnType"], actR_surf, act_lyte, ndD["lambda"],
                 ndD["alpha"])
+        if ndD["type"] in ["ACR"]:
+            for i in range(N):
+                eq = self.CreateEquation("R_v_{i}".format(i=i))
+                eq.Residual = self.R_v(i) - Rxn[i]
+        else:
+            eq = self.CreateEquation("R_v")
+            eq.Residual = self.R_v() - Rxn[0]
 
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["ACR"]:
-            RHS = Rxn
+            RHS = np.array([self.R_v(i) for i in range(N)])
         elif ndD["type"] in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux_bc = -ndD["delta_L"] * Rxn
+            Flux_bc = -ndD["delta_L"] * self.R_v()
             if ndD["type"] == "diffn":
                 Flux_vec = calc_Flux_diffn(c, ndD["D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
