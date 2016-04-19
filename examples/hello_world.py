@@ -1,17 +1,16 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """'Hello, world!' example."""
+
+import os
+import sys
+from time import localtime, strftime
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import scipy.io as sio
-import sys
-from time import localtime
-from time import strftime
 
 
 class modTutorial(dae.daeModel):
@@ -52,7 +51,7 @@ def setupDataReporters(simulation):
     datareporter = dae.daeDelegateDataReporter()
     simulation.dr = daeMatlabMATFileDataReporter()
     datareporter.AddDataReporter(simulation.dr)
-    simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
+    simName = simulation.m.Name + strftime(' [%d.%m.%Y %H:%M:%S]', localtime())
     matfilename = os.getcwd() + '/' + simulation.m.Name + '.mat'
     if not simulation.dr.Connect(matfilename, simName):
         sys.exit()
