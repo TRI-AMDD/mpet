@@ -2,15 +2,16 @@
 
 """'Hello, world!' example."""
 
+import os
+import sys
+from time import localtime
+from time import strftime
+
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import scipy.io as sio
-import sys
-from time import localtime
-from time import strftime
 
 
 class modTutorial(dae.daeModel):
