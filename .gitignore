@@ -27,3 +27,4 @@ outputNotes.txt
 todo.txt
 
 .remarkrc
+tox.ini
