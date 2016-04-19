@@ -181,6 +181,10 @@ class mpetIO():
             dD["k0"] = P.getfloat('Reactions', 'k0')
             ndD["alpha"] = P.getfloat('Reactions', 'alpha')
             dD["lambda"] = P.getfloat('Reactions', 'lambda')
+            try:
+                dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
+            except ConfigParser.NoOptionError:
+                dD["Rfilm"] = 0.
 
             # electrode parameters
             dD_e[trode] = dD.copy()
@@ -331,6 +335,9 @@ class mpetIO():
                     ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                     ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
                             / (F*dD_e[trode]["csmax"]))
+                    ndD_tmp["Rfilm"] = (
+                            dD_e[trode]["Rfilm"] / (
+                                t_ref*k*T_ref/(e*F*plen*dD_e[trode]["csmax"])))
                     ndD_tmp["delta_L"] = pvol/(parea*plen)
                     if Type in ["homog_sdn", "homog2_sdn"]:
                         ndD_tmp["Omga"] = self.size2regsln(plen)
