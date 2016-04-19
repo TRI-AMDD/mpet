@@ -52,7 +52,7 @@ def setupDataReporters(simulation):
     datareporter = dae.daeDelegateDataReporter()
     simulation.dr = daeMatlabMATFileDataReporter()
     datareporter.AddDataReporter(simulation.dr)
-    simName = simulation.m.Name + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
+    simName = simulation.m.Name + strftime(' [%d.%m.%Y %H:%M:%S]', localtime())
     matfilename = os.getcwd() + '/' + simulation.m.Name + '.mat'
     if not simulation.dr.Connect(matfilename, simName):
         sys.exit()
