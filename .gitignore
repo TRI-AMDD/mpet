@@ -26,5 +26,6 @@ mpettest.m
 outputNotes.txt
 todo.txt
 
+venv/
 .remarkrc
 tox.ini
