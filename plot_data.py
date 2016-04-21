@@ -25,7 +25,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     except KeyError:
         pfx = ''
     try:
-        data[pfx + "partTrodecvol0part0" + sStr + "c"]
+        data[pfx + "partTrodecvol0part0" + sStr + "cbar"]
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation

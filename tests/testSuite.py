@@ -217,6 +217,8 @@ def test011(IO, testDir, baseConfigDir, simOutDir, run=True):
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = mpetParamsIO.getConfig(psys)
     P_s.set("Sim Params", "Crate", "1e-2")
+    P_s.set("Sim Params", "relTol", "1e-7")
+    P_s.set("Sim Params", "absTol", "1e-7")
     IO.writeConfigFile(P_s, psys)
     P = mpetParamsIO.getConfig(ptrode)
     P.set("Particles", "type", "CHR2")
