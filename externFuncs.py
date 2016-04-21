@@ -9,7 +9,7 @@ class InterpTimeScalar(daeScalarExternalFunction):
         arguments["time"] = time
         self.cache = None
         self.interp = sintrp.interp1d(tvec, yvec, bounds_error=False,
-                fill_value=(yvec[0], yvec[-1]))
+                fill_value=yvec[-1])
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
 
     def Calculate(self, values):
