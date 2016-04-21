@@ -87,6 +87,10 @@ class mpetIO():
         if ndD_s["Nvol"]["a"] >= 1:
             ndD_s["trodes"].append("a")
         dD_s["k0_foil"] = P_s.getfloat('Electrodes', 'k0_foil')
+        try:
+            dD_s["Rfilm_foil"] = P_s.getfloat('Electrodes', 'Rfilm_foil')
+        except ConfigParser.NoOptionError:
+            dD_s["Rfilm_foil"] = 0.
 
         # Particle info
         dD_s["psd_mean"] = {"a": P_s.getfloat('Particles', 'mean_a'),
@@ -212,7 +216,6 @@ class mpetIO():
         curr_ref = dD_s["curr_ref"] = 3600. / t_ref
         dD_s["mcond_ref"] = (L_ref**2 * F**2 * c0) / (t_ref * k * N_A * T_ref)
         dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
-
         # maximum concentration in electrode solids, mol/m^3
         # and electrode capacity ratio
         for trode in ndD_s['trodes']:
@@ -229,16 +232,18 @@ class mpetIO():
         limtrode = ("c" if ndD_s["z"] < 1 else "a")
         CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600. # A/m^2
         dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
+        Rser_ref = dD_s["Rser_ref"] = (k*Tref/e) / (curr_ref*CrateCurr)
 
         # Some nondimensional parameters
         T = ndD_s["T"] = Tabs / T_ref
-        ndD_s["Rser"] = dD_s["Rser"] * e/(k*T_ref) * curr_ref * CrateCurr
+        ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
         ndD_s["Dp"] = Dp / D_ref
         ndD_s["Dm"] = Dm / D_ref
         ndD_s["c0"] = c0 / c_ref
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"] / curr_ref
         ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
+        ndD_s["Rfilm_foil"] = dD_s["Rfilm"] / Rser_ref
 
         # parameters which depend on the electrode
         dD_s["psd_raw"] = {}
