@@ -46,7 +46,7 @@ elytediviHdr = ("Electrolyte Divergence of Current Density [A/m^3]\n" +
         RowsStr + CCStr)
 
 seeDiscStr = "See discData.txt for particle indexing information."
-partStr = "partTrode{l}vol{j}part{i}"
+partStr = "partTrode{l}vol{j}part{i}_"
 solffStr = "Solid Filling Fractions"
 solTail = ("\n" + RowsStr + CCStr + "\n" + seeDiscStr)
 solHdr = (solffStr + solTail)
@@ -178,12 +178,6 @@ def main(indir, genData=True, discData=True, elyteData=True,
         dataFileName = "output_data.mat"
         dataFile = os.path.join(indir, dataFileName)
         data = sio.loadmat(dataFile)
-        sStr = "_"
-        try:
-            data[pfx + partStr.format(l="c",i=0,j=0) + sStr + "c"]
-        except KeyError:
-            sStr = "."
-        partStr += sStr
         type2c = False
         for l in trodes:
             Trode = getTrodeStr(l)
