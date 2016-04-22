@@ -492,7 +492,7 @@ class modMPET(dae.daeModel):
             # eta = 2*arcsinh(-current/(-2*ecd))
             BVfunc = -self.current() / ecd
             eta_eff = 2*np.arcsinh(-BVfunc/2.)
-            eta = eta_eff - self.current()*ndD["Rfilm_foil"]
+            eta = eta_eff + self.current()*ndD["Rfilm_foil"]
 #            # Infinitely fast anode kinetics
 #            eta = 0.
             # eta = mu_R - mu_O = -mu_O (evaluated at interface)
