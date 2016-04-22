@@ -418,7 +418,7 @@ def run_test_sims(IO, runInfo, dirDict):
             raise
     return
 
-def compare_with_ref(runInfo, dirDict, tol=1e-7):
+def compare_with_ref(runInfo, dirDict, tol=1e-4):
     failList = []
     for testStr in sorted(runInfo.keys()):
         newDataFile = osp.join(
@@ -435,6 +435,8 @@ def compare_with_ref(runInfo, dirDict, tol=1e-7):
             continue
         refData = sio.loadmat(refDataFile)
         for varKey in newData.keys():
+            # If this test has already failed
+            # TODO -- Consider keeping a list of the variables that fail
             if testStr in failList:
                 continue
             # Ignore certain entries not of numerical output
@@ -447,7 +449,9 @@ def compare_with_ref(runInfo, dirDict, tol=1e-7):
             except ValueError:
                 failList.append(testStr)
                 continue
-            if np.max(diffMat) > tol:
+            # TODO -- What is the right way to compare here?
+            absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
+            if np.max(diffMat) > absTol:
                 failList.append(testStr)
     return failList
 
@@ -495,7 +499,7 @@ def main(compareDir):
         run_test_sims(IO, runInfo, dirDict)
     else:
         dirDict["out"] = compareDir
-    failList = compare_with_ref(runInfo, dirDict, tol=1e-7)
+    failList = compare_with_ref(runInfo, dirDict, tol=1e-3)
 
     if len(failList) > 0:
         show_fails(failList)
