@@ -6,6 +6,9 @@ import shutil
 import time
 import ConfigParser
 
+import numpy as np
+import scipy.io as sio
+
 mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
 import mpet
@@ -400,53 +403,110 @@ def test017(IO, testDir, baseConfigDir, simOutDir, run=True):
         shutil.move(simOutDir, osp.join(testDir))
     return
 
-def main():
-    IO = mpetParamsIO.mpetIO()
-    # Get the default configs
-    suiteDir = osp.dirname(osp.abspath(__file__))
-    simOutDir = osp.join(os.getcwd(), "sim_output")
-    outdir = osp.join(suiteDir,
-                      time.strftime("%Y%m%d_%H%M%S", time.localtime()))
-    os.makedirs(outdir)
-    baseConfigDir = osp.join(suiteDir, "baseConfigs")
-
-    # Dictionary containing info about the tests to run
-    # Identifier strings are associated with functions to call and
-    # whether to run that particular test.
-    runInfo = {
-            "test001" : {"fn": test001, "runFlag" : True},
-            "test002" : {"fn": test002, "runFlag" : True},
-            "test003" : {"fn": test003, "runFlag" : True},
-            "test004" : {"fn": test004, "runFlag" : True},
-            "test005" : {"fn": test005, "runFlag" : True},
-            "test006" : {"fn": test006, "runFlag" : True},
-            "test007" : {"fn": test007, "runFlag" : True},
-            "test008" : {"fn": test008, "runFlag" : True},
-            "test009" : {"fn": test009, "runFlag" : True},
-            "test010" : {"fn": test010, "runFlag" : True},
-            "test011" : {"fn": test011, "runFlag" : True},
-            "test012" : {"fn": test012, "runFlag" : True},
-            "test013" : {"fn": test013, "runFlag" : True},
-            "test014" : {"fn": test014, "runFlag" : True},
-            "test015" : {"fn": test015, "runFlag" : True},
-            "test016" : {"fn": test016, "runFlag" : True},
-            "test017" : {"fn": test017, "runFlag" : True},
-            }
-
-    # Make an output directory for each test
+def run_test_sims(IO, runInfo, dirDict):
     for testStr in sorted(runInfo.keys()):
-        testDir = osp.join(outdir, testStr)
+        testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr]["fn"](
-            IO, testDir, baseConfigDir, simOutDir,
-            run=runInfo[testStr]["runFlag"])
+        runInfo[testStr](
+            IO, testDir, dirDict["baseConfig"], dirDict["simOut"],
+            run=True)
     # Remove the history directory that mpet creates.
     try:
-        os.rmdir(osp.join(suiteDir, "history"))
+        os.rmdir(osp.join(dirDict["suite"], "history"))
     except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
     return
 
+def compare_with_ref(runInfo, dirDict, tol=1e-7):
+    failList = []
+    for testStr in sorted(runInfo.keys()):
+        newDataFile = osp.join(
+            dirDict["out"], testStr, "sim_output", "output_data.mat")
+        refDataFile = osp.join(
+            dirDict["refs"], testStr, "sim_output", "output_data.mat")
+        try:
+            newData = sio.loadmat(newDataFile)
+        except IOError as exception:
+            # If it's an error _other than_ the file not being there
+            if exception.errno != errno.ENOENT:
+                raise
+            print "No simulation data for " + testStr
+            continue
+        refData = sio.loadmat(refDataFile)
+        for varKey in newData.keys():
+            if testStr in failList:
+                continue
+            # Ignore certain entries not of numerical output
+            if varKey[0:2] == "__":
+                continue
+            varDataNew = newData[varKey]
+            varDataRef = refData[varKey]
+            try:
+                diffMat = np.abs(varDataNew - varDataRef)
+            except ValueError:
+                failList.append(testStr)
+                continue
+            if np.max(diffMat) > tol:
+                failList.append(testStr)
+    return failList
+
+def show_fails(failList):
+    for fail in failList:
+        print (fail + " differs from the reference outputs!")
+    return
+
+def main(compareDir):
+    IO = mpetParamsIO.mpetIO()
+    dirDict = {}
+    # Get the default configs
+    dirDict["suite"] = osp.dirname(osp.abspath(__file__))
+    dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
+    dirDict["out"] = osp.join(dirDict["suite"],
+                      time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
+    dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
+
+    # Dictionary containing info about the tests to run
+    # Identifier strings are associated with functions to call and
+    # whether to run that particular test.
+    runInfo = {
+            "test001" : test001,
+            "test002" : test002,
+            "test003" : test003,
+            "test004" : test004,
+            "test005" : test005,
+            "test006" : test006,
+            "test007" : test007,
+            "test008" : test008,
+            "test009" : test009,
+            "test010" : test010,
+            "test011" : test011,
+            "test012" : test012,
+            "test013" : test013,
+            "test014" : test014,
+            "test015" : test015,
+            "test016" : test016,
+            "test017" : test017,
+            }
+
+    if compareDir is None:
+        os.makedirs(dirDict["out"])
+        run_test_sims(IO, runInfo, dirDict)
+    else:
+        dirDict["out"] = compareDir
+    failList = compare_with_ref(runInfo, dirDict, tol=1e-7)
+
+    if len(failList) > 0:
+        show_fails(failList)
+    else:
+        print "All tests passed!"
+
+    return
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        compareDir = osp.join(os.getcwd(), sys.argv[1])
+    else:
+        compareDir = None
+    main(compareDir)
