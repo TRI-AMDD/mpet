@@ -400,6 +400,29 @@ def test017(IO, testDir, baseConfigDir, simOutDir, run=True):
         shutil.move(simOutDir, osp.join(testDir))
     return
 
+def test018(IO, testDir, baseConfigDir, simOutDir, run=True):
+    """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
+    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
+    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = mpetParamsIO.getConfig(psys)
+    P_s.set("Sim Params", "profileType", "CCsegments")
+    P_s.set("Sim Params", "segments",
+            "[(1., 25), (-2., 10), (0., 30)]")
+    P_s.set("Electrodes", "k0_foil", "3e+0")
+    P_s.set("Electrodes", "Rfilm_foil", "3e+0")
+    IO.writeConfigFile(P_s, psys)
+    P = mpetParamsIO.getConfig(ptrode)
+    P.set("Particles", "type", "homog")
+    P.set("Material", "muRfunc", "LiFePO4")
+    P.set("Reactions", "Rfilm", "1e+1")
+    IO.writeConfigFile(P, ptrode)
+    if run:
+        mpet.main(psys, keepArchive=False)
+        shutil.move(simOutDir, osp.join(testDir))
+    return
+
 def main():
     IO = mpetParamsIO.mpetIO()
     # Get the default configs
@@ -431,6 +454,7 @@ def main():
             "test015" : {"fn": test015, "runFlag" : True},
             "test016" : {"fn": test016, "runFlag" : True},
             "test017" : {"fn": test017, "runFlag" : True},
+            "test018" : {"fn": test018, "runFlag" : True},
             }
 
     # Make an output directory for each test
