@@ -232,7 +232,7 @@ class mpetIO():
         limtrode = ("c" if ndD_s["z"] < 1 else "a")
         CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600. # A/m^2
         dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
-        Rser_ref = dD_s["Rser_ref"] = (k*Tref/e) / (curr_ref*CrateCurr)
+        Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
 
         # Some nondimensional parameters
         T = ndD_s["T"] = Tabs / T_ref
@@ -243,7 +243,7 @@ class mpetIO():
         ndD_s["phi_cathode"] = 0.
         ndD_s["currset"] = dD_s["Crate"] / curr_ref
         ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
-        ndD_s["Rfilm_foil"] = dD_s["Rfilm"] / Rser_ref
+        ndD_s["Rfilm_foil"] = dD_s["Rfilm_foil"] / Rser_ref
 
         # parameters which depend on the electrode
         dD_s["psd_raw"] = {}
