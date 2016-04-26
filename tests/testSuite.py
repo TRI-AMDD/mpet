@@ -10,15 +10,15 @@ import scipy.io as sio
 
 mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
-import mpetParamsIO
+import mpetParamsIO as IO
 import testDefns as defs
 
-def run_test_sims(IO, runInfo, dirDict):
+def run_test_sims(runInfo, dirDict):
     for testStr in sorted(runInfo.keys()):
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
         runInfo[testStr](
-            IO, testDir, dirDict["baseConfig"], dirDict["simOut"],
+            testDir, dirDict["baseConfig"], dirDict["simOut"],
             run=True)
     # Remove the history directory that mpet creates.
     try:
@@ -71,7 +71,6 @@ def show_fails(failList):
     return
 
 def main(compareDir):
-    IO = mpetParamsIO.mpetIO()
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
@@ -102,11 +101,12 @@ def main(compareDir):
             "test015" : defs.test015,
             "test016" : defs.test016,
             "test017" : defs.test017,
+            "test018" : defs.test018,
             }
 
     if compareDir is None:
         os.makedirs(dirDict["out"])
-        run_test_sims(IO, runInfo, dirDict)
+        run_test_sims(runInfo, dirDict)
     else:
         dirDict["out"] = compareDir
     failList = compare_with_ref(runInfo, dirDict, tol=1e-3)

@@ -16,7 +16,7 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.trilinos import pyTrilinos
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
-import mpetParamsIO
+import mpetParamsIO as IO
 import mpetPorts
 import mpetMaterials
 import elyte_CST
@@ -491,7 +491,8 @@ class modMPET(dae.daeModel):
             # -current = ecd*(-2*sinh(eta/2))
             # eta = 2*arcsinh(-current/(-2*ecd))
             BVfunc = -self.current() / ecd
-            eta = 2*np.arcsinh(-BVfunc/2.)
+            eta_eff = 2*np.arcsinh(-BVfunc/2.)
+            eta = eta_eff + self.current()*ndD["Rfilm_foil"]
 #            # Infinitely fast anode kinetics
 #            eta = 0.
             # eta = mu_R - mu_O = -mu_O (evaluated at interface)
@@ -555,7 +556,6 @@ class simMPET(dae.daeSimulation):
         ndD_s["phiPrev"] = 0.
         if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
-            IO = mpetParamsIO.mpetIO()
             self.dataPrev = sio.loadmat(
                     os.path.join(ndD_s["prevDir"], "output_data.mat"))
             ndD_s["currPrev"] = self.dataPrev["current"][0, -1]
@@ -795,7 +795,6 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    IO = mpetParamsIO.mpetIO()
     P_s, P_e = IO.getConfigs(paramfile)
     dD_s, ndD_s, dD_e, ndD_e = IO.getDictsFromConfigs(P_s, P_e)
 
