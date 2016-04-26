@@ -17,9 +17,7 @@ def run_test_sims(runInfo, dirDict):
     for testStr in sorted(runInfo.keys()):
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr](
-            testDir, dirDict["baseConfig"], dirDict["simOut"],
-            run=True)
+        runInfo[testStr](testDir, dirDict)
     # Remove the history directory that mpet creates.
     try:
         os.rmdir(osp.join(dirDict["suite"], "history"))

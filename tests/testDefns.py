@@ -8,10 +8,10 @@ sys.path.append(mpetdir)
 import mpet
 import mpetParamsIO as IO
 
-def test001(testDir, baseConfigDir, simOutDir, run=True):
+def test001(testDir, dirDict):
     """ LFP ACR C3 """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -21,15 +21,14 @@ def test001(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "ACR")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test002(testDir, baseConfigDir, simOutDir, run=True):
+def test002(testDir, dirDict):
     """ LFP CHR cylinder """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -41,15 +40,14 @@ def test002(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Material", "dgammadc", "5e-30")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test003(testDir, baseConfigDir, simOutDir, run=True):
+def test003(testDir, dirDict):
     """ LFP CHR sphere """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -61,15 +59,14 @@ def test003(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Material", "dgammadc", "-2e-30")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test004(testDir, baseConfigDir, simOutDir, run=True):
+def test004(testDir, dirDict):
     """ LFP CHR sphere with noise  """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -82,15 +79,14 @@ def test004(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "noise", "true")
     P.set("Material", "dgammadc", "-2e-30")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test005(testDir, baseConfigDir, simOutDir, run=True):
+def test005(testDir, dirDict):
     """ LFP homog """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -102,15 +98,14 @@ def test005(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test006(testDir, baseConfigDir, simOutDir, run=True):
+def test006(testDir, dirDict):
     """ LFP homog with logPad, Vmin """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -122,15 +117,14 @@ def test006(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test007(testDir, baseConfigDir, simOutDir, run=True):
+def test007(testDir, dirDict):
     """ LFP homog with logPad, Vmax """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -142,15 +136,14 @@ def test007(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test008(testDir, baseConfigDir, simOutDir, run=True):
+def test008(testDir, dirDict):
     """ LFP homog_sdn """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -164,15 +157,14 @@ def test008(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test009(testDir, baseConfigDir, simOutDir, run=True):
+def test009(testDir, dirDict):
     """ Graphite-2param homog """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -182,15 +174,14 @@ def test009(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog2")
     P.set("Material", "muRfunc", "LiC6")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test010(testDir, baseConfigDir, simOutDir, run=True):
+def test010(testDir, dirDict):
     """ Graphite-2param CHR cylinder """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -201,15 +192,14 @@ def test010(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "shape", "cylinder")
     P.set("Material", "muRfunc", "LiC6")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test011(testDir, baseConfigDir, simOutDir, run=True):
+def test011(testDir, dirDict):
     """ Graphite-2param CHR sphere """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -222,19 +212,18 @@ def test011(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "shape", "sphere")
     P.set("Material", "muRfunc", "LiC6")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test012(testDir, baseConfigDir, simOutDir, run=True):
+def test012(testDir, dirDict):
     """ Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2
     BV_mod01, BV_mod02
     cathode + anode
     """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_a.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_a.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrodec = osp.join(testDir, "params_c.cfg")
     ptrodea = osp.join(testDir, "params_a.cfg")
@@ -259,19 +248,18 @@ def test012(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "LiC6_coke_ss2")
     P.set("Reactions", "rxnType", "BV_mod02")
     IO.writeConfigFile(P, ptrodea)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test013(testDir, baseConfigDir, simOutDir, run=True):
+def test013(testDir, dirDict):
     """ Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2
     Marcus, BV_raw
     cathode + separator + anode
     """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_a.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_a.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrodec = osp.join(testDir, "params_c.cfg")
     ptrodea = osp.join(testDir, "params_a.cfg")
@@ -296,15 +284,14 @@ def test013(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "testIS_ss")
     P.set("Reactions", "rxnType", "BV_raw")
     IO.writeConfigFile(P, ptrodea)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test014(testDir, baseConfigDir, simOutDir, run=True):
+def test014(testDir, dirDict):
     """ LFP homog with CCsegments, MHC, Rser """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -318,15 +305,14 @@ def test014(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Reactions", "rxnType", "MHC")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test015(testDir, baseConfigDir, simOutDir, run=True):
+def test015(testDir, dirDict):
     """ testRS homog with CVsegments, bulkCond, partCond """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -345,15 +331,14 @@ def test015(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "testRS")
     P.set("Reactions", "rxnType", "BV_raw")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test016(testDir, baseConfigDir, simOutDir, run=True):
+def test016(testDir, dirDict):
     """ test CC continuation """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -368,15 +353,14 @@ def test016(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test017(testDir, baseConfigDir, simOutDir, run=True):
+def test017(testDir, dirDict):
     """ test CV continuation """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -392,15 +376,14 @@ def test017(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
 
-def test018(testDir, baseConfigDir, simOutDir, run=True):
+def test018(testDir, dirDict):
     """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
     P_s = IO.getConfig(psys)
@@ -415,7 +398,6 @@ def test018(testDir, baseConfigDir, simOutDir, run=True):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Reactions", "Rfilm", "1e+1")
     IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
     return
