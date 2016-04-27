@@ -71,7 +71,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             print "No simulation data for " + testStr
             continue
         refData = sio.loadmat(refDataFile)
-        for varKey in newData.keys():
+        for varKey in refData.keys():
             # If this test has already failed
             # TODO -- Consider keeping a list of the variables that fail
             if testStr in failList:
@@ -84,11 +84,15 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             try:
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
+                print testStr, "Fail from ValueError"
                 failList.append(testStr)
                 continue
             # TODO -- What is the right way to compare here?
             absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
             if np.max(diffMat) > absTol:
+                print testStr, "Fail from tolerance"
+                print "variable failing:", varKey
+                print "max error:", np.max(diffMat)
                 failList.append(testStr)
 
     scl = 1.3
