@@ -174,7 +174,6 @@ class mod2var(dae.daeModel):
         if ndD["noise"]:
             eq1.Residual += noise1[0]()
             eq2.Residual += noise2[0]()
-        return
 
     def sldDynamics1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
@@ -268,7 +267,6 @@ class mod2var(dae.daeModel):
             if ndD["noise"]:
                 eq1.Residual += noise1[k]()
                 eq2.Residual += noise2[k]()
-        return
 
 class mod1var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -391,7 +389,6 @@ class mod1var(dae.daeModel):
         eq.Residual = self.c.dt(0) - self.R_v()
         if ndD["noise"]:
             eq.Residual += noise[0]()
-        return
 
     def sldDynamics1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
@@ -455,8 +452,6 @@ class mod1var(dae.daeModel):
             eq.Residual = LHS_vec[k] - RHS[k]
             if ndD["noise"]:
                 eq.Residual += noise[k]()
-
-        return
 
 def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
         act_R=None, act_lyte=None, lmbda=None, alpha=None):

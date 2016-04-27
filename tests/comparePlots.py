@@ -83,7 +83,6 @@ def xyCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     fname = osp.join(plotsDir, testName + "_" + fname)
     fig.savefig(fname, bbox_inches="tight")
     plt.close('all') # no idea why plt.close(fig) leaves figs open...
-    return
 
 def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     testName = osp.basename(testDir)
@@ -110,4 +109,3 @@ def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     fname = osp.join(plotsDir, testName + "_" + fname)
     fig.savefig(fname, bbox_inches="tight")
     plt.close('all') # no idea why plt.close(fig) leaves figs open...
-    return

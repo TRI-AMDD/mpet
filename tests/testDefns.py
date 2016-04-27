@@ -43,7 +43,6 @@ def test001(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test002(testDir, dirDict, pflag):
     """ LFP CHR cylinder """
@@ -65,7 +64,6 @@ def test002(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test003(testDir, dirDict, pflag):
     """ LFP CHR sphere """
@@ -87,7 +85,6 @@ def test003(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test004(testDir, dirDict, pflag):
     """ LFP CHR sphere with noise  """
@@ -110,7 +107,6 @@ def test004(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test005(testDir, dirDict, pflag):
     """ LFP homog """
@@ -134,7 +130,6 @@ def test005(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
-    return
 
 def test006(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmin """
@@ -156,7 +151,6 @@ def test006(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test007(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmax """
@@ -178,7 +172,6 @@ def test007(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test008(testDir, dirDict, pflag):
     """ LFP homog_sdn """
@@ -204,7 +197,6 @@ def test008(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
-    return
 
 def test009(testDir, dirDict, pflag):
     """ Graphite-2param homog """
@@ -225,7 +217,6 @@ def test009(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test010(testDir, dirDict, pflag):
     """ Graphite-2param CHR cylinder """
@@ -246,7 +237,6 @@ def test010(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test011(testDir, dirDict, pflag):
     """ Graphite-2param CHR sphere """
@@ -269,7 +259,6 @@ def test011(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test012(testDir, dirDict, pflag):
     """ Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2
@@ -312,7 +301,6 @@ def test012(testDir, dirDict, pflag):
         cmpr.bulkpf(testDir, dirDict, "c")
         electrodePlots(testDir, dirDict, "a")
         cmpr.bulkpf(testDir, dirDict, "a")
-    return
 
 def test013(testDir, dirDict, pflag):
     """ Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2
@@ -355,7 +343,6 @@ def test013(testDir, dirDict, pflag):
         cmpr.bulkpf(testDir, dirDict, "c")
         electrodePlots(testDir, dirDict, "a")
         cmpr.bulkpf(testDir, dirDict, "a")
-    return
 
 def test014(testDir, dirDict, pflag):
     """ LFP homog with CCsegments, MHC, Rser """
@@ -380,7 +367,6 @@ def test014(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def test015(testDir, dirDict, pflag):
     """ testRS homog with CVsegments, bulkCond, partCond """
@@ -412,7 +398,6 @@ def test015(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
-    return
 
 def test016(testDir, dirDict, pflag):
     """ test CC continuation """
@@ -439,7 +424,6 @@ def test016(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
-    return
 
 def test017(testDir, dirDict, pflag):
     """ test CV continuation """
@@ -467,7 +451,6 @@ def test017(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
-    return
 
 def test018(testDir, dirDict, pflag):
     """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
@@ -493,7 +476,6 @@ def test018(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
-    return
 
 def testAnalytSphDifn(testDir, dirDict):
     """ Analytical test for diffusion in a sphere """
@@ -524,7 +506,6 @@ def testAnalytSphDifn(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    return
 
 def testAnalytCylDifn(testDir, dirDict):
     """ Analytical test for diffusion in a cylinder """
@@ -555,7 +536,6 @@ def testAnalytCylDifn(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    return
 
 def analytSphDifn(R, T):
     """ Analytical solution for diffusion in a sphere """
