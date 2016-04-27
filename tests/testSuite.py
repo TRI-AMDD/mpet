@@ -2,474 +2,171 @@ import os
 import os.path as osp
 import sys
 import errno
-import shutil
 import time
 import ConfigParser
 
+import numpy as np
+import scipy.io as sio
+import matplotlib as mpl
+mpl.use("TkAgg")
+import matplotlib.pyplot as plt
+# Plot defaults
+axtickfsize = 18
+labelfsize = 20
+legfsize = labelfsize - 2
+txtfsize = labelfsize - 2
+lwidth = 3.
+markersize = 10
+mpl.rcParams['xtick.labelsize'] = axtickfsize
+mpl.rcParams['ytick.labelsize'] = axtickfsize
+mpl.rcParams['axes.labelsize'] = labelfsize
+mpl.rcParams['axes.labelsize'] = labelfsize
+mpl.rcParams['font.size'] = txtfsize
+mpl.rcParams['legend.fontsize'] = legfsize
+mpl.rcParams['lines.linewidth'] = lwidth
+mpl.rcParams['lines.markersize'] = markersize
+mpl.rcParams['lines.markeredgewidth'] = 0.1
+#mpl.rcParams['text.usetex'] = True
+
 mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
-import mpet
 import mpetParamsIO as IO
+import testDefns as defs
 
-def test001(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP ACR C3 """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "ACR")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test002(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP CHR cylinder """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "CHR")
-    P.set("Particles", "shape", "cylinder")
-    P.set("Material", "muRfunc", "LiFePO4")
-    P.set("Material", "dgammadc", "5e-30")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test003(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP CHR sphere """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "CHR")
-    P.set("Particles", "shape", "sphere")
-    P.set("Material", "muRfunc", "LiFePO4")
-    P.set("Material", "dgammadc", "-2e-30")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test004(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP CHR sphere with noise  """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "CHR")
-    P.set("Particles", "shape", "sphere")
-    P.set("Material", "muRfunc", "LiFePO4")
-    P.set("Material", "noise", "true")
-    P.set("Material", "dgammadc", "-2e-30")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test005(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP homog """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "Nvol_c", "2")
-    P_s.set("Sim Params", "Nvol_s", "2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test006(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP homog with logPad, Vmin """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "Vmin", "2.8e-0")
-    P_s.set("Particles", "cs0_c", "0.5")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test007(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP homog with logPad, Vmax """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "-1e-2")
-    P_s.set("Sim Params", "Vmax", "4.0e-0")
-    P_s.set("Particles", "cs0_c", "0.5")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test008(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP homog_sdn """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "Nvol_c", "3")
-    P_s.set("Sim Params", "Npart_c", "3")
-    P_s.set("Particles", "stddev_c", "25e-9")
-    P_s.set("Sim Params", "capFrac", "0.6")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog_sdn")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test009(testDir, baseConfigDir, simOutDir, run=True):
-    """ Graphite-2param homog """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog2")
-    P.set("Material", "muRfunc", "LiC6")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test010(testDir, baseConfigDir, simOutDir, run=True):
-    """ Graphite-2param CHR cylinder """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "CHR2")
-    P.set("Particles", "shape", "cylinder")
-    P.set("Material", "muRfunc", "LiC6")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test011(testDir, baseConfigDir, simOutDir, run=True):
-    """ Graphite-2param CHR sphere """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "relTol", "1e-7")
-    P_s.set("Sim Params", "absTol", "1e-7")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "CHR2")
-    P.set("Particles", "shape", "sphere")
-    P.set("Material", "muRfunc", "LiC6")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test012(testDir, baseConfigDir, simOutDir, run=True):
-    """ Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2
-    BV_mod01, BV_mod02
-    cathode + anode
-    """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_a.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrodec = osp.join(testDir, "params_c.cfg")
-    ptrodea = osp.join(testDir, "params_a.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "capFrac", "0.67")
-    P_s.set("Sim Params", "Nvol_c", "2")
-    P_s.set("Sim Params", "Nvol_a", "2")
-    P_s.set("Sim Params", "Vmin", "2e0")
-    P_s.set("Particles", "cs0_c", "0.2")
-    P_s.set("Particles", "cs0_a", "0.495")
-    P_s.set("Electrolyte", "elyteModelType", "SM")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrodec)
-    P.set("Particles", "type", "homog")
-    P.set("Particles", "shape", "cylinder")
-    P.set("Material", "muRfunc", "LiMn2O4_ss2")
-    P.set("Reactions", "rxnType", "BV_mod01")
-    IO.writeConfigFile(P, ptrodec)
-    P = IO.getConfig(ptrodea)
-    P.set("Particles", "shape", "sphere")
-    P.set("Material", "muRfunc", "LiC6_coke_ss2")
-    P.set("Reactions", "rxnType", "BV_mod02")
-    IO.writeConfigFile(P, ptrodea)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test013(testDir, baseConfigDir, simOutDir, run=True):
-    """ Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2
-    Marcus, BV_raw
-    cathode + separator + anode
-    """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_a.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrodec = osp.join(testDir, "params_c.cfg")
-    ptrodea = osp.join(testDir, "params_a.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "profileType", "CV")
-    P_s.set("Sim Params", "Vset", "3.8")
-    P_s.set("Sim Params", "Nvol_c", "2")
-    P_s.set("Sim Params", "Nvol_s", "2")
-    P_s.set("Sim Params", "Nvol_a", "2")
-    P_s.set("Particles", "cs0_c", "0.2")
-    P_s.set("Particles", "cs0_a", "0.95")
-    P_s.set("Electrolyte", "elyteModelType", "dilute")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrodec)
-    P.set("Particles", "type", "homog")
-    P.set("Particles", "shape", "sphere")
-    P.set("Material", "muRfunc", "LiMn2O4_ss2")
-    P.set("Reactions", "rxnType", "Marcus")
-    IO.writeConfigFile(P, ptrodec)
-    P = IO.getConfig(ptrodea)
-    P.set("Particles", "shape", "cylinder")
-    P.set("Material", "muRfunc", "testIS_ss")
-    P.set("Reactions", "rxnType", "BV_raw")
-    IO.writeConfigFile(P, ptrodea)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test014(testDir, baseConfigDir, simOutDir, run=True):
-    """ LFP homog with CCsegments, MHC, Rser """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "profileType", "CCsegments")
-    P_s.set("Sim Params", "segments",
-            "[(1., 25), (-2., 10), (0., 30)]")
-    P_s.set("Sim Params", "Rser", "1e-3")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "LiFePO4")
-    P.set("Reactions", "rxnType", "MHC")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test015(testDir, baseConfigDir, simOutDir, run=True):
-    """ testRS homog with CVsegments, bulkCond, partCond """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "profileType", "CVsegments")
-    P_s.set("Sim Params", "Npart_c", "5")
-    P_s.set("Sim Params", "Nvol_c", "5")
-    P_s.set("Sim Params", "segments",
-            "[(-0.3, 25), (0., 10), (0.3, 30)]")
-    P_s.set("Conductivity", "simBulkCond_c", "true")
-    P_s.set("Conductivity", "mcond_c", "5e-2")
-    P_s.set("Conductivity", "simPartCond_c", "true")
-    P_s.set("Conductivity", "G_mean_c", "3e-14")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "testRS")
-    P.set("Reactions", "rxnType", "BV_raw")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test016(testDir, baseConfigDir, simOutDir, run=True):
-    """ test CC continuation """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "Crate", "1e-2")
-    P_s.set("Sim Params", "Nvol_c", "3")
-    P_s.set("Sim Params", "Npart_c", "3")
-    P_s.set("Sim Params", "capFrac", "0.34")
-    test008dir = str(osp.join(testDir, "..", "test008", "sim_output"))
-    P_s.set("Sim Params", "prevDir", test008dir)
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog_sdn")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test017(testDir, baseConfigDir, simOutDir, run=True):
-    """ test CV continuation """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "profileType", "CV")
-    P_s.set("Sim Params", "Vset", "3.45")
-    P_s.set("Sim Params", "tend", "3e3")
-    P_s.set("Sim Params", "Nvol_c", "3")
-    P_s.set("Sim Params", "Npart_c", "3")
-    test008dir = str(osp.join(testDir, "..", "test008", "sim_output"))
-    P_s.set("Sim Params", "prevDir", test008dir)
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog_sdn")
-    P.set("Material", "muRfunc", "LiFePO4")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def test018(testDir, baseConfigDir, simOutDir, run=True):
-    """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
-    shutil.copy(osp.join(baseConfigDir, "params_system.cfg"), testDir)
-    shutil.copy(osp.join(baseConfigDir, "params_c.cfg"), testDir)
-    psys = osp.join(testDir, "params_system.cfg")
-    ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.getConfig(psys)
-    P_s.set("Sim Params", "profileType", "CCsegments")
-    P_s.set("Sim Params", "segments",
-            "[(1., 25), (-2., 10), (0., 30)]")
-    P_s.set("Electrodes", "k0_foil", "3e+0")
-    P_s.set("Electrodes", "Rfilm_foil", "3e+0")
-    IO.writeConfigFile(P_s, psys)
-    P = IO.getConfig(ptrode)
-    P.set("Particles", "type", "homog")
-    P.set("Material", "muRfunc", "LiFePO4")
-    P.set("Reactions", "Rfilm", "1e+1")
-    IO.writeConfigFile(P, ptrode)
-    if run:
-        mpet.main(psys, keepArchive=False)
-        shutil.move(simOutDir, osp.join(testDir))
-    return
-
-def main():
-    # Get the default configs
-    suiteDir = osp.dirname(osp.abspath(__file__))
-    simOutDir = osp.join(os.getcwd(), "sim_output")
-    outdir = osp.join(suiteDir,
-                      time.strftime("%Y%m%d_%H%M%S", time.localtime()))
-    os.makedirs(outdir)
-    baseConfigDir = osp.join(suiteDir, "baseConfigs")
-
-    # Dictionary containing info about the tests to run
-    # Identifier strings are associated with functions to call and
-    # whether to run that particular test.
-    runInfo = {
-            "test001" : {"fn": test001, "runFlag" : True},
-            "test002" : {"fn": test002, "runFlag" : True},
-            "test003" : {"fn": test003, "runFlag" : True},
-            "test004" : {"fn": test004, "runFlag" : True},
-            "test005" : {"fn": test005, "runFlag" : True},
-            "test006" : {"fn": test006, "runFlag" : True},
-            "test007" : {"fn": test007, "runFlag" : True},
-            "test008" : {"fn": test008, "runFlag" : True},
-            "test009" : {"fn": test009, "runFlag" : True},
-            "test010" : {"fn": test010, "runFlag" : True},
-            "test011" : {"fn": test011, "runFlag" : True},
-            "test012" : {"fn": test012, "runFlag" : True},
-            "test013" : {"fn": test013, "runFlag" : True},
-            "test014" : {"fn": test014, "runFlag" : True},
-            "test015" : {"fn": test015, "runFlag" : True},
-            "test016" : {"fn": test016, "runFlag" : True},
-            "test017" : {"fn": test017, "runFlag" : True},
-            "test018" : {"fn": test018, "runFlag" : True},
-            }
-
-    # Make an output directory for each test
+def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
-        testDir = osp.join(outdir, testStr)
+        testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr]["fn"](
-            testDir, baseConfigDir, simOutDir,
-            run=runInfo[testStr]["runFlag"])
+        runInfo[testStr](testDir, dirDict, pflag)
     # Remove the history directory that mpet creates.
     try:
-        os.rmdir(osp.join(suiteDir, "history"))
+        os.rmdir(osp.join(dirDict["suite"], "history"))
     except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
     return
 
+def get_sim_time(simDir):
+    with open(osp.join(simDir, "run_info.txt")) as fi:
+        simTime = float(fi.readlines()[-1].split()[-2])
+    return simTime
+
+def compare_with_ref(runInfo, dirDict, tol=1e-4):
+    timeList_new = []
+    timeList_ref = []
+    failList = []
+    for testStr in sorted(runInfo.keys()):
+        newDir = osp.join(dirDict["out"], testStr, "sim_output")
+        refDir = osp.join(dirDict["refs"], testStr, "sim_output")
+        newDataFile = osp.join(newDir, "output_data.mat")
+        refDataFile = osp.join(refDir, "output_data.mat")
+        timeList_new.append(get_sim_time(newDir))
+        timeList_ref.append(get_sim_time(refDir))
+        try:
+            newData = sio.loadmat(newDataFile)
+        except IOError as exception:
+            # If it's an error _other than_ the file not being there
+            if exception.errno != errno.ENOENT:
+                raise
+            print "No simulation data for " + testStr
+            continue
+        refData = sio.loadmat(refDataFile)
+        for varKey in refData.keys():
+            # If this test has already failed
+            # TODO -- Consider keeping a list of the variables that fail
+            if testStr in failList:
+                break
+            # Ignore certain entries not of numerical output
+            if varKey[0:2] == "__":
+                continue
+            varDataNew = newData[varKey]
+            varDataRef = refData[varKey]
+            try:
+                diffMat = np.abs(varDataNew - varDataRef)
+            except ValueError:
+                print testStr, "Fail from ValueError"
+                failList.append(testStr)
+                continue
+            # TODO -- What is the right way to compare here?
+            absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
+            if np.max(diffMat) > absTol:
+                print testStr, "Fail from tolerance"
+                print "variable failing:", varKey
+                print "max error:", np.max(diffMat)
+                failList.append(testStr)
+
+    scl = 1.3
+    fig, ax = plt.subplots(figsize=(scl*6, scl*4))
+    ax.plot(timeList_ref, timeList_new, 'o')
+    tmax = max(max(timeList_ref), max(timeList_new))
+    ax.plot([0., tmax], [0., tmax], linestyle="--")
+    ax.set_xlabel("Reference simulation time [s]")
+    ax.set_ylabel("New test simulation time [s]")
+    fig.savefig(osp.join(dirDict["plots"], "timeParity.png"),
+            bbox_inches="tight")
+    plt.close("all")
+    return failList
+
+def show_fails(failList):
+    for fail in failList:
+        print (fail + " differs from the reference outputs!")
+    return
+
+def main(compareDir):
+    pflag = True
+    dirDict = {}
+    # Get the default configs
+    dirDict["suite"] = osp.dirname(osp.abspath(__file__))
+    dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
+    dirDict["out"] = osp.join(dirDict["suite"],
+                      time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
+    dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
+
+    # Dictionary containing info about the tests to run
+    # Identifier strings are associated with functions to call and
+    # whether to run that particular test.
+    runInfo = {
+            "test001" : defs.test001,
+            "test002" : defs.test002,
+            "test003" : defs.test003,
+            "test004" : defs.test004,
+            "test005" : defs.test005,
+            "test006" : defs.test006,
+            "test007" : defs.test007,
+            "test008" : defs.test008,
+            "test009" : defs.test009,
+            "test010" : defs.test010,
+            "test011" : defs.test011,
+            "test012" : defs.test012,
+            "test013" : defs.test013,
+            "test014" : defs.test014,
+            "test015" : defs.test015,
+            "test016" : defs.test016,
+            "test017" : defs.test017,
+            "test018" : defs.test018,
+            }
+
+    if compareDir is None:
+        os.makedirs(dirDict["out"])
+        dirDict["plots"] = osp.join(dirDict["out"], "plots")
+        os.makedirs(dirDict["plots"])
+        run_test_sims(runInfo, dirDict, pflag)
+    else:
+        dirDict["out"] = compareDir
+        dirDict["plots"] = osp.join(dirDict["out"], "plots")
+    failList = compare_with_ref(runInfo, dirDict, tol=1e-3)
+
+    if len(failList) > 0:
+        show_fails(failList)
+    else:
+        print "All tests passed!"
+
+    return
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        compareDir = osp.join(os.getcwd(), sys.argv[1])
+    else:
+        compareDir = None
+    main(compareDir)
