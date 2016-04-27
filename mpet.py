@@ -374,14 +374,14 @@ class modMPET(dae.daeModel):
             eq = self.CreateEquation("Total_Current_Constraint")
             eq.Residual = self.current() - (ndD["currPrev"]
                     + (ndD["currset"] - ndD["currPrev"])
-                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
                     )
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
             eq.Residual = self.phi_applied() - (ndD["phiPrev"]
                     + (ndD["Vset"] - ndD["phiPrev"])
-                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*1e-3)))
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
 #                    * 1
 #                    * np.tanh(dae.Time()/(45.0)))
                     )

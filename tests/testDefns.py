@@ -364,6 +364,7 @@ def test014(testDir, dirDict, pflag):
     P_s.set("Sim Params", "profileType", "CCsegments")
     P_s.set("Sim Params", "segments",
             "[(1., 25), (-2., 10), (0., 30)]")
+    P_s.set("Sim Params", "tramp", "1e+0")
     P_s.set("Sim Params", "Rser", "1e-3")
     IO.writeConfigFile(P_s, psys)
     P = IO.getConfig(ptrode)
@@ -390,6 +391,7 @@ def test015(testDir, dirDict, pflag):
     P_s.set("Sim Params", "Nvol_c", "5")
     P_s.set("Sim Params", "segments",
             "[(-0.3, 25), (0., 10), (0.3, 30)]")
+    P_s.set("Sim Params", "tramp", "1e+0")
     P_s.set("Conductivity", "simBulkCond_c", "true")
     P_s.set("Conductivity", "mcond_c", "5e-2")
     P_s.set("Conductivity", "simPartCond_c", "true")
@@ -474,6 +476,7 @@ def test018(testDir, dirDict, pflag):
     P_s.set("Sim Params", "profileType", "CCsegments")
     P_s.set("Sim Params", "segments",
             "[(1., 25), (-2., 10), (0., 30)]")
+    P_s.set("Sim Params", "tramp", "1e+0")
     P_s.set("Electrodes", "k0_foil", "3e+0")
     P_s.set("Electrodes", "Rfilm_foil", "3e+0")
     IO.writeConfigFile(P_s, psys)
