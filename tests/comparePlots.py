@@ -54,8 +54,8 @@ def elytedivif(testDir, dirDict):
     xyCmp(testDir, dirDict, "elytedivif", "Batt. Posn.", "div(elyte curr dens)",
           "Final div(elyte curr dens) profile compare", "elytedivif")
 def cbarLine(testDir, dirDict, trode):
-    xyPartsCmp(testDir, dirDict, "cbar_" + trode, "Time Indx", "Filling Frac",
-          "Filling fraction " + trode + " compare", "soc_" + trode)
+    xyPartsCmp(testDir, dirDict, "cbar_" + trode, "Time", "cbar",
+          "cbar " + trode + " compare", "cbarLine_" + trode)
 def bulkpf(testDir, dirDict, trode):
     xyCmp(testDir, dirDict, "bulkpf_" + trode, "Electrode Posn.", "phi",
           "phi of bulk electrode " + trode + " compare", "bulkp_" + trode)
