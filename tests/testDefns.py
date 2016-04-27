@@ -3,6 +3,9 @@ import os.path as osp
 import shutil
 import sys
 
+import numpy as np
+import scipy.special as spcl
+
 mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
 import mpet
@@ -491,3 +494,86 @@ def test018(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
     return
+
+def testAnalytSphDifn(testDir, dirDict):
+    """ Analytical test for diffusion in a sphere """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.getConfig(psys)
+    P_s.set("Sim Params", "profileType", "CV")
+    P_s.set("Sim Params", "Vset", "0.10")
+    P_s.set("Sim Params", "tend", "1e+6")
+    P_s.set("Sim Params", "tsteps", "1800")
+    P_s.set("Sim Params", "relTol", "1e-7")
+    P_s.set("Sim Params", "absTol", "1e-7")
+    P_s.set("Sim Params", "tramp", "1e-6")
+    P_s.set("Particles", "mean_c", "100e-9")
+    P_s.set("Particles", "mean_c", "100e-9")
+    P_s.set("Particles", "cs0_c", "0.5")
+    IO.writeConfigFile(P_s, psys)
+    P = IO.getConfig(ptrode)
+    P.set("Particles", "type", "diffn")
+    P.set("Particles", "discretization", "3e-10")
+    P.set("Particles", "shape", "sphere")
+    P.set("Material", "muRfunc", "testIS_ss")
+    P.set("Material", "D", "1e-20")
+    P.set("Reactions", "rxnType", "BV_raw")
+    P.set("Reactions", "k0", "1e+1")
+    IO.writeConfigFile(P, ptrode)
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    return
+
+def testAnalytCylDifn(testDir, dirDict):
+    """ Analytical test for diffusion in a cylinder """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.getConfig(psys)
+    P_s.set("Sim Params", "profileType", "CV")
+    P_s.set("Sim Params", "Vset", "0.10")
+    P_s.set("Sim Params", "tend", "1e+6")
+    P_s.set("Sim Params", "tsteps", "1800")
+    P_s.set("Sim Params", "relTol", "1e-7")
+    P_s.set("Sim Params", "absTol", "1e-7")
+    P_s.set("Sim Params", "tramp", "1e-6")
+    P_s.set("Particles", "mean_c", "100e-9")
+    P_s.set("Particles", "mean_c", "100e-9")
+    P_s.set("Particles", "cs0_c", "0.5")
+    IO.writeConfigFile(P_s, psys)
+    P = IO.getConfig(ptrode)
+    P.set("Particles", "type", "diffn")
+    P.set("Particles", "discretization", "3e-10")
+    P.set("Particles", "shape", "cylinder")
+    P.set("Material", "muRfunc", "testIS_ss")
+    P.set("Material", "D", "1e-20")
+    P.set("Reactions", "rxnType", "BV_raw")
+    P.set("Reactions", "k0", "1e+1")
+    IO.writeConfigFile(P, ptrode)
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    return
+
+def analytSphDifn(R, T):
+    """ Analytical solution for diffusion in a sphere """
+    n = 30
+    lmbdavec = np.pi*np.arange(1, n+1)
+    theta = 0*R
+    for i, lmbda in enumerate(lmbdavec):
+        theta += ((2./lmbda**2) * np.sin(lmbda*R)/R
+                  * (np.sin(lmbda) - lmbda*np.cos(lmbda))
+                  * np.exp(-lmbda**2*T))
+    return theta
+
+def analytCylDifn(R, T):
+    """ Analytical solution for diffusion in a cylinder """
+    n = 30
+    lmbdavec = spcl.jn_zeros(0, n)
+    theta = 0*R
+    for i, lmbda in enumerate(lmbdavec):
+        theta += ((2./lmbda) * spcl.j0(lmbda*R)/spcl.j1(lmbda)
+                  * np.exp(-lmbda**2*T))
+    return theta
