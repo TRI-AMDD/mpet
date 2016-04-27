@@ -46,7 +46,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
     segs = dD_s["segments"] = ast.literal_eval(P_s.get('Sim Params', 'segments'))
-    dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
+    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
@@ -235,7 +235,6 @@ def getDictsFromConfigs(P_s, P_e):
     # Some nondimensional parameters
     T = ndD_s["T"] = Tabs / T_ref
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
-    ndD_s["tramp"] = dD_s["tramp"] / t_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
     ndD_s["c0"] = c0 / c_ref
