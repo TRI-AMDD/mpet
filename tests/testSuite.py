@@ -45,7 +45,6 @@ def run_test_sims(runInfo, dirDict, pflag=True):
     except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
-    return
 
 def run_test_sims_analyt(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -58,7 +57,6 @@ def run_test_sims_analyt(runInfo, dirDict, pflag=True):
     except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
-    return
 
 def get_sim_time(simDir):
     with open(osp.join(simDir, "run_info.txt")) as fi:
@@ -172,7 +170,6 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
 def show_fails(failList):
     for fail in failList:
         print (fail + " differs from the reference outputs!")
-    return
 
 def main(compareDir):
     pflag = True
@@ -235,8 +232,6 @@ def main(compareDir):
         show_fails(failListAnalyt)
     else:
         print "All analytical tests passed!"
-
-    return
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

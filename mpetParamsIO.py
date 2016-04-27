@@ -505,7 +505,6 @@ def test_system_input(dD, ndD):
             "CVsegments"]:
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
-    return
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
     T298 = isClose(dD_s['Tabs'], 298.)
@@ -525,16 +524,13 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
         raise NotImplementedError("Input solidShape not defined")
     if solidType == "homog_sdn" and not T298:
         raise NotImplementedError("homog_snd req. Tabs=298")
-    return
 
 def writeConfigFile(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)
-    return
 def writeDicts(dD, ndD, filenamebase="input_dict"):
     pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
     pickle.dump(ndD, open(filenamebase + "_ndD.p", "wb"))
-    return
 def readDicts(filenamebase="input_dict"):
     dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
     ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
