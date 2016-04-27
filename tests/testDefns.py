@@ -22,7 +22,7 @@ def electrodePlots(testDir, dirDict, trode):
     cmpr.soc(testDir, dirDict, "c")
     cmpr.cbarLine(testDir, dirDict, "c")
 
-def test001(testDir, dirDict):
+def test001(testDir, dirDict, pflag):
     """ LFP ACR C3 """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -37,11 +37,12 @@ def test001(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test002(testDir, dirDict):
+def test002(testDir, dirDict, pflag):
     """ LFP CHR cylinder """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -58,11 +59,12 @@ def test002(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test003(testDir, dirDict):
+def test003(testDir, dirDict, pflag):
     """ LFP CHR sphere """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -79,11 +81,12 @@ def test003(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test004(testDir, dirDict):
+def test004(testDir, dirDict, pflag):
     """ LFP CHR sphere with noise  """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -101,11 +104,12 @@ def test004(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test005(testDir, dirDict):
+def test005(testDir, dirDict, pflag):
     """ LFP homog """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -122,13 +126,14 @@ def test005(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
     return
 
-def test006(testDir, dirDict):
+def test006(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmin """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -145,11 +150,12 @@ def test006(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test007(testDir, dirDict):
+def test007(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmax """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -166,11 +172,12 @@ def test007(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test008(testDir, dirDict):
+def test008(testDir, dirDict, pflag):
     """ LFP homog_sdn """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -189,13 +196,14 @@ def test008(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
     return
 
-def test009(testDir, dirDict):
+def test009(testDir, dirDict, pflag):
     """ Graphite-2param homog """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -210,11 +218,12 @@ def test009(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test010(testDir, dirDict):
+def test010(testDir, dirDict, pflag):
     """ Graphite-2param CHR cylinder """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -230,11 +239,12 @@ def test010(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test011(testDir, dirDict):
+def test011(testDir, dirDict, pflag):
     """ Graphite-2param CHR sphere """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -252,11 +262,12 @@ def test011(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test012(testDir, dirDict):
+def test012(testDir, dirDict, pflag):
     """ Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2
     BV_mod01, BV_mod02
     cathode + anode
@@ -290,15 +301,16 @@ def test012(testDir, dirDict):
     IO.writeConfigFile(P, ptrodea)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
-    electrodePlots(testDir, dirDict, "a")
-    cmpr.bulkpf(testDir, dirDict, "a")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
+        electrodePlots(testDir, dirDict, "a")
+        cmpr.bulkpf(testDir, dirDict, "a")
     return
 
-def test013(testDir, dirDict):
+def test013(testDir, dirDict, pflag):
     """ Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2
     Marcus, BV_raw
     cathode + separator + anode
@@ -332,15 +344,16 @@ def test013(testDir, dirDict):
     IO.writeConfigFile(P, ptrodea)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
-    electrodePlots(testDir, dirDict, "a")
-    cmpr.bulkpf(testDir, dirDict, "a")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
+        electrodePlots(testDir, dirDict, "a")
+        cmpr.bulkpf(testDir, dirDict, "a")
     return
 
-def test014(testDir, dirDict):
+def test014(testDir, dirDict, pflag):
     """ LFP homog with CCsegments, MHC, Rser """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -359,11 +372,12 @@ def test014(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return
 
-def test015(testDir, dirDict):
+def test015(testDir, dirDict, pflag):
     """ testRS homog with CVsegments, bulkCond, partCond """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -387,13 +401,14 @@ def test015(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
     return
 
-def test016(testDir, dirDict):
+def test016(testDir, dirDict, pflag):
     """ test CC continuation """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -413,13 +428,14 @@ def test016(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
     return
 
-def test017(testDir, dirDict):
+def test017(testDir, dirDict, pflag):
     """ test CV continuation """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -440,13 +456,14 @@ def test017(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    elytePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
-    cmpr.bulkpf(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+        cmpr.bulkpf(testDir, dirDict, "c")
     return
 
-def test018(testDir, dirDict):
+def test018(testDir, dirDict, pflag):
     """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
@@ -466,6 +483,7 @@ def test018(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
-    corePlots(testDir, dirDict)
-    electrodePlots(testDir, dirDict, "c")
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
     return

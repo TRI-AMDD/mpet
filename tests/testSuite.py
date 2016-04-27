@@ -13,11 +13,11 @@ sys.path.append(mpetdir)
 import mpetParamsIO as IO
 import testDefns as defs
 
-def run_test_sims(runInfo, dirDict):
+def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr](testDir, dirDict)
+        runInfo[testStr](testDir, dirDict, pflag)
     # Remove the history directory that mpet creates.
     try:
         os.rmdir(osp.join(dirDict["suite"], "history"))
@@ -69,6 +69,7 @@ def show_fails(failList):
     return
 
 def main(compareDir):
+    pflag = True
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
@@ -106,7 +107,7 @@ def main(compareDir):
     if compareDir is None:
         os.makedirs(dirDict["out"])
         os.makedirs(dirDict["plots"])
-        run_test_sims(runInfo, dirDict)
+        run_test_sims(runInfo, dirDict, pflag)
     else:
         dirDict["out"] = compareDir
     failList = compare_with_ref(runInfo, dirDict, tol=1e-3)
