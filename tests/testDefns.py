@@ -7,6 +7,20 @@ mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
 import mpet
 import mpetParamsIO as IO
+import comparePlots as cmpr
+
+def corePlots(testDir, dirDict):
+    cmpr.vt(testDir, dirDict)
+    cmpr.curr(testDir, dirDict)
+def elytePlots(testDir, dirDict):
+    cmpr.elytecons(testDir, dirDict)
+    cmpr.elytecf(testDir, dirDict)
+    cmpr.elytepf(testDir, dirDict)
+    cmpr.elyteif(testDir, dirDict)
+    cmpr.elytedivif(testDir, dirDict)
+def electrodePlots(testDir, dirDict, trode):
+    cmpr.soc(testDir, dirDict, "c")
+    cmpr.cbarLine(testDir, dirDict, "c")
 
 def test001(testDir, dirDict):
     """ LFP ACR C3 """
@@ -23,6 +37,8 @@ def test001(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test002(testDir, dirDict):
@@ -42,6 +58,8 @@ def test002(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test003(testDir, dirDict):
@@ -61,6 +79,8 @@ def test003(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test004(testDir, dirDict):
@@ -81,6 +101,8 @@ def test004(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test005(testDir, dirDict):
@@ -100,6 +122,10 @@ def test005(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
     return
 
 def test006(testDir, dirDict):
@@ -119,6 +145,8 @@ def test006(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test007(testDir, dirDict):
@@ -138,6 +166,8 @@ def test007(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test008(testDir, dirDict):
@@ -159,6 +189,10 @@ def test008(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
     return
 
 def test009(testDir, dirDict):
@@ -176,6 +210,8 @@ def test009(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test010(testDir, dirDict):
@@ -194,6 +230,8 @@ def test010(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test011(testDir, dirDict):
@@ -214,6 +252,8 @@ def test011(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test012(testDir, dirDict):
@@ -250,6 +290,12 @@ def test012(testDir, dirDict):
     IO.writeConfigFile(P, ptrodea)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
+    electrodePlots(testDir, dirDict, "a")
+    cmpr.bulkpf(testDir, dirDict, "a")
     return
 
 def test013(testDir, dirDict):
@@ -286,6 +332,12 @@ def test013(testDir, dirDict):
     IO.writeConfigFile(P, ptrodea)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
+    electrodePlots(testDir, dirDict, "a")
+    cmpr.bulkpf(testDir, dirDict, "a")
     return
 
 def test014(testDir, dirDict):
@@ -307,6 +359,8 @@ def test014(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return
 
 def test015(testDir, dirDict):
@@ -333,6 +387,10 @@ def test015(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
     return
 
 def test016(testDir, dirDict):
@@ -355,6 +413,10 @@ def test016(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
     return
 
 def test017(testDir, dirDict):
@@ -378,6 +440,10 @@ def test017(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    elytePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
+    cmpr.bulkpf(testDir, dirDict, "c")
     return
 
 def test018(testDir, dirDict):
@@ -400,4 +466,6 @@ def test018(testDir, dirDict):
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
+    corePlots(testDir, dirDict)
+    electrodePlots(testDir, dirDict, "c")
     return

@@ -46,7 +46,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             # If this test has already failed
             # TODO -- Consider keeping a list of the variables that fail
             if testStr in failList:
-                continue
+                break
             # Ignore certain entries not of numerical output
             if varKey[0:2] == "__":
                 continue
@@ -77,6 +77,7 @@ def main(compareDir):
                       time.strftime("%Y%m%d_%H%M%S", time.localtime()))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
+    dirDict["plots"] = osp.join(dirDict["out"], "plots")
 
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
@@ -104,6 +105,7 @@ def main(compareDir):
 
     if compareDir is None:
         os.makedirs(dirDict["out"])
+        os.makedirs(dirDict["plots"])
         run_test_sims(runInfo, dirDict)
     else:
         dirDict["out"] = compareDir
