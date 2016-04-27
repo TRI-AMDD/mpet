@@ -7,6 +7,26 @@ import ConfigParser
 
 import numpy as np
 import scipy.io as sio
+import matplotlib as mpl
+mpl.use("TkAgg")
+import matplotlib.pyplot as plt
+# Plot defaults
+axtickfsize = 18
+labelfsize = 20
+legfsize = labelfsize - 2
+txtfsize = labelfsize - 2
+lwidth = 3.
+markersize = 10
+mpl.rcParams['xtick.labelsize'] = axtickfsize
+mpl.rcParams['ytick.labelsize'] = axtickfsize
+mpl.rcParams['axes.labelsize'] = labelfsize
+mpl.rcParams['axes.labelsize'] = labelfsize
+mpl.rcParams['font.size'] = txtfsize
+mpl.rcParams['legend.fontsize'] = legfsize
+mpl.rcParams['lines.linewidth'] = lwidth
+mpl.rcParams['lines.markersize'] = markersize
+mpl.rcParams['lines.markeredgewidth'] = 0.1
+#mpl.rcParams['text.usetex'] = True
 
 mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
 sys.path.append(mpetdir)
@@ -26,13 +46,22 @@ def run_test_sims(runInfo, dirDict, pflag=True):
             raise
     return
 
+def get_sim_time(simDir):
+    with open(osp.join(simDir, "run_info.txt")) as fi:
+        simTime = float(fi.readlines()[-1].split()[-2])
+    return simTime
+
 def compare_with_ref(runInfo, dirDict, tol=1e-4):
+    timeList_new = []
+    timeList_ref = []
     failList = []
     for testStr in sorted(runInfo.keys()):
-        newDataFile = osp.join(
-            dirDict["out"], testStr, "sim_output", "output_data.mat")
-        refDataFile = osp.join(
-            dirDict["refs"], testStr, "sim_output", "output_data.mat")
+        newDir = osp.join(dirDict["out"], testStr, "sim_output")
+        refDir = osp.join(dirDict["refs"], testStr, "sim_output")
+        newDataFile = osp.join(newDir, "output_data.mat")
+        refDataFile = osp.join(refDir, "output_data.mat")
+        timeList_new.append(get_sim_time(newDir))
+        timeList_ref.append(get_sim_time(refDir))
         try:
             newData = sio.loadmat(newDataFile)
         except IOError as exception:
@@ -61,6 +90,17 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
             if np.max(diffMat) > absTol:
                 failList.append(testStr)
+
+    scl = 1.3
+    fig, ax = plt.subplots(figsize=(scl*6, scl*4))
+    ax.plot(timeList_ref, timeList_new, 'o')
+    tmax = max(max(timeList_ref), max(timeList_new))
+    ax.plot([0., tmax], [0., tmax], linestyle="--")
+    ax.set_xlabel("Reference simulation time [s]")
+    ax.set_ylabel("New test simulation time [s]")
+    fig.savefig(osp.join(dirDict["plots"], "timeParity.png"),
+            bbox_inches="tight")
+    plt.close("all")
     return failList
 
 def show_fails(failList):
@@ -78,7 +118,6 @@ def main(compareDir):
                       time.strftime("%Y%m%d_%H%M%S", time.localtime()))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
-    dirDict["plots"] = osp.join(dirDict["out"], "plots")
 
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
@@ -106,10 +145,12 @@ def main(compareDir):
 
     if compareDir is None:
         os.makedirs(dirDict["out"])
+        dirDict["plots"] = osp.join(dirDict["out"], "plots")
         os.makedirs(dirDict["plots"])
         run_test_sims(runInfo, dirDict, pflag)
     else:
         dirDict["out"] = compareDir
+        dirDict["plots"] = osp.join(dirDict["out"], "plots")
     failList = compare_with_ref(runInfo, dirDict, tol=1e-3)
 
     if len(failList) > 0:
