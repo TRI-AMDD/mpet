@@ -4,12 +4,13 @@ import os
 import numpy as np
 import scipy.io as sio
 import matplotlib as mpl
+# To avoid issues with DAE Tools Qt4 backend
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
-import mpetParamsIO
+import mpetParamsIO as IO
 import elyte_CST
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -31,7 +32,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Read in the parameters used to define the simulation
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(indir, paramFileName)
-    IO = mpetParamsIO.mpetIO()
     dD_s, ndD_s = IO.readDicts(os.path.join(indir, "input_dict_system"))
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
@@ -248,8 +248,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Check to make sure mass is conserved in elyte
     if plot_type == "elytecons":
-        if data_only:
-            raise NotImplemented("no data-only output for elytecons")
         fig, ax = plt.subplots()
         eps = 1e-2
         ymin = 1-eps
@@ -269,9 +267,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             cvec = np.hstack((cvec_a, cvec))
         cavg = np.sum(porosvec*dxvec*cvec,
                 axis=1)/np.sum(porosvec*dxvec)
+        if data_only:
+            return times*td, cavg
         np.set_printoptions(precision=8)
         print cavg
-        ax.plot(times, cavg)
+        ax.plot(times*td, cavg)
         return fig, ax
 
     # Plot current profile
@@ -678,9 +678,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return out
 
     # Plot cathode potential
-    elif plot_type[:-2] in ["bulkp"]:
+    elif plot_type[0:5] in ["bulkp"]:
         l = plot_type[-1]
-        t0ind = 0
+        fplot = (True if plot_type[-3] == "f" else False)
+        t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots()
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
@@ -698,7 +699,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         elif l == "c":
             datax = cellsvec[-Nvol["c"]:]
         if data_only:
-            return datax, datay
+            return datax, datay[t0ind]
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay[t0ind])
         def init():
