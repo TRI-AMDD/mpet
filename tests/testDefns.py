@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import scipy.special as spcl
 
-mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
+mpetdir = osp.join(osp.abspath(__file__), "..")
 sys.path.append(mpetdir)
 import mpet
 import mpetParamsIO as IO

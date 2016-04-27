@@ -19,6 +19,7 @@ movies_figs/
 bai_LFP_data/
 graphite_data/
 oldParams/
+tests/ref_outputs_*
 
 py_mat_compare
 data_capacity.txt

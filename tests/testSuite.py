@@ -28,7 +28,7 @@ mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 #mpl.rcParams['text.usetex'] = True
 
-mpetdir = osp.join(os.environ["HOME"], "docs", "bazantgroup", "mpet")
+mpetdir = osp.join(osp.abspath(__file__), "..")
 sys.path.append(mpetdir)
 import mpetParamsIO as IO
 import testDefns as defs
