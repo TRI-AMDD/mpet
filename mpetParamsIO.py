@@ -235,6 +235,7 @@ def getDictsFromConfigs(P_s, P_e):
     # Some nondimensional parameters
     T = ndD_s["T"] = Tabs / T_ref
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
+    ndD_s["tramp"] = dD_s["tramp"] / t_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
     ndD_s["c0"] = c0 / c_ref
