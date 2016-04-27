@@ -215,6 +215,7 @@ def test009(testDir, dirDict, pflag):
     P = IO.getConfig(ptrode)
     P.set("Particles", "type", "homog2")
     P.set("Material", "muRfunc", "LiC6")
+    P.set("Material", "noise", "true")
     IO.writeConfigFile(P, ptrode)
     mpet.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
