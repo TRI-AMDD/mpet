@@ -20,6 +20,12 @@ bai_LFP_data/
 graphite_data/
 oldParams/
 tests/ref_outputs_*
+tests/oldRefs
+tests/ref_outputs
+mpetLogTimeSpace.py
+mpetMaterialsMHC.py
+plot_dataG*
+plot_data_graphite*
 
 py_mat_compare
 data_capacity.txt
