@@ -63,3 +63,22 @@ argument to `plot_data.py`: `python2 plot_data.py sim_output cbar save`.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
+
+## Testing
+
+When adding new features or making changes to the code, it's helpful
+to run a suite of tests to make sure various things are behaving as
+expected. This should not be necessary for a user who is not changing
+the code at all, although it could still be nice to verify that the
+outputs you are seeing match those the developer(s) expect for a few
+specific cases. To run the tests do the following:
+
+1. Download `ref_outputs.zip` from
+   [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
+   the tests subdirectory. This should give make a number of
+   directories of the form `tests/ref_outputs/test###`.
+2. Within the tests directory, run `python[2] testSuite.py`. This will
+   run a number of simulations and compare their output to those
+   outputs from the downloaded reference outputs along with a few
+   comparisons of simulations to their corresponding analytical
+   results.
