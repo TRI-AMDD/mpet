@@ -18,20 +18,20 @@ def getConfigs(paramfile="params.cfg"):
     P_e = {}
     # cathode config
     paramfile_c = P_s.get('Electrodes', 'cathode')
-    if not os.path.isfile(paramfile_c):
-        raise Exception("Cathode param file doesn't exist!")
     # Look in the same directory as the input paramfile, wherever
     # that is.
     paramfileLoc = os.path.split(paramfile)[0]
     paramfile_c = os.path.join(paramfileLoc, paramfile_c)
+    if not os.path.isfile(paramfile_c):
+        raise Exception("Cathode param file doesn't exist!")
     P_e["c"] = getConfig(paramfile_c)
 
     # anode config
     if P_s.getint('Sim Params', 'Nvol_a') >= 1:
         paramfile_a = P_s.get('Electrodes', 'anode')
+        paramfile_a = os.path.join(paramfileLoc, paramfile_a)
         if not os.path.isfile(paramfile_a):
             raise Exception("Anode param file doesn't exist!")
-        paramfile_a = os.path.join(paramfileLoc, paramfile_a)
         P_e["a"] = getConfig(paramfile_a)
     return P_s, P_e
 
