@@ -147,6 +147,10 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 print testStr, "Fail from ValueError"
                 failList.append(testStr)
                 continue
+            except KeyError:
+                print testStr, "Fail from KeyError"
+                failList.append(testStr)
+                continue
             # TODO -- What is the right way to compare here?
             absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
             if np.max(diffMat) > absTol:
