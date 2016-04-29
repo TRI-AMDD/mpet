@@ -4,7 +4,7 @@ import numpy as np
 import mpetParamsIO as IO
 import mpetPorts
 import mpetMaterials
-import elyte_CST
+import props_elyte
 import externFuncs
 
 class ModCell(dae.daeModel):
@@ -439,7 +439,7 @@ class ModCell(dae.daeModel):
 
         modType = ndD["elyteModelType"]
         if modType == "SM":
-            D, kappa, thermFac, tp0 = elyte_CST.getProps(ndD["SMset"])[:-1]
+            D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
         # Apply concentration and potential boundary conditions
         ctmp = np.empty(Nlyte + 2, dtype=object)
         ctmp[1:-1] = cvec

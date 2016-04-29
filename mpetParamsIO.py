@@ -6,7 +6,7 @@ import ast
 import numpy as np
 
 import muRfuncs
-import elyte_CST
+import props_elyte
 
 def getConfigs(paramfile="params.cfg"):
     # system-level config
@@ -140,7 +140,7 @@ def getDictsFromConfigs(P_s, P_e):
     elyteModelType = ndD_s["elyteModelType"] = P_s.get('Electrolyte',
             'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-    D_ref = dD_s["D_ref"] = dD_s["Dref"] = elyte_CST.getProps(SMset)[-1]
+    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.getProps(SMset)[-1]
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
 

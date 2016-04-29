@@ -1,6 +1,8 @@
 import numpy as np
 
 """
+This module provides functions defining properties of the
+ion-conducting phase -- the electrolyte
 Manage functions for the parameters involved in Stefan-Maxwell
 based concentrated electrolyte transport theory for binary
 electrolytes.
