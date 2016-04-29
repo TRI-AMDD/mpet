@@ -1,5 +1,8 @@
+import os.path as osp
+
 import daetools.pyDAE as dae
 import numpy as np
+import scipy.io as sio
 
 import mod_cell
 
@@ -16,7 +19,7 @@ class SimMPET(dae.daeSimulation):
         if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
             self.dataPrev = sio.loadmat(
-                    os.path.join(ndD_s["prevDir"], "output_data.mat"))
+                    osp.join(ndD_s["prevDir"], "output_data.mat"))
             ndD_s["currPrev"] = self.dataPrev["current"][0, -1]
             ndD_s["phiPrev"] = self.dataPrev["phi_applied"][0, -1]
         # Define the model we're going to simulate
