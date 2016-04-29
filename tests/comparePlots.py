@@ -25,7 +25,7 @@ mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 #mpl.rcParams['text.usetex'] = True
 
-mpetdir = osp.join(osp.abspath(__file__), "..")
+mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
 import plot_data as pd
 
