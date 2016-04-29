@@ -176,7 +176,7 @@ def show_fails(failList):
         print (fail + " differs from the reference outputs!")
 
 def main(compareDir):
-    pflag = True
+    pflag = False
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
@@ -242,4 +242,8 @@ if __name__ == "__main__":
         compareDir = osp.join(os.getcwd(), sys.argv[1])
     else:
         compareDir = None
+    timeStart = time.time()
     main(compareDir)
+    timeEnd = time.time()
+    tTot = timeEnd - timeStart
+    print "Total test time:", tTot, "s"
