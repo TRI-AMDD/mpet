@@ -7,6 +7,7 @@ import daetools.pyDAE as dae
 import muRfuncs
 import mpetPorts
 import externFuncs
+import geometry as geo
 
 eps = -1e-12
 
@@ -71,7 +72,7 @@ class mod2var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
-        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
+        r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs1 = self.ISfuncs2 = None
@@ -182,7 +183,7 @@ class mod2var(dae.daeModel):
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
-        dr, edges = get_dr_edges(ndD['shape'], N)
+        dr, edges = geo.get_dr_edges(ndD['shape'], N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
         c1_surf = mu1_R_surf = act1_R_surf = None
@@ -319,7 +320,7 @@ class mod1var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"] # number of grid points in particle
         T = self.ndD_s["T"] # nondimensional temperature
-        r_vec, volfrac_vec = get_unit_solid_discr(ndD['shape'], N)
+        r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs = None
@@ -397,7 +398,7 @@ class mod1var(dae.daeModel):
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
-        dr, edges = get_dr_edges(ndD['shape'], N)
+        dr, edges = geo.get_dr_edges(ndD['shape'], N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
         c_surf = mu_R_surf = act_R_surf = None
@@ -468,49 +469,8 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType,
 def calc_eta(muR, muO):
     return muR - muO
 
-def get_unit_solid_discr(Shape, N):
-    if N == 1: # homog particle, hopefully
-        r_vec = None
-        volfrac_vec = np.ones(1)
-    elif Shape == "C3":
-        r_vec = None
-        # For 1D particle, the vol fracs are simply related to the
-        # length discretization
-        volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume
-    elif Shape == "sphere":
-        Rs = 1. # (non-dimensionalized by itself)
-        dr = Rs/(N - 1)
-        r_vec = np.linspace(0, Rs, N)
-        vol_vec = 4*np.pi*(r_vec**2 * dr + (1./12)*dr**3)
-        vol_vec[0] = 4*np.pi*(1./24)*dr**3
-        vol_vec[-1] = (4./3)*np.pi*(Rs**3 - (Rs - dr/2.)**3)
-        Vp = 4./3.*np.pi*Rs**3
-        volfrac_vec = vol_vec/Vp
-    elif Shape == "cylinder":
-        Rs = 1. # (non-dimensionalized by itself)
-        h = 1.
-        dr = Rs / (N - 1)
-        r_vec = np.linspace(0, Rs, N)
-        vol_vec = np.pi * h * 2 * r_vec * dr
-        vol_vec[0] = np.pi * h * dr**2 / 4.
-        vol_vec[-1] = np.pi * h * (Rs * dr - dr**2 / 4.)
-        Vp = np.pi * Rs**2 * h
-        volfrac_vec = vol_vec / Vp
-    else:
-        raise NotImplementedError("Fix shape volumes!")
-    return r_vec, volfrac_vec
-
-def get_dr_edges(shape, N):
-    r_vec = get_unit_solid_discr(shape, N)[0]
-    dr = edges = None
-    if r_vec is not None:
-        Rs = 1.
-        dr = r_vec[1] - r_vec[0]
-        edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
-    return dr, edges
-
 def get_Mmat(shape, N):
-    r_vec, volfrac_vec = get_unit_solid_discr(shape, N)
+    r_vec, volfrac_vec = geo.get_unit_solid_discr(shape, N)
     if shape == "C3":
         Mmat = sprs.eye(N, N, format="csr")
     elif shape in ["sphere", "cylinder"]:
