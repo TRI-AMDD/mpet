@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import scipy.special as spcl
 
-mpetdir = osp.join(osp.abspath(__file__), "..")
+mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
 import mpet
 import mpetParamsIO as IO
