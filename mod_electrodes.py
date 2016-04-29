@@ -4,7 +4,7 @@ import scipy.special as spcl
 
 import daetools.pyDAE as dae
 
-import muRfuncs
+import props_am
 import mpetPorts
 import externFuncs
 import geometry as geo
@@ -556,7 +556,7 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     return mu_O, act_lyte
 
 def calc_muR(c, cbar, T, ndD, ISfuncs=None):
-    muRfunc = muRfuncs.muRfuncs(T, ndD).muRfunc
+    muRfunc = props_am.muRfuncs(T, ndD).muRfunc
     muR_ref = ndD["muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR

@@ -1,10 +1,11 @@
+"""This module handles properties associated with the active materials."""
 import numpy as np
 
 import geometry as geo
 
 class muRfuncs():
     """ This class defines functions which describe the chemical
-    potential of materials.
+    potential of active materials.
     Each function describes a particular material. The
     chemical potential is directly related to the open circuit voltage
     (OCV) for solid solution materials.

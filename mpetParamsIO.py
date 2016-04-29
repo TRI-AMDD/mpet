@@ -5,7 +5,7 @@ import ast
 
 import numpy as np
 
-import muRfuncs
+import props_am
 import props_elyte
 
 def getConfigs(paramfile="params.cfg"):
@@ -306,7 +306,7 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
         ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*dD_e[trode]['rho_s'])
         ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
-        muRfunc = muRfuncs.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
+        muRfunc = props_am.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
         cs0bar = ndD_s["cs0"][trode]
         cs0 = np.array([cs0bar])
         Type = ndD_e[trode]['type']
