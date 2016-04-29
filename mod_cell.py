@@ -3,7 +3,7 @@ import numpy as np
 
 import mpetParamsIO as IO
 import mpetPorts
-import mpetMaterials
+import mod_electrodes
 import props_elyte
 import externFuncs
 
@@ -135,9 +135,9 @@ class ModCell(dae.daeModel):
                         "Bulk electrode port to particles")
                     solidType = ndD_e[l]["indvPart"][i, j]['type']
                     if solidType in ndD_s["2varTypes"]:
-                        pMod = mpetMaterials.mod2var
+                        pMod = mod_electrodes.mod2var
                     elif solidType in ndD_s["1varTypes"]:
-                        pMod = mpetMaterials.mod1var
+                        pMod = mod_electrodes.mod1var
                     else:
                         raise NotImplementedError("no model for given solid type")
                     self.particles[l][i, j] = pMod(
