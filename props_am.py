@@ -1,10 +1,11 @@
+"""This module handles properties associated with the active materials."""
 import numpy as np
 
-import mpetMaterials
+import geometry as geo
 
 class muRfuncs():
     """ This class defines functions which describe the chemical
-    potential of materials.
+    potential of active materials.
     Each function describes a particular material. The
     chemical potential is directly related to the open circuit voltage
     (OCV) for solid solution materials.
@@ -281,7 +282,7 @@ class muRfuncs():
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
         Rs = 1.
-        curv = calc_curv(y, dr, r_vec, Rs, beta_s, shape)
+        curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
@@ -309,7 +310,7 @@ class muRfuncs():
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.ndD["beta_s"]
-                r_vec = mpetMaterials.get_unit_solid_discr(shape, N)[0]
+                r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
                     muR_nh = self.nonHomogRoundWetting(y, ybar, B, kappa,
                             beta_s, shape, r_vec)
@@ -374,30 +375,3 @@ def stepDown(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
 def stepUp(x, xc, delta):
     return 0.5*(np.tanh((x - xc)/delta) + 1)
-
-def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
-    N = len(c)
-    curv = np.empty(N, dtype=object)
-    # Here, beta_s = n*grad(c) at the surface.
-    # beta_s = (c_N - c_{N-2})/(2*dr)
-    # c_N = c_{N_2} + 2*dr*beta_s
-    if particleShape == "sphere":
-        curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
-        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (2./r_vec[1:-1])*(c[2:] - c[0:-2])/(2*dr))
-        curv[N-1] = ((2./Rs)*beta_s +
-                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-    elif particleShape == "cylinder":
-        curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
-        curv[1:N-1] = (np.diff(c, 2)/dr**2 +
-                (1./r_vec[1:-1])*(c[2:] - c[0:-2])/(2*dr))
-        curv[N-1] = ((1./Rs)*beta_s +
-                (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-#    elif particleShape == "rod":
-#        curv[0] = (2*c[1] - 2*c[0]) / dr**2
-#        curv[1:N-1] = np.diff(c, 2)/dr**2
-#        curv[N-1] = (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2
-    else:
-        raise NotImplementedError("calc_curv_c only for sphere and cylinder")
-    return curv
-

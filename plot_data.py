@@ -11,7 +11,7 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 
 import mpetParamsIO as IO
-import elyte_CST
+import props_elyte
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
     pfx = 'mpet.'
@@ -345,7 +345,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     + porosTmp[:-1] + 1e-20)
             if ndD_s["elyteModelType"] == "SM":
                 D_lyte, kappa_lyte, thermFac_lyte, tp0, Dref = (
-                        elyte_CST.getProps(ndD_s["SMset"]))
+                        props_elyte.getProps(ndD_s["SMset"]))
                 i_edges = -poros_edges*kappa_lyte(c_edges) * (
                         np.diff(datay_p, axis=1)/dxd1 -
                         (ndD_s["nup"]+ndD_s["num"])/ndD_s["nup"] *
