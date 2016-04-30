@@ -3,7 +3,7 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
 
-import externFuncs
+import extern_funcs
 import geometry as geo
 import mpetPorts
 import props_am
@@ -82,10 +82,10 @@ class mod2var(dae.daeModel):
         self.ISfuncs1 = self.ISfuncs2 = None
         if ndD["logPad"]:
             self.ISfuncs1 = np.array([
-                externFuncs.LogRatio("LR1", self, dae.unit(), self.c1(k))
+                extern_funcs.LogRatio("LR1", self, dae.unit(), self.c1(k))
                 for k in range(N)])
             self.ISfuncs2 = np.array([
-                externFuncs.LogRatio("LR2", self, dae.unit(), self.c2(k))
+                extern_funcs.LogRatio("LR2", self, dae.unit(), self.c2(k))
                 for k in range(N)])
         ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
@@ -100,11 +100,11 @@ class mod2var(dae.daeModel):
             # Previous_output is common for all external functions
             previous_output1 = []
             previous_output2 = []
-            self.noise1 = [externFuncs.InterpTimeVector(
+            self.noise1 = [extern_funcs.InterpTimeVector(
                 "noise1", self, dae.unit(), dae.Time(), tvec,
                 noise_data1, previous_output1, _position_)
                 for _position_ in range(N)]
-            self.noise2 = [externFuncs.InterpTimeVector(
+            self.noise2 = [extern_funcs.InterpTimeVector(
                 "noise2", self, dae.unit(), dae.Time(), tvec,
                 noise_data2, previous_output2, _position_)
                 for _position_ in range(N)]
@@ -328,7 +328,7 @@ class mod1var(dae.daeModel):
         self.ISfuncs = None
         if ndD["logPad"]:
             self.ISfuncs = np.array([
-                externFuncs.LogRatio("LR", self, dae.unit(), self.c(k))
+                extern_funcs.LogRatio("LR", self, dae.unit(), self.c(k))
                 for k in range(N)])
 
         # Prepare noise
@@ -341,7 +341,7 @@ class mod1var(dae.daeModel):
             # Previous_output is common for all external functions
             previous_output = []
             self.noise = [
-                externFuncs.InterpTimeVector(
+                extern_funcs.InterpTimeVector(
                     "noise", self, dae.unit(), dae.Time(), tvec, noise_data,
                     previous_output, _position_)
                 for _position_ in range(N)]

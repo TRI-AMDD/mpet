@@ -1,7 +1,7 @@
 import daetools.pyDAE as dae
 import numpy as np
 
-import externFuncs
+import extern_funcs
 import mod_electrodes
 import mpetPorts
 import props_elyte
@@ -384,7 +384,7 @@ class ModCell(dae.daeModel):
                 ndD["segments_setvec"][0] = ndD["currPrev"]
             elif self.profileType == "CVsegments":
                 ndD["segments_setvec"][0] = ndD["phiPrev"]
-            self.segSet = externFuncs.InterpTimeScalar(
+            self.segSet = extern_funcs.InterpTimeScalar(
                 "segSet", self, dae.unit(), dae.Time(),
                 ndD["segments_tvec"], ndD["segments_setvec"])
             if self.profileType == "CCsegments":
