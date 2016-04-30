@@ -1,13 +1,10 @@
-import sys
+import errno
+import glob
 import os
 import shutil
-import errno
-import time
 import subprocess as subp
-import glob
-
-import numpy as np
-import scipy.io as sio
+import sys
+import time
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
@@ -15,22 +12,23 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.trilinos import pyTrilinos
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
-import sim
-import mpetParamsIO as IO
 import data_reporting
+import mpetParamsIO as IO
+import sim
+
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):
     # Create Log, Solver, DataReporter and Simulation object
-    log          = dae.daePythonStdOutLog()
-    daesolver    = dae.daeIDAS()
-    simulation   = sim.SimMPET(ndD_s, ndD_e, tScale)
+    log = dae.daePythonStdOutLog()
+    daesolver = dae.daeIDAS()
+    simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
     datareporter = data_reporting.setupDataReporters(simulation, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
 #    lasolver = pyTrilinos.daeCreateTrilinosSolver("Amesos_Umfpack", "")
     daesolver.SetLASolver(lasolver)
-    
+
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
 
@@ -42,9 +40,9 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
     simulation.ReportingInterval = ndD_s["tend"] / ndD_s['tsteps']
 
     # Connect data reporter
-    simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
-            time.localtime())
-    if(datareporter.Connect("", simName) == False):
+    simName = simulation.m.Name + time.strftime(
+        " [%d.%m.%Y %H:%M:%S]", time.localtime())
+    if not datareporter.Connect("", simName):
         sys.exit()
 
     # Initialize the simulation
@@ -60,9 +58,11 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
         print str(e)
         simulation.ReportData(simulation.CurrentTime)
     except KeyboardInterrupt:
-        print "\nphi_applied at ctrl-C:", simulation.m.phi_applied.GetValue(), "\n"
+        print("\nphi_applied at ctrl-C:",
+              simulation.m.phi_applied.GetValue(), "\n")
         simulation.ReportData(simulation.CurrentTime)
     simulation.Finalize()
+
 
 def main(paramfile="params_default.cfg", keepArchive=True):
     timeStart = time.time()
@@ -97,8 +97,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
         IO.writeConfigFile(P_e[trode], filename=paramFile)
-        dictFile = os.path.join(outdir,
-                "input_dict_{t}".format(t=trode))
+        dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
         IO.writeDicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
 
     # Store info about this script
@@ -107,14 +106,16 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     out1 = ""
     try:
         # Git option, if it works -- commit info and current diff
-        p1 = subp.Popen(['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
-                stdout=subp.PIPE, stderr=subp.PIPE)
+        p1 = subp.Popen(
+            ['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
+            stdout=subp.PIPE, stderr=subp.PIPE)
         out1, err1 = p1.communicate()
         p2 = subp.Popen(['git', '-C', localDir, 'diff'],
-                stdout=subp.PIPE, stderr=subp.PIPE)
+                        stdout=subp.PIPE, stderr=subp.PIPE)
         out2, err2 = p2.communicate()
-        p3 = subp.Popen(['git', '-C', localDir, 'rev-parse', '--abbrev-ref', 'HEAD'],
-                stdout=subp.PIPE, stderr=subp.PIPE)
+        p3 = subp.Popen(
+            ['git', '-C', localDir, 'rev-parse', '--abbrev-ref', 'HEAD'],
+            stdout=subp.PIPE, stderr=subp.PIPE)
         out3, err3 = p3.communicate()
     except OSError:
         pass
@@ -133,7 +134,8 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
             print >> fo, out2
     else:
-        # At least keep a copy of the python files in this directory with the output
+        # At least keep a copy of the python files in this directory
+        # with the output
         snapshotDir = os.path.join(outdir, "simSnapshot")
         os.makedirs(snapshotDir)
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
@@ -163,18 +165,18 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     # Final output for user
     if paramfile == "params_default.cfg":
         print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
-                fname=default_file)
+            fname=default_file)
         print "Pass other parameter file as an argument to this script\n"
     else:
         print "\n\nUsed parameter file ""{fname}""\n\n".format(
-                fname=paramfile)
+            fname=paramfile)
     timeEnd = time.time()
     tTot = timeEnd - timeStart
     print "Total time:", tTot, "s"
     try:
         with open(os.path.join(outdir, 'run_info.txt'), 'a') as fo:
             print >> fo, "\nTotal run time:", tTot, "s"
-    except Exception as e:
+    except Exception:
         pass
 
     # Copy simulation output to current directory

@@ -3,13 +3,14 @@ import scipy.interpolate as sintrp
 
 from daetools.pyDAE import daeScalarExternalFunction, adouble
 
+
 class InterpTimeScalar(daeScalarExternalFunction):
     def __init__(self, Name, Model, units, time, tvec, yvec):
         arguments = {}
         arguments["time"] = time
         self.cache = None
         self.interp = sintrp.interp1d(tvec, yvec, bounds_error=False,
-                fill_value=yvec[-1])
+                                      fill_value=yvec[-1])
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
 
     def Calculate(self, values):
@@ -26,13 +27,14 @@ class InterpTimeScalar(daeScalarExternalFunction):
         self.cache = (time.Value, yval)
         return adouble(yval)
 
+
 class InterpTimeVector(daeScalarExternalFunction):
-    def __init__(self, Name, Model, units, time, tvec,
-            ymat, previous_output, position):
+    def __init__(self, Name, Model, units, time, tvec, ymat,
+                 previous_output, position):
         arguments = {}
         self.previous_output = previous_output
         self.interp = sintrp.interp1d(tvec, ymat, axis=0,
-                bounds_error=False, fill_value=0.)
+                                      bounds_error=False, fill_value=0.)
         arguments["time"] = time
         self.position = position
         daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
@@ -44,11 +46,14 @@ class InterpTimeVector(daeScalarExternalFunction):
             return adouble(0)
         # Store the previous time value to prevent excessive
         # interpolation.
-        if len(self.previous_output) > 0 and self.previous_output[0] == time.Value:
+        if (len(self.previous_output) > 0 and
+                self.previous_output[0] == time.Value):
             return adouble(float(self.previous_output[1][self.position]))
         noise_vec = self.interp(time.Value)
-        self.previous_output[:] = [time.Value, noise_vec] # it is a list now not a tuple
+        # it is a list now not a tuple
+        self.previous_output[:] = [time.Value, noise_vec]
         return adouble(noise_vec[self.position])
+
 
 class LogRatio(daeScalarExternalFunction):
     """
@@ -61,7 +66,7 @@ class LogRatio(daeScalarExternalFunction):
         arguments = {}
         arguments["c"] = c
         daeScalarExternalFunction.__init__(self, Name, Model, units,
-                arguments)
+                                           arguments)
 
     def Calculate(self, values):
         c = values["c"]

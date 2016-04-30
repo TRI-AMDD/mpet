@@ -3,6 +3,7 @@ import numpy as np
 
 import geometry as geo
 
+
 class muRfuncs():
     """ This class defines functions which describe the chemical
     potential of active materials.
@@ -35,7 +36,7 @@ class muRfuncs():
         if ndD is None:
             ndD = kwargs
         self.ndD = ndD
-        self.T = T # nondimensional
+        self.T = T  # nondimensional
         k = 1.381e-23
         Tabs = 298
         e = 1.602e-19
@@ -61,6 +62,7 @@ class muRfuncs():
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
+
     def get_actR_None(self, y):
         try:
             actR = np.empty(y.shape, dtype=object)
@@ -79,9 +81,9 @@ class muRfuncs():
         """ Doyle, Newman, 1996 """
         # OCV in V vs Li/Li+
         OCV = (4.19829 + 0.0565661*np.tanh(-14.5546*y + 8.60942) -
-                0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111) -
-                0.157123*np.exp(-0.04738*y**8) +
-                0.810239*np.exp(-40*(y - 0.133875)))
+               0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111) -
+               0.157123*np.exp(-0.04738*y**8) +
+               0.810239*np.exp(-40*(y - 0.133875)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -90,17 +92,16 @@ class muRfuncs():
         """ Fuller, Doyle, Newman, 1994 """
         # OCV in V vs Li/Li+
         OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
-                0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994) -
-                0.045*np.exp(-71.69*y**8) +
-                0.01*np.exp(-200*(y - 0.19)))
+               0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994) -
+               0.045*np.exp(-71.69*y**8) +
+               0.01*np.exp(-200*(y - 0.19)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
 
     def LiC6_coke_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Doyle, Newman, 1996 """
-        OCV = (-0.16 + 1.32*np.exp(-3.0*y) +
-                10.*np.exp(-2000.*y))
+        OCV = (-0.16 + 1.32*np.exp(-3.0*y) + 10.*np.exp(-2000.*y))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -118,10 +119,10 @@ class muRfuncs():
     def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Safari, Delacourt 2011 """
         OCV = (0.6379 + 0.5416*np.exp(-305.5309*y) +
-                0.044*np.tanh(-(y - 0.1958)/0.1088) -
-                0.1978*np.tanh((y - 1.0571)/0.0854) -
-                0.6875*np.tanh((y + 0.0117)/0.0529) -
-                0.0175*np.tanh((y - 0.5692)/0.0875))
+               0.044*np.tanh(-(y - 0.1958)/0.1088) -
+               0.1978*np.tanh((y - 1.0571)/0.0854) -
+               0.6875*np.tanh((y + 0.0117)/0.0529) -
+               0.0175*np.tanh((y - 0.5692)/0.0875))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -131,9 +132,9 @@ class muRfuncs():
         p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
         sfac = 0.3
         OCV = (p1*stepDown(y, 1., sfac*0.02)
-                + (p2 - p1)*stepDown(y, 0.5, 0.005)
-                + (p3 - p2)*stepDown(y, 0.1944, sfac*0.03571)
-                + (p4 - p3)*stepDown(y, 0., sfac*0.08333))
+               + (p2 - p1)*stepDown(y, 0.5, 0.005)
+               + (p3 - p2)*stepDown(y, 0.1944, sfac*0.03571)
+               + (p4 - p3)*stepDown(y, 0., sfac*0.08333))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -150,14 +151,14 @@ class muRfuncs():
         rEdge = 1 - edgeLen
         width = 0.001
         lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)))
-                * stepDown(y, lEdge, width))
+                  * stepDown(y, lEdge, width))
         rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)))
-                * stepUp(y, rEdge, width))
+                  * stepUp(y, rEdge, width))
         OCV = (
-                Vstd
-                + Vstep*(stepDown(y, 0.5, 0.013) - 1)
-                + self.kToe*(lSide + rSide)
-                )
+            Vstd
+            + Vstep*(stepDown(y, 0.5, 0.013) - 1)
+            + self.kToe*(lSide + rSide)
+            )
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -173,7 +174,7 @@ class muRfuncs():
         data.
         """
         OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4 -
-                0.06*np.log(y/(1-y)))
+               0.06*np.log(y/(1-y)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -188,8 +189,8 @@ class muRfuncs():
         of Samsung data of a LiC6-NCA cell discharged at C/100.
         """
         OCV = (-self.kToe*np.log(y/(1-y))
-                + 4.12178 - 0.2338*y - 1.24566*y**2 + 1.16769*y**3
-                - 0.20745*y**4)
+               + 4.12178 - 0.2338*y - 1.24566*y**2 + 1.16769*y**3
+               - 0.20745*y**4)
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -254,14 +255,13 @@ class muRfuncs():
         muLtail = -tailScl*1./(y**(0.85))
         muRtail = tailScl*1./((1-y)**(0.85))
         muLlin = (slpScl*Omga*12*(0.40-y)
-                * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
+                  * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
         muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
         muLMod = (0.
-#                + 25*(np.tanh((y-0.05)/0.01) - 1)
-                + 40*(-np.exp(-y/0.015))
-                + 0.75*(np.tanh((y-0.17)/0.02) - 1)
-                + 1.0*(np.tanh((y-0.22)/0.040) - 1)
-                )*stepDown(y, 0.35, width)
+                  + 40*(-np.exp(-y/0.015))
+                  + 0.75*(np.tanh((y-0.17)/0.02) - 1)
+                  + 1.0*(np.tanh((y-0.22)/0.040) - 1)
+                  )*stepDown(y, 0.35, width)
         muR = muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
@@ -277,8 +277,7 @@ class muRfuncs():
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
 
-    def nonHomogRoundWetting(self, y, ybar, B, kappa, beta_s, shape,
-            r_vec):
+    def nonHomogRoundWetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
         Rs = 1.
@@ -293,7 +292,8 @@ class muRfuncs():
         if isinstance(y, np.ndarray):
             mod1var = True
             N = len(y)
-        elif isinstance(y, tuple) and len(y) == 2 and isinstance(y[0], np.ndarray):
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
             mod2var = True
             N = len(y[0])
         else:
@@ -305,22 +305,23 @@ class muRfuncs():
             if shape == "C3":
                 if mod1var:
                     cwet = self.ndD["cwet"]
-                    muR_nh = self.nonHomogRectFixedCsurf(y, ybar, B, kappa, cwet)
+                    muR_nh = self.nonHomogRectFixedCsurf(
+                        y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.ndD["beta_s"]
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
-                    muR_nh = self.nonHomogRoundWetting(y, ybar, B, kappa,
-                            beta_s, shape, r_vec)
+                    muR_nh = self.nonHomogRoundWetting(
+                        y, ybar, B, kappa, beta_s, shape, r_vec)
                 elif mod2var:
-                    muR1_nh = self.nonHomogRoundWetting(y[0], ybar[0],
-                            B, kappa, beta_s, shape, r_vec)
-                    muR2_nh = self.nonHomogRoundWetting(y[1], ybar[1],
-                            B, kappa, beta_s, shape, r_vec)
+                    muR1_nh = self.nonHomogRoundWetting(
+                        y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
+                    muR2_nh = self.nonHomogRoundWetting(
+                        y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
                     muR_nh = (muR1_nh, muR2_nh)
-        else: # homogeneous particle
+        else:  # homogeneous particle
             if mod1var:
                 muR_nh = 0*y
             elif mod2var:
@@ -341,9 +342,8 @@ class muRfuncs():
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
         ndD = self.ndD
-        muR1homog, muR2homog = self.graphite2paramHomog(y,
-                ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"],
-                ISfuncs)
+        muR1homog, muR2homog = self.graphite2paramHomog(
+            y, ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"], ISfuncs)
         muR1nonHomog, muR2nonHomog = self.generalNonHomog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
@@ -356,8 +356,8 @@ class muRfuncs():
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
         ndD = self.ndD
-        muRhomog = self.graphite1paramHomog_2(y, ndD["Omga"],
-                ndD["Omgb"], ISfuncs)
+        muRhomog = self.graphite1paramHomog_2(
+            y, ndD["Omga"], ndD["Omgb"], ISfuncs)
         muRnonHomog = self.generalNonHomog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -371,7 +371,10 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
+
 def stepDown(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
+
+
 def stepUp(x, xc, delta):
     return 0.5*(np.tanh((x - xc)/delta) + 1)

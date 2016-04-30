@@ -1,9 +1,11 @@
 import os.path as osp
+import sys
 import time
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
 import scipy.io as sio
+
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """
@@ -25,6 +27,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     long_field_names=False, do_compression=False,
                     oned_as='row')
 
+
 def setupDataReporters(simulation, outdir):
     """
     Create daeDelegateDataReporter and add data reporters:
@@ -35,10 +38,10 @@ def setupDataReporters(simulation, outdir):
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters
     simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
-            time.localtime())
+                                                time.localtime())
     matDataName = "output_data.mat"
     matfilename = osp.join(outdir, matDataName)
-    if (simulation.dr.Connect(matfilename, simName) == False):
+    if not simulation.dr.Connect(matfilename, simName):
         sys.exit()
     # a hack to make compatible with pre/post r526 daetools
     try:
