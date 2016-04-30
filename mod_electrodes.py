@@ -5,7 +5,7 @@ import scipy.special as spcl
 
 import extern_funcs
 import geometry as geo
-import mpetPorts
+import ports
 import props_am
 
 eps = -1e-12
@@ -62,9 +62,9 @@ class mod2var(dae.daeModel):
                 "Rate of reaction 2 (per nondim volume)", [self.Dmn])
 
         # Ports
-        self.portInLyte = mpetPorts.portFromElyte(
+        self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self, "Inlet port from electrolyte")
-        self.portInBulk = mpetPorts.portFromBulk(
+        self.portInBulk = ports.portFromBulk(
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte()
@@ -307,10 +307,10 @@ class mod1var(dae.daeModel):
                 [self.Dmn])
 
         # Ports
-        self.portInLyte = mpetPorts.portFromElyte(
+        self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self,
             "Inlet port from electrolyte")
-        self.portInBulk = mpetPorts.portFromBulk(
+        self.portInBulk = ports.portFromBulk(
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte()

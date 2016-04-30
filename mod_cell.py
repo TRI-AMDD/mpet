@@ -3,7 +3,7 @@ import numpy as np
 
 import extern_funcs
 import mod_electrodes
-import mpetPorts
+import ports
 import props_elyte
 
 
@@ -128,11 +128,11 @@ class ModCell(dae.daeModel):
             self.portsOutBulk[l] = np.empty((Nv, Np), dtype=object)
             self.particles[l] = np.empty((Nv, Np), dtype=object)
             for i in range(Nv):
-                self.portsOutLyte[l][i] = mpetPorts.portFromElyte(
+                self.portsOutLyte[l][i] = ports.portFromElyte(
                     "portTrode{l}vol{i}".format(l=l, i=i), dae.eOutletPort,
                     self, "Electrolyte port to particles")
                 for j in range(Np):
-                    self.portsOutBulk[l][i, j] = mpetPorts.portFromBulk(
+                    self.portsOutBulk[l][i, j] = ports.portFromBulk(
                         "portTrode{l}vol{i}part{j}".format(l=l, i=i, j=j),
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
