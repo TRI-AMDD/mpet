@@ -13,7 +13,7 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
 import data_reporting
-import mpetParamsIO as IO
+import io_utils as IO
 import sim
 
 

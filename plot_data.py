@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpetParamsIO as IO
+import io_utils as IO
 import props_elyte
 
 

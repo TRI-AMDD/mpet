@@ -9,7 +9,7 @@ mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
 import comparePlots as cmpr
 import mpet
-import mpetParamsIO as IO
+import io_utils as IO
 
 
 def corePlots(testDir, dirDict):

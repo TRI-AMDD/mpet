@@ -28,7 +28,7 @@ mpl.rcParams['lines.markeredgewidth'] = 0.1
 
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
-import mpetParamsIO as IO
+import io_utils as IO
 import testDefns as defs
 
 def run_test_sims(runInfo, dirDict, pflag=True):
@@ -173,7 +173,7 @@ def show_fails(failList):
         print (fail + " differs from the reference outputs!")
 
 def main(compareDir):
-    pflag = False
+    pflag = True
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
