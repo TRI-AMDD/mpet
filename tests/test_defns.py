@@ -7,7 +7,7 @@ import scipy.special as spcl
 
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
-import comparePlots as cmpr
+import compare_plots as cmpr
 import mpet
 import io_utils as IO
 

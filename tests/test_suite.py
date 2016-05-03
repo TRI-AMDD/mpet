@@ -29,7 +29,7 @@ mpl.rcParams['lines.markeredgewidth'] = 0.1
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
 import io_utils as IO
-import testDefns as defs
+import test_defns as defs
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
