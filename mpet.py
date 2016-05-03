@@ -55,7 +55,7 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
     try:
         simulation.Run()
     except Exception as e:
-        print str(e)
+        print(str(e))
         simulation.ReportData(simulation.CurrentTime)
     except KeyboardInterrupt:
         print("\nphi_applied at ctrl-C:",
@@ -123,16 +123,16 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         # Store commit info to file, as well as how to patch if
         # there's a diff
         with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
-            print >> fo, "branch name:"
-            print >> fo, out3
-            print >> fo, "commit hash:"
-            print >> fo, out1
-            print >> fo, "to run:"
-            print >> fo, "$ git checkout [commit hash]"
-            print >> fo, "$ patch -p1 < commit.diff:"
-            print >> fo, "$ python[2] mpet.py input_params.cfg"
+            print("branch name:", file=fo)
+            print(out3, file=fo)
+            print("commit hash:", file=fo)
+            print(out1, file=fo)
+            print("to run:", file=fo)
+            print("$ git checkout [commit hash]", file=fo)
+            print("$ patch -p1 < commit.diff:", file=fo)
+            print("$ python[3] mpet.py input_params.cfg", file=fo)
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
-            print >> fo, out2
+            print(out2, file=fo)
     else:
         # At least keep a copy of the python files in this directory
         # with the output
@@ -164,18 +164,18 @@ def main(paramfile="params_default.cfg", keepArchive=True):
 
     # Final output for user
     if paramfile == "params_default.cfg":
-        print "\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
-            fname=default_file)
-        print "Pass other parameter file as an argument to this script\n"
+        print("\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
+            fname=default_file))
+        print("Pass other parameter file as an argument to this script\n")
     else:
-        print "\n\nUsed parameter file ""{fname}""\n\n".format(
-            fname=paramfile)
+        print("\n\nUsed parameter file ""{fname}""\n\n".format(
+            fname=paramfile))
     timeEnd = time.time()
     tTot = timeEnd - timeStart
-    print "Total time:", tTot, "s"
+    print("Total time:", tTot, "s")
     try:
         with open(os.path.join(outdir, 'run_info.txt'), 'a') as fo:
-            print >> fo, "\nTotal run time:", tTot, "s"
+            print("\nTotal run time:", tTot, "s", file=fo)
     except Exception:
         pass
 

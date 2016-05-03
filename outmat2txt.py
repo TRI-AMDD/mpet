@@ -121,38 +121,35 @@ def main(indir, genData=True, discData=True, elyteData=True,
             indir, plot_type="discData", print_flag=False,
             save_flag=False, data_only=True)
         with open(os.path.join(indir, "discData.txt"), "w") as fo:
-            print >> fo, discCCbattery
-            print >> fo, ",".join(map(str, cellCentersVec))
+            print(discCCbattery, file=fo)
+            print(",".join(map(str, cellCentersVec)), file=fo)
             offset = 0
             if "a" in trodes:
-                print >> fo
-                print >> fo, discCCanode
-                print >> fo, ",".join(map(str, cellCentersVec[:Nv_a]))
+                print(file=fo)
+                print(discCCanode, file=fo)
+                print(",".join(map(str, cellCentersVec[:Nv_a])), file=fo)
                 offset = Nv_a
-            print >> fo
-            print >> fo, discCCsep
-            print >> fo, ",".join(map(str, cellCentersVec[offset:-Nv_c]))
-            print >> fo
-            print >> fo, discCCcathode
-            print >> fo, ",".join(map(str, cellCentersVec[-Nv_c:]))
-            print >> fo
-            print >> fo, discFC
-            print >> fo, ",".join(map(str, facesVec))
-            print >> fo
-            print >> fo, particleIndxExpl
-            print >> fo, particleDiscExpl
+            print(file=fo)
+            print(discCCsep, file=fo)
+            print(",".join(map(str, cellCentersVec[offset:-Nv_c])), file=fo)
+            print(file=fo)
+            print(discCCcathode, file=fo)
+            print(",".join(map(str, cellCentersVec[-Nv_c:])), file=fo)
+            print(file=fo)
+            print(discFC, file=fo)
+            print(",".join(map(str, facesVec)), file=fo)
+            print(file=fo)
+            print(particleIndxExpl, file=fo)
+            print(particleDiscExpl, file=fo)
             for l in trodes:
-                print >> fo
+                print(file=fo)
                 Trode = getTrodeStr(l)
-                print >> fo, (Trode + " particle sizes [m]")
+                print((Trode + " particle sizes [m]"), file=fo)
                 for vind in range(ndD_s["Nvol"][l]):
-                    print >> fo, ",".join(
-                        map(str, dD_s["psd_len"][l][vind, :]))
-                print >> fo, (
-                    "\n" + Trode + " particle number of discr. points")
+                    print(",".join(map(str, dD_s["psd_len"][l][vind,:])), file=fo)
+                print("\n" + Trode + " particle number of discr. points", file=fo)
                 for vind in range(ndD_s["Nvol"][l]):
-                    print >> fo, ",".join(
-                        map(str, ndD_s["psd_num"][l][vind, :]))
+                    print(",".join(map(str, ndD_s["psd_num"][l][vind,:])), file=fo)
 
     if elyteData:
         elytecMat = plot_data.show_data(

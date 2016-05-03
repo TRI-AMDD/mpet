@@ -1,5 +1,5 @@
 import ast
-import ConfigParser
+import configparser
 import os
 import pickle
 
@@ -63,15 +63,15 @@ def getDictsFromConfigs(P_s, P_e):
     # configDefaults.
     try:
         ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         ndD_s["relTol"] = 1e-6
     try:
         ndD_s["absTol"] = P_s.getfloat('Sim Params', 'absTol')
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         ndD_s["absTol"] = 1e-6
     try:
         ndD_s["randomSeed"] = P_s.getboolean('Sim Params', 'randomSeed')
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         ndD_s["randomSeed"] = False
     if ndD_s["randomSeed"]:
         # This should affect all calls to np.random throughout the
@@ -95,7 +95,7 @@ def getDictsFromConfigs(P_s, P_e):
     dD_s["k0_foil"] = P_s.getfloat('Electrodes', 'k0_foil')
     try:
         dD_s["Rfilm_foil"] = P_s.getfloat('Electrodes', 'Rfilm_foil')
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         dD_s["Rfilm_foil"] = 0.
 
     # Particle info
@@ -130,7 +130,7 @@ def getDictsFromConfigs(P_s, P_e):
                       "c": P_s.getfloat('Geometry', 'poros_c')}
     try:
         ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         ndD_s["poros"]["s"] = 1.
 
     # Electrolyte
@@ -183,7 +183,7 @@ def getDictsFromConfigs(P_s, P_e):
         try:
             ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
             ndD["numnoise"] = P.getint('Material', 'numnoise')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             ndD["noise_prefac"] = 1e-6
             ndD["numnoise"] = 200
 
@@ -194,7 +194,7 @@ def getDictsFromConfigs(P_s, P_e):
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         try:
             dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             dD["Rfilm"] = 0.
 
         # electrode parameters
@@ -553,7 +553,7 @@ def readDicts(filenamebase="input_dict"):
 
 
 def getConfig(inFile):
-    P = ConfigParser.RawConfigParser()
+    P = configparser.RawConfigParser()
     P.optionxform = str
     P.read(inFile)
     return P
