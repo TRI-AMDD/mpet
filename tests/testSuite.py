@@ -173,7 +173,7 @@ def show_fails(failList):
         print (fail + " differs from the reference outputs!")
 
 def main(compareDir):
-    pflag = True
+    pflag = False
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
