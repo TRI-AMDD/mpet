@@ -1,12 +1,13 @@
-import os
-import ConfigParser
-import pickle
 import ast
+import ConfigParser
+import os
+import pickle
 
 import numpy as np
 
 import props_am
 import props_elyte
+
 
 def getConfigs(paramfile="params.cfg"):
     # system-level config
@@ -35,6 +36,7 @@ def getConfigs(paramfile="params.cfg"):
         P_e["a"] = getConfig(paramfile_a)
     return P_s, P_e
 
+
 def getDictsFromConfigs(P_s, P_e):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
@@ -45,13 +47,13 @@ def getDictsFromConfigs(P_s, P_e):
 
     # General particle classification
     ndD_s["2varTypes"] = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
-    ndD_s["1varTypes"] = ["ACR", "diffn", "CHR", "homog",
-            "homog_sdn"]
+    ndD_s["1varTypes"] = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
 
     # Simulation Parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
-    segs = dD_s["segments"] = ast.literal_eval(P_s.get('Sim Params', 'segments'))
+    segs = dD_s["segments"] = ast.literal_eval(
+        P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
@@ -81,12 +83,12 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
     ndD_s["tsteps"] = P_s.getfloat('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
-    Rser = dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
+    dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
-                   "c": P_s.getint('Sim Params', 'Nvol_c'),
-                   "s": P_s.getint('Sim Params', 'Nvol_s')}
+                     "c": P_s.getint('Sim Params', 'Nvol_c'),
+                     "s": P_s.getint('Sim Params', 'Nvol_s')}
     ndD_s["Npart"] = {"a": P_s.getint('Sim Params', 'Npart_a'),
-                    "c": P_s.getint('Sim Params', 'Npart_c')}
+                      "c": P_s.getint('Sim Params', 'Npart_c')}
     ndD_s["trodes"] = ["c"]
     if ndD_s["Nvol"]["a"] >= 1:
         ndD_s["trodes"].append("a")
@@ -98,32 +100,34 @@ def getDictsFromConfigs(P_s, P_e):
 
     # Particle info
     dD_s["psd_mean"] = {"a": P_s.getfloat('Particles', 'mean_a'),
-                      "c":  P_s.getfloat('Particles', 'mean_c')}
+                        "c": P_s.getfloat('Particles', 'mean_c')}
     dD_s["psd_stddev"] = {"a": P_s.getfloat('Particles', 'stddev_a'),
-                        "c": P_s.getfloat('Particles', 'stddev_c')}
+                          "c": P_s.getfloat('Particles', 'stddev_c')}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
-            "c": P_s.getfloat('Particles', 'cs0_c')}
+                    "c": P_s.getfloat('Particles', 'cs0_c')}
 
     # Conductivity
-    ndD_s["simBulkCond"] = {"a": P_s.getboolean('Conductivity', 'simBulkCond_a'),
-            "c": P_s.getboolean('Conductivity', 'simBulkCond_c')}
+    ndD_s["simBulkCond"] = {
+        "a": P_s.getboolean('Conductivity', 'simBulkCond_a'),
+        "c": P_s.getboolean('Conductivity', 'simBulkCond_c')}
     dD_s["mcond"] = {"a": P_s.getfloat('Conductivity', 'mcond_a'),
-            "c": P_s.getfloat('Conductivity', 'mcond_c')}
-    ndD_s["simPartCond"] = {"a": P_s.getboolean('Conductivity', 'simPartCond_a'),
-            "c": P_s.getboolean('Conductivity', 'simPartCond_c')}
+                     "c": P_s.getfloat('Conductivity', 'mcond_c')}
+    ndD_s["simPartCond"] = {
+        "a": P_s.getboolean('Conductivity', 'simPartCond_a'),
+        "c": P_s.getboolean('Conductivity', 'simPartCond_c')}
     dD_s["G_mean"] = {"a": P_s.getfloat('Conductivity', 'G_mean_a'),
-            "c": P_s.getfloat('Conductivity', 'G_mean_c')}
+                      "c": P_s.getfloat('Conductivity', 'G_mean_c')}
     dD_s["G_stddev"] = {"a": P_s.getfloat('Conductivity', 'G_stddev_a'),
-            "c": P_s.getfloat('Conductivity', 'G_stddev_c')}
+                        "c": P_s.getfloat('Conductivity', 'G_stddev_c')}
 
     # Geometry
     dD_s["L"] = {"a": P_s.getfloat('Geometry', 'L_a'),
-            "c": P_s.getfloat('Geometry', 'L_c'),
-            "s": P_s.getfloat('Geometry', 'L_s')}
+                 "c": P_s.getfloat('Geometry', 'L_c'),
+                 "s": P_s.getfloat('Geometry', 'L_s')}
     ndD_s["P_L"] = {"a": P_s.getfloat('Geometry', 'P_L_a'),
-            "c": P_s.getfloat('Geometry', 'P_L_c')}
+                    "c": P_s.getfloat('Geometry', 'P_L_c')}
     ndD_s["poros"] = {"a": P_s.getfloat('Geometry', 'poros_a'),
-            "c": P_s.getfloat('Geometry', 'poros_c')}
+                      "c": P_s.getfloat('Geometry', 'poros_c')}
     try:
         ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
     except ConfigParser.NoOptionError:
@@ -135,21 +139,20 @@ def getDictsFromConfigs(P_s, P_e):
     zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
     if zm > 0:
         zm = ndD_s["zm"] = -zm
-    nup = ndD_s["nup"] = P_s.getfloat('Electrolyte', 'nup')
-    num = ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
-    elyteModelType = ndD_s["elyteModelType"] = P_s.get('Electrolyte',
-            'elyteModelType')
+    ndD_s["nup"] = P_s.getfloat('Electrolyte', 'nup')
+    ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
+    ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
     D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.getProps(SMset)[-1]
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
 
     # Constants
-    k = dD_s["k"] = 1.381e-23 # J/(K particle)
-    T_ref = dD_s["T_ref"] = dD_s["Tref"] = 298. # K
-    e = dD_s["e"] = 1.602e-19 # C
-    N_A = dD_s["N_A"] = 6.022e23 # particle/mol
-    F = dD_s["F"] = dD_s["e"] * dD_s["N_A"] # C/mol
+    k = dD_s["k"] = 1.381e-23  # J/(K particle)
+    T_ref = dD_s["T_ref"] = dD_s["Tref"] = 298.  # K
+    e = dD_s["e"] = 1.602e-19  # C
+    N_A = dD_s["N_A"] = 6.022e23  # particle/mol
+    F = dD_s["F"] = dD_s["e"] * dD_s["N_A"]  # C/mol
 
     for trode in ndD_s["trodes"]:
         dD = {}
@@ -159,7 +162,7 @@ def getDictsFromConfigs(P_s, P_e):
         # Particles
         Type = ndD["type"] = P.get('Particles', 'type')
         dD["disc"] = P.getfloat('Particles', 'discretization')
-        Shape = ndD["shape"] = P.get('Particles', 'shape')
+        ndD["shape"] = P.get('Particles', 'shape')
         dD["thickness"] = P.getfloat('Particles', 'thickness')
 
         # Material
@@ -203,16 +206,16 @@ def getDictsFromConfigs(P_s, P_e):
     for trode in ndD_s["trodes"]:
         test_electrode_input(dD_e[trode], ndD_e[trode], dD_s, ndD_s)
     psd_raw, psd_num, psd_len, psd_area, psd_vol = distr_part(
-            dD_s, ndD_s, dD_e, ndD_e)
+        dD_s, ndD_s, dD_e, ndD_e)
     G = distr_G(dD_s, ndD_s)
 
     # Various calculated and defined parameters
     L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
-    c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000. # mol/m^3 = 1 M
+    c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000.  # mol/m^3 = 1 M
     # Ambipolar diffusivity
     Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
     # Cation transference number
-    tp = ndD_s["tp"] = zp*Dp / (zp*Dp - zm*Dm)
+    ndD_s["tp"] = zp*Dp / (zp*Dp - zm*Dm)
     # Diffusive time scale
     if ndD_s["elyteModelType"] == "dilute":
         D_ref = dD_s["D_ref"] = Damb
@@ -223,23 +226,22 @@ def getDictsFromConfigs(P_s, P_e):
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
     for trode in ndD_s['trodes']:
-        dD_e[trode]['csmax'] = dD_e[trode]['rho_s'] / N_A # M
-        dD_e[trode]['cap'] = (dD_s["e"] * dD_s['L'][trode] *
-                (1-ndD_s['poros'][trode]) *
-                ndD_s['P_L'][trode] *
-                dD_e[trode]['rho_s']) # C/m^2
+        dD_e[trode]['csmax'] = dD_e[trode]['rho_s'] / N_A  # M
+        dD_e[trode]['cap'] = (
+            dD_s["e"] * dD_s['L'][trode] * (1-ndD_s['poros'][trode])
+            * ndD_s['P_L'][trode] * dD_e[trode]['rho_s'])  # C/m^2
     if "a" in ndD_s['trodes']:
         ndD_s['z'] = dD_e['c']['cap'] / dD_e['a']['cap']
     else:
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
-    CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600. # A/m^2
-    dD_s["currset"] = CrateCurr * dD_s["Crate"] # A/m^2
+    CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
 
     # Some nondimensional parameters
-    T = ndD_s["T"] = Tabs / T_ref
+    ndD_s["T"] = Tabs / T_ref
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
@@ -262,9 +264,9 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
     ndD_s["epsbeta"] = {}
     ndD_s["mcond"] = {}
-    ndD_s["phiRef"] = {"a" : 0.} # temporary, used for Vmax, Vmin
+    ndD_s["phiRef"] = {"a": 0.}  # temporary, used for Vmax, Vmin
     for trode in ndD_s["trodes"]:
-        ## System scale parameters
+        # System scale parameters
         # particle size distribution and connectivity distribution
         if ndD_s["prevDir"] == "false":
             dD_s["psd_raw"][trode] = psd_raw[trode]
@@ -275,7 +277,7 @@ def getDictsFromConfigs(P_s, P_e):
             dD_s["G"][trode] = G[trode]
         else:
             dD_sPrev, ndD_sPrev = readDicts(
-                    os.path.join(ndD_s["prevDir"], "input_dict_system"))
+                os.path.join(ndD_s["prevDir"], "input_dict_system"))
             dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
             ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
             dD_s["psd_len"][trode] = dD_sPrev["psd_len"][trode]
@@ -288,19 +290,20 @@ def getDictsFromConfigs(P_s, P_e):
         # Fraction of individual particle volume compared to total
         # volume of particles _within the simulated electrode
         # volume_
-        ndD_s["psd_vol_FracVol"][trode] = (dD_s["psd_vol"][trode] /
-                Vuvec[:, np.newaxis])
+        ndD_s["psd_vol_FracVol"][trode] = (
+            dD_s["psd_vol"][trode] / Vuvec[:, np.newaxis])
         ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
         ndD_s["epsbeta"][trode] = (
-                (1-ndD_s['poros'][trode]) * ndD_s['P_L'][trode] *
-                dD_e[trode]["csmax"]/c0)
+            (1-ndD_s['poros'][trode]) * ndD_s['P_L'][trode]
+            * dD_e[trode]["csmax"]/c0)
         ndD_s["mcond"][trode] = dD_s['mcond'][trode] / dD_s["mcond_ref"]
         vols = dD_s["psd_vol"][trode]
-        ndD_s["G"][trode] = (dD_s["G"][trode] * (k*T_ref/e) * t_ref /
-                (F*dD_e[trode]["csmax"]*vols))
+        ndD_s["G"][trode] = (
+            dD_s["G"][trode] * (k*T_ref/e) * t_ref
+            / (F*dD_e[trode]["csmax"]*vols))
 
-        ## Electrode particle parameters
-        lmbda = ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*T_ref)
+        # Electrode particle parameters
+        ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*T_ref)
         ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*T_ref)
         ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*T_ref)
         ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
@@ -313,7 +316,6 @@ def getDictsFromConfigs(P_s, P_e):
         if Type in ndD_s["2varTypes"]:
             cs0 = (cs0, cs0)
             cs0bar = (cs0bar, cs0bar)
-        muRrefout = muRfunc(cs0, cs0bar, 0.)
         if Type in ndD_s["2varTypes"]:
             ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0][0]
         elif Type in ndD_s["1varTypes"]:
@@ -336,17 +338,18 @@ def getDictsFromConfigs(P_s, P_e):
                 plen = dD_s["psd_len"][trode][i, j]
                 parea = dD_s["psd_area"][trode][i, j]
                 pvol = dD_s["psd_vol"][trode][i, j]
-                ndD_tmp["kappa"] = (dD_e[trode]['kappa'] /
-                        (k*T_ref*dD_e[trode]['rho_s']*plen**2))
-                ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc'] *
-                        plen * dD_e[trode]['rho_s'] /
-                        dD_e[trode]['kappa'])
+                ndD_tmp["kappa"] = (
+                    dD_e[trode]['kappa']
+                    / (k*T_ref*dD_e[trode]['rho_s']*plen**2))
+                ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc']
+                                     * plen * dD_e[trode]['rho_s']
+                                     / dD_e[trode]['kappa'])
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
-                        / (F*dD_e[trode]["csmax"]))
+                                 / (F*dD_e[trode]["csmax"]))
                 ndD_tmp["Rfilm"] = (
-                        dD_e[trode]["Rfilm"] / (
-                            t_ref*k*T_ref/(e*F*plen*dD_e[trode]["csmax"])))
+                    dD_e[trode]["Rfilm"] / (
+                        t_ref*k*T_ref/(e*F*plen*dD_e[trode]["csmax"])))
                 ndD_tmp["delta_L"] = pvol/(parea*plen)
                 if Type in ["homog_sdn", "homog2_sdn"]:
                     ndD_tmp["Omga"] = size2regsln(plen)
@@ -382,7 +385,7 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
     elif ndD_s["profileType"] == "CVsegments":
         ndD_s["segments_setvec"] = -(
-                (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
+            (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
     if "segments" in ndD_s["profileType"]:
         dD_s["tend"] = dD_s["segments_tvec"][-1]
         # Pad the last segment so no extrapolation occurs
@@ -392,6 +395,7 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     return dD_s, ndD_s, dD_e, ndD_e
+
 
 def distr_part(dD_s, ndD_s, dD_e, ndD_e):
     psd_raw = {}
@@ -408,23 +412,23 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
         # Make a length-sampled particle size distribution
         # Log-normally distributed
         if isClose(dD_s["psd_stddev"][trode], 0.):
-            raw = (dD_s["psd_mean"][trode] *
-                    np.ones((Nv, Np)))
+            raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
         else:
             var = stddev**2
             mu = np.log((mean**2)/np.sqrt(var+mean**2))
             sigma = np.sqrt(np.log(var/(mean**2)+1))
-            raw = np.random.lognormal(
-                    mu, sigma, size=(Nv, Np))
+            raw = np.random.lognormal(mu, sigma, size=(Nv, Np))
         psd_raw[trode] = raw
         # For particles with internal profiles, convert psd to
         # integers -- number of steps
         solidDisc = dD_e[trode]["disc"]
         if solidType in ["ACR"]:
-            psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer)
+            psd_num[trode] = (
+                np.ceil(psd_raw[trode]/solidDisc).astype(np.integer))
             psd_len[trode] = solidDisc*psd_num[trode]
         elif solidType in ["CHR", "diffn", "CHR2", "diffn2"]:
-            psd_num[trode] = np.ceil(psd_raw[trode]/solidDisc).astype(np.integer) + 1
+            psd_num[trode] = (
+                np.ceil(psd_raw[trode]/solidDisc).astype(np.integer) + 1)
             psd_len[trode] = solidDisc*(psd_num[trode] - 1)
         # For homogeneous particles (only one "volume" per particle)
         elif solidType in ["homog", "homog_sdn", "homog2", "homog2_sdn"]:
@@ -441,11 +445,15 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
             psd_vol[trode] = (4./3)*np.pi*psd_len[trode]**3
         elif solidShape == "C3":
             psd_area[trode] = 2 * 1.2263 * psd_len[trode]**2
-            psd_vol[trode] = 1.2263 * psd_len[trode]**2 * dD_e[trode]['thickness']
+            psd_vol[trode] = (1.2263 * psd_len[trode]**2
+                              * dD_e[trode]['thickness'])
         elif solidShape == "cylinder":
-            psd_area[trode] = 2 * np.pi * psd_len[trode] * dD_e[trode]['thickness']
-            psd_vol[trode] = np.pi * psd_len[trode]**2 * dD_e[trode]['thickness']
+            psd_area[trode] = (2 * np.pi * psd_len[trode]
+                               * dD_e[trode]['thickness'])
+            psd_vol[trode] = (np.pi * psd_len[trode]**2
+                              * dD_e[trode]['thickness'])
     return psd_raw, psd_num, psd_len, psd_area, psd_vol
+
 
 def distr_G(dD, ndD):
     G = {}
@@ -462,6 +470,7 @@ def distr_G(dD, ndD):
             sigma = np.sqrt(np.log(var/(mean**2)+1))
             G[trode] = np.random.lognormal(mu, sigma, size=(Nv, Np))
     return G
+
 
 def size2regsln(size):
     """
@@ -496,15 +505,16 @@ def size2regsln(size):
             param = 2.
     return param
 
+
 def test_system_input(dD, ndD):
     if not isClose(dD['Tabs'], 298.):
         raise Exception("Temp dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if ndD["profileType"] not in ["CC", "CV", "CCsegments",
-            "CVsegments"]:
+    if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
+
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
     T298 = isClose(dD_s['Tabs'], 298.)
@@ -517,30 +527,37 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if (solidType in ["CHR", "diffn"] and solidShape not in
             ["sphere", "cylinder"]):
         raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-    if (solidType not in ndD_s["1varTypes"]) and (solidType not in
-            ndD_s["2varTypes"]):
+    if ((solidType not in ndD_s["1varTypes"]) and
+            (solidType not in ndD_s["2varTypes"])):
         raise NotImplementedError("Input solidType not defined")
     if solidShape not in ["C3", "sphere", "cylinder"]:
         raise NotImplementedError("Input solidShape not defined")
     if solidType == "homog_sdn" and not T298:
         raise NotImplementedError("homog_snd req. Tabs=298")
 
+
 def writeConfigFile(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)
+
+
 def writeDicts(dD, ndD, filenamebase="input_dict"):
     pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
     pickle.dump(ndD, open(filenamebase + "_ndD.p", "wb"))
+
+
 def readDicts(filenamebase="input_dict"):
     dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
     ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
     return dD, ndD
+
 
 def getConfig(inFile):
     P = ConfigParser.RawConfigParser()
     P.optionxform = str
     P.read(inFile)
     return P
+
 
 def isClose(a, b):
     if np.abs(a - b) < 1e-12:

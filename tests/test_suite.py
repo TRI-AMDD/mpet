@@ -1,15 +1,14 @@
+import errno
 import os
 import os.path as osp
 import sys
-import errno
 import time
-import ConfigParser
 
-import numpy as np
-import scipy.io as sio
 import matplotlib as mpl
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.io as sio
 # Plot defaults
 axtickfsize = 18
 labelfsize = 20
@@ -26,13 +25,11 @@ mpl.rcParams['legend.fontsize'] = legfsize
 mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
-#mpl.rcParams['text.usetex'] = True
 
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
-import mpetParamsIO as IO
-import testDefns as defs
-import plot_data as pd
+import io_utils as IO
+import test_defns as defs
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -167,7 +164,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
     ax.set_xlabel("Reference simulation time [s]")
     ax.set_ylabel("New test simulation time [s]")
     fig.savefig(osp.join(dirDict["plots"], "timeParity.png"),
-            bbox_inches="tight")
+                bbox_inches="tight")
     plt.close("all")
     return failList
 
@@ -181,8 +178,9 @@ def main(compareDir):
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
-    dirDict["out"] = osp.join(dirDict["suite"],
-                      time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    dirDict["out"] = osp.join(
+        dirDict["suite"],
+        time.strftime("%Y%m%d_%H%M%S", time.localtime()))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
 
@@ -190,29 +188,29 @@ def main(compareDir):
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
     runInfo = {
-            "test001" : defs.test001,
-            "test002" : defs.test002,
-            "test003" : defs.test003,
-            "test004" : defs.test004,
-            "test005" : defs.test005,
-            "test006" : defs.test006,
-            "test007" : defs.test007,
-            "test008" : defs.test008,
-            "test009" : defs.test009,
-            "test010" : defs.test010,
-            "test011" : defs.test011,
-            "test012" : defs.test012,
-            "test013" : defs.test013,
-            "test014" : defs.test014,
-            "test015" : defs.test015,
-            "test016" : defs.test016,
-            "test017" : defs.test017,
-            "test018" : defs.test018,
-            }
+        "test001": defs.test001,
+        "test002": defs.test002,
+        "test003": defs.test003,
+        "test004": defs.test004,
+        "test005": defs.test005,
+        "test006": defs.test006,
+        "test007": defs.test007,
+        "test008": defs.test008,
+        "test009": defs.test009,
+        "test010": defs.test010,
+        "test011": defs.test011,
+        "test012": defs.test012,
+        "test013": defs.test013,
+        "test014": defs.test014,
+        "test015": defs.test015,
+        "test016": defs.test016,
+        "test017": defs.test017,
+        "test018": defs.test018,
+        }
     runInfoAnalyt = {
-            "testAnalytCylDifn" : (defs.testAnalytCylDifn, defs.analytCylDifn),
-            "testAnalytSphDifn" : (defs.testAnalytSphDifn, defs.analytSphDifn),
-            }
+        "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+        "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+        }
 
     if compareDir is None:
         os.makedirs(dirDict["out"])

@@ -1,4 +1,3 @@
-import os
 import os.path as osp
 import shutil
 import sys
@@ -8,9 +7,10 @@ import scipy.special as spcl
 
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
+import compare_plots as cmpr
 import mpet
-import mpetParamsIO as IO
-import comparePlots as cmpr
+import io_utils as IO
+
 
 def corePlots(testDir, dirDict):
     cmpr.vt(testDir, dirDict)

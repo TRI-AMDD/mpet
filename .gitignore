@@ -35,4 +35,5 @@ todo.txt
 
 venv/
 .remarkrc
+.vim
 tox.ini

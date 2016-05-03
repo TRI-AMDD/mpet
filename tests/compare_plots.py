@@ -1,12 +1,10 @@
-import os
 import os.path as osp
-import shutil
 import sys
 
-import numpy as np
 import matplotlib as mpl
 mpl.use("TkAgg")
 import matplotlib.pyplot as plt
+import numpy as np
 # Plot defaults
 axtickfsize = 18
 labelfsize = 20
@@ -23,11 +21,11 @@ mpl.rcParams['legend.fontsize'] = legfsize
 mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
-#mpl.rcParams['text.usetex'] = True
 
 mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
 sys.path.append(mpetdir)
 import plot_data as pd
+
 
 def vt(testDir, dirDict):
     xyCmp(testDir, dirDict, "vt", "Time", "Voltage",
@@ -51,21 +49,23 @@ def elyteif(testDir, dirDict):
     xyCmp(testDir, dirDict, "elyteif", "Batt. Posn.", "Elyte curr dens",
           "Final elyte curr dens profile compare", "elyteif")
 def elytedivif(testDir, dirDict):
-    xyCmp(testDir, dirDict, "elytedivif", "Batt. Posn.", "div(elyte curr dens)",
+    xyCmp(testDir, dirDict, "elytedivif", "Batt. Posn.",
+          "div(elyte curr dens)",
           "Final div(elyte curr dens) profile compare", "elytedivif")
 def cbarLine(testDir, dirDict, trode):
     xyPartsCmp(testDir, dirDict, "cbar_" + trode, "Time", "cbar",
-          "cbar " + trode + " compare", "cbarLine_" + trode)
+               "cbar " + trode + " compare", "cbarLine_" + trode)
 def bulkpf(testDir, dirDict, trode):
     xyCmp(testDir, dirDict, "bulkpf_" + trode, "Electrode Posn.", "phi",
           "phi of bulk electrode " + trode + " compare", "bulkp_" + trode)
+
 
 def xyCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     testName = osp.basename(testDir)
     newSimOutDir = osp.join(testDir, "sim_output")
     oldSimOutDir = osp.join(dirDict["refs"], testName, "sim_output")
     plotsDir = dirDict["plots"]
-    kwargs = {"print_flag" : False, "save_flag" : False, "data_only" : True}
+    kwargs = {"print_flag": False, "save_flag": False, "data_only": True}
     new_xy = pd.show_data(newSimOutDir, plot_type=ptype, **kwargs)
     old_xy = pd.show_data(oldSimOutDir, plot_type=ptype, **kwargs)
     scl = 1.3
@@ -75,21 +75,22 @@ def xyCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     ax.legend(loc="best")
     if ptype == "elytecons":
         ttl += "\n{minval:1.6f},{maxval:1.6f}".format(
-                minval=np.min(new_xy[1]),
-                maxval=np.max(new_xy[1]))
+            minval=np.min(new_xy[1]),
+            maxval=np.max(new_xy[1]))
     ax.set_title(ttl)
     ax.set_xlabel(xlbl)
     ax.set_ylabel(ylbl)
     fname = osp.join(plotsDir, testName + "_" + fname)
     fig.savefig(fname, bbox_inches="tight")
-    plt.close('all') # no idea why plt.close(fig) leaves figs open...
+    plt.close('all')  # no idea why plt.close(fig) leaves figs open...
+
 
 def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     testName = osp.basename(testDir)
     newSimOutDir = osp.join(testDir, "sim_output")
     oldSimOutDir = osp.join(dirDict["refs"], testName, "sim_output")
     plotsDir = dirDict["plots"]
-    kwargs = {"print_flag" : False, "save_flag" : False, "data_only" : True}
+    kwargs = {"print_flag": False, "save_flag": False, "data_only": True}
     new_dataDict = pd.show_data(newSimOutDir, plot_type=ptype, **kwargs)
     old_dataDict = pd.show_data(oldSimOutDir, plot_type=ptype, **kwargs)
     new_t = pd.show_data(newSimOutDir, plot_type="vt", **kwargs)[0]
@@ -108,4 +109,4 @@ def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     fig.suptitle(ttl)
     fname = osp.join(plotsDir, testName + "_" + fname)
     fig.savefig(fname, bbox_inches="tight")
-    plt.close('all') # no idea why plt.close(fig) leaves figs open...
+    plt.close('all')  # no idea why plt.close(fig) leaves figs open...

@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 import numpy as np
 import scipy.io as sio
@@ -10,9 +10,9 @@ import plot_data
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
 CCStr = "Columns correspond to cell center positions (see discData.txt)."
 FCStr = "Columns correspond to face positions (see discData.txt)."
-genDataHdr = ("Time [s], Filling fraction of anode, " +
-        "Filling fraction of cathode, " +
-        "Voltage [V], Current [C-rate], Current [A/m^2]")
+genDataHdr = ("Time [s], Filling fraction of anode, "
+              + "Filling fraction of cathode, "
+              + "Voltage [V], Current [C-rate], Current [A/m^2]")
 
 zeroStr = "Zero is at the anode current collector."
 dccpStr = "discretization cell center positions [m]. "
@@ -42,8 +42,8 @@ simulated volume in no particular order.
 elytecHdr = ("Electrolyte Concentrations [M]\n" + RowsStr + CCStr)
 elytepHdr = ("Electrolyte Electric Potential [V]\n" + RowsStr + CCStr)
 elyteiHdr = ("Electrolyte Current Density [A/m^2]\n" + RowsStr + FCStr)
-elytediviHdr = ("Electrolyte Divergence of Current Density [A/m^3]\n" +
-        RowsStr + CCStr)
+elytediviHdr = ("Electrolyte Divergence of Current Density [A/m^3]\n"
+                + RowsStr + CCStr)
 
 seeDiscStr = "See discData.txt for particle indexing information."
 partStr = "partTrode{l}vol{j}part{i}_"
@@ -71,39 +71,41 @@ positions (see discData.txt).
 bulkpHdr = ("Bulk electrode electric potential [V]\n" + RowsStr + bulkpHdrP2)
 fnameBulkpBase = "bulkPot{l}Data.txt"
 
+
 def main(indir, genData=True, discData=True, elyteData=True,
-        csldData=True, cbarData=True, bulkpData=True):
-    ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(indir,
-            plot_type="params", print_flag=False,
-            save_flag=False, data_only=True)
+         csldData=True, cbarData=True, bulkpData=True):
+    ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(
+        indir, plot_type="params", print_flag=False, save_flag=False,
+        data_only=True)
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
     trodes = ndD_s["trodes"]
-    CrateCurr = dD_e[limtrode]["cap"] / 3600. # A/m^2
+    CrateCurr = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     psd_len_c = dD_s["psd_len"]["c"]
-    psd_num_c = ndD_s["psd_num"]["c"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
     def getTrodeStr(l):
         return ("Anode" if l == "a" else "Cathode")
     if "a" in trodes:
         psd_len_a = dD_s["psd_len"]["a"]
-        psd_num_a = ndD_s["psd_num"]["a"]
         Nv_a, Np_a = psd_len_a.shape
-    tVec, vVec = plot_data.show_data(indir, plot_type="vt",
-            print_flag=False, save_flag=False, data_only=True)
+    tVec, vVec = plot_data.show_data(
+        indir, plot_type="vt", print_flag=False, save_flag=False,
+        data_only=True)
     ntimes = len(tVec)
 
     if genData:
-        ffVec_c = plot_data.show_data(indir, plot_type="soc_c",
-                print_flag=False, save_flag=False, data_only=True)[1]
+        ffVec_c = plot_data.show_data(
+            indir, plot_type="soc_c", print_flag=False,
+            save_flag=False, data_only=True)[1]
         if "a" in trodes:
-            ffVec_a = plot_data.show_data(indir, plot_type="soc_a",
-                    print_flag=False, save_flag=False,
-                    data_only=True)[1]
+            ffVec_a = plot_data.show_data(
+                indir, plot_type="soc_a", print_flag=False,
+                save_flag=False, data_only=True)[1]
         else:
             ffVec_a = np.ones(len(tVec))
-        currVec = plot_data.show_data(indir, plot_type="curr",
-                print_flag=False, save_flag=False, data_only=True)[1]
+        currVec = plot_data.show_data(
+            indir, plot_type="curr", print_flag=False,
+            save_flag=False, data_only=True)[1]
         genMat = np.zeros((ntimes, 6))
         genMat[:, 0] = tVec
         genMat[:, 1] = ffVec_a
@@ -112,12 +114,12 @@ def main(indir, genData=True, discData=True, elyteData=True,
         genMat[:, 4] = currVec
         genMat[:, 5] = currVec * CrateCurr
         np.savetxt(os.path.join(indir, "generalData.txt"),
-                genMat, delimiter=dlm, header=genDataHdr)
+                   genMat, delimiter=dlm, header=genDataHdr)
 
     if discData:
-        cellCentersVec, facesVec = plot_data.show_data(indir,
-                plot_type="discData",
-                print_flag=False, save_flag=False, data_only=True)
+        cellCentersVec, facesVec = plot_data.show_data(
+            indir, plot_type="discData", print_flag=False,
+            save_flag=False, data_only=True)
         with open(os.path.join(indir, "discData.txt"), "w") as fo:
             print >> fo, discCCbattery
             print >> fo, ",".join(map(str, cellCentersVec))
@@ -144,37 +146,37 @@ def main(indir, genData=True, discData=True, elyteData=True,
                 Trode = getTrodeStr(l)
                 print >> fo, (Trode + " particle sizes [m]")
                 for vind in range(ndD_s["Nvol"][l]):
-                    print >> fo, ",".join(map(str,
-                        dD_s["psd_len"][l][vind, :]))
-                print >> fo, ("\n" + Trode + " particle number of discr. points")
+                    print >> fo, ",".join(
+                        map(str, dD_s["psd_len"][l][vind, :]))
+                print >> fo, (
+                    "\n" + Trode + " particle number of discr. points")
                 for vind in range(ndD_s["Nvol"][l]):
-                    print >> fo, ",".join(map(str,
-                        ndD_s["psd_num"][l][vind, :]))
+                    print >> fo, ",".join(
+                        map(str, ndD_s["psd_num"][l][vind, :]))
 
     if elyteData:
-        elytecMat = plot_data.show_data(indir,
-                plot_type="elytec",
-                print_flag=False, save_flag=False, data_only=True)[1]
-        elytepMat = plot_data.show_data(indir,
-                plot_type="elytep",
-                print_flag=False, save_flag=False, data_only=True)[1]
-        elyteiMat = plot_data.show_data(indir,
-                plot_type="elytei",
-                print_flag=False, save_flag=False, data_only=True)[1]
-        elytediviMat = plot_data.show_data(indir,
-                plot_type="elytedivi",
-                print_flag=False, save_flag=False, data_only=True)[1]
+        elytecMat = plot_data.show_data(
+            indir, plot_type="elytec", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        elytepMat = plot_data.show_data(
+            indir, plot_type="elytep", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        elyteiMat = plot_data.show_data(
+            indir, plot_type="elytei", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        elytediviMat = plot_data.show_data(
+            indir, plot_type="elytedivi", print_flag=False,
+            save_flag=False, data_only=True)[1]
         np.savetxt(os.path.join(indir, "elyteConcData.txt"),
-                elytecMat, delimiter=dlm, header=elytecHdr)
+                   elytecMat, delimiter=dlm, header=elytecHdr)
         np.savetxt(os.path.join(indir, "elytePotData.txt"),
-                elytepMat, delimiter=dlm, header=elytepHdr)
+                   elytepMat, delimiter=dlm, header=elytepHdr)
         np.savetxt(os.path.join(indir, "elyteCurrDensData.txt"),
-                elyteiMat, delimiter=dlm, header=elyteiHdr)
+                   elyteiMat, delimiter=dlm, header=elyteiHdr)
         np.savetxt(os.path.join(indir, "elyteDivCurrDensData.txt"),
-                elytediviMat, delimiter=dlm, header=elytediviHdr)
+                   elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
-        ttl_fmt = "% = {perc:2.1f}"
         dataFileName = "output_data.mat"
         dataFile = os.path.join(indir, dataFileName)
         data = sio.loadmat(dataFile)
@@ -194,22 +196,23 @@ def main(indir, genData=True, discData=True, elyteData=True,
                         sol2 = str2_base.format(l=l, i=i, j=j)
                         datay1 = data[sol1]
                         datay2 = data[sol2]
-                        filename1 = fnameSol1Base.format(l=Trode,i=i,j=j)
-                        filename2 = fnameSol2Base.format(l=Trode,i=i,j=j)
+                        filename1 = fnameSol1Base.format(l=Trode, i=i, j=j)
+                        filename2 = fnameSol2Base.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename1), datay1,
-                                delimiter=dlm, header=sol1Hdr)
+                                   delimiter=dlm, header=sol1Hdr)
                         np.savetxt(os.path.join(indir, filename2), datay2,
-                                delimiter=dlm, header=sol2Hdr)
+                                   delimiter=dlm, header=sol2Hdr)
                     else:
                         sol = str_base.format(l=l, i=i, j=j)
                         datay = data[sol]
-                        filename = fnameSolBase.format(l=Trode,i=i,j=j)
+                        filename = fnameSolBase.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
-                                delimiter=dlm, header=solHdr)
+                                   delimiter=dlm, header=solHdr)
 
     if cbarData:
-        cbarDict = plot_data.show_data(indir, plot_type="cbar_full",
-                print_flag=False, save_flag=False, data_only=True)
+        cbarDict = plot_data.show_data(
+            indir, plot_type="cbar_full", print_flag=False,
+            save_flag=False, data_only=True)
         for l in trodes:
             Trode = getTrodeStr(l)
             fname = "cbar{l}Data.txt".format(l=Trode)
@@ -220,24 +223,26 @@ def main(indir, genData=True, discData=True, elyteData=True,
             partInd = 0
             for i in range(Nv):
                 for j in range(Np):
-                    cbarHdr += "{i}/{j},".format(j=j,i=i)
+                    cbarHdr += "{i}/{j},".format(j=j, i=i)
                     cbarMat[:, partInd] = cbarDict[l][:, i, j]
                     partInd += 1
             np.savetxt(os.path.join(indir, fname), cbarMat,
-                    delimiter=dlm, header=cbarHdr)
+                       delimiter=dlm, header=cbarHdr)
 
     if bulkpData:
         if "a" in trodes:
-            bulkp_aData = plot_data.show_data(indir, plot_type="bulkp_a",
-                print_flag=False, save_flag=False, data_only=True)[1]
+            bulkp_aData = plot_data.show_data(
+                indir, plot_type="bulkp_a", print_flag=False,
+                save_flag=False, data_only=True)[1]
             fname = fnameBulkpBase.format(l="Anode")
             np.savetxt(os.path.join(indir, fname), bulkp_aData,
-                    delimiter=dlm, header=bulkpHdr)
-        bulkp_cData = plot_data.show_data(indir, plot_type="bulkp_c",
-            print_flag=False, save_flag=False, data_only=True)[1]
+                       delimiter=dlm, header=bulkpHdr)
+        bulkp_cData = plot_data.show_data(
+            indir, plot_type="bulkp_c", print_flag=False,
+            save_flag=False, data_only=True)[1]
         fname = fnameBulkpBase.format(l="Cathode")
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
-                delimiter=dlm, header=bulkpHdr)
+                   delimiter=dlm, header=bulkpHdr)
 
     return
 
