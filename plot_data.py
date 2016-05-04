@@ -223,9 +223,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for j in range(Nvol[l]):
                 sol_str = str_base.format(i=i, j=j)
                 # Remove axis ticks
-                ax[i, j].xaxis.set_major_locator(plt.NullLocator())
-                datay = data[sol_str][:, -1]
-                line, = ax[i, j].plot(times, datay)
+                ax[i,j].xaxis.set_major_locator(plt.NullLocator())
+                datay = data[sol_str][:,-1]
+                line, = ax[i,j].plot(times, datay)
         return fig, ax
 
     # Plot SoC profile
@@ -336,8 +336,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
             dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
             dxd2 = dxvec
-            c_edges = ((2*datay_c[:, 1:]*datay_c[:, :-1])
-                       / (datay_c[:, 1:] + datay_c[:, :-1] + 1e-20))
+            c_edges = ((2*datay_c[:,1:]*datay_c[:,:-1])
+                       / (datay_c[:,1:] + datay_c[:,:-1] + 1e-20))
             porosTmp = porosvec**(1.5)
             poros_edges = ((2*porosTmp[1:]*porosTmp[:-1])
                            / (porosTmp[1:] + porosTmp[:-1] + 1e-20))
@@ -390,7 +390,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if fplot:
             line1, = ax.plot(datax, datay, '-')
         else:
-            line1, = ax.plot(datax, datay[t0ind, :], '-')
+            line1, = ax.plot(datax, datay[t0ind,:], '-')
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         if fplot:
@@ -443,24 +443,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     sol2_str = str2_base.format(i=i, j=j)
                     if Nvol[l] > xLblNCutoff:
                         # Remove axis ticks
-                        ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                        ax[i,j].xaxis.set_major_locator(plt.NullLocator())
                     else:
-                        ax[i, j].set_xlabel(xLbl)
-                        ax[i, j].set_ylabel(yLbl)
+                        ax[i,j].set_xlabel(xLbl)
+                        ax[i,j].set_ylabel(yLbl)
                     datay1 = data[sol1_str][0]
                     datay2 = data[sol2_str][0]
-                    line1, = ax[i, j].plot(times, datay1)
-                    line2, = ax[i, j].plot(times, datay2)
+                    line1, = ax[i,j].plot(times, datay1)
+                    line2, = ax[i,j].plot(times, datay2)
                 else:
                     sol_str = str_base.format(i=i, j=j)
                     if Nvol[l] > xLblNCutoff:
                         # Remove axis ticks
-                        ax[i, j].xaxis.set_major_locator(plt.NullLocator())
+                        ax[i,j].xaxis.set_major_locator(plt.NullLocator())
                     else:
-                        ax[i, j].set_xlabel(xLbl)
-                        ax[i, j].set_ylabel(yLbl)
+                        ax[i,j].set_xlabel(xLbl)
+                        ax[i,j].set_ylabel(yLbl)
                     datay = data[sol_str][0]
-                    line, = ax[i, j].plot(times, datay)
+                    line, = ax[i,j].plot(times, datay)
         return fig, ax
 
     # Plot all solid concentrations or potentials
@@ -493,41 +493,41 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ylim = (-10, 20)
         for i in range(Np):
             for j in range(Nv):
-                lens[i, j] = psd_len[l][j, i]
+                lens[i,j] = psd_len[l][j,i]
                 if type2c:
-                    sol1[i, j] = str1_base.format(l=l, i=i, j=j)
-                    sol2[i, j] = str2_base.format(l=l, i=i, j=j)
-                    datay1 = data[sol1[i, j]][t0ind]
-                    datay2 = data[sol2[i, j]][t0ind]
+                    sol1[i,j] = str1_base.format(l=l, i=i, j=j)
+                    sol2[i,j] = str2_base.format(l=l, i=i, j=j)
+                    datay1 = data[sol1[i,j]][t0ind]
+                    datay2 = data[sol2[i,j]][t0ind]
                     numy = len(datay1)
-                    datax = np.linspace(0, lens[i, j], numy)
-                    line1, = ax[i, j].plot(datax, datay1)
-                    line2, = ax[i, j].plot(datax, datay2)
-                    lines1[i, j] = line1
-                    lines2[i, j] = line2
+                    datax = np.linspace(0, lens[i,j], numy)
+                    line1, = ax[i,j].plot(datax, datay1)
+                    line2, = ax[i,j].plot(datax, datay2)
+                    lines1[i,j] = line1
+                    lines2[i,j] = line2
                 else:
-                    sol[i, j] = str_base.format(l=l, i=i, j=j)
-                    datay = data[sol[i, j]][t0ind]
+                    sol[i,j] = str_base.format(l=l, i=i, j=j)
+                    datay = data[sol[i,j]][t0ind]
                     numy = len(datay)
-                    datax = np.linspace(0, lens[i, j], numy)
-                    line, = ax[i, j].plot(datax, datay)
-                    lines[i, j] = line
+                    datax = np.linspace(0, lens[i,j], numy)
+                    line, = ax[i,j].plot(datax, datay)
+                    lines[i,j] = line
                 # Remove axis ticks
-                ax[i, j].set_ylim(ylim)
-                ax[i, j].set_xlim((0, lens[i, j]))
+                ax[i,j].set_ylim(ylim)
+                ax[i,j].set_xlim((0, lens[i,j]))
 
         def init():
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
                     if type2c:
-                        numy = len(data[sol1[i, j]][t0ind])
+                        numy = len(data[sol1[i,j]][t0ind])
                         maskTmp = np.zeros(numy)
-                        lines1[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
-                        lines2[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines1[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines2[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
                     else:
-                        numy = len(data[sol[i, j]][t0ind])
+                        numy = len(data[sol[i,j]][t0ind])
                         maskTmp = np.zeros(numy)
-                        lines[i, j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
             else:
@@ -537,13 +537,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for i in range(Npart[l]):
                 for j in range(Nvol[l]):
                     if type2c:
-                        datay1 = data[sol1[i, j]][tind]
-                        datay2 = data[sol2[i, j]][tind]
-                        lines1[i, j].set_ydata(datay1)
-                        lines2[i, j].set_ydata(datay2)
+                        datay1 = data[sol1[i,j]][tind]
+                        datay2 = data[sol2[i,j]][tind]
+                        lines1[i,j].set_ydata(datay1)
+                        lines2[i,j].set_ydata(datay2)
                     else:
-                        datay = data[sol[i, j]][tind]
-                        lines[i, j].set_ydata(datay)
+                        datay = data[sol[i,j]][tind]
+                        lines[i,j].set_ydata(datay)
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
             else:
@@ -568,7 +568,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                             + "partTrode{t}vol{i}part{j}".format(
                                 t=trode, i=i, j=j)
                             + sStr + "cbar")
-                        dataCbar[trode][tInd, i, j] = (
+                        dataCbar[trode][tInd,i,j] = (
                             data[dataStr][0][tInd])
         if data_only:
             return dataCbar
@@ -608,13 +608,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(lvec), squeeze=False)
         ttlx = 0.5 if len(lvec) < 2 else 1.1
-        ttl = axs[0, 0].text(
+        ttl = axs[0,0].text(
             ttlx, 1.05, ttl_fmt.format(perc=0),
-            transform=axs[0, 0].transAxes, verticalalignment="center",
+            transform=axs[0,0].transAxes, verticalalignment="center",
             horizontalalignment="center")
         collection = np.empty(len(lvec), dtype=object)
         for indx, l in enumerate(lvec):
-            ax = axs[0, indx]
+            ax = axs[0,indx]
             # Get particle sizes (and max size) (length-based)
             lens = psd_len[l]
             len_max = np.max(lens)
@@ -650,10 +650,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             rects = np.empty((Nvol[l], Npart[l]), dtype=object)
             color = 'green'  # value is irrelevant -- it will be animated
             for (i, j), c in np.ndenumerate(sizes):
-                size = sizes[i, j]
+                size = sizes[i,j]
                 center = np.array([spacing*(i + 0.5), spacing*(j + 0.5)])
                 bottom_left = center - size / 2
-                rects[i, j] = plt.Rectangle(
+                rects[i,j] = plt.Rectangle(
                     bottom_left, size, size, color=color)
             # Create a group of rectange "patches" from the rects array
             collection[indx] = mcollect.PatchCollection(rects.reshape(-1))
@@ -664,7 +664,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         def init():
             for indx, l in enumerate(lvec):
-                cbar_mat = dataCbar[l][0, :, :]
+                cbar_mat = dataCbar[l][0,:,:]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
                 ttl.set_text('')
@@ -675,7 +675,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
         def animate(tind):
             for indx, l in enumerate(lvec):
-                cbar_mat = dataCbar[l][tind, :, :]
+                cbar_mat = dataCbar[l][tind,:,:]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
             t_current = times[tind]

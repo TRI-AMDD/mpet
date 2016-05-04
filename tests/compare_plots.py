@@ -104,8 +104,8 @@ def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     for i in range(Np):
         for j in range(Nv):
             ax = axs[i, j]
-            ax.plot(new_t, new_data[:, j, i], label="new")
-            ax.plot(old_t, old_data[:, j, i], linestyle="--", label="ref")
+            ax.plot(new_t, new_data[:,j,i], label="new")
+            ax.plot(old_t, old_data[:,j,i], linestyle="--", label="ref")
     fig.suptitle(ttl)
     fname = osp.join(plotsDir, testName + "_" + fname)
     fig.savefig(fname, bbox_inches="tight")

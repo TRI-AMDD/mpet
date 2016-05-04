@@ -80,8 +80,8 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             continue
         if "Difn" in testStr:
             t_ref = dD_s["t_ref"]
-            L_part = dD_s["psd_len"]["c"][0, 0]
-            nx_part = ndD_s["psd_num"]["c"][0, 0]
+            L_part = dD_s["psd_len"]["c"][0,0]
+            nx_part = ndD_s["psd_num"]["c"][0,0]
             t_refPart = L_part**2 / dD_e["c"]["D"]
             # Skip first time point: analytical solution fails at t=0.
             t0ind = 2
@@ -92,7 +92,7 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             delC = cmax - cmin
             # Skip center mesh point and first time points:
             # analytical solutions have issues with r=0 and t=0
-            cmat = cmat[t0ind:, r0ind:]
+            cmat = cmat[t0ind:,r0ind:]
             nt = len(tvecA)
             # Skip center mesh point: analytical solution as sin(r)/r
             xvecA = np.linspace(0., 1., nx_part)[1:]
@@ -100,8 +100,8 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             theta = runInfo[testStr][1](R, T)
             theta = delC*theta + cmin
             for tind in range(nt):
-                cvec = cmat[tind, :]
-                thetavec = theta[tind, :]
+                cvec = cmat[tind,:]
+                thetavec = theta[tind,:]
                 if np.max(np.abs(thetavec - cvec)) > tol:
                     print(testStr, "Fail from tolerance")
                     failList.append(testStr)

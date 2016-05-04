@@ -488,7 +488,7 @@ def get_Mmat(shape, N):
         vol_vec = Vp * volfrac_vec
         M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                         shape=(N, N), format="csr")
-        M1[1, 0] = M1[-2, -1] = 1./4
+        M1[1,0] = M1[-2,-1] = 1./4
         M2 = sprs.diags(vol_vec, 0, format="csr")
         Mmat = M1*M2
     return Mmat

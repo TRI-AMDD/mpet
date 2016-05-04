@@ -107,12 +107,12 @@ def main(indir, genData=True, discData=True, elyteData=True,
             indir, plot_type="curr", print_flag=False,
             save_flag=False, data_only=True)[1]
         genMat = np.zeros((ntimes, 6))
-        genMat[:, 0] = tVec
-        genMat[:, 1] = ffVec_a
-        genMat[:, 2] = ffVec_c
-        genMat[:, 3] = vVec
-        genMat[:, 4] = currVec
-        genMat[:, 5] = currVec * CrateCurr
+        genMat[:,0] = tVec
+        genMat[:,1] = ffVec_a
+        genMat[:,2] = ffVec_c
+        genMat[:,3] = vVec
+        genMat[:,4] = currVec
+        genMat[:,5] = currVec * CrateCurr
         np.savetxt(os.path.join(indir, "generalData.txt"),
                    genMat, delimiter=dlm, header=genDataHdr)
 
@@ -221,7 +221,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
             for i in range(Nv):
                 for j in range(Np):
                     cbarHdr += "{i}/{j},".format(j=j, i=i)
-                    cbarMat[:, partInd] = cbarDict[l][:, i, j]
+                    cbarMat[:,partInd] = cbarDict[l][:,i,j]
                     partInd += 1
             np.savetxt(os.path.join(indir, fname), cbarMat,
                        delimiter=dlm, header=cbarHdr)

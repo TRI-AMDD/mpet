@@ -132,25 +132,25 @@ class ModCell(dae.daeModel):
                     "portTrode{l}vol{i}".format(l=l, i=i), dae.eOutletPort,
                     self, "Electrolyte port to particles")
                 for j in range(Np):
-                    self.portsOutBulk[l][i, j] = ports.portFromBulk(
+                    self.portsOutBulk[l][i,j] = ports.portFromBulk(
                         "portTrode{l}vol{i}part{j}".format(l=l, i=i, j=j),
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
-                    solidType = ndD_e[l]["indvPart"][i, j]['type']
+                    solidType = ndD_e[l]["indvPart"][i,j]['type']
                     if solidType in ndD_s["2varTypes"]:
                         pMod = mod_electrodes.mod2var
                     elif solidType in ndD_s["1varTypes"]:
                         pMod = mod_electrodes.mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
-                    self.particles[l][i, j] = pMod(
+                    self.particles[l][i,j] = pMod(
                         "partTrode{l}vol{i}part{j}".format(l=l, i=i, j=j),
-                        self, ndD=ndD_e[l]["indvPart"][i, j],
+                        self, ndD=ndD_e[l]["indvPart"][i,j],
                         ndD_s=ndD_s)
                     self.ConnectPorts(self.portsOutLyte[l][i],
-                                      self.particles[l][i, j].portInLyte)
-                    self.ConnectPorts(self.portsOutBulk[l][i, j],
-                                      self.particles[l][i, j].portInBulk)
+                                      self.particles[l][i,j].portInLyte)
+                    self.ConnectPorts(self.portsOutBulk[l][i,j],
+                                      self.particles[l][i,j].portInBulk)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -173,8 +173,8 @@ class ModCell(dae.daeModel):
             tmp = 0
             for i in range(Nvol[l]):
                 for j in range(Npart[l]):
-                    Vj = ndD["psd_vol_FracVol"][l][i, j]
-                    tmp += self.particles[l][i, j].cbar() * Vj * dx
+                    Vj = ndD["psd_vol_FracVol"][l][i,j]
+                    tmp += self.particles[l][i,j].cbar() * Vj * dx
             eq.Residual -= tmp
 
         # Define dimensionless j_plus for each electrode volume
@@ -188,8 +188,8 @@ class ModCell(dae.daeModel):
                 # sum over particle volumes in given electrode volume
                 for j in range(Npart[l]):
                     # The volume of this particular particle
-                    Vj = ndD["psd_vol_FracVol"][l][i, j]
-                    res += self.particles[l][i, j].dcbardt() * Vj
+                    Vj = ndD["psd_vol_FracVol"][l][i,j]
+                    res += self.particles[l][i,j].dcbardt() * Vj
                 eq.Residual = self.j_plus[l](i) - res
 
         # Define output port variables
@@ -207,7 +207,7 @@ class ModCell(dae.daeModel):
                     eq = self.CreateEquation(
                         "portout_pm_trode{l}v{i}p{j}".format(i=i, j=j, l=l))
                     eq.Residual = (self.phi_part[l](i, j) -
-                                   self.portsOutBulk[l][i, j].phi_m())
+                                   self.portsOutBulk[l][i,j].phi_m())
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
@@ -256,25 +256,25 @@ class ModCell(dae.daeModel):
             for i in range(Nvol[l]):
                 phi_bulk = self.phi_bulk[l](i)
                 for j in range(Npart[l]):
-                    G_l = ndD["G"][l][i, j]
+                    G_l = ndD["G"][l][i,j]
                     phi_n = self.phi_part[l](i, j)
                     if j == 0:  # reference bulk phi
                         phi_l = phi_bulk
                     else:
-                        phi_l = self.phi_part[l](i, j - 1)
+                        phi_l = self.phi_part[l](i, j-1)
                     if j == (Npart[l] - 1):  # No particle at end of "chain"
                         G_r = 0
                         phi_r = phi_n
                     else:
-                        G_r = ndD["G"][l][i, j + 1]
-                        phi_r = self.phi_part[l](i, j + 1)
+                        G_r = ndD["G"][l][i,j+1]
+                        phi_r = self.phi_part[l](i, j+1)
                     # charge conservation equation around this particle
                     eq = self.CreateEquation(
                         "phi_ac_trode{l}vol{i}part{j}".format(i=i, l=l, j=j))
                     if simPartCond:
                         # -dcsbar/dt = I_l - I_r
                         eq.Residual = (
-                            self.particles[l][i, j].dcbardt()
+                            self.particles[l][i,j].dcbardt()
                             + ((-G_l * (phi_n - phi_l))
                                - (-G_r * (phi_r - phi_n))))
                     else:
