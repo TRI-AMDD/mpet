@@ -73,10 +73,14 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["randomSeed"] = P_s.getboolean('Sim Params', 'randomSeed')
     except configparser.NoOptionError:
         ndD_s["randomSeed"] = False
+    try:
+        ndD_s["seed"] = P_s.getint('Sim Params', 'seed')
+    except configparser.NoOptionError:
+        ndD_s["seed"] = 10
     if ndD_s["randomSeed"]:
         # This should affect all calls to np.random throughout the
         # simulation.
-        np.random.seed(10)
+        np.random.seed(ndD_s["seed"])
     dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
