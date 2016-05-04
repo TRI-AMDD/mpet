@@ -2,7 +2,8 @@ import os
 import sys
 
 import matplotlib as mpl
-# To avoid issues with DAE Tools Qt4 backend
+# DAE Tools uses Qt4Agg, so we might as well use the same.
+# Any installed interactive backend other that Qt5Agg should work.
 mpl.use("Qt4Agg")
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
