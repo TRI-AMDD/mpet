@@ -106,18 +106,14 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     out1 = ""
     try:
         # Git option, if it works -- commit info and current diff
-        p1 = subp.Popen(
-            ['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
-            stdout=subp.PIPE, stderr=subp.PIPE)
-        out1, err1 = p1.communicate()
-        p2 = subp.Popen(['git', '-C', localDir, 'diff'],
-                        stdout=subp.PIPE, stderr=subp.PIPE)
-        out2, err2 = p2.communicate()
-        p3 = subp.Popen(
+        out1 = subp.check_output(['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
+                                 stderr=subp.STDOUT, universal_newlines=True)
+        out2 = subp.check_output(['git', '-C', localDir, 'diff'],
+                                 stderr=subp.STDOUT, universal_newlines=True)
+        out3 = subp.check_output(
             ['git', '-C', localDir, 'rev-parse', '--abbrev-ref', 'HEAD'],
-            stdout=subp.PIPE, stderr=subp.PIPE)
-        out3, err3 = p3.communicate()
-    except OSError:
+            stderr=subp.STDOUT, universal_newlines=True)
+    except subp.CalledProcessError:
         pass
     if out1 != "":
         # Store commit info to file, as well as how to patch if
