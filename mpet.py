@@ -179,11 +179,12 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     tmpDir_name = "sim_output"
     tmpDir = os.path.join(os.getcwd(), tmpDir_name)
     try:
-        shutil.rmtree(tmpDir)
+        os.makedirs(tmpDir)
     except OSError as exception:
-        if exception.errno != errno.ENOENT:
+        if exception.errno != errno.EEXIST:
             raise
-    shutil.copytree(outdir, tmpDir)
+    for fname in os.listdir(outdir):
+        shutil.copy(os.path.join(outdir, fname), tmpDir)
 
     if not keepArchive:
         shutil.rmtree(outdir)
