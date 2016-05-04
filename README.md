@@ -2,10 +2,19 @@
 
 ## Installation
 
-1.  Install `python`, `numpy`, `scipy`, `matplotlib`
-    - Linux: try using your package manager
-    - Windows: try [WinPython](https://winpython.github.io)
+1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4`
+    - Linux: Try using your package manager
+    - Windows: Use Anaconda
+        - Remove any other Python installation
+        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
+        - Open `cmd.exe`
+        - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
+        - Say "y" when prompted. This may take several minutes.
 2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
+    - Get the version corresponding to your operating system (and py34 if on Windows)
+
+If you want to use DAE Tools with a different version of Python3, you can compile it from source as
+described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
 
@@ -18,12 +27,11 @@
    optionally one (the same or separate file) for the anode.
 4. Edit the material parameters file(s) serving as the electrode
    materials
-5. Run script, passing `params_system.py` as an argument (try with/without the 2):
-   `python2 mpet.py params.py`
+5. Run script, passing `params_system.py` as an argument (try with/without the 3, or with 3.4):
+   `python[3] mpet.py params_system.py`
 
-The software will save the simulation output data in a folder called
-`sim_output` and will also keep a time-stamped copy in a folder called
-`history`. Each output directory should contain
+The software will save the simulation output data in a folder called `sim_output` and will also
+keep a time-stamped copy in a folder called `history`. Each output directory should contain
 - the output data (`.mat` file)
 - copies of the input parameters files defining the simulation
 - a copy of the daetools config parameters (e.g. solver tolerances)
@@ -42,7 +50,7 @@ the IDAS:MaxNumSteps parameter to 100000. This can be found in the
 
 1.  Analyze output with `plot_data.py` (pass output data directory, then
     plot-type as arguments)
-    - e.g., voltage plot: `python[2] plot_data.py sim_output v`
+    - e.g., voltage plot: `python plot_data.py sim_output v`
     - other options (`full`, `c`, `a` indicate full cell, cathode, and anode):
       - `v` -- voltage vs filling fraction
       - `curr` -- current vs time
@@ -54,12 +62,12 @@ the IDAS:MaxNumSteps parameter to 100000. This can be found in the
       - `bulkp_{c,a}` -- macroscopic electrode solid phise potential (movie)
       - `soc_{c,a}` -- electrode state of charge
 2.  Alternatively, convert the output to plain text (csv) format using
-    `python[2] outmat2txt.py sim_output` (or replace `sim_output` with
+    `python outmat2txt.py sim_output` (or replace `sim_output` with
     any subfolder in the `history` folder). Then analyze using whatever
     tools you prefer.
 
 If you want to save output to a movie (or figure), add `save` as an extra
-argument to `plot_data.py`: `python2 plot_data.py sim_output cbar save`.
+argument to `plot_data.py`: `python plot_data.py sim_output cbar save`.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
@@ -77,7 +85,7 @@ specific cases. To run the tests do the following:
    [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
    the tests subdirectory. This should give make a number of
    directories of the form `tests/ref_outputs/test###`.
-2. Within the tests directory, run `python[2] testSuite.py`. This will
+2. Within the tests directory, run `python test_suite.py`. This will
    run a number of simulations and compare their output to those
    outputs from the downloaded reference outputs along with a few
    comparisons of simulations to their corresponding analytical
