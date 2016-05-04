@@ -5,7 +5,7 @@ import sys
 import time
 
 import matplotlib as mpl
-mpl.use("TkAgg")
+mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
@@ -76,7 +76,7 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             # If it's an error _other than_ the file not being there
             if exception.errno != errno.ENOENT:
                 raise
-            print "No simulation data for " + testStr
+            print("No simulation data for " + testStr)
             continue
         if "Difn" in testStr:
             t_ref = dD_s["t_ref"]
@@ -103,7 +103,7 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
                 cvec = cmat[tind, :]
                 thetavec = theta[tind, :]
                 if np.max(np.abs(thetavec - cvec)) > tol:
-                    print testStr, "Fail from tolerance"
+                    print(testStr, "Fail from tolerance")
                     failList.append(testStr)
                     break
     return failList
@@ -125,7 +125,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             # If it's an error _other than_ the file not being there
             if exception.errno != errno.ENOENT:
                 raise
-            print "No simulation data for " + testStr
+            print("No simulation data for " + testStr)
             continue
         refData = sio.loadmat(refDataFile)
         for varKey in refData.keys():
@@ -141,19 +141,19 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 varDataRef = refData[varKey]
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
-                print testStr, "Fail from ValueError"
+                print(testStr, "Fail from ValueError")
                 failList.append(testStr)
                 continue
             except KeyError:
-                print testStr, "Fail from KeyError"
+                print(testStr, "Fail from KeyError")
                 failList.append(testStr)
                 continue
             # TODO -- What is the right way to compare here?
             absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
             if np.max(diffMat) > absTol:
-                print testStr, "Fail from tolerance"
-                print "variable failing:", varKey
-                print "max error:", np.max(diffMat)
+                print(testStr, "Fail from tolerance")
+                print("variable failing:", varKey)
+                print("max error:", np.max(diffMat))
                 failList.append(testStr)
 
     scl = 1.3
@@ -170,7 +170,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
 
 def show_fails(failList):
     for fail in failList:
-        print (fail + " differs from the reference outputs!")
+        print((fail + " differs from the reference outputs!"))
 
 def main(compareDir):
     pflag = False
@@ -225,15 +225,15 @@ def main(compareDir):
     failListAnalyt = compare_with_analyt(runInfoAnalyt, dirDict, tol=1e-4)
 
     if len(failList) > 0:
-        print "Comparison fails:"
+        print("Comparison fails:")
         show_fails(failList)
     else:
-        print "All comparison tests passed!"
+        print("All comparison tests passed!")
     if len(failListAnalyt) > 0:
-        print "Analytical fails:"
+        print("Analytical fails:")
         show_fails(failListAnalyt)
     else:
-        print "All analytical tests passed!"
+        print("All analytical tests passed!")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -244,4 +244,4 @@ if __name__ == "__main__":
     main(compareDir)
     timeEnd = time.time()
     tTot = timeEnd - timeStart
-    print "Total test time:", tTot, "s"
+    print("Total test time:", tTot, "s")

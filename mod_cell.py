@@ -160,7 +160,7 @@ class ModCell(dae.daeModel):
         ndD = self.ndD
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
-        Nlyte = np.sum(Nvol.values())
+        Nlyte = np.sum(list(Nvol.values()))
 
         # Define the overall filling fraction in the electrodes
         for l in trodes:
@@ -417,7 +417,7 @@ class ModCell(dae.daeModel):
         limtrode = ("c" if ndD["z"] < 1 else "a")
         # Discretization
         # The lengths are nondimensionalized by the cathode length
-        dxvec = np.empty(np.sum(Nvol.values()) + 2, dtype=object)
+        dxvec = np.empty(np.sum(list(Nvol.values())) + 2, dtype=object)
         if Nvol["a"]:
             dxa = Nvol["a"] * [ndD["L"]["a"]/Nvol["a"]]
         else:

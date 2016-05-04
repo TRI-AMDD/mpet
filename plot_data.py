@@ -2,8 +2,9 @@ import os
 import sys
 
 import matplotlib as mpl
-# To avoid issues with DAE Tools Qt4 backend
-mpl.use("TkAgg")
+# DAE Tools uses Qt4Agg, so we might as well use the same.
+# Any installed interactive backend other that Qt5Agg should work.
+mpl.use("Qt4Agg")
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
@@ -112,64 +113,64 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Print relevant simulation info
     if print_flag:
-        print "profileType:", profileType
+        print("profileType:", profileType)
 #        for i in trodes:
 #            print "PSD_{l}:".format(l=l)
 #            print psd_len[l].transpose()
 #            print "Actual psd_mean [nm]:", np.mean(psd_len[l])
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
-        print "Cell structure:"
+        print("Cell structure:")
         print(("porous anode | " if Nvol["a"] else "flat anode | ")
               + ("sep | " if Nvol["s"] else "") + "porous cathode")
         if Nvol["a"]:
-            print "capacity ratio cathode:anode, 'z':", ndD_s["z"]
+            print("capacity ratio cathode:anode, 'z':", ndD_s["z"])
         for trode in trodes:
-            print "solidType_{t}:".format(t=trode), ndD_e[trode]['type']
-            print "solidShape_{t}".format(t=trode), ndD_e[trode]['shape']
-            print "rxnType_{t}:".format(t=trode), ndD_e[trode]['rxnType']
+            print("solidType_{t}:".format(t=trode), ndD_e[trode]['type'])
+            print("solidShape_{t}".format(t=trode), ndD_e[trode]['shape'])
+            print("rxnType_{t}:".format(t=trode), ndD_e[trode]['rxnType'])
         if profileType == "CC":
-            print "C_rate:", dD_s['Crate']
-            print "current:", dD_s['currset'], "A/m^2"
+            print("C_rate:", dD_s['Crate'])
+            print("current:", dD_s['currset'], "A/m^2")
         else:  # CV
-            print "Vset:", dD_s['Vset']
+            print("Vset:", dD_s['Vset'])
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
               np.array(dD_s['psd_mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
               np.array(dD_s['psd_stddev']["c"])*Lfac)
 #        print "reg sln params:"
 #        print ndD["Omga"]
-        print "ndim B_c:", ndD_e["c"]["B"]
+        print("ndim B_c:", ndD_e["c"]["B"])
         if Nvol["s"]:
-            print "Nvol_s:", Nvol["s"]
-        print "Nvol_c:", Nvol["c"]
+            print("Nvol_s:", Nvol["s"])
+        print("Nvol_c:", Nvol["c"])
         if Nvol["a"]:
-            print "Nvol_a:", Nvol["a"]
-        print "Npart_c:", Npart["c"]
+            print("Nvol_a:", Nvol["a"])
+        print("Npart_c:", Npart["c"])
         if Nvol["a"]:
-            print "Npart_a:", Npart["a"]
-        print "Dp [m^2/s]:", dD_s['Dp']
-        print "Dm [m^2/s]:", dD_s['Dm']
-        print "Damb [m^2/s]:", dD_s['Damb']
-        print "td [s]:", dD_s["td"]
+            print("Npart_a:", Npart["a"])
+        print("Dp [m^2/s]:", dD_s['Dp'])
+        print("Dm [m^2/s]:", dD_s['Dm'])
+        print("Damb [m^2/s]:", dD_s['Damb'])
+        print("td [s]:", dD_s["td"])
         for trode in trodes:
-            print "k0_{t} [A/m^2]:".format(t=trode), dD_e[trode]['k0']
+            print("k0_{t} [A/m^2]:".format(t=trode), dD_e[trode]['k0'])
             rxnType = ndD_e[trode]['rxnType']
             if rxnType == "BV":
-                print "alpha_" + trode + ":", ndD_e[trode]['alpha']
+                print("alpha_" + trode + ":", ndD_e[trode]['alpha'])
             elif rxnType in ["Marcus", "MHC"]:
-                print "lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"]
+                print("lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"])
             if ndD_s['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- " +
                       "dim_mcond [S/m]: " + str(dD_s['mcond'][trode]))
             else:
-                print trode + " bulk conductivity loss: No"
+                print(trode + " bulk conductivity loss: No")
             try:
                 simSurfCond = ndD_e[trode]['simSurfCond']
                 if simSurfCond:
                     print(trode + " surface conductivity loss: Yes -- " +
                           "dim_scond [S]: " + str(dD_e[trode]['scond']))
                 else:
-                    print trode + " surface conductivity loss: No"
+                    print(trode + " surface conductivity loss: No")
             except:
                 pass
 #            if ndD['simSurfCond'][l]:
@@ -234,7 +235,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             return times*td, ffvec
         fig, ax = plt.subplots()
-        print ffvec[-1]
+        print(ffvec[-1])
         ax.plot(times*td, ffvec)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
@@ -268,7 +269,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             return times*td, cavg
         np.set_printoptions(precision=8)
-        print cavg
+        print(cavg)
         ax.plot(times*td, cavg)
         return fig, ax
 
@@ -393,7 +394,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.axvline(x=L_a, linestyle='--', color='g')
         ax.axvline(x=(L_a+L_s), linestyle='--', color='g')
         if fplot:
-            print "time =", times[t0ind]*td, "s"
+            print("time =", times[t0ind]*td, "s")
             if save_flag:
                 fig.savefig("mpet_{pt}.png".format(pt=plot_type),
                             bbox_inches="tight")
