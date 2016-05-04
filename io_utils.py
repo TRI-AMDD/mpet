@@ -330,14 +330,14 @@ def getDictsFromConfigs(P_s, P_e):
                 # Bring in a copy of the nondimensional parameters
                 # we've calculated so far which are the same for
                 # all particles.
-                ndD_e[trode]["indvPart"][i, j] = ndD_e[trode].copy()
+                ndD_e[trode]["indvPart"][i,j] = ndD_e[trode].copy()
                 # This creates a reference for shorthand.
-                ndD_tmp = ndD_e[trode]["indvPart"][i, j]
+                ndD_tmp = ndD_e[trode]["indvPart"][i,j]
                 # This specific particle dimensions
-                ndD_tmp["N"] = ndD_s["psd_num"][trode][i, j]
-                plen = dD_s["psd_len"][trode][i, j]
-                parea = dD_s["psd_area"][trode][i, j]
-                pvol = dD_s["psd_vol"][trode][i, j]
+                ndD_tmp["N"] = ndD_s["psd_num"][trode][i,j]
+                plen = dD_s["psd_len"][trode][i,j]
+                parea = dD_s["psd_area"][trode][i,j]
+                pvol = dD_s["psd_vol"][trode][i,j]
                 ndD_tmp["kappa"] = (
                     dD_e[trode]['kappa']
                     / (k*T_ref*dD_e[trode]['rho_s']*plen**2))
