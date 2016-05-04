@@ -5,7 +5,7 @@ import sys
 import time
 
 import matplotlib as mpl
-mpl.use("TkAgg")
+mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio

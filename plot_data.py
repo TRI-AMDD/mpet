@@ -3,7 +3,7 @@ import sys
 
 import matplotlib as mpl
 # To avoid issues with DAE Tools Qt4 backend
-mpl.use("TkAgg")
+mpl.use("Qt4Agg")
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
