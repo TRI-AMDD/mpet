@@ -1,3 +1,12 @@
+"""Helper functions for interacting with system paramters.
+
+This module provides functions for various data format exchanges
+ - config files (on disk) <--> dictionaries of parameters (in memory)
+ - dictionaries of parameters (in memory) <--> dictionaries of parameters ("pickled" on disk
+
+It also has various other functions used in the process for things such as generating
+distributions from input means and standard deviations.
+"""
 import ast
 import configparser
 import os

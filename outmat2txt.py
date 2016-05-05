@@ -1,3 +1,4 @@
+"""This can be called to convert the default simulation output (.mat file) to csv files."""
 import os
 import sys
 

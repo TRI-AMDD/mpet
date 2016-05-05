@@ -1,3 +1,9 @@
+"""Functions used in the simulation which cannot be represented by simple analytical functions.
+
+These functions are handled here because they cannot be written in a form that DAE Tools knows how
+to automatically differentiate. For example, they may contain `if` statements or a function from an
+external library that the DAE Tools library doesn't know about.
+"""
 import numpy as np
 import scipy.interpolate as sintrp
 
