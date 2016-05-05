@@ -1,3 +1,16 @@
+"""These models define individual particles of active material.
+
+This includes the equations for both 1-parameter models and 2-parameters models defining
+ - mass conservation (concentration evolution)
+ - reaction rate at the surface of the particles
+In each model class it has options for different types of particles:
+ - homogeneous
+ - Fick-like diffusion
+ - Cahn-Hilliard (with reaction boundary condition)
+ - Allen-Cahn (with reaction throughout the particle)
+These models can be instantiated from the mod_cell module to simulate various types of active
+materials within a battery electrode.
+"""
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs

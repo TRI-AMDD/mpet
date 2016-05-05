@@ -1,3 +1,9 @@
+"""This module defines the actual simulation to be caried out.
+
+In this, the model(s) are created and their variables are given initial conditions (if they are
+differential variables) or initial guesses (if they never appear in equations in which they have
+been differentiated in time).
+"""
 import os.path as osp
 
 import daetools.pyDAE as dae

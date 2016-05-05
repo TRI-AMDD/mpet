@@ -1,3 +1,4 @@
+"""The main module that organizes the simulation and manages data IO."""
 import errno
 import glob
 import os

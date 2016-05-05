@@ -1,3 +1,4 @@
+"""Helper functions to get information about the mesh/geometry of the simulated particles."""
 import numpy as np
 
 

@@ -1,3 +1,12 @@
+"""The model defining the macroscopic cell.
+
+This includes the equations defining
+ - transport in the electrolyte
+ - overall quantities such as current and voltage and their specification
+ - overall filling fraction of each electrode
+ - potential drop along the electrodes
+ - potential drop between simulated particles
+"""
 import daetools.pyDAE as dae
 import numpy as np
 

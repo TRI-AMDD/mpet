@@ -1,3 +1,4 @@
+"""This defines the ports by which mod_cell interacts with mod_electrodes."""
 import daetools.pyDAE as dae
 
 mole_frac_t = dae.daeVariableType(
