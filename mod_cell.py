@@ -246,7 +246,7 @@ class ModCell(dae.daeModel):
                     # Potential at current at current collector is
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
-                dx = 1./Nvol[trode]
+                dx = ndD["L"][trode]/Nvol[trode]
                 RHS_phi_tmp = -np.diff(
                     -porosvec*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
