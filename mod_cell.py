@@ -36,16 +36,16 @@ class ModCell(dae.daeModel):
             self.DmnCell["s"] = dae.daeDomain(
                 "DmnCell_s", self, dae.unit(),
                 "Simulated volumes in the separator")
-        for l in trodes:
-            self.DmnCell[l] = dae.daeDomain(
-                "DmnCell_{l}".format(l=l), self, dae.unit(),
-                "Simulated volumes in electrode {l}".format(l=l))
-            self.DmnPart[l] = dae.daeDomain(
-                "Npart_{l}".format(l=l), self, dae.unit(),
+        for trode in trodes:
+            self.DmnCell[trode] = dae.daeDomain(
+                "DmnCell_{trode}".format(trode=trode), self, dae.unit(),
+                "Simulated volumes in electrode {trode}".format(trode=trode))
+            self.DmnPart[trode] = dae.daeDomain(
+                "Npart_{trode}".format(trode=trode), self, dae.unit(),
                 "Particles sampled in each control " +
-                "volume in electrode {l}".format(l=l))
-            Nv = Nvol[l]
-            Np = Npart[l]
+                "volume in electrode {trode}".format(trode=trode))
+            Nv = Nvol[trode]
+            Np = Npart[trode]
 
         # Define some variable types
         atol = ndD_s["absTol"]
@@ -65,30 +65,30 @@ class ModCell(dae.daeModel):
         self.phi_part = {}
         self.j_plus = {}
         self.ffrac = {}
-        for l in trodes:
+        for trode in trodes:
             # Concentration/potential in electrode regions of elyte
-            self.c_lyte[l] = dae.daeVariable(
-                "c_lyte_{l}".format(l=l), conc_t, self,
-                "Concentration in the elyte in electrode {l}".format(l=l),
-                [self.DmnCell[l]])
-            self.phi_lyte[l] = dae.daeVariable(
-                "phi_lyte_{l}".format(l=l), elec_pot_t, self,
-                "Electric potential in elyte in electrode {l}".format(l=l),
-                [self.DmnCell[l]])
-            self.phi_bulk[l] = dae.daeVariable(
-                "phi_bulk_{l}".format(l=l), elec_pot_t, self,
+            self.c_lyte[trode] = dae.daeVariable(
+                "c_lyte_{trode}".format(trode=trode), conc_t, self,
+                "Concentration in the elyte in electrode {trode}".format(trode=trode),
+                [self.DmnCell[trode]])
+            self.phi_lyte[trode] = dae.daeVariable(
+                "phi_lyte_{trode}".format(trode=trode), elec_pot_t, self,
+                "Electric potential in elyte in electrode {trode}".format(trode=trode),
+                [self.DmnCell[trode]])
+            self.phi_bulk[trode] = dae.daeVariable(
+                "phi_bulk_{trode}".format(trode=trode), elec_pot_t, self,
                 "Electrostatic potential in the bulk solid",
-                [self.DmnCell[l]])
-            self.phi_part[l] = dae.daeVariable(
-                "phi_part_{l}".format(l=l), elec_pot_t, self,
+                [self.DmnCell[trode]])
+            self.phi_part[trode] = dae.daeVariable(
+                "phi_part_{trode}".format(trode=trode), elec_pot_t, self,
                 "Electrostatic potential at each particle",
-                [self.DmnCell[l], self.DmnPart[l]])
-            self.j_plus[l] = dae.daeVariable(
-                "j_plus_{l}".format(l=l), dae.no_t, self,
+                [self.DmnCell[trode], self.DmnPart[trode]])
+            self.j_plus[trode] = dae.daeVariable(
+                "j_plus_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per solid volume",
-                [self.DmnCell[l]])
-            self.ffrac[l] = dae.daeVariable(
-                "ffrac_{l}".format(l=l), mole_frac_t, self,
+                [self.DmnCell[trode]])
+            self.ffrac[trode] = dae.daeVariable(
+                "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
         if Nvol["s"] >= 1:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
@@ -130,36 +130,38 @@ class ModCell(dae.daeModel):
         self.portsOutLyte = {}
         self.portsOutBulk = {}
         self.particles = {}
-        for l in trodes:
-            Nv = Nvol[l]
-            Np = Npart[l]
-            self.portsOutLyte[l] = np.empty(Nv, dtype=object)
-            self.portsOutBulk[l] = np.empty((Nv, Np), dtype=object)
-            self.particles[l] = np.empty((Nv, Np), dtype=object)
-            for i in range(Nv):
-                self.portsOutLyte[l][i] = ports.portFromElyte(
-                    "portTrode{l}vol{i}".format(l=l, i=i), dae.eOutletPort,
+        for trode in trodes:
+            Nv = Nvol[trode]
+            Np = Npart[trode]
+            self.portsOutLyte[trode] = np.empty(Nv, dtype=object)
+            self.portsOutBulk[trode] = np.empty((Nv, Np), dtype=object)
+            self.particles[trode] = np.empty((Nv, Np), dtype=object)
+            for vInd in range(Nv):
+                self.portsOutLyte[trode][vInd] = ports.portFromElyte(
+                    "portTrode{trode}vol{vInd}".format(trode=trode, vInd=vInd), dae.eOutletPort,
                     self, "Electrolyte port to particles")
-                for j in range(Np):
-                    self.portsOutBulk[l][i,j] = ports.portFromBulk(
-                        "portTrode{l}vol{i}part{j}".format(l=l, i=i, j=j),
+                for pInd in range(Np):
+                    self.portsOutBulk[trode][vInd,pInd] = ports.portFromBulk(
+                        "portTrode{trode}vol{vInd}part{pInd}".format(
+                            trode=trode, vInd=vInd, pInd=pInd),
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
-                    solidType = ndD_e[l]["indvPart"][i,j]['type']
+                    solidType = ndD_e[trode]["indvPart"][vInd,pInd]['type']
                     if solidType in ndD_s["2varTypes"]:
                         pMod = mod_electrodes.mod2var
                     elif solidType in ndD_s["1varTypes"]:
                         pMod = mod_electrodes.mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
-                    self.particles[l][i,j] = pMod(
-                        "partTrode{l}vol{i}part{j}".format(l=l, i=i, j=j),
-                        self, ndD=ndD_e[l]["indvPart"][i,j],
+                    self.particles[trode][vInd,pInd] = pMod(
+                        "partTrode{trode}vol{vInd}part{pInd}".format(
+                            trode=trode, vInd=vInd, pInd=pInd),
+                        self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
                         ndD_s=ndD_s)
-                    self.ConnectPorts(self.portsOutLyte[l][i],
-                                      self.particles[l][i,j].portInLyte)
-                    self.ConnectPorts(self.portsOutBulk[l][i,j],
-                                      self.particles[l][i,j].portInBulk)
+                    self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                      self.particles[trode][vInd,pInd].portInLyte)
+                    self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
+                                      self.particles[trode][vInd,pInd].portInBulk)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -172,67 +174,68 @@ class ModCell(dae.daeModel):
         Nlyte = np.sum(list(Nvol.values()))
 
         # Define the overall filling fraction in the electrodes
-        for l in trodes:
-            eq = self.CreateEquation("ffrac_{l}".format(l=l))
-            eq.Residual = self.ffrac[l]()
-            dx = 1./Nvol[l]
+        for trode in trodes:
+            eq = self.CreateEquation("ffrac_{trode}".format(trode=trode))
+            eq.Residual = self.ffrac[trode]()
+            dx = 1./Nvol[trode]
             # Make a float of Vtot, total particle volume in electrode
             # Note: for some reason, even when "factored out", it's a bit
             # slower to use Sum(self.psd_vol_ac[l].array([], [])
             tmp = 0
-            for i in range(Nvol[l]):
-                for j in range(Npart[l]):
-                    Vj = ndD["psd_vol_FracVol"][l][i,j]
-                    tmp += self.particles[l][i,j].cbar() * Vj * dx
+            for vInd in range(Nvol[trode]):
+                for pInd in range(Npart[trode]):
+                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                    tmp += self.particles[trode][vInd,pInd].cbar() * Vj * dx
             eq.Residual -= tmp
 
         # Define dimensionless j_plus for each electrode volume
-        for l in trodes:
-            for i in range(Nvol[l]):
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
-                    "j_plus_trode{l}vol{i}".format(i=i, l=l))
+                    "j_plus_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
                 res = 0
                 # sum over particle volumes in given electrode volume
-                for j in range(Npart[l]):
+                for pInd in range(Npart[trode]):
                     # The volume of this particular particle
-                    Vj = ndD["psd_vol_FracVol"][l][i,j]
-                    res += self.particles[l][i,j].dcbardt() * Vj
-                eq.Residual = self.j_plus[l](i) - res
+                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                    res += self.particles[trode][vInd,pInd].dcbardt() * Vj
+                eq.Residual = self.j_plus[trode](vInd) - res
 
         # Define output port variables
-        for l in trodes:
-            for i in range(Nvol[l]):
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
-                    "portout_c_trode{l}vol{i}".format(i=i, l=l))
-                eq.Residual = (self.c_lyte[l](i)
-                               - self.portsOutLyte[l][i].c_lyte())
+                    "portout_c_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq.Residual = (self.c_lyte[trode](vInd)
+                               - self.portsOutLyte[trode][vInd].c_lyte())
                 eq = self.CreateEquation(
-                    "portout_p_trode{l}vol{i}".format(i=i, l=l))
-                phi_lyte = self.phi_lyte[l](i)
-                eq.Residual = (phi_lyte - self.portsOutLyte[l][i].phi_lyte())
-                for j in range(Npart[l]):
+                    "portout_p_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                phi_lyte = self.phi_lyte[trode](vInd)
+                eq.Residual = (phi_lyte - self.portsOutLyte[trode][vInd].phi_lyte())
+                for pInd in range(Npart[trode]):
                     eq = self.CreateEquation(
-                        "portout_pm_trode{l}v{i}p{j}".format(i=i, j=j, l=l))
-                    eq.Residual = (self.phi_part[l](i, j) -
-                                   self.portsOutBulk[l][i,j].phi_m())
+                        "portout_pm_trode{trode}v{vInd}p{pInd}".format(
+                            vInd=vInd, pInd=pInd, trode=trode))
+                    eq.Residual = (self.phi_part[trode](vInd, pInd) -
+                                   self.portsOutBulk[trode][vInd,pInd].phi_m())
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
-            simBulkCond = ndD['simBulkCond'][l]
+            simBulkCond = ndD['simBulkCond'][trode]
             if simBulkCond:
                 # Calculate the RHS for electrode conductivity
-                phi_tmp = np.empty(Nvol[l]+2, dtype=object)
-                phi_tmp[1:-1] = [self.phi_bulk[l](i) for i in range(Nvol[l])]
-                porosvec = np.empty(Nvol[l]+2, dtype=object)
-                eps_sld = 1-self.ndD["poros"][l]
-                porosvec[1:-1] = [eps_sld**(3./2) for i in range(Nvol[l])]
+                phi_tmp = np.empty(Nvol[trode]+2, dtype=object)
+                phi_tmp[1:-1] = [self.phi_bulk[trode](vInd) for vInd in range(Nvol[trode])]
+                porosvec = np.empty(Nvol[trode]+2, dtype=object)
+                eps_sld = 1-self.ndD["poros"][trode]
+                porosvec[1:-1] = [eps_sld**(3./2) for vInd in range(Nvol[trode])]
                 porosvec[0] = porosvec[1]
                 porosvec[-1] = porosvec[-2]
                 porosvec = ((2*porosvec[1:]*porosvec[:-1])
                             / (porosvec[1:] + porosvec[:-1] + 1e-20))
-                if l == "a":  # anode
+                if trode == "a":  # anode
                     # Potential at the current collector is from
                     # simulation
                     phi_tmp[0] = self.phi_cell()
@@ -243,51 +246,52 @@ class ModCell(dae.daeModel):
                     # Potential at current at current collector is
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
-                dx = 1./Nvol[l]
+                dx = 1./Nvol[trode]
                 RHS_phi_tmp = -np.diff(
-                    -porosvec*ndD["mcond"][l]*np.diff(phi_tmp)/dx)/dx
+                    -porosvec*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
-            for i in range(Nvol[l]):
+            for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
-                    "phi_ac_trode{l}vol{i}".format(i=i, l=l))
+                    "phi_ac_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 if simBulkCond:
-                    eq.Residual = (-ndD["epsbeta"][l]*self.j_plus[l](i)
-                                   - RHS_phi_tmp[i])
+                    eq.Residual = (-ndD["epsbeta"][trode]*self.j_plus[trode](vInd)
+                                   - RHS_phi_tmp[vInd])
                 else:
-                    if l == "a":  # anode
-                        eq.Residual = self.phi_bulk[l](i) - self.phi_cell()
+                    if trode == "a":  # anode
+                        eq.Residual = self.phi_bulk[trode](vInd) - self.phi_cell()
                     else:  # cathode
-                        eq.Residual = self.phi_bulk[l](i) - ndD["phi_cathode"]
+                        eq.Residual = self.phi_bulk[trode](vInd) - ndD["phi_cathode"]
 
             # Simulate the potential drop along the connected
             # particles
-            simPartCond = ndD['simPartCond'][l]
-            for i in range(Nvol[l]):
-                phi_bulk = self.phi_bulk[l](i)
-                for j in range(Npart[l]):
-                    G_l = ndD["G"][l][i,j]
-                    phi_n = self.phi_part[l](i, j)
-                    if j == 0:  # reference bulk phi
+            simPartCond = ndD['simPartCond'][trode]
+            for vInd in range(Nvol[trode]):
+                phi_bulk = self.phi_bulk[trode](vInd)
+                for pInd in range(Npart[trode]):
+                    G_l = ndD["G"][trode][vInd,pInd]
+                    phi_n = self.phi_part[trode](vInd, pInd)
+                    if pInd == 0:  # reference bulk phi
                         phi_l = phi_bulk
                     else:
-                        phi_l = self.phi_part[l](i, j-1)
-                    if j == (Npart[l] - 1):  # No particle at end of "chain"
+                        phi_l = self.phi_part[trode](vInd, pInd-1)
+                    if pInd == (Npart[trode] - 1):  # No particle at end of "chain"
                         G_r = 0
                         phi_r = phi_n
                     else:
-                        G_r = ndD["G"][l][i,j+1]
-                        phi_r = self.phi_part[l](i, j+1)
+                        G_r = ndD["G"][trode][vInd,pInd+1]
+                        phi_r = self.phi_part[trode](vInd, pInd+1)
                     # charge conservation equation around this particle
                     eq = self.CreateEquation(
-                        "phi_ac_trode{l}vol{i}part{j}".format(i=i, l=l, j=j))
+                        "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                            vInd=vInd, trode=trode, pInd=pInd))
                     if simPartCond:
                         # -dcsbar/dt = I_l - I_r
                         eq.Residual = (
-                            self.particles[l][i,j].dcbardt()
+                            self.particles[trode][vInd,pInd].dcbardt()
                             + ((-G_l * (phi_n - phi_l))
                                - (-G_r * (phi_r - phi_n))))
                     else:
-                        eq.Residual = self.phi_part[l](i, j) - phi_bulk
+                        eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
 
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
@@ -300,58 +304,58 @@ class ModCell(dae.daeModel):
             # Calculate RHS for electrolyte equations
             c_lyte = np.empty(Nlyte, dtype=object)
             c_lyte[0:Nvol["a"]] = [
-                self.c_lyte["a"](i) for i in range(Nvol["a"])]  # anode
+                self.c_lyte["a"](vInd) for vInd in range(Nvol["a"])]  # anode
             c_lyte[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [
-                self.c_lyte["s"](i) for i in range(Nvol["s"])]  # separator
+                self.c_lyte["s"](vInd) for vInd in range(Nvol["s"])]  # separator
             c_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [
-                self.c_lyte["c"](i) for i in range(Nvol["c"])]  # cathode
+                self.c_lyte["c"](vInd) for vInd in range(Nvol["c"])]  # cathode
             phi_lyte = np.empty(Nlyte, dtype=object)
             phi_lyte[0:Nvol["a"]] = [
-                self.phi_lyte["a"](i) for i in range(Nvol["a"])]  # anode
+                self.phi_lyte["a"](vInd) for vInd in range(Nvol["a"])]  # anode
             phi_lyte[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [
-                self.phi_lyte["s"](i) for i in range(Nvol["s"])]  # separator
+                self.phi_lyte["s"](vInd) for vInd in range(Nvol["s"])]  # separator
             phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [
-                self.phi_lyte["c"](i) for i in range(Nvol["c"])]  # cathode
+                self.phi_lyte["c"](vInd) for vInd in range(Nvol["c"])]  # cathode
             (RHS_c, RHS_phi) = self.calc_lyte_RHS(
                 c_lyte, phi_lyte, Nvol, Nlyte)
             # Equations governing the electrolyte in the separator
             offset = Nvol["a"]
-            for i in range(Nvol["s"]):
+            for vInd in range(Nvol["s"]):
                 # Mass Conservation
                 eq = self.CreateEquation(
-                    "sep_lyte_mass_cons_vol{i}".format(i=i))
-                eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(i)
-                               - RHS_c[offset + i])
+                    "sep_lyte_mass_cons_vol{vInd}".format(vInd=vInd))
+                eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(vInd)
+                               - RHS_c[offset + vInd])
                 # Charge Conservation
                 eq = self.CreateEquation(
-                    "sep_lyte_charge_cons_vol{i}".format(i=i))
-                eq.Residual = (RHS_phi[offset + i])
+                    "sep_lyte_charge_cons_vol{vInd}".format(vInd=vInd))
+                eq.Residual = (RHS_phi[offset + vInd])
             # Equations governing the electrolyte in the electrodes.
             # Here, we are coupled to the total reaction rates in the
             # solids.
-            for l in trodes:
-                if l == "a":  # anode
+            for trode in trodes:
+                if trode == "a":  # anode
                     offset = 0
                 else:  # cathode
                     offset = Nvol["a"] + Nvol["s"]
-                for i in range(Nvol[l]):
+                for vInd in range(Nvol[trode]):
                     # Mass Conservation
                     eq = self.CreateEquation(
-                        "lyteMassCons_trode{l}vol{i}".format(i=i, l=l))
+                        "lyteMassCons_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                     if ndD["elyteModelType"] == "dilute":
                         eq.Residual = (
-                            ndD["poros"][l]*self.c_lyte[l].dt(i)
-                            + ndD["epsbeta"][l]*(1-ndD["tp"])*self.j_plus[l](i)
-                            - RHS_c[offset + i])
+                            ndD["poros"][trode]*self.c_lyte[trode].dt(vInd)
+                            + ndD["epsbeta"][trode]*(1-ndD["tp"])*self.j_plus[trode](vInd)
+                            - RHS_c[offset + vInd])
                     elif ndD["elyteModelType"] == "SM":
                         eq.Residual = (
-                            ndD["poros"][l]*self.c_lyte[l].dt(i)
-                            - RHS_c[offset + i])
+                            ndD["poros"][trode]*self.c_lyte[trode].dt(vInd)
+                            - RHS_c[offset + vInd])
                     # Charge Conservation
                     eq = self.CreateEquation(
-                        "lyteChargeCons_trode{l}vol{i}".format(i=i, l=l))
-                    eq.Residual = (ndD["epsbeta"][l]*self.j_plus[l](i)
-                                   - RHS_phi[offset + i])
+                        "lyteChargeCons_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    eq.Residual = (ndD["epsbeta"][trode]*self.j_plus[trode](vInd)
+                                   - RHS_phi[offset + vInd])
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -360,11 +364,11 @@ class ModCell(dae.daeModel):
         eq.Residual = self.current()
         limtrode = ("c" if ndD["z"] < 1 else "a")
         dx = 1./Nvol[limtrode]
-        for i in range(Nvol[limtrode]):
+        for vInd in range(Nvol[limtrode]):
             if limtrode == "a":
-                eq.Residual += dx * self.j_plus[limtrode](i)
+                eq.Residual += dx * self.j_plus[limtrode](vInd)
             else:
-                eq.Residual -= dx * self.j_plus[limtrode](i)
+                eq.Residual -= dx * self.j_plus[limtrode](vInd)
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
@@ -448,11 +452,11 @@ class ModCell(dae.daeModel):
         # Use the Bruggeman relationship to approximate an effective
         # effect on the transport.
         porosvec[0:Nvol["a"]+1] = [
-            ndD["poros"]["a"]**(3./2) for i in range(Nvol["a"]+1)]  # anode
+            ndD["poros"]["a"]**(3./2) for vInd in range(Nvol["a"]+1)]  # anode
         porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [
-            ndD["poros"]["s"]**(3./2) for i in range(Nvol["s"])]  # separator
+            ndD["poros"]["s"]**(3./2) for vInd in range(Nvol["s"])]  # separator
         porosvec[Nvol["a"]+1 + Nvol["s"]:] = [
-            ndD["poros"]["c"]**(3./2) for i in range(Nvol["c"]+1)]  # cathode
+            ndD["poros"]["c"]**(3./2) for vInd in range(Nvol["c"]+1)]  # cathode
         poros_edges = ((2*porosvec[1:]*porosvec[:-1])
                        / (porosvec[1:] + porosvec[:-1] + 1e-20))
 

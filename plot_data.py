@@ -210,28 +210,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot surface conc.
     if plot_type[:-2] in ["surf"]:
-        l = plot_type[-1]
+        trode = plot_type[-1]
         if data_only:
             raise NotImplemented("no data-only output for surf")
-        fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False, sharey=True)
+        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
         str_base = (pfx
-                    + "partTrode{l}vol{{j}}part{{i}}".format(l=l)
+                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
         ylim = (0, 1.01)
         datax = times
-        for i in range(Npart[l]):
-            for j in range(Nvol[l]):
-                sol_str = str_base.format(i=i, j=j)
+        for pInd in range(Npart[trode]):
+            for vInd in range(Nvol[trode]):
+                sol_str = str_base.format(pInd=pInd, vInd=vInd)
                 # Remove axis ticks
-                ax[i,j].xaxis.set_major_locator(plt.NullLocator())
+                ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
                 datay = data[sol_str][:,-1]
-                line, = ax[i,j].plot(times, datay)
+                line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
     # Plot SoC profile
     if plot_type[:-2] in ["soc"]:
-        l = plot_type[-1]
-        ffvec = data[pfx + 'ffrac_{l}'.format(l=l)][0]
+        trode = plot_type[-1]
+        ffvec = data[pfx + 'ffrac_{trode}'.format(trode=trode)][0]
         if data_only:
             return times*td, ffvec
         fig, ax = plt.subplots()
@@ -414,16 +414,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot solid particle-average concentrations
     elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
-        l = plot_type[-1]
-        fig, ax = plt.subplots(Npart[l], Nvol[l], squeeze=False, sharey=True)
-        partStr = "partTrode{l}vol{{j}}part{{i}}".format(l=l) + sStr
+        trode = plot_type[-1]
+        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
+        partStr = "partTrode{trode}vol{{j}}part{{i}}".format(trode=trode) + sStr
         type2c = False
-        if ndD_e[l]["type"] in ndD_s["1varTypes"]:
+        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
             if plot_type[:-2] in ["cbarLine"]:
                 str_base = pfx + partStr + "cbar"
             elif plot_type[:-2] in ["dcbardtLine"]:
                 str_base = pfx + partStr + "dcbardt"
-        elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
+        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
             type2c = True
             if plot_type[:-2] in ["cbarLine"]:
                 str1_base = pfx + partStr + "c1bar"
@@ -436,39 +436,39 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         xLblNCutoff = 4
         xLbl = "Time [s]"
         yLbl = "Particle Average Filling Fraction"
-        for i in range(Npart[l]):
-            for j in range(Nvol[l]):
+        for pInd in range(Npart[trode]):
+            for vInd in range(Nvol[trode]):
                 if type2c:
-                    sol1_str = str1_base.format(i=i, j=j)
-                    sol2_str = str2_base.format(i=i, j=j)
-                    if Nvol[l] > xLblNCutoff:
+                    sol1_str = str1_base.format(pInd=pInd, vInd=vInd)
+                    sol2_str = str2_base.format(pInd=pInd, vInd=vInd)
+                    if Nvol[trode] > xLblNCutoff:
                         # Remove axis ticks
-                        ax[i,j].xaxis.set_major_locator(plt.NullLocator())
+                        ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
                     else:
-                        ax[i,j].set_xlabel(xLbl)
-                        ax[i,j].set_ylabel(yLbl)
+                        ax[pInd,vInd].set_xlabel(xLbl)
+                        ax[pInd,vInd].set_ylabel(yLbl)
                     datay1 = data[sol1_str][0]
                     datay2 = data[sol2_str][0]
-                    line1, = ax[i,j].plot(times, datay1)
-                    line2, = ax[i,j].plot(times, datay2)
+                    line1, = ax[pInd,vInd].plot(times, datay1)
+                    line2, = ax[pInd,vInd].plot(times, datay2)
                 else:
-                    sol_str = str_base.format(i=i, j=j)
-                    if Nvol[l] > xLblNCutoff:
+                    sol_str = str_base.format(pInd=pInd, vInd=vInd)
+                    if Nvol[trode] > xLblNCutoff:
                         # Remove axis ticks
-                        ax[i,j].xaxis.set_major_locator(plt.NullLocator())
+                        ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
                     else:
-                        ax[i,j].set_xlabel(xLbl)
-                        ax[i,j].set_ylabel(yLbl)
+                        ax[pInd,vInd].set_xlabel(xLbl)
+                        ax[pInd,vInd].set_ylabel(yLbl)
                     datay = data[sol_str][0]
-                    line, = ax[i,j].plot(times, datay)
+                    line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
     # Plot all solid concentrations or potentials
     elif plot_type[:-2] in ["csld", "phisld"]:
         t0ind = 0
-        l = plot_type[-1]
-        Nv, Np = Nvol[l], Npart[l]
-        partStr = "partTrode{l}vol{j}part{i}" + sStr
+        trode = plot_type[-1]
+        Nv, Np = Nvol[trode], Npart[trode]
+        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True)
@@ -481,9 +481,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         lines2 = np.empty((Np, Nv), dtype=object)
         type2c = False
         if plot_type[:-2] in ["csld", "csld_col"]:
-            if ndD_e[l]["type"] in ndD_s["1varTypes"]:
+            if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
                 str_base = pfx + partStr + "c"
-            elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
+            elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
                 type2c = True
                 str1_base = pfx + partStr + "c1"
                 str2_base = pfx + partStr + "c2"
@@ -491,59 +491,59 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         elif plot_type in ["phisld_a", "phisld_c"]:
             str_base = pfx + partStr + "phi"
             ylim = (-10, 20)
-        for i in range(Np):
-            for j in range(Nv):
-                lens[i,j] = psd_len[l][j,i]
+        for pInd in range(Np):
+            for vInd in range(Nv):
+                lens[pInd,vInd] = psd_len[trode][vInd,pInd]
                 if type2c:
-                    sol1[i,j] = str1_base.format(l=l, i=i, j=j)
-                    sol2[i,j] = str2_base.format(l=l, i=i, j=j)
-                    datay1 = data[sol1[i,j]][t0ind]
-                    datay2 = data[sol2[i,j]][t0ind]
+                    sol1[pInd,vInd] = str1_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    sol2[pInd,vInd] = str2_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay1 = data[sol1[pInd,vInd]][t0ind]
+                    datay2 = data[sol2[pInd,vInd]][t0ind]
                     numy = len(datay1)
-                    datax = np.linspace(0, lens[i,j], numy)
-                    line1, = ax[i,j].plot(datax, datay1)
-                    line2, = ax[i,j].plot(datax, datay2)
-                    lines1[i,j] = line1
-                    lines2[i,j] = line2
+                    datax = np.linspace(0, lens[pInd,vInd], numy)
+                    line1, = ax[pInd,vInd].plot(datax, datay1)
+                    line2, = ax[pInd,vInd].plot(datax, datay2)
+                    lines1[pInd,vInd] = line1
+                    lines2[pInd,vInd] = line2
                 else:
-                    sol[i,j] = str_base.format(l=l, i=i, j=j)
-                    datay = data[sol[i,j]][t0ind]
+                    sol[pInd,vInd] = str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay = data[sol[pInd,vInd]][t0ind]
                     numy = len(datay)
-                    datax = np.linspace(0, lens[i,j], numy)
-                    line, = ax[i,j].plot(datax, datay)
-                    lines[i,j] = line
+                    datax = np.linspace(0, lens[pInd,vInd], numy)
+                    line, = ax[pInd,vInd].plot(datax, datay)
+                    lines[pInd,vInd] = line
                 # Remove axis ticks
-                ax[i,j].set_ylim(ylim)
-                ax[i,j].set_xlim((0, lens[i,j]))
+                ax[pInd,vInd].set_ylim(ylim)
+                ax[pInd,vInd].set_xlim((0, lens[pInd,vInd]))
 
         def init():
-            for i in range(Npart[l]):
-                for j in range(Nvol[l]):
+            for pInd in range(Npart[trode]):
+                for vInd in range(Nvol[trode]):
                     if type2c:
-                        numy = len(data[sol1[i,j]][t0ind])
+                        numy = len(data[sol1[pInd,vInd]][t0ind])
                         maskTmp = np.zeros(numy)
-                        lines1[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
-                        lines2[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines1[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines2[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                     else:
-                        numy = len(data[sol[i,j]][t0ind])
+                        numy = len(data[sol[pInd,vInd]][t0ind])
                         maskTmp = np.zeros(numy)
-                        lines[i,j].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
             else:
                 return tuple(lines.reshape(-1))
 
         def animate(tind):
-            for i in range(Npart[l]):
-                for j in range(Nvol[l]):
+            for pInd in range(Npart[trode]):
+                for vInd in range(Nvol[trode]):
                     if type2c:
-                        datay1 = data[sol1[i,j]][tind]
-                        datay2 = data[sol2[i,j]][tind]
-                        lines1[i,j].set_ydata(datay1)
-                        lines2[i,j].set_ydata(datay2)
+                        datay1 = data[sol1[pInd,vInd]][tind]
+                        datay2 = data[sol2[pInd,vInd]][tind]
+                        lines1[pInd,vInd].set_ydata(datay1)
+                        lines2[pInd,vInd].set_ydata(datay2)
                     else:
-                        datay = data[sol[i,j]][tind]
-                        lines[i,j].set_ydata(datay)
+                        datay = data[sol[pInd,vInd]][tind]
+                        lines[pInd,vInd].set_ydata(datay)
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
             else:
@@ -551,24 +551,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
-        if plot_type[-1] == "l":
-            lvec = ["a", "c"]
+        if plot_type[-4:] == "full":
+            trvec = ["a", "c"]
         elif plot_type[-1] == "a":
-            lvec = ["a"]
+            trvec = ["a"]
         else:
-            lvec = ["c"]
+            trvec = ["c"]
         dataCbar = {}
         for trode in trodes:
             dataCbar[trode] = np.zeros((numtimes, Nvol[trode], Npart[trode]))
             for tInd in range(numtimes):
-                for i in range(Nvol[trode]):
-                    for j in range(Npart[trode]):
+                for vInd in range(Nvol[trode]):
+                    for pInd in range(Npart[trode]):
                         dataStr = (
                             pfx
-                            + "partTrode{t}vol{i}part{j}".format(
-                                t=trode, i=i, j=j)
+                            + "partTrode{t}vol{vInd}part{pInd}".format(
+                                t=trode, vInd=vInd, pInd=pInd)
                             + sStr + "cbar")
-                        dataCbar[trode][tInd,i,j] = (
+                        dataCbar[trode][tInd,vInd,pInd] = (
                             data[dataStr][0][tInd])
         if data_only:
             return dataCbar
@@ -606,17 +606,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # Implement hack to be able to animate title
         mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
-        fig, axs = plt.subplots(1, len(lvec), squeeze=False)
-        ttlx = 0.5 if len(lvec) < 2 else 1.1
+        fig, axs = plt.subplots(1, len(trvec), squeeze=False)
+        ttlx = 0.5 if len(trvec) < 2 else 1.1
         ttl = axs[0,0].text(
             ttlx, 1.05, ttl_fmt.format(perc=0),
             transform=axs[0,0].transAxes, verticalalignment="center",
             horizontalalignment="center")
-        collection = np.empty(len(lvec), dtype=object)
-        for indx, l in enumerate(lvec):
+        collection = np.empty(len(trvec), dtype=object)
+        for indx, trode in enumerate(trvec):
             ax = axs[0,indx]
             # Get particle sizes (and max size) (length-based)
-            lens = psd_len[l]
+            lens = psd_len[trode]
             len_max = np.max(lens)
             len_min = np.min(lens)
             ax.patch.set_facecolor('white')
@@ -626,7 +626,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ax.xaxis.set_major_locator(plt.NullLocator())
             ax.yaxis.set_major_locator(plt.NullLocator())
             ax.set_xlim(0, 1.)
-            ax.set_ylim(0, float(Npart[l])/Nvol[l])
+            ax.set_ylim(0, float(Npart[trode])/Nvol[trode])
             # Label parts of the figure
 #            ylft = ax.text(-0.07, 0.5, "Separator",
 #                    transform=ax.transAxes, rotation=90,
@@ -641,19 +641,19 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 #                    verticalalignment="center",
 #                    horizontalalignment="center")
             # Geometric parameters for placing the rectangles on the axes
-            spacing = 1.0 / Nvol[l]
-            size_fracs = 0.4*np.ones((Nvol[l], Npart[l]))
+            spacing = 1.0 / Nvol[trode]
+            size_fracs = 0.4*np.ones((Nvol[trode], Npart[trode]))
             if len_max != len_min:
                 size_fracs = (lens - len_min)/(len_max - len_min)
-            sizes = (size_fracs*(1-size_frac_min) + size_frac_min) / Nvol[l]
+            sizes = (size_fracs*(1-size_frac_min) + size_frac_min) / Nvol[trode]
             # Create rectangle "patches" to add to figure axes.
-            rects = np.empty((Nvol[l], Npart[l]), dtype=object)
+            rects = np.empty((Nvol[trode], Npart[trode]), dtype=object)
             color = 'green'  # value is irrelevant -- it will be animated
-            for (i, j), c in np.ndenumerate(sizes):
-                size = sizes[i,j]
-                center = np.array([spacing*(i + 0.5), spacing*(j + 0.5)])
+            for (vInd, pInd), c in np.ndenumerate(sizes):
+                size = sizes[vInd,pInd]
+                center = np.array([spacing*(vInd + 0.5), spacing*(pInd + 0.5)])
                 bottom_left = center - size / 2
-                rects[i,j] = plt.Rectangle(
+                rects[vInd,pInd] = plt.Rectangle(
                     bottom_left, size, size, color=color)
             # Create a group of rectange "patches" from the rects array
             collection[indx] = mcollect.PatchCollection(rects.reshape(-1))
@@ -663,8 +663,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         # initial state of the system.
 
         def init():
-            for indx, l in enumerate(lvec):
-                cbar_mat = dataCbar[l][0,:,:]
+            for indx, trode in enumerate(trvec):
+                cbar_mat = dataCbar[trode][0,:,:]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
                 ttl.set_text('')
@@ -674,8 +674,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             return out
 
         def animate(tind):
-            for indx, l in enumerate(lvec):
-                cbar_mat = dataCbar[l][tind,:,:]
+            for indx, trode in enumerate(trvec):
+                cbar_mat = dataCbar[trode][tind,:,:]
                 colors = cmap(cbar_mat.reshape(-1))
                 collection[indx].set_color(colors)
             t_current = times[tind]
@@ -688,7 +688,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot cathode potential
     elif plot_type[0:5] in ["bulkp"]:
-        l = plot_type[-1]
+        trode = plot_type[-1]
         fplot = (True if plot_type[-3] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
@@ -698,13 +698,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
                       transform=ax.transAxes, verticalalignment="center",
                       horizontalalignment="center")
-        bulkp = pfx + 'phi_bulk_{l}'.format(l=l)
+        bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
         datay = data[bulkp]
         ymin = np.min(datay) - 0.2
         ymax = np.max(datay) + 0.2
-        if l == "a":
+        if trode == "a":
             datax = cellsvec[:Nvol["a"]]
-        elif l == "c":
+        elif trode == "c":
             datax = cellsvec[-Nvol["c"]:]
         if data_only:
             return datax, datay[t0ind]
