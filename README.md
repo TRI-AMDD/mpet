@@ -59,7 +59,7 @@ the IDAS:MaxNumSteps parameter to 100000. This can be found in the
       - `csld_{c,a}` -- solid concentrations (all, movie, used with `solidType_{c,a}` not homog)
       - `phisld_{c,a}` -- solid potential (all, movie, used with `simSurfCond_{c,a}` = true)
       - `cbar_{full,c,a}` -- average solid concentrations (movie)
-      - `bulkp_{c,a}` -- macroscopic electrode solid phise potential (movie)
+      - `bulkp_{c,a}` -- macroscopic electrode solid phase potential (movie)
       - `soc_{c,a}` -- electrode state of charge
 2.  Alternatively, convert the output to plain text (csv) format using
     `python outmat2txt.py sim_output` (or replace `sim_output` with
