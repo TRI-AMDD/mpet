@@ -560,8 +560,12 @@ def writeDicts(dD, ndD, filenamebase="input_dict"):
 
 
 def readDicts(filenamebase="input_dict"):
-    dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
-    ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
+    try:
+        dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
+        ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
+    except UnicodeDecodeError:
+        dD = pickle.load(open(filenamebase + "_dD.p", "rb"), encoding="latin1")
+        ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"), encoding="latin1")
     return dD, ndD
 
 
