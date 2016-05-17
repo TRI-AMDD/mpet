@@ -192,6 +192,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         fig, ax = plt.subplots()
         if plot_type == "v":
             if data_only:
+                plt.close(fig)
                 return ffvec, voltage
             ax.plot(ffvec, voltage)
             xmin = 0.
@@ -200,6 +201,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ax.set_xlabel("Cathode Filling Fraction [dimensionless]")
         elif plot_type == "vt":
             if data_only:
+                plt.close(fig)
                 return times*td, voltage
             ax.plot(times*td, voltage)
             ax.set_xlabel("Time [s]")
@@ -267,6 +269,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             cvec = np.hstack((cvec_a, cvec))
         cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
         if data_only:
+            plt.close(fig)
             return times*td, cavg
         np.set_printoptions(precision=8)
         print(cavg)
@@ -707,6 +710,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         elif trode == "c":
             datax = cellsvec[-Nvol["c"]:]
         if data_only:
+            plt.close(fig)
             return datax, datay[t0ind]
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay[t0ind])
