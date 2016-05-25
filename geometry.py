@@ -74,3 +74,44 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     else:
         raise NotImplementedError("calc_curv_c only for sphere and cylinder")
     return curv
+
+
+def get_elyte_disc(Nvol, L, poros, epsbeta):
+    Nlyte = np.sum(list(Nvol.values()))
+    out = {}
+    # Discretization
+    # The lengths are nondimensionalized by the cathode length
+    if Nvol["a"]:
+        dxa = Nvol["a"] * [L["a"]/Nvol["a"]]
+    else:
+        dxa = []
+    if Nvol["s"]:
+        dxs = Nvol["s"] * [L["s"]/Nvol["s"]]
+    else:
+        dxs = []
+    dxc = Nvol["c"] * [L["c"]/Nvol["c"]]
+    out["dxvec"] = np.array(dxa + dxs + dxc)
+    out["dxd1"] = (out["dxvec"][0:-1] + out["dxvec"][1:]) / 2.
+    out["dxd2"] = out["dxvec"]
+
+    # The porosity vector
+    porosvec = np.empty(Nlyte + 2, dtype=object)
+    # Use the Bruggeman relationship to approximate an effective
+    # effect on the transport.
+    porosvec[0:Nvol["a"]+1] = [
+        poros["a"]**(3./2) for vInd in range(Nvol["a"]+1)]  # anode
+    porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [
+        poros["s"]**(3./2) for vInd in range(Nvol["s"])]  # separator
+    porosvec[Nvol["a"]+1 + Nvol["s"]:] = [
+        poros["c"]**(3./2) for vInd in range(Nvol["c"]+1)]  # cathode
+    out["poros_edges"] = ((2*porosvec[1:]*porosvec[:-1])
+                          / (porosvec[1:] + porosvec[:-1] + 1e-20))
+    out["porosvec"] = porosvec[1:-1]
+
+    # The epsbeta vector
+    out["epsbetavec"] = np.empty(Nlyte, dtype=object)
+    out["epsbetavec"][0:Nvol["a"]] = [epsbeta["a"] for vInd in range(Nvol["a"])]
+    out["epsbetavec"][Nvol["a"]:Nvol["a"]+Nvol["s"]] = [0. for vInd in range(Nvol["s"])]
+    out["epsbetavec"][Nvol["a"]+Nvol["s"]:] = [epsbeta["c"] for vInd in range(Nvol["c"])]
+
+    return out
