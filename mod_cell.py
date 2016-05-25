@@ -11,6 +11,7 @@ import daetools.pyDAE as dae
 import numpy as np
 
 import extern_funcs
+import geometry as geom
 import mod_electrodes
 import ports
 import props_elyte
@@ -106,7 +107,8 @@ class ModCell(dae.daeModel):
             self.SVsim = True
         else:
             self.SVsim = False
-        if not self.SVsim:
+#        if not self.SVsim:
+        if not self.SVsim and Nvol["a"] == 0:
             self.c_lyteGP = dae.daeVariable(
                 "c_lyteGP", conc_t, self,
                 "Concentration in the electrolyte in " +
@@ -300,62 +302,77 @@ class ModCell(dae.daeModel):
             eq.Residual = self.c_lyte["c"].dt(0) - 0
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
+        # Calculate RHS for electrolyte equations
         else:
-            # Calculate RHS for electrolyte equations
-            c_lyte = np.empty(Nlyte, dtype=object)
-            c_lyte[0:Nvol["a"]] = [
-                self.c_lyte["a"](vInd) for vInd in range(Nvol["a"])]  # anode
-            c_lyte[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [
-                self.c_lyte["s"](vInd) for vInd in range(Nvol["s"])]  # separator
-            c_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [
-                self.c_lyte["c"](vInd) for vInd in range(Nvol["c"])]  # cathode
-            phi_lyte = np.empty(Nlyte, dtype=object)
-            phi_lyte[0:Nvol["a"]] = [
-                self.phi_lyte["a"](vInd) for vInd in range(Nvol["a"])]  # anode
-            phi_lyte[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [
-                self.phi_lyte["s"](vInd) for vInd in range(Nvol["s"])]  # separator
-            phi_lyte[Nvol["a"] + Nvol["s"]:Nlyte] = [
-                self.phi_lyte["c"](vInd) for vInd in range(Nvol["c"])]  # cathode
-            (RHS_c, RHS_phi) = self.calc_lyte_RHS(
-                c_lyte, phi_lyte, Nvol, Nlyte)
+            disc = geom.get_elyte_disc(Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"])
+            cvec = get_elyte_varvec(self.c_lyte, Nvol)
+            dcdtvec = get_elyte_varvec(self.c_lyte, Nvol, dt=True)
+            phivec = get_elyte_varvec(self.phi_lyte, Nvol)
+            jvec = get_elyte_varvec(self.j_plus, Nvol)
+            Rvvec = -disc["epsbetavec"]*jvec
+            Nm_edges = np.empty(Nlyte+1, dtype=object)
+            i_edges = np.empty(Nlyte+1, dtype=object)
+            Nm_edges_int, i_edges_int = get_lyte_internal_fluxes(cvec, phivec, disc["dxd1"], ndD)
+            Nm_edges[1:-1] = Nm_edges_int
+            i_edges[1:-1] = i_edges_int
+            # Anions don't flux into either current collector
+            Nm_edges[0] = 0.
+            Nm_edges[-1] = 0.
+            # No electrolyte current into porous cathode current collector
+            i_edges[-1] = 0.
+            # No electrolyte current into porous cathode current collector
+            if Nvol["a"] != 0:
+                i_edges[0] = 0.
+            # Left-side current is more complicated if it's a foil electrode
+            else:
+                # Ghost point equations
+                eqC = self.CreateEquation("GhostPointC")
+                eqP = self.CreateEquation("GhostPointP")
+                cGP = self.c_lyteGP()
+                phiGP = self.phi_lyteGP()
+                ctmp = np.array([cGP, cvec[1]])
+                phitmp = np.array([phiGP, phivec[1]])
+                Nm_foil, i_foil = get_lyte_internal_fluxes(ctmp, phitmp, disc["dxd1"][0], ndD)
+                i_edges[0] = i_foil[0]
+                # No anion flux at Li foil
+                eqC.Residual = Nm_foil[0]
+                # Concentration BC from mass flux
+                cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
+                # Phi BC from BV at the foil
+                # We assume BV kinetics with alpha = 0.5,
+                # exchange current density, ecd = k0_foil * c_lyte**(0.5)
+                ecd = ndD["k0_foil"]*cWall**0.5
+                # -current = ecd*(exp(-eta/2) - exp(eta/2))
+                # note negative current because positive current is
+                # oxidation here
+                # -current = ecd*(-2*sinh(eta/2))
+                # eta = 2*arcsinh(-current/(-2*ecd))
+                BVfunc = -self.current() / ecd
+                eta_eff = 2*np.arcsinh(-BVfunc/2.)
+                eta = eta_eff + self.current()*ndD["Rfilm_foil"]
+#                # Infinitely fast anode kinetics
+#                eta = 0.
+                # eta = mu_R - mu_O = -mu_O (evaluated at interface)
+                # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
+                # phiWall = -eta + phi_cell [- T*ln(c)]
+                phiWall = -eta + self.phi_cell()
+                if ndD["elyteModelType"] == "dilute":
+                    phiWall -= ndD["T"]*np.log(cWall)
+                # phiWall = 0.5 * (phitmp[0] + phitmp[1])
+                eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
+            dxd2 = disc["dxd2"]
+            dvgNm = np.diff(disc["poros_edges"]*Nm_edges)/dxd2
+            dvgi = np.diff(disc["poros_edges"]*i_edges)/dxd2
             # Equations governing the electrolyte in the separator
-            offset = Nvol["a"]
-            for vInd in range(Nvol["s"]):
+            for vInd in range(Nlyte):
                 # Mass Conservation
-                eq = self.CreateEquation(
-                    "sep_lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = (ndD["poros"]["s"]*self.c_lyte["s"].dt(vInd)
-                               - RHS_c[offset + vInd])
+                eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
+                eq.Residual = (
+                    disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["nup"])*(
+                        -dvgNm[vInd] + Rvvec[vInd]))
                 # Charge Conservation
-                eq = self.CreateEquation(
-                    "sep_lyte_charge_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = (RHS_phi[offset + vInd])
-            # Equations governing the electrolyte in the electrodes.
-            # Here, we are coupled to the total reaction rates in the
-            # solids.
-            for trode in trodes:
-                if trode == "a":  # anode
-                    offset = 0
-                else:  # cathode
-                    offset = Nvol["a"] + Nvol["s"]
-                for vInd in range(Nvol[trode]):
-                    # Mass Conservation
-                    eq = self.CreateEquation(
-                        "lyteMassCons_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
-                    if ndD["elyteModelType"] == "dilute":
-                        eq.Residual = (
-                            ndD["poros"][trode]*self.c_lyte[trode].dt(vInd)
-                            + ndD["epsbeta"][trode]*(1-ndD["tp"])*self.j_plus[trode](vInd)
-                            - RHS_c[offset + vInd])
-                    elif ndD["elyteModelType"] == "SM":
-                        eq.Residual = (
-                            ndD["poros"][trode]*self.c_lyte[trode].dt(vInd)
-                            - RHS_c[offset + vInd])
-                    # Charge Conservation
-                    eq = self.CreateEquation(
-                        "lyteChargeCons_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
-                    eq.Residual = (ndD["epsbeta"][trode]*self.j_plus[trode](vInd)
-                                   - RHS_phi[offset + vInd])
+                eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
+                eq.Residual = (-disc["porosvec"][vInd]*dvgi[vInd] + ndD["zp"]*Rvvec[vInd])
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -420,133 +437,52 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION(self.stopCondition,
                               setVariableValues=[(self.dummyVar, 2)])
 
-    def calc_lyte_RHS(self, cvec, phivec, Nvol, Nlyte):
-        ndD = self.ndD
-        zp = ndD["zp"]
-        zm = ndD["zm"]
-        nup = ndD["nup"]
-        num = ndD["num"]
-        nu = nup + num
-        limtrode = ("c" if ndD["z"] < 1 else "a")
-        # Discretization
-        # The lengths are nondimensionalized by the cathode length
-        dxvec = np.empty(np.sum(list(Nvol.values())) + 2, dtype=object)
-        if Nvol["a"]:
-            dxa = Nvol["a"] * [ndD["L"]["a"]/Nvol["a"]]
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, ndD):
+    zp = ndD["zp"]
+    zm = ndD["zm"]
+    nup = ndD["nup"]
+    num = ndD["num"]
+    nu = nup + num
+    c_edges_int = (2*c_lyte[:-1]*c_lyte[1:])/(c_lyte[:-1] + c_lyte[1:]+1e-20)
+    if ndD["elyteModelType"] == "dilute":
+        Dp = ndD["Dp"]
+        Dm = ndD["Dm"]
+        Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
+                            - Dm*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
+        i_edges_int = (-((Dp - Dm)*np.diff(c_lyte)/dxd1)
+                       - (zp*Dp - zm*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
+    elif ndD["elyteModelType"] == "SM":
+        D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+        sp, n = ndD["sp"], ndD["n_refTrode"]
+        i_edges_int = -kappa(c_edges_int) * (
+            np.diff(phi_lyte)/dxd1
+            + nu*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
+            * thermFac(c_edges_int)
+            * np.diff(np.log(c_lyte))/dxd1
+            )
+        Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
+                            + (1./(num*zm)*(1-tp0(c_edges_int)*i_edges_int)))
+    return Nm_edges_int, i_edges_int
+
+def get_elyte_varvec(var, Nvol, dt=False):
+    Nlyte = np.sum(list(Nvol.values()))
+    out = np.empty(Nlyte, dtype=object)
+    # Anode
+    if dt is False:
+        out[0:Nvol["a"]] = [var["a"](vInd) for vInd in range(Nvol["a"])]
+    else:
+        out[0:Nvol["a"]] = [var["a"].dt(vInd) for vInd in range(Nvol["a"])]
+    # Separator: If not present, fill with zeros
+    if Nvol["s"] and "s" in var.keys():
+        if dt is False:
+            out[Nvol["a"]:Nvol["a"]+Nvol["s"]] = [var["s"](vInd) for vInd in range(Nvol["s"])]
         else:
-            dxa = []
-        if Nvol["s"]:
-            dxs = Nvol["s"] * [ndD["L"]["s"]/Nvol["s"]]
-        else:
-            dxs = []
-        dxc = Nvol["c"] * [ndD["L"]["c"]/Nvol["c"]]
-        dxtmp = np.array(dxa + dxs + dxc)
-        dxvec[1:-1] = dxtmp
-        dxvec[0] = dxvec[1]
-        dxvec[-1] = dxvec[-2]
-        dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
-        dxd2 = dxtmp
-
-        # The porosity vector
-        porosvec = np.empty(Nlyte + 2, dtype=object)
-        # Use the Bruggeman relationship to approximate an effective
-        # effect on the transport.
-        porosvec[0:Nvol["a"]+1] = [
-            ndD["poros"]["a"]**(3./2) for vInd in range(Nvol["a"]+1)]  # anode
-        porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [
-            ndD["poros"]["s"]**(3./2) for vInd in range(Nvol["s"])]  # separator
-        porosvec[Nvol["a"]+1 + Nvol["s"]:] = [
-            ndD["poros"]["c"]**(3./2) for vInd in range(Nvol["c"]+1)]  # cathode
-        poros_edges = ((2*porosvec[1:]*porosvec[:-1])
-                       / (porosvec[1:] + porosvec[:-1] + 1e-20))
-
-        modType = ndD["elyteModelType"]
-        if modType == "SM":
-            D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
-        # Apply concentration and potential boundary conditions
-        ctmp = np.empty(Nlyte + 2, dtype=object)
-        ctmp[1:-1] = cvec
-        ctmp[0] = self.c_lyteGP()
-        phitmp = np.empty(Nlyte + 2, dtype=object)
-        phitmp[1:-1] = phivec
-        phitmp[0] = self.phi_lyteGP()
-        # If we don't have a real anode:
-        # 1) the total current flowing into the electrolyte is set
-        # 2) assume we have a Li foil with BV kinetics and the
-        # specified rate constant
-        eqC = self.CreateEquation("GhostPointC")
-        eqP = self.CreateEquation("GhostPointP")
-
-        if Nvol["a"] == 0:
-            # Concentration BC from mass flux
-            cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
-            if modType == "dilute":
-                Dwall, tp0wall = 1., ndD["tp"]
-            elif modType == "SM":
-                Dwall, tp0wall = D(cWall), tp0(cWall)
-            currWall = self.current()*ndD["epsbeta"][limtrode]
-            eqC.Residual = (poros_edges[0]*Dwall*(ctmp[1]-ctmp[0])/dxvec[0]
-                            + currWall*(1-tp0wall))
-
-            # Phi BC from BV at the foil
-            # We assume BV kinetics with alpha = 0.5,
-            # exchange current density, ecd = k0_foil * c_lyte**(0.5)
-            ecd = ndD["k0_foil"]*cWall**0.5
-            # -current = ecd*(exp(-eta/2) - exp(eta/2))
-            # note negative current because positive current is
-            # oxidation here
-            # -current = ecd*(-2*sinh(eta/2))
-            # eta = 2*arcsinh(-current/(-2*ecd))
-            BVfunc = -self.current() / ecd
-            eta_eff = 2*np.arcsinh(-BVfunc/2.)
-            eta = eta_eff + self.current()*ndD["Rfilm_foil"]
-#            # Infinitely fast anode kinetics
-#            eta = 0.
-            # eta = mu_R - mu_O = -mu_O (evaluated at interface)
-            # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
-            # phiWall = -eta + phi_cell [- T*ln(c)]
-            phiWall = -eta + self.phi_cell()
-            if modType == "dilute":
-                phiWall -= ndD["T"]*np.log(cWall)
-            # phiWall = 0.5 * (phitmp[0] + phitmp[1])
-            eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
-        else:  # porous anode -- no elyte flux at anode current collector
-            eqC.Residual = ctmp[0] - ctmp[1]
-            eqP.Residual = phitmp[0] - phitmp[1]
-        # No electrolyte flux at the cathode current collector
-        ctmp[-1] = ctmp[-2]
-        phitmp[-1] = phitmp[-2]
-
-        # We need average values of c_lyte for the current densities
-        # at the finite volume boundaries
-        c_edges = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
-        # current density in the electrolyte
-        if modType == "dilute":
-            Dp = ndD["Dp"]
-            Dm = ndD["Dm"]
-            i_edges = poros_edges * (
-                -((Dp - Dm)*np.diff(ctmp)/dxd1)
-                - (zp*Dp - zm*Dm)*c_edges*np.diff(phitmp)/dxd1)
-        elif modType == "SM":
-            i_edges = -poros_edges * kappa(c_edges) * (
-                np.diff(phitmp)/dxd1 -
-                nu/nup*(1-tp0(c_edges)) *
-                thermFac(c_edges) *
-                np.diff(np.log(ctmp))/dxd1
-                )
-        # RHS for charge conservation equation
-        RHS_phi = -np.diff(i_edges)/dxd2
-
-        # RHS for species conservation equation
-        if modType == "dilute":
-            # Diffusive flux in the electrolyte
-            cflux = -poros_edges*np.diff(ctmp)/dxd1
-            # Divergence of the flux
-            RHS_c = -np.diff(cflux)/dxd2
-        elif modType == "SM":
-            RHS_c = (
-                np.diff(poros_edges * D(c_edges) *
-                        np.diff(ctmp)/dxd1)/dxd2
-                + 1./(zp*nup)*np.diff((1-tp0(c_edges))*i_edges)/dxd2
-                )
-        return (RHS_c, RHS_phi)
+            out[Nvol["a"]:Nvol["a"]+Nvol["s"]] = [var["s"].dt(vInd) for vInd in range(Nvol["s"])]
+    else:
+        out[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [0. for vInd in range(Nvol["s"])]
+    # Cathode
+    if dt is False:
+        out[Nvol["a"] + Nvol["s"]:Nlyte] = [var["c"](vInd) for vInd in range(Nvol["c"])]
+    else:
+        out[Nvol["a"] + Nvol["s"]:Nlyte] = [var["c"].dt(vInd) for vInd in range(Nvol["c"])]
+    return out
