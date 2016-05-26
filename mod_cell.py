@@ -365,14 +365,12 @@ class ModCell(dae.daeModel):
             dvgi = np.diff(disc["poros_edges"]*i_edges)/dxd2
             # Equations governing the electrolyte in the separator
             for vInd in range(Nlyte):
-                # Mass Conservation
+                # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = (
-                    disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["nup"])*(
-                        -dvgNm[vInd] + Rvvec[vInd]))
+                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["num"])*(-dvgNm[vInd])
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = (-disc["porosvec"][vInd]*dvgi[vInd] + ndD["zp"]*Rvvec[vInd])
+                eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -438,10 +436,7 @@ class ModCell(dae.daeModel):
                               setVariableValues=[(self.dummyVar, 2)])
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, ndD):
-    zp = ndD["zp"]
-    zm = ndD["zm"]
-    nup = ndD["nup"]
-    num = ndD["num"]
+    zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
     c_edges_int = (2*c_lyte[:-1]*c_lyte[1:])/(c_lyte[:-1] + c_lyte[1:]+1e-20)
     if ndD["elyteModelType"] == "dilute":
@@ -449,8 +444,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, ndD):
         Dm = ndD["Dm"]
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
                             - Dm*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
-        i_edges_int = (-((Dp - Dm)*np.diff(c_lyte)/dxd1)
-                       - (zp*Dp - zm*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
+        i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
+                       - (nup*zp**2*Dp + num*zm**2*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
     elif ndD["elyteModelType"] == "SM":
         D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
         sp, n = ndD["sp"], ndD["n_refTrode"]
