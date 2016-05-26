@@ -305,6 +305,7 @@ class ModCell(dae.daeModel):
         # Calculate RHS for electrolyte equations
         else:
             # Use the Bruggeman relationship to approximate effective transport
+            # TODO -- un-hard-code
             BruggExp = -0.5  # tortuosity = porosity^(BruggExp)
             disc = geom.get_elyte_disc(Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], BruggExp)
             cvec = get_elyte_varvec(self.c_lyte, Nvol)
@@ -315,7 +316,7 @@ class ModCell(dae.daeModel):
             Nm_edges = np.empty(Nlyte+1, dtype=object)
             i_edges = np.empty(Nlyte+1, dtype=object)
             Nm_edges_int, i_edges_int = get_lyte_internal_fluxes(
-                cvec, phivec, disc["dxd1"], disc["tau_edges"], ndD)
+                cvec, phivec, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
             Nm_edges[1:-1] = Nm_edges_int
             i_edges[1:-1] = i_edges_int
             # Anions don't flux into either current collector
@@ -336,7 +337,7 @@ class ModCell(dae.daeModel):
                 ctmp = np.array([cGP, cvec[1]])
                 phitmp = np.array([phiGP, phivec[1]])
                 Nm_foil, i_foil = get_lyte_internal_fluxes(
-                    ctmp, phitmp, disc["dxd1"][0], disc["tau_eges"][0], ndD)
+                    ctmp, phitmp, disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)
                 i_edges[0] = i_foil[0]
                 # No anion flux at Li foil
                 eqC.Residual = Nm_foil[0]
@@ -365,45 +366,47 @@ class ModCell(dae.daeModel):
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
             dxd2 = disc["dxd2"]
-            dvgNm = np.diff(disc["poros_edges"]*Nm_edges)/dxd2
-            dvgi = np.diff(disc["poros_edges"]*i_edges)/dxd2
-            ctmp = np.empty(Nlyte+2, dtype=object)
-            phitmp = np.empty(Nlyte+2, dtype=object)
-            ctmp[1:-1] = cvec
-            phitmp[1:-1] = phivec
-            ctmp[0] = ctmp[1]
-            ctmp[-1] = ctmp[-2]
-            phitmp[0] = phitmp[1]
-            phitmp[-1] = phitmp[-2]
-            c_edgestmp = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
+            dvgNm = np.diff(Nm_edges)/dxd2
+            dvgi = np.diff(i_edges)/dxd2
+#            ctmp = np.empty(Nlyte+2, dtype=object)
+#            phitmp = np.empty(Nlyte+2, dtype=object)
+#            ctmp[1:-1] = cvec
+#            phitmp[1:-1] = phivec
+#            ctmp[0] = ctmp[1]
+#            ctmp[-1] = ctmp[-2]
+#            phitmp[0] = phitmp[1]
+#            phitmp[-1] = phitmp[-2]
+#            c_edgestmp = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
 #            print("\n")
 #            print(jvec)
 #            print(disc["porosvec"])
 #            print(disc["poros_edges"]**(1.5))
-            porosvectmp = np.hstack((disc["porosvec"][0], disc["porosvec"], disc["porosvec"][-1]))
-            porosvectmp = porosvectmp**(1.5)
-            poros_edgestmp = ((2*porosvectmp[1:]*porosvectmp[:-1])
-                              / (porosvectmp[1:] + porosvectmp[:-1] + 1e-20))
-            print(poros_edgestmp)
-            Dp, Dm = ndD["Dp"], ndD["Dm"]
-            dxd1 = np.hstack((disc["dxd1"][0], disc["dxd1"], disc["dxd1"][-1]))
-            i_edgestmp = (-((Dp-Dm)*np.diff(ctmp)/dxd1)
-                          - (Dp+Dm)*c_edgestmp*np.diff(phitmp)/dxd1)
-            laplctmp = -np.diff(-poros_edgestmp*np.diff(ctmp)/dxd1)/dxd2
-            ditmp = -np.diff(poros_edgestmp*i_edgestmp)/dxd2
+#            porosvectmp = np.hstack((disc["porosvec"][0], disc["porosvec"], disc["porosvec"][-1]))
+#            porosvectmp = porosvectmp**(1.5)
+#            poros_edgestmp = ((2*porosvectmp[1:]*porosvectmp[:-1])
+#                              / (porosvectmp[1:] + porosvectmp[:-1] + 1e-20))
+#            print(poros_edgestmp)
+#            zz
+#            Dp, Dm = ndD["Dp"], ndD["Dm"]
+#            dxd1 = np.hstack((disc["dxd1"][0], disc["dxd1"], disc["dxd1"][-1]))
+#            i_edgestmp = (-((Dp-Dm)*np.diff(ctmp)/dxd1)
+#                          - (Dp+Dm)*c_edgestmp*np.diff(phitmp)/dxd1)
+#            laplctmp = -np.diff(-poros_edgestmp*np.diff(ctmp)/dxd1)/dxd2
+#            ditmp = -np.diff(poros_edgestmp*i_edgestmp)/dxd2
             # Equations governing the electrolyte in the separator
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-#                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["num"])*(-dvgNm[vInd])
-                eq.Residual = (disc["porosvec"][vInd]*dcdtvec[vInd]
-                               + disc["epsbetavec"][vInd]*(1-ndD["tp"])*jvec[vInd]
-                               - laplctmp[vInd]
-                               )
+                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["num"])*(-dvgNm[vInd])
+#                eq.Residual = (disc["porosvec"][vInd]*dcdtvec[vInd]
+#                               + disc["epsbetavec"][vInd]*(1-ndD["tp"])*jvec[vInd]
+#                               - laplctmp[vInd]
+#                               )
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
-#                eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
-                eq.Residual = disc["epsbetavec"][vInd]*jvec[vInd] - ditmp[vInd]
+                eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
+#                eq.Residual = disc["epsbetavec"][vInd]*jvec[vInd] - ditmp[vInd]
+#                eq.Residual = ditmp[vInd] + ndD["zp"]*Rvvec[vInd]
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -468,13 +471,13 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION(self.stopCondition,
                               setVariableValues=[(self.dummyVar, 2)])
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, tau, ndD):
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
     c_edges_int = (2*c_lyte[:-1]*c_lyte[1:])/(c_lyte[:-1] + c_lyte[1:]+1e-20)
     if ndD["elyteModelType"] == "dilute":
-        Dp = ndD["Dp"] / tau
-        Dm = ndD["Dm"] / tau
+        Dp = eps_o_tau * ndD["Dp"]
+        Dm = eps_o_tau * ndD["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
@@ -484,8 +487,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, tau, ndD):
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
         D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
-        D /= tau
-        kappa /= tau
+        D *= eps_o_tau
+        kappa *= eps_o_tau
         sp, n = ndD["sp"], ndD["n_refTrode"]
         i_edges_int = -kappa(c_edges_int) * (
             np.diff(phi_lyte)/dxd1

@@ -94,22 +94,15 @@ def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
     out["dxd1"] = (out["dxvec"][0:-1] + out["dxvec"][1:]) / 2.
     out["dxd2"] = out["dxvec"]
 
-    # The porosity vector
-    porosvec = np.empty(Nlyte + 2, dtype=object)
-    porosvec[0:Nvol["a"]+1] = [
-        poros["a"] for vInd in range(Nvol["a"]+1)]  # anode
-    porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [
-        poros["s"] for vInd in range(Nvol["s"])]  # separator
-    porosvec[Nvol["a"]+1 + Nvol["s"]:] = [
-        poros["c"] for vInd in range(Nvol["c"]+1)]  # cathode
-    out["poros_edges"] = ((2*porosvec[1:]*porosvec[:-1])
-                          / (porosvec[1:] + porosvec[:-1] + 1e-20))
-    out["porosvec"] = porosvec[1:-1]
-
-    # The tortuosity vector (assuming Bruggeman)
-    tauvec = out["porosvec"]**BruggExp
-    out["tau_edges"] = ((2*tauvec[1:]*tauvec[:-1])
-                        / (tauvec[1:] + tauvec[:-1] + 1e-20))
+    # The porosity and tortuosity-porosity vectors
+    out["porosvec"] = np.empty(Nlyte, dtype=object)
+    out["porosvec"][0:Nvol["a"]] = [poros["a"] for vInd in range(Nvol["a"])]
+    out["porosvec"][Nvol["a"]:Nvol["a"]+Nvol["s"]] = [poros["s"] for vInd in range(Nvol["s"])]
+    out["porosvec"][Nvol["a"] + Nvol["s"]:] = [poros["c"] for vInd in range(Nvol["c"])]
+    # Vector of posority/tortuosity (assuming Bruggeman)
+    porostortvec = out["porosvec"]/out["porosvec"]**(BruggExp)
+    out["eps_o_tau_edges"] = ((2*porostortvec[1:]*porostortvec[:-1])
+                              / (porostortvec[1:] + porostortvec[:-1] + 1e-20))
 
     # The epsbeta vector
     out["epsbetavec"] = np.empty(Nlyte, dtype=object)
