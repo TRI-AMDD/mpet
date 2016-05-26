@@ -336,6 +336,8 @@ class ModCell(dae.daeModel):
                 phiGP = self.phi_lyteGP()
                 ctmp = np.array([cGP, cvec[1]])
                 phitmp = np.array([phiGP, phivec[1]])
+                # TODO -- these edges things aren't actually right. Should just return a longer
+                # vector.
                 Nm_foil, i_foil = get_lyte_internal_fluxes(
                     ctmp, phitmp, disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)
                 i_edges[0] = i_foil[0]
@@ -486,9 +488,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
                        - (nup*zp**2*Dp + num*zm**2*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
-        D, kappa, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
-        D *= eps_o_tau
-        kappa *= eps_o_tau
+        D_fs, kappa_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+        # modify the free solution transport properties for porous media
+        def D(c):
+            return eps_o_tau*D_fs(c)
+        def kappa(c):
+            return eps_o_tau*kappa_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
         i_edges_int = -kappa(c_edges_int) * (
             np.diff(phi_lyte)/dxd1
