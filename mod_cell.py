@@ -361,8 +361,9 @@ class ModCell(dae.daeModel):
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
             dxd2 = disc["dxd2"]
-            dvgNm = np.diff(disc["poros_edges"]*Nm_edges)/dxd2
-            dvgi = np.diff(disc["poros_edges"]*i_edges)/dxd2
+            # Use the Bruggeman relationship to approximate effective transport
+            dvgNm = np.diff(disc["poros_edges"]**(1.5)*Nm_edges)/dxd2
+            dvgi = np.diff(disc["poros_edges"]**(1.5)*i_edges)/dxd2
             # Equations governing the electrolyte in the separator
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)

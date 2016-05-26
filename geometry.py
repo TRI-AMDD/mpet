@@ -96,14 +96,12 @@ def get_elyte_disc(Nvol, L, poros, epsbeta):
 
     # The porosity vector
     porosvec = np.empty(Nlyte + 2, dtype=object)
-    # Use the Bruggeman relationship to approximate an effective
-    # effect on the transport.
     porosvec[0:Nvol["a"]+1] = [
-        poros["a"]**(3./2) for vInd in range(Nvol["a"]+1)]  # anode
+        poros["a"] for vInd in range(Nvol["a"]+1)]  # anode
     porosvec[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [
-        poros["s"]**(3./2) for vInd in range(Nvol["s"])]  # separator
+        poros["s"] for vInd in range(Nvol["s"])]  # separator
     porosvec[Nvol["a"]+1 + Nvol["s"]:] = [
-        poros["c"]**(3./2) for vInd in range(Nvol["c"]+1)]  # cathode
+        poros["c"] for vInd in range(Nvol["c"]+1)]  # cathode
     out["poros_edges"] = ((2*porosvec[1:]*porosvec[:-1])
                           / (porosvec[1:] + porosvec[:-1] + 1e-20))
     out["porosvec"] = porosvec[1:-1]
