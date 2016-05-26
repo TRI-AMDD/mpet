@@ -76,7 +76,7 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     return curv
 
 
-def get_elyte_disc(Nvol, L, poros, epsbeta):
+def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
     Nlyte = np.sum(list(Nvol.values()))
     out = {}
     # Discretization
@@ -105,6 +105,11 @@ def get_elyte_disc(Nvol, L, poros, epsbeta):
     out["poros_edges"] = ((2*porosvec[1:]*porosvec[:-1])
                           / (porosvec[1:] + porosvec[:-1] + 1e-20))
     out["porosvec"] = porosvec[1:-1]
+
+    # The tortuosity vector (assuming Bruggeman)
+    tauvec = out["porosvec"]**BruggExp
+    out["tau_edges"] = ((2*tauvec[1:]*tauvec[:-1])
+                        / (tauvec[1:] + tauvec[:-1] + 1e-20))
 
     # The epsbeta vector
     out["epsbetavec"] = np.empty(Nlyte, dtype=object)
