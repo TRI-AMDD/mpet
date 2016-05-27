@@ -145,6 +145,9 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
     except configparser.NoOptionError:
         ndD_s["poros"]["s"] = 1.
+    ndD_s["BruggExp"] = {"a": P_s.getfloat('Geometry', 'BruggExp_a'),
+                         "c": P_s.getfloat('Geometry', 'BruggExp_c'),
+                         "s": P_s.getfloat('Geometry', 'BruggExp_s')}
 
     # Electrolyte
     c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')

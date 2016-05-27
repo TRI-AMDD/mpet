@@ -296,10 +296,8 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            # Use the Bruggeman relationship to approximate effective transport
-            # TODO -- un-hard-code
-            BruggExp = -0.5  # tortuosity = porosity^(BruggExp)
-            disc = geom.get_elyte_disc(Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], BruggExp)
+            disc = geom.get_elyte_disc(
+                Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], ndD["BruggExp"])
             cvec = get_elyte_varvec(self.c_lyte, Nvol)
             dcdtvec = get_elyte_varvec(self.c_lyte, Nvol, dt=True)
             phivec = get_elyte_varvec(self.phi_lyte, Nvol)
