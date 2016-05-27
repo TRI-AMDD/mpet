@@ -502,7 +502,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
             * np.diff(np.log(c_lyte))/dxd1
             )
         Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int)*i_edges_int)))
+                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
     return Nm_edges_int, i_edges_int
 
 def get_elyte_varvec(var, Nvol, dt=False):
