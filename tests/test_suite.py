@@ -128,7 +128,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             print("No simulation data for " + testStr)
             continue
         refData = sio.loadmat(refDataFile)
-        for varKey in refData.keys():
+        for varKey in (set(refData.keys()) & set(newData.keys())):
             # If this test has already failed
             # TODO -- Consider keeping a list of the variables that fail
             if testStr in failList:
