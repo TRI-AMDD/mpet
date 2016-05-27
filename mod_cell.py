@@ -45,8 +45,6 @@ class ModCell(dae.daeModel):
                 "Npart_{trode}".format(trode=trode), self, dae.unit(),
                 "Particles sampled in each control " +
                 "volume in electrode {trode}".format(trode=trode))
-            Nv = Nvol[trode]
-            Np = Npart[trode]
 
         # Define some variable types
         atol = ndD_s["absTol"]
@@ -107,16 +105,22 @@ class ModCell(dae.daeModel):
             self.SVsim = True
         else:
             self.SVsim = False
-#        if not self.SVsim:
-        if not self.SVsim and Nvol["a"] == 0:
-            self.c_lyteGP = dae.daeVariable(
-                "c_lyteGP", conc_t, self,
-                "Concentration in the electrolyte in " +
-                "the boundary condition ghost point")
-            self.phi_lyteGP = dae.daeVariable(
-                "phi_lyteGP", elec_pot_t, self,
-                "Electrostatic potential in electrolyte in " +
-                "the boundary condition ghost point")
+        if not self.SVsim:
+            # Ghost points (GP) to aid in boundary condition (BC) implemenation
+            self.c_lyteGP_L = dae.daeVariable("c_lyteGP_L", conc_t, self, "c_lyte left BC GP")
+            self.phi_lyteGP_L = dae.daeVariable(
+                "phi_lyteGP_L", elec_pot_t, self, "phi_lyte left BC GP")
+#            self.c_lyteGP_R = dae.daeVariable("c_lyteGP_R", conc_t, self, "c_lyte right BC GP")
+#            self.phi_lyteGP_R = dae.daeVariable(
+#                "phi_lyteGP_R", elec_pot_t, self, "phi_lyte right BC GP")
+#            self.c_lyteGP = dae.daeVariable(
+#                "c_lyteGP", conc_t, self,
+#                "Concentration in the electrolyte in " +
+#                "the boundary condition ghost point")
+#            self.phi_lyteGP = dae.daeVariable(
+#                "phi_lyteGP", elec_pot_t, self,
+#                "Electrostatic potential in electrolyte in " +
+#                "the boundary condition ghost point")
         self.phi_applied = dae.daeVariable(
             "phi_applied", elec_pot_t, self,
             "Overall battery voltage (at anode current collector)")
@@ -302,7 +306,6 @@ class ModCell(dae.daeModel):
             eq.Residual = self.c_lyte["c"].dt(0) - 0
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
-        # Calculate RHS for electrolyte equations
         else:
             # Use the Bruggeman relationship to approximate effective transport
             # TODO -- un-hard-code
@@ -313,41 +316,59 @@ class ModCell(dae.daeModel):
             phivec = get_elyte_varvec(self.phi_lyte, Nvol)
             jvec = get_elyte_varvec(self.j_plus, Nvol)
             Rvvec = -disc["epsbetavec"]*jvec
-            Nm_edges = np.empty(Nlyte+1, dtype=object)
-            i_edges = np.empty(Nlyte+1, dtype=object)
-            Nm_edges_int, i_edges_int = get_lyte_internal_fluxes(
-                cvec, phivec, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
-            Nm_edges[1:-1] = Nm_edges_int
-            i_edges[1:-1] = i_edges_int
-            # Anions don't flux into either current collector
-            Nm_edges[0] = 0.
-            Nm_edges[-1] = 0.
-            # No electrolyte current into porous cathode current collector
-            i_edges[-1] = 0.
-            # No electrolyte current into porous cathode current collector
-            if Nvol["a"] != 0:
-                i_edges[0] = 0.
-            # Left-side current is more complicated if it's a foil electrode
-            else:
-                # Ghost point equations
-                eqC = self.CreateEquation("GhostPointC")
-                eqP = self.CreateEquation("GhostPointP")
-                cGP = self.c_lyteGP()
-                phiGP = self.phi_lyteGP()
-                ctmp = np.array([cGP, cvec[1]])
-                phitmp = np.array([phiGP, phivec[1]])
-                # TODO -- these edges things aren't actually right. Should just return a longer
-                # vector.
-                Nm_foil, i_foil = get_lyte_internal_fluxes(
-                    ctmp, phitmp, disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)
-                i_edges[0] = i_foil[0]
-                # No anion flux at Li foil
-                eqC.Residual = Nm_foil[0]
+            # Apply concentration and potential boundary conditions
+            # Ghost points on the left and no-gradients on the right
+            ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
+            phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
+            #
+#            Nm_edges = np.empty(Nlyte+1, dtype=object)
+#            i_edges = np.empty(Nlyte+1, dtype=object)
+#            Nm_edges_int, i_edges_int = get_lyte_internal_fluxes(
+#                cvec, phivec, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
+#            Nm_edges[1:-1] = Nm_edges_int
+#            i_edges[1:-1] = i_edges_int
+#            # Anions don't flux into either current collector
+#            Nm_edges[0] = 0.
+#            Nm_edges[-1] = 0.
+#            # No electrolyte current into porous cathode current collector
+#            i_edges[-1] = 0.
+            # If we don't have a porous anode:
+            # 1) the total current flowing into the electrolyte is set
+            # 2) assume we have a Li foil with BV kinetics and the specified rate constant
+            eqC = self.CreateEquation("GhostPointC_L")
+            eqP = self.CreateEquation("GhostPointP_L")
+            if Nvol["a"] == 0:
                 # Concentration BC from mass flux
-                cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
+                Nm_foil = get_lyte_internal_fluxes(
+                    ctmp[0:2], phitmp[0:2], disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)[0]
+                eqC.Residual = Nm_foil[0]
+                #
+#                cGP = self.c_lyteGP()
+#                phiGP = self.phi_lyteGP()
+#                ctmp = np.array([cGP, cvec[1]])
+#                phitmp = np.array([phiGP, phivec[1]])
+#                # TODO -- these edges things aren't actually right. Should just return a longer
+#                # vector.
+#                Nm_foil, i_foil = get_lyte_internal_fluxes(
+#                    ctmp, phitmp, disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)
+#                i_edges[0] = i_foil[0]
+#                # No anion flux at Li foil
+##                eqC.Residual = Nm_foil[0]
+#                cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
+#                if ndD["elyteModelType"] == "dilute":
+#                    Dwall, tp0wall = 1., ndD["tp"]
+#                elif ndD["elyteModelType"] == "SM":
+#                    D_fs, kappa_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+#                    Dwall, tp0wall = D_fs(cWall), tp0(cWall)
+#                limtrode = ("c" if ndD["z"] < 1 else "a")
+#                currWall = self.current()*ndD["epsbeta"][limtrode]
+#                eqC.Residual = (disc["eps_o_tau_edges"][0]*Dwall*(ctmp[1] - ctmp[0])
+#                                / disc["dxvec"][0] + currWall*(1-tp0wall))
+#                # Concentration BC from mass flux
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
+                cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
                 ecd = ndD["k0_foil"]*cWall**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
@@ -367,39 +388,43 @@ class ModCell(dae.daeModel):
                     phiWall -= ndD["T"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
-            dxd2 = disc["dxd2"]
-            dvgNm = np.diff(Nm_edges)/dxd2
-            dvgi = np.diff(i_edges)/dxd2
+            # We have a porous anode -- no flux of charge or anions through current collector
+            else:
+                eqC.Residual = ctmp[0] - ctmp[1]
+                eqP.Residual = phitmp[0] - phitmp[1]
+#                i_edges[0] = 0.
+
+            Nm_edges, i_edges = get_lyte_internal_fluxes(
+                ctmp, phitmp, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
+            dvgNm = np.diff(Nm_edges)/disc["dxd2"]
+            dvgi = np.diff(i_edges)/disc["dxd2"]
 #            ctmp = np.empty(Nlyte+2, dtype=object)
 #            phitmp = np.empty(Nlyte+2, dtype=object)
 #            ctmp[1:-1] = cvec
 #            phitmp[1:-1] = phivec
-#            ctmp[0] = ctmp[1]
+#            if Nvol["a"] != 0:
+#                ctmp[0] = ctmp[1]
+#                phitmp[0] = phitmp[1]
+#            else:
+#                ctmp[0] = self.c_lyteGP()
+#                phitmp[0] = self.phi_lyteGP()
 #            ctmp[-1] = ctmp[-2]
-#            phitmp[0] = phitmp[1]
 #            phitmp[-1] = phitmp[-2]
 #            c_edgestmp = (2*ctmp[:-1]*ctmp[1:])/(ctmp[:-1] + ctmp[1:]+1e-20)
-#            print("\n")
-#            print(jvec)
-#            print(disc["porosvec"])
-#            print(disc["poros_edges"]**(1.5))
 #            porosvectmp = np.hstack((disc["porosvec"][0], disc["porosvec"], disc["porosvec"][-1]))
 #            porosvectmp = porosvectmp**(1.5)
 #            poros_edgestmp = ((2*porosvectmp[1:]*porosvectmp[:-1])
 #                              / (porosvectmp[1:] + porosvectmp[:-1] + 1e-20))
-#            print(poros_edgestmp)
-#            zz
 #            Dp, Dm = ndD["Dp"], ndD["Dm"]
 #            dxd1 = np.hstack((disc["dxd1"][0], disc["dxd1"], disc["dxd1"][-1]))
 #            i_edgestmp = (-((Dp-Dm)*np.diff(ctmp)/dxd1)
 #                          - (Dp+Dm)*c_edgestmp*np.diff(phitmp)/dxd1)
 #            laplctmp = -np.diff(-poros_edgestmp*np.diff(ctmp)/dxd1)/dxd2
 #            ditmp = -np.diff(poros_edgestmp*i_edgestmp)/dxd2
-            # Equations governing the electrolyte in the separator
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] - (1./ndD["num"])*(-dvgNm[vInd])
+                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
 #                eq.Residual = (disc["porosvec"][vInd]*dcdtvec[vInd]
 #                               + disc["epsbetavec"][vInd]*(1-ndD["tp"])*jvec[vInd]
 #                               - laplctmp[vInd]
@@ -407,7 +432,7 @@ class ModCell(dae.daeModel):
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
-#                eq.Residual = disc["epsbetavec"][vInd]*jvec[vInd] - ditmp[vInd]
+#                eq.Residual = Rvvec[vInd] + ditmp[vInd]
 #                eq.Residual = ditmp[vInd] + ndD["zp"]*Rvvec[vInd]
 
         # Define the total current. This must be done at the capacity
