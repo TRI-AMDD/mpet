@@ -70,22 +70,10 @@ def getDictsFromConfigs(P_s, P_e):
     # Should have depracation warnings to encourage users to
     # update their params files to mirror options in
     # configDefaults.
-    try:
-        ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
-    except configparser.NoOptionError:
-        ndD_s["relTol"] = 1e-6
-    try:
-        ndD_s["absTol"] = P_s.getfloat('Sim Params', 'absTol')
-    except configparser.NoOptionError:
-        ndD_s["absTol"] = 1e-6
-    try:
-        ndD_s["randomSeed"] = P_s.getboolean('Sim Params', 'randomSeed')
-    except configparser.NoOptionError:
-        ndD_s["randomSeed"] = False
-    try:
-        ndD_s["seed"] = P_s.getint('Sim Params', 'seed')
-    except configparser.NoOptionError:
-        ndD_s["seed"] = 10
+    ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
+    ndD_s["absTol"] = P_s.getfloat('Sim Params', 'absTol')
+    ndD_s["randomSeed"] = P_s.getboolean('Sim Params', 'randomSeed')
+    ndD_s["seed"] = P_s.getint('Sim Params', 'seed')
     if ndD_s["randomSeed"]:
         # This should affect all calls to np.random throughout the
         # simulation.
@@ -106,10 +94,7 @@ def getDictsFromConfigs(P_s, P_e):
     if ndD_s["Nvol"]["a"] >= 1:
         ndD_s["trodes"].append("a")
     dD_s["k0_foil"] = P_s.getfloat('Electrodes', 'k0_foil')
-    try:
-        dD_s["Rfilm_foil"] = P_s.getfloat('Electrodes', 'Rfilm_foil')
-    except configparser.NoOptionError:
-        dD_s["Rfilm_foil"] = 0.
+    dD_s["Rfilm_foil"] = P_s.getfloat('Electrodes', 'Rfilm_foil')
 
     # Particle info
     dD_s["psd_mean"] = {"a": P_s.getfloat('Particles', 'mean_a'),
@@ -141,10 +126,7 @@ def getDictsFromConfigs(P_s, P_e):
                     "c": P_s.getfloat('Geometry', 'P_L_c')}
     ndD_s["poros"] = {"a": P_s.getfloat('Geometry', 'poros_a'),
                       "c": P_s.getfloat('Geometry', 'poros_c')}
-    try:
-        ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
-    except configparser.NoOptionError:
-        ndD_s["poros"]["s"] = 1.
+    ndD_s["poros"]["s"] = P_s.getfloat('Geometry', 'poros_s')
     ndD_s["BruggExp"] = {"a": P_s.getfloat('Geometry', 'BruggExp_a'),
                          "c": P_s.getfloat('Geometry', 'BruggExp_c'),
                          "s": P_s.getfloat('Geometry', 'BruggExp_s')}
@@ -198,22 +180,15 @@ def getDictsFromConfigs(P_s, P_e):
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
         ndD["logPad"] = P.getboolean('Material', 'logPad')
         ndD["noise"] = P.getboolean('Material', 'noise')
-        try:
-            ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
-            ndD["numnoise"] = P.getint('Material', 'numnoise')
-        except configparser.NoOptionError:
-            ndD["noise_prefac"] = 1e-6
-            ndD["numnoise"] = 200
+        ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
+        ndD["numnoise"] = P.getint('Material', 'numnoise')
 
         # Reactions
         ndD["rxnType"] = P.get('Reactions', 'rxnType')
         dD["k0"] = P.getfloat('Reactions', 'k0')
         ndD["alpha"] = P.getfloat('Reactions', 'alpha')
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
-        try:
-            dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
-        except configparser.NoOptionError:
-            dD["Rfilm"] = 0.
+        dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
 
         # electrode parameters
         dD_e[trode] = dD.copy()
