@@ -485,6 +485,30 @@ def test018(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
 
+def test019(testDir, dirDict, pflag):
+    """ SM electrolyte with LFP homog, sep + cathode, significant elyte polarization """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.getConfig(psys)
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Nvol_s", "3")
+    P_s.set("Geometry", "L_c", "120e-6")
+    P_s.set("Geometry", "L_s", "90e-6")
+    P_s.set("Electrolyte", "elyteModelType", "SM")
+    IO.writeConfigFile(P_s, psys)
+    P = IO.getConfig(ptrode)
+    P.set("Particles", "type", "homog")
+    P.set("Material", "muRfunc", "LiFePO4")
+    IO.writeConfigFile(P, ptrode)
+    mpet.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+
 def testAnalytSphDifn(testDir, dirDict):
     """ Analytical test for diffusion in a sphere """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
