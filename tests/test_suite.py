@@ -206,6 +206,7 @@ def main(compareDir):
         "test016": defs.test016,
         "test017": defs.test017,
         "test018": defs.test018,
+        "test019": defs.test019,
         }
     runInfoAnalyt = {
         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
