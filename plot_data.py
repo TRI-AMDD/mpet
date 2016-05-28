@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
+import geometry as geom
 import io_utils as IO
+import mod_cell
 import props_elyte
 
 
@@ -337,32 +339,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
-            dxd1 = (dxvec[0:-1] + dxvec[1:]) / 2.
-            dxd2 = dxvec
-            c_edges = ((2*datay_c[:,1:]*datay_c[:,:-1])
-                       / (datay_c[:,1:] + datay_c[:,:-1] + 1e-20))
-            porosTmp = porosvec**(1.5)
-            poros_edges = ((2*porosTmp[1:]*porosTmp[:-1])
-                           / (porosTmp[1:] + porosTmp[:-1] + 1e-20))
-            if ndD_s["elyteModelType"] == "SM":
-                D_lyte, kappa_lyte, thermFac_lyte, tp0, Dref = (
-                    props_elyte.getProps(ndD_s["SMset"]))
-                i_edges = -poros_edges*kappa_lyte(c_edges) * (
-                    np.diff(datay_p, axis=1)/dxd1 -
-                    (ndD_s["nup"]+ndD_s["num"])/ndD_s["nup"] *
-                    (1 - tp0(c_edges)) *
-                    thermFac_lyte(c_edges) *
-                    np.diff(np.log(datay_c), axis=1)/dxd1
-                    )
-            elif ndD_s["elyteModelType"] == "dilute":
-                Dp, Dm = ndD_s["Dp"], ndD_s["Dm"]
-                zp, zm = ndD_s["zp"], ndD_s["zm"]
-                i_edges = poros_edges*(
-                    -(Dp - Dm)*np.diff(datay_c, axis=1)/dxd1
-                    - (zp*Dm - zm*Dm)*c_edges*np.diff(datay_p, axis=1)/dxd1
-                    )
-            i_CCs = np.zeros((numtimes, 1))
-            i_edges = np.hstack((i_CCs, i_edges, i_CCs))
+            cGP_L, pGP_L = data["c_lyteGP_L"], data["phi_lyteGP_L"]
+            cmat = np.hstack((cGP_L.T, datay_c, datay_c[:, -1].reshape((numtimes, 1))))
+            pmat = np.hstack((pGP_L.T, datay_p, datay_p[:, -1].reshape((numtimes, 1))))
+            disc = geom.get_elyte_disc(
+                Nvol, ndD_s["L"], ndD_s["poros"], ndD_s["epsbeta"], ndD_s["BruggExp"])
+            i_edges = np.zeros((numtimes, len(facesvec)))
+            for tInd in range(numtimes):
+                i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
+                    cmat[tInd, :], pmat[tInd, :], disc["dxd1"], disc["eps_o_tau_edges"], ndD_s)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
@@ -370,7 +355,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             elif plot_type in ["elytedivi", "elytedivif"]:
                 ylbl = r'Divergence of electrolyte current density [A/m$^3$]'
                 datax = cellsvec
-                datay = np.diff(i_edges, axis=1) / dxd2
+                datay = np.diff(i_edges, axis=1) / disc["dxd2"]
                 datay *= (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"]**2)
         if fplot:
             datay = datay[t0ind]
