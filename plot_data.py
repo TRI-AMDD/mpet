@@ -419,7 +419,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
         trode = plot_type[-1]
         fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
-        partStr = "partTrode{trode}vol{{j}}part{{i}}".format(trode=trode) + sStr
+        partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         type2c = False
         if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
             if plot_type[:-2] in ["cbarLine"]:
