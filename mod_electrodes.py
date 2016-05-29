@@ -243,14 +243,14 @@ class mod2var(dae.daeModel):
             # flux of Li at the surface.
             Flux1_bc = -0.5 * ndD["delta_L"] * self.R1_v()
             Flux2_bc = -0.5 * ndD["delta_L"] * self.R2_v()
+            Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn2":
                 pass
 #                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_Flux_CHR2(
-                    c1, c2, mu1R, mu2R, ndD["D"], Flux1_bc,
-                    Flux2_bc, dr, T)
+                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -449,10 +449,11 @@ class mod1var(dae.daeModel):
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
             Flux_bc = -ndD["delta_L"] * self.R_v()
+            Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_Flux_diffn(c, ndD["D"], Flux_bc, dr, T)
+                Flux_vec = calc_Flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_Flux_CHR(c, muR, ndD["D"], Flux_bc, dr, T)
+                Flux_vec = calc_Flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -507,16 +508,17 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_Flux_diffn(c, Ds, Flux_bc, dr, T):
+def calc_Flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    Flux_vec[1:N] = -Ds/T * np.diff(c)/dr
+    c_edges = 2*(c[0:-1] * c[1:])/(c[0:-1] + c[1:])
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(c)/dr
     return Flux_vec
 
 
-def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
+def calc_Flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     if isinstance(c[0], dae.pyCore.adouble):
         MIN, MAX = dae.Min, dae.Max
     else:
@@ -529,12 +531,11 @@ def calc_Flux_CHR(c, mu, Ds, Flux_bc, dr, T):
     # Keep the concentration between 0 and 1
     c_edges = np.array([MAX(1e-6, c_edges[i]) for i in range(N-1)])
     c_edges = np.array([MIN(1-1e-6, c_edges[i]) for i in range(N-1)])
-    Flux_vec[1:N] = -(Ds/T * (1-c_edges) * c_edges
-                      * np.diff(mu)/dr)
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
     return Flux_vec
 
 
-def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
+def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     if isinstance(c1[0], dae.pyCore.adouble):
         MIN, MAX = dae.Min, dae.Max
     else:
@@ -557,10 +558,8 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, Ds, Flux1_bc, Flux2_bc, dr, T):
         MAX(1e-6, c2_edges[i]) for i in range(len(c1_edges))])
     c2_edges = np.array([
         MIN((1-1e-6), c2_edges[i]) for i in range(len(c1_edges))])
-    Flux1_vec[1:N] = -(Ds/T * (1 - c1_edges)**(1.0) * c1_edges
-                       * np.diff(mu1_R)/dr)
-    Flux2_vec[1:N] = -(Ds/T * (1 - c2_edges)**(1.0) * c2_edges
-                       * np.diff(mu2_R)/dr)
+    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
+    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
 
 

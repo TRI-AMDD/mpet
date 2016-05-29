@@ -4,6 +4,30 @@ import numpy as np
 import geometry as geo
 
 
+class Dfuncs():
+    """This class returns the filling-fraction dependent variation of
+    the transport coefficient, D(y), such that
+    Flux = -D_ref*D(y)*grad(y) for solid solution transport or
+    Flux = -D_ref*D(y)*grad(mu) for thermo-based transport
+    where y here is the filling fraction, D_ref has dimensions of
+    length^2/time, D(y) is dimensionless, and mu, the chemical
+    potential, has been scaled to the thermal energy, k*Tref. For more
+    details on the two forms, see muRfuncs which defines both solid
+    solution (_ss) and materials based on simpler thermodynamic models.
+    """
+    def __init__(self, Dfunc):
+        Dopts = {}
+        Dopts['lattice'] = self.lattice
+        Dopts['constant'] = self.constant
+        self.Dfunc = Dopts[Dfunc]
+
+    def constant(self, y):
+        return 1.
+
+    def lattice(self, y):
+        return y*(1-y)
+
+
 class muRfuncs():
     """ This class defines functions which describe the chemical
     potential of active materials.
