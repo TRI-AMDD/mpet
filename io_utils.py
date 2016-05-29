@@ -175,6 +175,7 @@ def getDictsFromConfigs(P_s, P_e):
         dD["EvdW"] = P.getfloat('Material', 'EvdW')
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
+        ndD["Dfunc"] = P.get('Material', 'Dfunc')
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
