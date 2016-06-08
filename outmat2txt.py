@@ -178,9 +178,9 @@ def main(indir, genData=True, discData=True, elyteData=True,
         dataFileName = "output_data.mat"
         dataFile = os.path.join(indir, dataFileName)
         data = sio.loadmat(dataFile)
-        type2c = False
         for l in trodes:
             Trode = getTrodeStr(l)
+            type2c = False
             if ndD_e[l]["type"] in ndD_s["1varTypes"]:
                 str_base = partStr + "c"
             elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
