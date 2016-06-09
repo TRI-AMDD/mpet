@@ -168,16 +168,15 @@ class muRfuncs():
         Fit function to the OCV predicted by the phase separating
         2-variable graphite model (LiC6 function in this class).
         """
-        Vstd = 0.12
-        Vstep = 0.0359646
+        Vstd = 0.1196
+        Vstep = 0.0351733976
         edgeLen = 0.024
         lEdge = edgeLen
         rEdge = 1 - edgeLen
-        width = 0.001
-        lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)))
-                  * stepDown(y, lEdge, width))
-        rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)))
-                  * stepUp(y, rEdge, width))
+        width = 1e-4
+        vshift = 1e-2
+        lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)) - vshift) * stepDown(y, lEdge, width))
+        rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)) + vshift) * stepUp(y, rEdge, width))
         OCV = (
             Vstd
             + Vstep*(stepDown(y, 0.5, 0.013) - 1)
