@@ -220,7 +220,11 @@ def getDictsFromConfigs(P_s, P_e):
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
     for trode in ndD_s['trodes']:
-        dD_e[trode]['csmax'] = dD_e[trode]['rho_s'] / N_A  # M
+        dD_e[trode]['csmax'] = dD_e[trode]['rho_s'] / N_A
+        if ndD_e[trode]['type'] in ndD_s['1varTypes']:
+            dD_e[trode]['cs_ref'] = dD_e[trode]['csmax']
+        elif ndD_e[trode]['type'] in ndD_s['2varTypes']:
+            dD_e[trode]['cs_ref'] = 0.5 * dD_e[trode]['csmax']
         dD_e[trode]['cap'] = (
             dD_s["e"] * dD_s['L'][trode] * (1-ndD_s['poros'][trode])
             * ndD_s['P_L'][trode] * dD_e[trode]['rho_s'])  # C/m^2
@@ -301,7 +305,7 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*T_ref)
         ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*T_ref)
         ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
-        ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*dD_e[trode]['rho_s'])
+        ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*N_A*dD_e[trode]['cs_ref'])
         ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
         muRfunc = props_am.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
         cs0bar = ndD_s["cs0"][trode]
@@ -334,16 +338,16 @@ def getDictsFromConfigs(P_s, P_e):
                 pvol = dD_s["psd_vol"][trode][i,j]
                 ndD_tmp["kappa"] = (
                     dD_e[trode]['kappa']
-                    / (k*T_ref*dD_e[trode]['rho_s']*plen**2))
+                    / (k*T_ref*N_A*dD_e[trode]['cs_ref']*plen**2))
                 ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc']
-                                     * plen * dD_e[trode]['rho_s']
+                                     * plen * N_A*dD_e[trode]['cs_ref']
                                      / dD_e[trode]['kappa'])
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
-                                 / (F*dD_e[trode]["csmax"]))
+                                 / (F*dD_e[trode]["cs_ref"]))
                 ndD_tmp["Rfilm"] = (
                     dD_e[trode]["Rfilm"] / (
-                        t_ref*k*T_ref/(e*F*plen*dD_e[trode]["csmax"])))
+                        t_ref*k*T_ref/(e*F*plen*dD_e[trode]["cs_ref"])))
                 ndD_tmp["delta_L"] = pvol/(parea*plen)
                 if Type in ["homog_sdn", "homog2_sdn"]:
                     ndD_tmp["Omga"] = size2regsln(plen)
