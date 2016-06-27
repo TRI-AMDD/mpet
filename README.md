@@ -1,4 +1,17 @@
-# MPET
+# MPET -- Multiphase Porous Electrode Theory
+This software is design to run simulations of batteries with porous electrodes using porous
+electrode theory, which is a volume-averaged, multiscale approach to capturing the coupled behavior
+of electrolyte and active material within electrodes. As a result, with physical paramter intputs
+and run protocols (specified current or voltage profiles), it makes predictions about the internal
+dynamics within a battery (electrolyte concentration and potential, solid phase concentrations,
+reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as
+total current and voltage. In this way, it is similar the
+[dualfoil](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers
+from Berkeley. This software has most of the functionality contained in dualfoil (it is currently
+missing temperature dependence). However, beyond the standard porous electrode theory
+simulations, this software can also simulate electrodes in which the active materials phase
+separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
+behavior is common in widely used electrode materials, including for example graphite and LiFePO4.
 
 ## Installation
 
@@ -12,23 +25,27 @@
         - Say "y" when prompted. This may take several minutes.
 2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
     - Get the version corresponding to your operating system (and py34 if on Windows)
+3.  Download a copy of this repository to some place on your system path (for example, put this
+    directory within a working diretory in which you want to run simulations).
 
 If you want to use DAE Tools with a different version of Python3, you can compile it from source as
 described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
 
-1. Copy the overall system parameters file,
-   `configDefaults/params_system.cfg`, to main directory
-2. Copy at least one material parameters file from `configDefaults`
-   (e.g. `configDefaults/params_electrodes.cfg`) to the main directory
-3. Edit `params_system.cfg` to suit the simulation you're trying to run. Be
-   sure to reference a material parameters file for the cathode and
-   optionally one (the same or separate file) for the anode.
-4. Edit the material parameters file(s) serving as the electrode
-   materials
-5. Run script, passing `params_system.py` as an argument (try with/without the 3, or with 3.4):
-   `python[3] mpet.py params_system.py`
+1.  Copy `mpetrun` and `mpetplot` from the repository to your working directory (the directory from
+    which you'll run simulations and in which output will be stored).
+2.  Copy the overall system parameters file,
+    `configDefaults/params_system.cfg`, to your working directory .
+3.  Copy at least one material parameters file from `configDefaults`
+    (e.g. `configDefaults/params_electrodes.cfg`) to the working directory
+4.  Edit `params_system.cfg` to suit the simulation you're trying to run. Be
+    sure to reference a material parameters file for the cathode and
+    optionally one (the same or separate file) for the anode.
+5.  Edit the material parameters file(s) serving as the electrode
+    materials.
+6.  Run `mpetrun`, passing `params_system.cfg` as an argument:
+    `mpetrun params_system.cfg` on Windows or `./mpetrun params_system.cfg` on Linux/Mac
 
 The software will save the simulation output data in a folder called `sim_output` and will also
 keep a time-stamped copy in a folder called `history`. Each output directory should contain
@@ -40,17 +57,16 @@ keep a time-stamped copy in a folder called `history`. Each output directory sho
 - processed, dimensional and nondimensional parameters as
   Python-pickled dictionary objects
 
-Note, if you are seeing errors about reaching the maximum number of
-steps with suggestions about scaling your tolerances, try increasing
-the IDAS:MaxNumSteps parameter to 100000. This can be found in the
-`daetools.cfg` file. In Linux, this file is found within
-`/etc/daetools`, and in Windows, it is within `C:\daetools`.
+Note, if you are seeing errors about reaching the maximum number of steps with suggestions about
+scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be found
+in the `daetools.cfg` file. In Linux, this file is found within `/etc/daetools`, and in Windows, it
+is within `C:\daetools`.
 
 ## Analysis
 
-1.  Analyze output with `plot_data.py` (pass output data directory, then
+1.  Analyze output with `mpetplot` (pass output data directory, then
     plot-type as arguments)
-    - e.g., voltage plot: `python plot_data.py sim_output v`
+    - e.g., voltage plot: `mpetplot sim_output v` or `./mpetplot sim_output v`
     - other options (`full`, `c`, `a` indicate full cell, cathode, and anode):
       - `v` -- voltage vs filling fraction
       - `curr` -- current vs time
@@ -62,12 +78,12 @@ the IDAS:MaxNumSteps parameter to 100000. This can be found in the
       - `bulkp_{c,a}` -- macroscopic electrode solid phase potential (movie)
       - `soc_{c,a}` -- electrode state of charge
 2.  Alternatively, convert the output to plain text (csv) format using
-    `python outmat2txt.py sim_output` (or replace `sim_output` with
+    `mpetplot sim_output text` (or replace `sim_output` with
     any subfolder in the `history` folder). Then analyze using whatever
     tools you prefer.
 
 If you want to save output to a movie (or figure), add `save` as an extra
-argument to `plot_data.py`: `python plot_data.py sim_output cbar save`.
+argument to `mpetplot`: `mpetplot sim_output cbar save`.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
@@ -85,7 +101,7 @@ specific cases. To run the tests do the following:
    [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
    the tests subdirectory. This should give make a number of
    directories of the form `tests/ref_outputs/test###`.
-2. Within the tests directory, run `python test_suite.py`. This will
+2. Copy `mpettest` to the working directory and run it. This will
    run a number of simulations and compare their output to those
    outputs from the downloaded reference outputs along with a few
    comparisons of simulations to their corresponding analytical

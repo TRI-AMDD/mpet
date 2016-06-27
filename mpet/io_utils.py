@@ -14,8 +14,8 @@ import pickle
 
 import numpy as np
 
-import props_am
-import props_elyte
+import mpet.mpet.props_am as props_am
+import mpet.mpet.props_elyte as props_elyte
 
 
 def getConfigs(paramfile="params.cfg"):

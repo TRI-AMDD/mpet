@@ -1,20 +1,15 @@
 import os
-import sys
 
 import matplotlib as mpl
-# DAE Tools uses Qt4Agg, so we might as well use the same.
-# Any installed interactive backend other that Qt5Agg should work.
-mpl.use("Qt4Agg")
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import geometry as geom
-import io_utils as IO
-import mod_cell
-import props_elyte
+import mpet.mpet.geometry as geom
+import mpet.mpet.io_utils as IO
+import mpet.mpet.mod_cell as mod_cell
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -758,38 +753,3 @@ def _blit_draw(self, artists, bg_cache):
         # and here
         # ax.figure.canvas.blit(ax.bbox)
         ax.figure.canvas.blit(ax.figure.bbox)
-
-if __name__ == "__main__":
-    # Get input file from script parameters
-    if len(sys.argv) < 2:
-        raise Exception("Need input data directory name")
-    indir = sys.argv[1]
-    if not os.path.exists(os.path.join(os.getcwd(), indir)):
-        raise Exception("Input file doesn't exist")
-    # Get plot type from script parameters
-    plots = []
-    if len(sys.argv) > 2:
-        plots.append(sys.argv[2])
-    else:
-        plots.append("v")
-    # Save the plot instead of showing on screen?
-    # Get from script parameters
-    save_flag = False
-    print_flag = True
-    data_only = False
-    save_only = False
-    if len(sys.argv) > 3:
-        if sys.argv[3] in ["save", "saveonly"]:
-            save_flag = True
-            if sys.argv[3] == "saveonly":
-                save_only = True
-                print_flag = False
-        else:
-            for i in range(3, len(sys.argv)):
-                plots.append(sys.argv[i])
-    out = []
-    for plot_type in plots:
-        out.append(show_data(
-            indir, plot_type, print_flag, save_flag, data_only))
-    if not save_only:
-        plt.show()

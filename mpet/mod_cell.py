@@ -10,11 +10,11 @@ This includes the equations defining
 import daetools.pyDAE as dae
 import numpy as np
 
-import extern_funcs
-import geometry as geom
-import mod_electrodes
-import ports
-import props_elyte
+import mpet.mpet.extern_funcs as extern_funcs
+import mpet.mpet.geometry as geom
+import mpet.mpet.mod_electrodes as mod_electrodes
+import mpet.mpet.ports as ports
+import mpet.mpet.props_elyte as props_elyte
 
 
 class ModCell(dae.daeModel):
