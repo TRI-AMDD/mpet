@@ -1,5 +1,4 @@
 import os.path as osp
-import sys
 
 import matplotlib as mpl
 mpl.use("Qt4Agg")
@@ -22,9 +21,7 @@ mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 
-mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
-sys.path.append(mpetdir)
-import plot_data as pd
+import mpet.plot_data as pd
 
 
 def vt(testDir, dirDict):

@@ -1,7 +1,6 @@
 import errno
 import os
 import os.path as osp
-import sys
 import time
 
 import matplotlib as mpl
@@ -26,10 +25,8 @@ mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 
-mpetdir = osp.join(osp.dirname(osp.abspath(__file__)), "..")
-sys.path.append(mpetdir)
-import io_utils as IO
-import test_defns as defs
+import mpet.io_utils as IO
+import mpet.tests.test_defns as defs
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -179,8 +176,7 @@ def main(compareDir):
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
     dirDict["out"] = osp.join(
-        dirDict["suite"],
-        time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+        os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S", time.localtime()))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
 
@@ -235,14 +231,3 @@ def main(compareDir):
         show_fails(failListAnalyt)
     else:
         print("All analytical tests passed!")
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        compareDir = osp.join(os.getcwd(), sys.argv[1])
-    else:
-        compareDir = None
-    timeStart = time.time()
-    main(compareDir)
-    timeEnd = time.time()
-    tTot = timeEnd - timeStart
-    print("Total test time:", tTot, "s")
