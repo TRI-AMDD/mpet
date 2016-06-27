@@ -10,7 +10,7 @@ import daetools.pyDAE as dae
 import numpy as np
 import scipy.io as sio
 
-import mod_cell
+import mpet.mod_cell as mod_cell
 
 
 class SimMPET(dae.daeSimulation):

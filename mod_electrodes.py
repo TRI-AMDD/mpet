@@ -16,10 +16,10 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
 
-import extern_funcs
-import geometry as geo
-import ports
-import props_am
+import mpet.extern_funcs as extern_funcs
+import mpet.geometry as geo
+import mpet.ports as ports
+import mpet.props_am as props_am
 
 eps = -1e-12
 

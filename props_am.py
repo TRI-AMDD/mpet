@@ -1,7 +1,7 @@
 """This module handles properties associated with the active materials."""
 import numpy as np
 
-import geometry as geo
+import mpet.geometry as geo
 
 
 class Dfuncs():

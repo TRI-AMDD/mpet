@@ -13,9 +13,9 @@ from daetools.solvers.superlu import pySuperLU
 #from daetools.solvers.trilinos import pyTrilinos
 #from daetools.solvers.intel_pardiso import pyIntelPardiso
 
-import data_reporting
-import io_utils as IO
-import sim
+import mpet.data_reporting as data_reporting
+import mpet.io_utils as IO
+import mpet.sim as sim
 
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):
@@ -189,11 +189,3 @@ def main(paramfile="params_default.cfg", keepArchive=True):
 
     if not keepArchive:
         shutil.rmtree(outdir)
-
-if __name__ == "__main__":
-    default_file = "params_default.cfg"
-    if len(sys.argv) < 2:
-        paramfile = default_file
-    else:
-        paramfile = sys.argv[1]
-    main(paramfile, keepArchive=True)
