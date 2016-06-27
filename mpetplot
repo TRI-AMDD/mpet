@@ -9,6 +9,7 @@ matplotlib.use("Qt4Agg")
 import matplotlib.pyplot as plt
 
 import mpet.plot_data as plot_data
+import mpet.outmat2txt as outmat2txt
 
 # Get input file from script parameters
 if len(sys.argv) < 2:
@@ -16,6 +17,10 @@ if len(sys.argv) < 2:
 indir = sys.argv[1]
 if not os.path.exists(os.path.join(os.getcwd(), indir)):
     raise Exception("Input file doesn't exist")
+# Optionally just convert output to text
+if len(sys.argv) == 3 and sys.argv[2] == "text":
+    outmat2txt.main(indir)
+    sys.exit()
 # Get plot type from script parameters
 plots = []
 if len(sys.argv) > 2:

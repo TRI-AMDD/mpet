@@ -1,6 +1,5 @@
 """This can be called to convert the default simulation output (.mat file) to csv files."""
 import os
-import sys
 
 import numpy as np
 import scipy.io as sio
@@ -243,11 +242,3 @@ def main(indir, genData=True, discData=True, elyteData=True,
                    delimiter=dlm, header=bulkpHdr)
 
     return
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise Exception("Need input directory name")
-    indir = sys.argv[1]
-    if not os.path.exists(os.path.join(os.getcwd(), indir)):
-        raise Exception("Input directory doesn't exist")
-    main(indir)
