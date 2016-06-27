@@ -33,7 +33,7 @@ described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
 
-1.  Copy mpetrun and mpetplot from the repository to your working directory (the directory from
+1.  Copy `mpetrun` and `mpetplot` from the repository to your working directory (the directory from
     which you'll run simulations and in which output will be stored).
 2.  Copy the overall system parameters file,
     `configDefaults/params_system.cfg`, to your working directory .
@@ -44,7 +44,7 @@ described [here](http://daetools.com/docs/getting_daetools.html).
     optionally one (the same or separate file) for the anode.
 5.  Edit the material parameters file(s) serving as the electrode
     materials.
-6.  Run mpetrun, passing `params_system.cfg` as an argument:
+6.  Run `mpetrun`, passing `params_system.cfg` as an argument:
     `mpetrun params_system.cfg` on Windows or `./mpetrun params_system.cfg` on Linux/Mac
 
 The software will save the simulation output data in a folder called `sim_output` and will also
