@@ -5,8 +5,8 @@ import numpy as np
 import scipy.special as spcl
 
 import mpet.tests.compare_plots as cmpr
-import mpet.mpet as mpet
-import mpet.io_utils as IO
+import mpet.mpet.main as main
+import mpet.mpet.io_utils as IO
 
 
 def corePlots(testDir, dirDict):
@@ -35,7 +35,7 @@ def test001(testDir, dirDict, pflag):
     P.set("Particles", "type", "ACR")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -57,7 +57,7 @@ def test002(testDir, dirDict, pflag):
     P.set("Material", "Dfunc", "lattice")
     P.set("Material", "dgammadc", "5e-30")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -79,7 +79,7 @@ def test003(testDir, dirDict, pflag):
     P.set("Material", "Dfunc", "lattice")
     P.set("Material", "dgammadc", "-2e-30")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -104,7 +104,7 @@ def test004(testDir, dirDict, pflag):
     P.set("Material", "Dfunc", "lattice")
     P.set("Material", "dgammadc", "-2e-30")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -125,7 +125,7 @@ def test005(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -148,7 +148,7 @@ def test006(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -169,7 +169,7 @@ def test007(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -192,7 +192,7 @@ def test008(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -214,7 +214,7 @@ def test009(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "LiC6")
     P.set("Material", "noise", "true")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -238,7 +238,7 @@ def test010(testDir, dirDict, pflag):
     P.set("Material", "B", "0.1e9")
     P.set("Material", "kappa", "2.5e-10")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -264,7 +264,7 @@ def test011(testDir, dirDict, pflag):
     P.set("Material", "B", "0.1e9")
     P.set("Material", "kappa", "2.5e-10")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -304,7 +304,7 @@ def test012(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "LiC6_coke_ss2")
     P.set("Reactions", "rxnType", "BV_mod02")
     IO.writeConfigFile(P, ptrodea)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -348,7 +348,7 @@ def test013(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "testIS_ss")
     P.set("Reactions", "rxnType", "BV_raw")
     IO.writeConfigFile(P, ptrodea)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -376,7 +376,7 @@ def test014(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Reactions", "rxnType", "MHC")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -405,7 +405,7 @@ def test015(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "testRS")
     P.set("Reactions", "rxnType", "BV_raw")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -431,7 +431,7 @@ def test016(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -458,7 +458,7 @@ def test017(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog_sdn")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -485,7 +485,7 @@ def test018(testDir, dirDict, pflag):
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Reactions", "Rfilm", "1e+1")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -508,7 +508,7 @@ def test019(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
     if pflag:
         corePlots(testDir, dirDict)
@@ -542,7 +542,7 @@ def testAnalytSphDifn(testDir, dirDict):
     P.set("Reactions", "rxnType", "BV_raw")
     P.set("Reactions", "k0", "1e+1")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 
 def testAnalytCylDifn(testDir, dirDict):
@@ -572,7 +572,7 @@ def testAnalytCylDifn(testDir, dirDict):
     P.set("Reactions", "rxnType", "BV_raw")
     P.set("Reactions", "k0", "1e+1")
     IO.writeConfigFile(P, ptrode)
-    mpet.main(psys, keepArchive=False)
+    main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 
 def analytSphDifn(R, T):

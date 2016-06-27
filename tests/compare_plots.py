@@ -21,7 +21,7 @@ mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 
-import mpet.plot_data as pd
+import mpet.mpet.plot_data as pd
 
 
 def vt(testDir, dirDict):

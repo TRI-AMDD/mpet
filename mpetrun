@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
 
-import mpet.mpet as mpet
+import mpet.mpet.main as main
 
-mpet.main(sys.argv[1])
+main.main(sys.argv[1])

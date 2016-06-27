@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpet.geometry as geom
-import mpet.io_utils as IO
-import mpet.mod_cell as mod_cell
+import mpet.mpet.geometry as geom
+import mpet.mpet.io_utils as IO
+import mpet.mpet.mod_cell as mod_cell
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):

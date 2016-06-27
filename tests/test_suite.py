@@ -25,7 +25,7 @@ mpl.rcParams['lines.linewidth'] = lwidth
 mpl.rcParams['lines.markersize'] = markersize
 mpl.rcParams['lines.markeredgewidth'] = 0.1
 
-import mpet.io_utils as IO
+import mpet.mpet.io_utils as IO
 import mpet.tests.test_defns as defs
 
 def run_test_sims(runInfo, dirDict, pflag=True):
