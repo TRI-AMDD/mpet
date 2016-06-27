@@ -1,4 +1,17 @@
-# MPET
+# MPET -- Multiphase Porous Electrode Theory
+This software is design to run simulations of batteries with porous electrodes using porous
+electrode theory, which is a volume-averaged, multiscale approach to capturing the coupled behavior
+of electrolyte and active material within electrodes. As a result, with physical paramter intputs
+and run protocols (specified current or voltage profiles), it makes predictions about the internal
+dynamics within a battery (electrolyte concentration and potential, solid phase concentrations,
+reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as
+total current and voltage. In this way, it is similar the
+[dualfoil](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers
+from Berkeley. This software has most of the functionality contained in dualfoil (it is currently
+missing temperature dependence). However, beyond the standard porous electrode theory
+simulations, this software can also simulate electrodes in which the active materials phase
+separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
+behavior is common in widely used electrode materials, including for example graphite and LiFePO4.
 
 ## Installation
 
