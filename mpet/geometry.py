@@ -50,7 +50,7 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     curv = np.empty(N, dtype=object)
     # Here, beta_s = n*grad(c) at the surface.
     # beta_s = (c_N - c_{N-2})/(2*dr)
-    # c_N = c_{N_2} + 2*dr*beta_s
+    # c_N = c_{N-2} + 2*dr*beta_s
     if particleShape == "sphere":
         curv[0] = 3 * (2*c[1] - 2*c[0]) / dr**2
         curv[1:N-1] = (
