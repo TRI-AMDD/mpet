@@ -47,7 +47,7 @@ def get_dr_edges(shape, N):
 
 def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     N = len(c)
-    curv = np.empty(N, dtype=object)
+    curv = np.empty(N, dtype=c.dtype)
     # Here, beta_s = n*grad(c) at the surface.
     # beta_s = (c_N - c_{N-2})/(2*dr)
     # c_N = c_{N-2} + 2*dr*beta_s

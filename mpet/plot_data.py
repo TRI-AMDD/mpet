@@ -10,6 +10,7 @@ import scipy.io as sio
 import mpet.mpet.geometry as geom
 import mpet.mpet.io_utils as IO
 import mpet.mpet.mod_cell as mod_cell
+import mpet.mpet.props_am as props_am
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -447,7 +448,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         return fig, ax
 
     # Plot all solid concentrations or potentials
-    elif plot_type[:-2] in ["csld", "phisld"]:
+    elif plot_type[:-2] in ["csld", "musld"]:
         t0ind = 0
         trode = plot_type[-1]
         Nv, Np = Nvol[trode], Npart[trode]
@@ -455,33 +456,49 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
         fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True)
-        sol = np.empty((Np, Nv), dtype=object)
-        sol1 = np.empty((Np, Nv), dtype=object)
-        sol2 = np.empty((Np, Nv), dtype=object)
+        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
+            type2c = False
+        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
+            type2c = True
+        if not type2c:
+            cstr_base = pfx + partStr + "c"
+            cbarstr_base = pfx + partStr + "cbar"
+            cstr = np.empty((Np, Nv), dtype=object)
+            cbarstr = np.empty((Np, Nv), dtype=object)
+            lines = np.empty((Np, Nv), dtype=object)
+        elif type2c:
+            c1str_base = pfx + partStr + "c1"
+            c2str_base = pfx + partStr + "c2"
+            c1barstr_base = pfx + partStr + "c1bar"
+            c2barstr_base = pfx + partStr + "c2bar"
+            c1str = np.empty((Np, Nv), dtype=object)
+            c2str = np.empty((Np, Nv), dtype=object)
+            c1barstr = np.empty((Np, Nv), dtype=object)
+            c2barstr = np.empty((Np, Nv), dtype=object)
+            lines1 = np.empty((Np, Nv), dtype=object)
+            lines2 = np.empty((Np, Nv), dtype=object)
         lens = np.zeros((Np, Nv))
-        lines = np.empty((Np, Nv), dtype=object)
-        lines1 = np.empty((Np, Nv), dtype=object)
-        lines2 = np.empty((Np, Nv), dtype=object)
-        type2c = False
-        if plot_type[:-2] in ["csld", "csld_col"]:
-            if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
-                str_base = pfx + partStr + "c"
-            elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
-                type2c = True
-                str1_base = pfx + partStr + "c1"
-                str2_base = pfx + partStr + "c2"
+        if plot_type[:-2] in ["csld"]:
             ylim = (0, 1.01)
-        elif plot_type in ["phisld_a", "phisld_c"]:
-            str_base = pfx + partStr + "phi"
-            ylim = (-10, 20)
+        elif plot_type[:-2] in ["musld"]:
+            ylim = (-2, 2)
         for pInd in range(Np):
             for vInd in range(Nv):
                 lens[pInd,vInd] = psd_len[trode][vInd,pInd]
                 if type2c:
-                    sol1[pInd,vInd] = str1_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    sol2[pInd,vInd] = str2_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    datay1 = data[sol1[pInd,vInd]][t0ind]
-                    datay2 = data[sol2[pInd,vInd]][t0ind]
+                    c1str[pInd,vInd] = c1str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c2str[pInd,vInd] = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c1barstr[pInd,vInd] = c1barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c2barstr[pInd,vInd] = c2barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay1 = data[c1str[pInd,vInd]][t0ind]
+                    datay2 = data[c2str[pInd,vInd]][t0ind]
+                    if plot_type[:-2] in ["musld"]:
+                        c1bar = data[c1barstr[pInd,vInd]][0][t0ind]
+                        c2bar = data[c2barstr[pInd,vInd]][0][t0ind]
+                        muRfunc = props_am.muRfuncs(
+                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
+                        datay1, datay2 = muRfunc(
+                            (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay1)
                     datax = np.linspace(0, lens[pInd,vInd], numy)
                     line1, = ax[pInd,vInd].plot(datax, datay1)
@@ -489,13 +506,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     lines1[pInd,vInd] = line1
                     lines2[pInd,vInd] = line2
                 else:
-                    sol[pInd,vInd] = str_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    datay = data[sol[pInd,vInd]][t0ind]
+                    cstr[pInd,vInd] = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay = data[cstr[pInd,vInd]][t0ind]
+                    if plot_type[:-2] in ["musld"]:
+                        cbar = np.array(data[cbarstr[pInd,vInd]][0][t0ind])
+                        muRfunc = props_am.muRfuncs(
+                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
+                        datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay)
                     datax = np.linspace(0, lens[pInd,vInd], numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
                     lines[pInd,vInd] = line
-                # Remove axis ticks
                 ax[pInd,vInd].set_ylim(ylim)
                 ax[pInd,vInd].set_xlim((0, lens[pInd,vInd]))
 
@@ -503,12 +525,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
-                        numy = len(data[sol1[pInd,vInd]][t0ind])
+                        numy = len(data[c1str[pInd,vInd]][t0ind])
                         maskTmp = np.zeros(numy)
                         lines1[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                         lines2[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                     else:
-                        numy = len(data[sol[pInd,vInd]][t0ind])
+                        numy = len(data[cstr[pInd,vInd]][t0ind])
                         maskTmp = np.zeros(numy)
                         lines[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
             if type2c:
@@ -520,12 +542,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
-                        datay1 = data[sol1[pInd,vInd]][tind]
-                        datay2 = data[sol2[pInd,vInd]][tind]
+                        datay1 = data[c1str[pInd,vInd]][tind]
+                        datay2 = data[c2str[pInd,vInd]][tind]
+                        if plot_type[:-2] in ["musld"]:
+                            c1bar = data[c1barstr[pInd,vInd]][0][t0ind]
+                            c2bar = data[c2barstr[pInd,vInd]][0][t0ind]
+                            muRfunc = props_am.muRfuncs(
+                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
+                            datay1, datay2 = muRfunc(
+                                (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                         lines1[pInd,vInd].set_ydata(datay1)
                         lines2[pInd,vInd].set_ydata(datay2)
                     else:
-                        datay = data[sol[pInd,vInd]][tind]
+                        datay = data[cstr[pInd,vInd]][tind]
+                        if plot_type[:-2] in ["musld"]:
+                            cbar = data[cbarstr[pInd,vInd]][0][t0ind]
+                            muRfunc = props_am.muRfuncs(
+                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
+                            datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                         lines[pInd,vInd].set_ydata(datay)
             if type2c:
                 return tuple(np.vstack((lines1, lines2)).reshape(-1))
