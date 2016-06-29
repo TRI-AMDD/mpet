@@ -1,28 +1,29 @@
 # MPET -- Multiphase Porous Electrode Theory
-This software is design to run simulations of batteries with porous electrodes using porous
-electrode theory, which is a volume-averaged, multiscale approach to capturing the coupled behavior
-of electrolyte and active material within electrodes. As a result, with physical paramter intputs
+
+This software is designed to run simulations of batteries with porous electrodes using the porous
+electrode theory, which is a volume-averaged, multiscale approach to capture the coupled behavior
+of electrolyte and active material within electrodes. As a result, with physical parameter inputs
 and run protocols (specified current or voltage profiles), it makes predictions about the internal
 dynamics within a battery (electrolyte concentration and potential, solid phase concentrations,
 reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as
-total current and voltage. In this way, it is similar the
-[dualfoil](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers
-from Berkeley. This software has most of the functionality contained in dualfoil (it is currently
+total current and voltage. In this way, it is similar to the
+[`dualfoil`](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers
+from Berkeley. This software has most of the functionality contained in `dualfoil` (it is currently
 missing temperature dependence). However, beyond the standard porous electrode theory
 simulations, this software can also simulate electrodes in which the active materials phase
 separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
-behavior is common in widely used electrode materials, including for example graphite and LiFePO4.
+behavior is common in widely used electrode materials, including graphite and LiFePO4.
 
 ## Installation
 
 1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4`
     - Linux: Try using your package manager
     - Windows: Use Anaconda
-        - Remove any other Python installation
-        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
-        - Open `cmd.exe`
-        - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
-        - Say "y" when prompted. This may take several minutes.
+      - Remove any other Python installation
+      - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
+      - Open `cmd.exe`
+      - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
+      - Say "y" when prompted. This may take several minutes.
 2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
     - Get the version corresponding to your operating system (and py34 if on Windows)
 3.  Download a copy of this repository to some place on your system path (for example, put this
