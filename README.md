@@ -19,17 +19,17 @@ behavior is common in widely used electrode materials, including graphite and Li
 1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4`
     - Linux: Try using your package manager
     - Windows: Use Anaconda
-      - Remove any other Python installation
-      - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
-      - Open `cmd.exe`
-      - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
-      - Say "y" when prompted. This may take several minutes.
+        - Remove any other Python installation
+        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
+        - Open `cmd.exe`
+        - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
+        - Say "y" when prompted. This may take several minutes.
 2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
     - Get the version corresponding to your operating system (and py34 if on Windows)
 3.  Download a copy of this repository to some place on your system path (for example, put this
     directory within a working diretory in which you want to run simulations).
 
-If you want to use DAE Tools with a different version of Python3, you can compile it from source as
+If you want to use DAE Tools with a different version of Python 3, you can compile it from source as
 described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
@@ -93,17 +93,17 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of
 
 When adding new features or making changes to the code, it's helpful
 to run a suite of tests to make sure various things are behaving as
-expected. This should not be necessary for a user who is not changing
+expected. This should not be necessary for users who are not changing
 the code at all, although it could still be nice to verify that the
-outputs you are seeing match those the developer(s) expect for a few
-specific cases. To run the tests do the following:
+outputs users are seeing match those the developers expect for a few
+specific cases. To run the tests, do the following:
 
 1. Download `ref_outputs.zip` from
    [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
-   the tests subdirectory. This should give make a number of
+   the tests subdirectory. This should give a number of
    directories of the form `tests/ref_outputs/test###`.
 2. Copy `mpettest` to the working directory and run it. This will
-   run a number of simulations and compare their output to those
+   run a number of simulations and compare their outputs to those
    outputs from the downloaded reference outputs along with a few
    comparisons of simulations to their corresponding analytical
    results.
