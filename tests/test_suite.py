@@ -175,8 +175,7 @@ def main(compareDir):
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
-    dirDict["out"] = osp.join(
-        os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    dirDict["out"] = osp.join(os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S"))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
 
