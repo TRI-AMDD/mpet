@@ -182,27 +182,8 @@ def main(compareDir):
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
-    runInfo = {
-        "test001": defs.test001,
-        "test002": defs.test002,
-        "test003": defs.test003,
-        "test004": defs.test004,
-        "test005": defs.test005,
-        "test006": defs.test006,
-        "test007": defs.test007,
-        "test008": defs.test008,
-        "test009": defs.test009,
-        "test010": defs.test010,
-        "test011": defs.test011,
-        "test012": defs.test012,
-        "test013": defs.test013,
-        "test014": defs.test014,
-        "test015": defs.test015,
-        "test016": defs.test016,
-        "test017": defs.test017,
-        "test018": defs.test018,
-        "test019": defs.test019,
-        }
+    n_tests = 19
+    runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i)) for i in range(1, n_tests+1)}
     runInfoAnalyt = {
         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
         "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
