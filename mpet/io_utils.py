@@ -1,10 +1,10 @@
-"""Helper functions for interacting with system paramters.
+"""Helper functions for interacting with system parameters.
 
-This module provides functions for various data format exchanges
+This module provides functions for various data format exchanges:
  - config files (on disk) <--> dictionaries of parameters (in memory)
- - dictionaries of parameters (in memory) <--> dictionaries of parameters ("pickled" on disk
+ - dictionaries of parameters (in memory) <--> dictionaries of parameters ("pickled" on disk)
 
-It also has various other functions used in the process for things such as generating
+It also has various other functions used in processes for things such as generating
 distributions from input means and standard deviations.
 """
 import ast
@@ -58,7 +58,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["2varTypes"] = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
     ndD_s["1varTypes"] = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
 
-    # Simulation Parameters
+    # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
     segs = dD_s["segments"] = ast.literal_eval(
@@ -67,7 +67,7 @@ def getDictsFromConfigs(P_s, P_e):
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
-    # Should have depracation warnings to encourage users to
+    # Should have deprecation warnings to encourage users to
     # update their params files to mirror options in
     # configDefaults.
     ndD_s["relTol"] = P_s.getfloat('Sim Params', 'relTol')
@@ -506,7 +506,7 @@ def size2regsln(size):
 
 def test_system_input(dD, ndD):
     if not isClose(dD['Tabs'], 298.):
-        raise Exception("Temp dependence not implemented")
+        raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
     if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
