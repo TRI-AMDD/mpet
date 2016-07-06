@@ -10,7 +10,7 @@ import time
 import matplotlib
 matplotlib.use("Qt4Agg")
 
-import mpet.tests.test_suite as tst
+import tests.test_suite as tst
 
 if len(sys.argv) > 1:
     compareDir = osp.join(os.getcwd(), sys.argv[1])

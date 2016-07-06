@@ -4,8 +4,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-import mpet.mpet.plot_data as pd
-import mpet.mpet.utils as utils
+import mpet.plot_data as pd
+import mpet.utils as utils
 
 utils.set_plot_defaults(mpl)
 

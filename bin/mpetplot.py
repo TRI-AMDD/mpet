@@ -9,8 +9,8 @@ import matplotlib as mpl
 mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 
-import mpet.mpet.outmat2txt as outmat2txt
-import mpet.mpet.plot_data as plot_data
+import mpet.outmat2txt as outmat2txt
+import mpet.plot_data as plot_data
 
 # Get input file from script parameters
 if len(sys.argv) < 2:

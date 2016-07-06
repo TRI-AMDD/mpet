@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpet.mpet.geometry as geom
-import mpet.mpet.io_utils as IO
-import mpet.mpet.mod_cell as mod_cell
-import mpet.mpet.props_am as props_am
-import mpet.mpet.utils as utils
+import mpet.geometry as geom
+import mpet.io_utils as IO
+import mpet.mod_cell as mod_cell
+import mpet.props_am as props_am
+import mpet.utils as utils
 
 utils.set_plot_defaults(mpl)
 

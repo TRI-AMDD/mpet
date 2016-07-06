@@ -10,9 +10,9 @@ import time
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
 
-import mpet.mpet.data_reporting as data_reporting
-import mpet.mpet.io_utils as IO
-import mpet.mpet.sim as sim
+import mpet.data_reporting as data_reporting
+import mpet.io_utils as IO
+import mpet.sim as sim
 
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):

@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpet.mpet.io_utils as IO
-import mpet.mpet.utils as utils
-import mpet.tests.test_defs as defs
+import mpet.io_utils as IO
+import mpet.utils as utils
+import tests.test_defs as defs
 
 utils.set_plot_defaults(mpl)
 

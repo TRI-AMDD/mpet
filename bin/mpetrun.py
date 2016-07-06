@@ -2,6 +2,6 @@
 
 import sys
 
-import mpet.mpet.main.main as main
+import mpet.main.main as main
 
 main(sys.argv[1])

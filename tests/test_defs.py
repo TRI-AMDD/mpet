@@ -4,9 +4,9 @@ import shutil
 import numpy as np
 import scipy.special as spcl
 
-import mpet.tests.compare_plots as cmpr
-import mpet.mpet.main as main
-import mpet.mpet.io_utils as IO
+import tests.compare_plots as cmpr
+import mpet.main as main
+import mpet.io_utils as IO
 
 
 def corePlots(testDir, dirDict):
