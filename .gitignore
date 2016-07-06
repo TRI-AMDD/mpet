@@ -1,16 +1,29 @@
+# Vim files
 *.swp
-*.mat
+
+# Outputs users may generate
 *.m4v
 *.mp4
 *.avi
 *.png
 *.pdf
+
+# Python bytecode files
 *.pyc
-*.csv
-*.zip
+
+# Generally ignore config files
+*.cfg
+# Except those in the configs directory
+!configs/*.cfg
+# Ignore general simulation output stuff
+history/
+sim_output*
+tests/ref_outputs*
+tests/test_outputs/
+
+# Misc
 mpetLogTimeSpace.py
 mpetMaterialsMHC.py
-
 venv/
 .remarkrc
 .vim

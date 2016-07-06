@@ -168,9 +168,9 @@ def main(compareDir):
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
-    dirDict["out"] = osp.join(os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S"))
+    dirDict["out"] = osp.join(dirDict["suite"], "test_outputs", time.strftime("%Y%m%d_%H%M%S"))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
-    dirDict["refs"] = osp.join(os.getcwd(), "ref_outputs")
+    dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
 
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
