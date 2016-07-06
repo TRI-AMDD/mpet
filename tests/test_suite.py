@@ -4,7 +4,6 @@ import os.path as osp
 import time
 
 import matplotlib as mpl
-mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
@@ -28,6 +27,7 @@ def run_test_sims(runInfo, dirDict, pflag=True):
         if exception.errno != errno.ENOENT:
             raise
 
+
 def run_test_sims_analyt(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
         testDir = osp.join(dirDict["out"], testStr)
@@ -40,10 +40,12 @@ def run_test_sims_analyt(runInfo, dirDict, pflag=True):
         if exception.errno != errno.ENOENT:
             raise
 
+
 def get_sim_time(simDir):
     with open(osp.join(simDir, "run_info.txt")) as fi:
         simTime = float(fi.readlines()[-1].split()[-2])
     return simTime
+
 
 def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     failList = []
@@ -92,6 +94,7 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
                     failList.append(testStr)
                     break
     return failList
+
 
 def compare_with_ref(runInfo, dirDict, tol=1e-4):
     timeList_new = []
@@ -153,9 +156,11 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
     plt.close("all")
     return failList
 
+
 def show_fails(failList):
     for fail in failList:
         print((fail + " differs from the reference outputs!"))
+
 
 def main(compareDir):
     pflag = True

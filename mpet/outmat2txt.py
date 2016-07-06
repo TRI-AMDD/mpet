@@ -83,6 +83,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     psd_len_c = dD_s["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
+
     def getTrodeStr(l):
         return ("Anode" if l == "a" else "Cathode")
     if "a" in trodes:

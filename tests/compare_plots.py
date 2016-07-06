@@ -1,7 +1,6 @@
 import os.path as osp
 
 import matplotlib as mpl
-mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,31 +13,49 @@ utils.set_plot_defaults(mpl)
 def vt(testDir, dirDict):
     xyCmp(testDir, dirDict, "vt", "Time", "Voltage",
           "V compare", "vt")
+
+
 def curr(testDir, dirDict):
     xyCmp(testDir, dirDict, "curr", "Time", "Current",
           "Current compare", "curr")
+
+
 def elytecons(testDir, dirDict):
     xyCmp(testDir, dirDict, "elytecons", "Time", "Avg elyte conc",
           "Elyte mass cons. -- new min,max:", "elytecons")
+
+
 def soc(testDir, dirDict, trode):
     xyCmp(testDir, dirDict, "soc_" + trode, "Time", "Filling Frac",
           "Filling fraction " + trode + " compare", "soc_" + trode)
+
+
 def elytecf(testDir, dirDict):
     xyCmp(testDir, dirDict, "elytecf", "Batt. Posn.", "Elyte conc",
           "Final elyte c profile compare", "elytecf")
+
+
 def elytepf(testDir, dirDict):
     xyCmp(testDir, dirDict, "elytepf", "Batt. Posn.", "Elyte phi",
           "Final elyte potential profile compare", "elytepf")
+
+
 def elyteif(testDir, dirDict):
     xyCmp(testDir, dirDict, "elyteif", "Batt. Posn.", "Elyte curr dens",
           "Final elyte curr dens profile compare", "elyteif")
+
+
 def elytedivif(testDir, dirDict):
     xyCmp(testDir, dirDict, "elytedivif", "Batt. Posn.",
           "div(elyte curr dens)",
           "Final div(elyte curr dens) profile compare", "elytedivif")
+
+
 def cbarLine(testDir, dirDict, trode):
     xyPartsCmp(testDir, dirDict, "cbar_" + trode, "Time", "cbar",
                "cbar " + trode + " compare", "cbarLine_" + trode)
+
+
 def bulkpf(testDir, dirDict, trode):
     xyCmp(testDir, dirDict, "bulkpf_" + trode, "Electrode Posn.", "phi",
           "phi of bulk electrode " + trode + " compare", "bulkp_" + trode)

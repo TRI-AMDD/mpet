@@ -381,8 +381,7 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Total_Current_Constraint")
             eq.Residual = self.current() - (
                 ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
-                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
-                )
+                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
@@ -420,6 +419,7 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION(self.stopCondition,
                               setVariableValues=[(self.dummyVar, 2)])
 
+
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
@@ -437,8 +437,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     elif ndD["elyteModelType"] == "SM":
         D_fs, kappa_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
         # modify the free solution transport properties for porous media
+
         def D(c):
             return eps_o_tau*D_fs(c)
+
         def kappa(c):
             return eps_o_tau*kappa_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
@@ -451,6 +453,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
         Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
     return Nm_edges_int, i_edges_int
+
 
 def get_elyte_varvec(var, Nvol, dt=False):
     Nlyte = np.sum(list(Nvol.values()))
