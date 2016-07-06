@@ -598,8 +598,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "discrete", cdict)
         # Smooth colormap changes:
         if color_changes == "smooth":
-            # A default green-yellow-red map
-#            cmap = mpl.cm.RdYlGn_r
             # generated with colormap.org
             cmaps = np.load("colormaps_custom.npz")
             cmap_data = cmaps["GnYlRd_3"]
@@ -735,15 +733,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(
-        fig, animate, frames=numtimes, interval=50, blit=True,
-        repeat=False, init_func=init)
+        fig, animate, frames=numtimes, interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
-        ani.save("mpet_{type}.mp4".format(type=plot_type),
-                 fps=25, bitrate=5500,
-#                 writer='alzkes',
-#                 savefig_kwargs={'bbox_inches': 'tight'},
-                 )
-#                 extra_args=['-vcodec', 'libx264'])
+        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
 
     return fig, ax, ani
 
