@@ -100,7 +100,7 @@ specific cases. To run the tests do the following:
 
 1. Download `ref_outputs.zip` from
    [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
-   the tests subdirectory. This should give make a number of
+   the working directory. This should give make a number of
    directories of the form `tests/ref_outputs/test###`.
 2. Copy `mpettest` to the working directory and run it. This will
    run a number of simulations and compare their output to those

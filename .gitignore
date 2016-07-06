@@ -8,8 +8,6 @@
 *.pyc
 *.csv
 *.zip
-tests/oldRefs
-tests/ref_outputs
 mpetLogTimeSpace.py
 mpetMaterialsMHC.py
 

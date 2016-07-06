@@ -170,7 +170,7 @@ def main(compareDir):
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
     dirDict["out"] = osp.join(os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S"))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
-    dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
+    dirDict["refs"] = osp.join(os.getcwd(), "ref_outputs")
 
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
