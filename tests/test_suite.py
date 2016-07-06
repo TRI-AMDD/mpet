@@ -8,25 +8,13 @@ mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
-# Plot defaults
-axtickfsize = 18
-labelfsize = 20
-legfsize = labelfsize - 2
-txtfsize = labelfsize - 2
-lwidth = 3
-markersize = 10
-markeredgewidth = 0.1
-mpl.rcParams['xtick.labelsize'] = axtickfsize
-mpl.rcParams['ytick.labelsize'] = axtickfsize
-mpl.rcParams['axes.labelsize'] = labelfsize
-mpl.rcParams['font.size'] = txtfsize
-mpl.rcParams['legend.fontsize'] = legfsize
-mpl.rcParams['lines.linewidth'] = lwidth
-mpl.rcParams['lines.markersize'] = markersize
-mpl.rcParams['lines.markeredgewidth'] = markeredgewidth
 
 import mpet.mpet.io_utils as IO
+import mpet.mpet.utils as utils
 import mpet.tests.test_defns as defs
+
+utils.set_plot_defaults(mpl)
+
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -170,7 +158,7 @@ def show_fails(failList):
         print((fail + " differs from the reference outputs!"))
 
 def main(compareDir):
-    pflag = False
+    pflag = True
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
@@ -183,7 +171,8 @@ def main(compareDir):
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
     n_tests = 19
-    runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i)) for i in range(1, n_tests+1)}
+    runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
+               for i in range(1, n_tests+1)}
     runInfoAnalyt = {
         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
         "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
