@@ -10,7 +10,7 @@ import scipy.io as sio
 
 import mpet.mpet.io_utils as IO
 import mpet.mpet.utils as utils
-import mpet.tests.test_defns as defs
+import mpet.tests.test_defs as defs
 
 utils.set_plot_defaults(mpl)
 
