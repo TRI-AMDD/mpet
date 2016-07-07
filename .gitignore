@@ -15,11 +15,17 @@
 *.cfg
 # Except those in the configs directory
 !configs/*.cfg
+
 # Ignore general simulation output stuff
 history/
 sim_output*
 tests/ref_outputs*
 tests/test_outputs/
+
+# Ignore scripts in bin/ directory
+mpetplot.py
+mpetrun.py
+mpettest.py
 
 # Misc
 mpetLogTimeSpace.py
