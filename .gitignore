@@ -22,10 +22,10 @@ sim_output*
 tests/ref_outputs*
 tests/test_outputs/
 
-# Ignore scripts in bin/ directory
-mpetplot.py
-mpetrun.py
-mpettest.py
+# Ignore scripts copied from mpet/bin/ to mpet/
+/mpetplot.py
+/mpetrun.py
+/mpettest.py
 
 # Misc
 mpetLogTimeSpace.py
