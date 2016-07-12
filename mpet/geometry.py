@@ -1,6 +1,8 @@
 """Helper functions to get information about the mesh/geometry of the simulated particles."""
 import numpy as np
 
+import mpet.utils as utils
+
 
 def get_unit_solid_discr(Shape, N):
     if N == 1:  # homog particle, hopefully
@@ -41,7 +43,7 @@ def get_dr_edges(shape, N):
     if r_vec is not None:
         Rs = 1.
         dr = r_vec[1] - r_vec[0]
-        edges = np.hstack((0, (r_vec[0:-1] + r_vec[1:])/2, Rs))
+        edges = np.hstack((0, utils.mean_linear(r_vec), Rs))
     return dr, edges
 
 
@@ -77,48 +79,32 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
 
 
 def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
-    Nlyte = np.sum(list(Nvol.values()))
     out = {}
     # Discretization
-    # The lengths are nondimensionalized by the cathode length
-    if Nvol["a"]:
-        dxa = Nvol["a"] * [L["a"]/Nvol["a"]]
-    else:
-        dxa = []
-    if Nvol["s"]:
-        dxs = Nvol["s"] * [L["s"]/Nvol["s"]]
-    else:
-        dxs = []
-    dxc = Nvol["c"] * [L["c"]/Nvol["c"]]
-    out["dxvec"] = np.array(dxa + dxs + dxc)
+    out["dxvec"] = utils.get_dxvec(L, Nvol)
     dxtmp = np.hstack((out["dxvec"][0], out["dxvec"], out["dxvec"][-1]))
-    out["dxd1"] = (dxtmp[0:-1] + dxtmp[1:]) / 2.
+    out["dxd1"] = utils.mean_linear(dxtmp)
     out["dxd2"] = out["dxvec"]
 
     # The porosity vector
-    porosvec = get_padded_asc_vec(poros, Nvol)
-    out["porosvec"] = porosvec[1:-1]
+#    porosvec = utils.get_padded_asc_vec(poros, Nvol)
+#    out["porosvec"] = utils.get_asc_const_vec(poros, Nvol)
+    out["porosvec"] = utils.get_asc_vec(poros, Nvol)
+    porosvec_pad = utils.pad_vec(out["porosvec"])
+#    out["porosvec"] = porosvec[1:-1]
 
     # Vector of Bruggeman exponents
-    Brugg = get_padded_asc_vec(BruggExp, Nvol)
+#    Brugg = utils.get_padded_asc_vec(BruggExp, Nvol)
+#    Brugg_pad = utils.pad_vec(utils.get_asc_const_vec(BruggExp, Nvol))
+    Brugg_pad = utils.pad_vec(utils.get_asc_vec(BruggExp, Nvol))
 
     # Vector of posority/tortuosity (assuming Bruggeman)
-    porostortvec = porosvec/porosvec**(Brugg)
-    out["eps_o_tau_edges"] = ((2*porostortvec[1:]*porostortvec[:-1])
-                              / (porostortvec[1:] + porostortvec[:-1] + 1e-20))
+    porostortvec_pad = porosvec_pad/porosvec_pad**(Brugg_pad)
+    out["eps_o_tau_edges"] = utils.mean_harmonic(porostortvec_pad)
 
     # The epsbeta vector
-    out["epsbetavec"] = np.empty(Nlyte, dtype=object)
-    out["epsbetavec"][0:Nvol["a"]] = [epsbeta["a"] for vInd in range(Nvol["a"])]
-    out["epsbetavec"][Nvol["a"]:Nvol["a"]+Nvol["s"]] = [0. for vInd in range(Nvol["s"])]
-    out["epsbetavec"][Nvol["a"]+Nvol["s"]:] = [epsbeta["c"] for vInd in range(Nvol["c"])]
+#    epsbeta["s"] = 0.
+#    out["epsbetavec"] = utils.get_asc_const_vec(epsbeta, Nvol)
+    out["epsbetavec"] = utils.get_asc_vec(epsbeta, Nvol)
 
-    return out
-
-
-def get_padded_asc_vec(var, Nvol):
-    out = np.empty(np.sum(list(Nvol.values())) + 2, dtype=object)
-    out[0:Nvol["a"]+1] = [var["a"] for vInd in range(Nvol["a"]+1)]
-    out[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [var["s"] for vInd in range(Nvol["s"])]
-    out[Nvol["a"]+1 + Nvol["s"]:] = [var["c"] for vInd in range(Nvol["c"]+1)]
     return out

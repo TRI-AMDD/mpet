@@ -15,6 +15,7 @@ import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.props_elyte as props_elyte
+import mpet.utils as utils
 
 
 class ModCell(dae.daeModel):
@@ -221,15 +222,12 @@ class ModCell(dae.daeModel):
             simBulkCond = ndD['simBulkCond'][trode]
             if simBulkCond:
                 # Calculate the RHS for electrode conductivity
-                phi_tmp = np.empty(Nvol[trode]+2, dtype=object)
-                phi_tmp[1:-1] = [self.phi_bulk[trode](vInd) for vInd in range(Nvol[trode])]
-                porosvec = np.empty(Nvol[trode]+2, dtype=object)
-                eps_sld = 1-self.ndD["poros"][trode]
-                porosvec[1:-1] = [eps_sld**(3./2) for vInd in range(Nvol[trode])]
-                porosvec[0] = porosvec[1]
-                porosvec[-1] = porosvec[-2]
-                porosvec = ((2*porosvec[1:]*porosvec[:-1])
-                            / (porosvec[1:] + porosvec[:-1] + 1e-20))
+                phi_tmp = utils.add_gp_to_vec(utils.get_var_vec(self.phi_bulk[trode], Nvol[trode]))
+                porosvec = utils.pad_vec(utils.get_const_vec(
+                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"][trode]), Nvol[trode]))
+#                porosvec = utils.get_padded_vec(
+#                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"]), Nvol[trode])
+                poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
                     # Potential at the current collector is from
                     # simulation
@@ -243,7 +241,7 @@ class ModCell(dae.daeModel):
                     phi_tmp[-1] = ndD["phi_cathode"]
                 dx = ndD["L"][trode]/Nvol[trode]
                 RHS_phi_tmp = -np.diff(
-                    -porosvec*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
+                    -poros_walls*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
@@ -298,10 +296,14 @@ class ModCell(dae.daeModel):
         else:
             disc = geom.get_elyte_disc(
                 Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], ndD["BruggExp"])
-            cvec = get_elyte_varvec(self.c_lyte, Nvol)
-            dcdtvec = get_elyte_varvec(self.c_lyte, Nvol, dt=True)
-            phivec = get_elyte_varvec(self.phi_lyte, Nvol)
-            jvec = get_elyte_varvec(self.j_plus, Nvol)
+#            cvec = get_elyte_varvec(self.c_lyte, Nvol)
+#            dcdtvec = get_elyte_varvec(self.c_lyte, Nvol, dt=True)
+#            phivec = get_elyte_varvec(self.phi_lyte, Nvol)
+#            jvec = get_elyte_varvec(self.j_plus, Nvol)
+            cvec = utils.get_asc_vec(self.c_lyte, Nvol)
+            dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
+            phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
+            jvec = utils.get_asc_vec(self.j_plus, Nvol)
             Rvvec = -disc["epsbetavec"]*jvec
             # Apply concentration and potential boundary conditions
             # Ghost points on the left and no-gradients on the right
@@ -320,7 +322,7 @@ class ModCell(dae.daeModel):
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
-                cWall = 2*ctmp[0]*ctmp[1]/(ctmp[0] + ctmp[1] + 1e-20)
+                cWall = utils.mean_harmonic(ctmp[0], ctmp[1])
                 ecd = ndD["k0_foil"]*cWall**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
@@ -339,7 +341,7 @@ class ModCell(dae.daeModel):
                 if ndD["elyteModelType"] == "dilute":
                     phiWall -= ndD["T"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
-                eqP.Residual = phiWall - 0.5*(phitmp[0] + phitmp[1])
+                eqP.Residual = phiWall - utils.mean_linear(phitmp[0], phitmp[1])
             # We have a porous anode -- no flux of charge or anions through current collector
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
@@ -423,7 +425,7 @@ class ModCell(dae.daeModel):
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
-    c_edges_int = (2*c_lyte[:-1]*c_lyte[1:])/(c_lyte[:-1] + c_lyte[1:]+1e-20)
+    c_edges_int = utils.mean_harmonic(c_lyte)
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]
         Dm = eps_o_tau * ndD["Dm"]
@@ -453,27 +455,3 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
         Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
     return Nm_edges_int, i_edges_int
-
-
-def get_elyte_varvec(var, Nvol, dt=False):
-    Nlyte = np.sum(list(Nvol.values()))
-    out = np.empty(Nlyte, dtype=object)
-    # Anode
-    if dt is False:
-        out[0:Nvol["a"]] = [var["a"](vInd) for vInd in range(Nvol["a"])]
-    else:
-        out[0:Nvol["a"]] = [var["a"].dt(vInd) for vInd in range(Nvol["a"])]
-    # Separator: If not present, fill with zeros
-    if Nvol["s"] and "s" in var.keys():
-        if dt is False:
-            out[Nvol["a"]:Nvol["a"]+Nvol["s"]] = [var["s"](vInd) for vInd in range(Nvol["s"])]
-        else:
-            out[Nvol["a"]:Nvol["a"]+Nvol["s"]] = [var["s"].dt(vInd) for vInd in range(Nvol["s"])]
-    else:
-        out[Nvol["a"]:Nvol["a"] + Nvol["s"]] = [0. for vInd in range(Nvol["s"])]
-    # Cathode
-    if dt is False:
-        out[Nvol["a"] + Nvol["s"]:Nlyte] = [var["c"](vInd) for vInd in range(Nvol["c"])]
-    else:
-        out[Nvol["a"] + Nvol["s"]:Nlyte] = [var["c"].dt(vInd) for vInd in range(Nvol["c"])]
-    return out

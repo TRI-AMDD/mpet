@@ -20,6 +20,7 @@ import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
+import mpet.utils as utils
 
 eps = -1e-12
 
@@ -137,13 +138,13 @@ class mod2var(dae.daeModel):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - 0.5*(self.c1bar() + self.c2bar())
+        eq.Residual = self.cbar() - utils.mean_linear(self.c1bar(), self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= 0.5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= utils.mean_linear(self.c1.dt(k), self.c2.dt(k)) * volfrac_vec[k]
 
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
@@ -513,7 +514,7 @@ def calc_Flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = 2*(c[0:-1] * c[1:])/(c[0:-1] + c[1:])
+    c_edges = utils.mean_harmonic(c)
     Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(c)/dr
     return Flux_vec
 
@@ -527,7 +528,7 @@ def calc_Flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = 2*(c[0:-1] * c[1:])/(c[0:-1] + c[1:])
+    c_edges = utils.mean_harmonic(c)
     # Keep the concentration between 0 and 1
     c_edges = np.array([MAX(1e-6, c_edges[i]) for i in range(N-1)])
     c_edges = np.array([MIN(1-1e-6, c_edges[i]) for i in range(N-1)])
@@ -547,8 +548,8 @@ def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[0] = 0.  # symmetry at r=0
     Flux1_vec[-1] = Flux1_bc
     Flux2_vec[-1] = Flux2_bc
-    c1_edges = 2*(c1[0:-1] * c1[1:])/(c1[0:-1] + c1[1:])
-    c2_edges = 2*(c2[0:-1] * c2[1:])/(c2[0:-1] + c2[1:])
+    c1_edges = utils.mean_harmonic(c1)
+    c2_edges = utils.mean_harmonic(c2)
     # keep the concentrations between 0 and 1
     c1_edges = np.array([
         MAX(1e-6, c1_edges[i]) for i in range(len(c1_edges))])
