@@ -225,8 +225,6 @@ class ModCell(dae.daeModel):
                 phi_tmp = utils.add_gp_to_vec(utils.get_var_vec(self.phi_bulk[trode], Nvol[trode]))
                 porosvec = utils.pad_vec(utils.get_const_vec(
                     (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"][trode]), Nvol[trode]))
-#                porosvec = utils.get_padded_vec(
-#                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"]), Nvol[trode])
                 poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
                     # Potential at the current collector is from
@@ -296,10 +294,6 @@ class ModCell(dae.daeModel):
         else:
             disc = geom.get_elyte_disc(
                 Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], ndD["BruggExp"])
-#            cvec = get_elyte_varvec(self.c_lyte, Nvol)
-#            dcdtvec = get_elyte_varvec(self.c_lyte, Nvol, dt=True)
-#            phivec = get_elyte_varvec(self.phi_lyte, Nvol)
-#            jvec = get_elyte_varvec(self.j_plus, Nvol)
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
