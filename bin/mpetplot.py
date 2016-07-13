@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
+
 import os
 import sys
 
-import matplotlib
+import matplotlib as mpl
 # DAE Tools uses Qt4Agg, so we might as well use the same.
-# Any installed interactive backend other that Qt5Agg should work.
-matplotlib.use("Qt4Agg")
+# Any installed interactive backend other than Qt5Agg should work.
+mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 
-import mpet.mpet.plot_data as plot_data
-import mpet.mpet.outmat2txt as outmat2txt
+import mpet.outmat2txt as outmat2txt
+import mpet.plot_data as plot_data
 
 # Get input file from script parameters
 if len(sys.argv) < 2:

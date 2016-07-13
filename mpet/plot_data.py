@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpet.mpet.geometry as geom
-import mpet.mpet.io_utils as IO
-import mpet.mpet.mod_cell as mod_cell
-import mpet.mpet.props_am as props_am
+import mpet.geometry as geom
+import mpet.io_utils as IO
+import mpet.mod_cell as mod_cell
+import mpet.props_am as props_am
+import mpet.utils as utils
+
+utils.set_plot_defaults(mpl)
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only):
@@ -90,24 +93,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
-
-    # Plot defaults
-    axtickfsize = 18
-    labelfsize = 20
-    legfsize = labelfsize - 2
-    txtfsize = labelfsize - 2
-    lwidth = 3.
-    markersize = 10
-    mpl.rcParams['xtick.labelsize'] = axtickfsize
-    mpl.rcParams['ytick.labelsize'] = axtickfsize
-    mpl.rcParams['axes.labelsize'] = labelfsize
-    mpl.rcParams['axes.labelsize'] = labelfsize
-    mpl.rcParams['font.size'] = txtfsize
-    mpl.rcParams['legend.fontsize'] = legfsize
-    mpl.rcParams['lines.linewidth'] = lwidth
-    mpl.rcParams['lines.markersize'] = markersize
-    mpl.rcParams['lines.markeredgewidth'] = 0.1
-#    mpl.rcParams['text.usetex'] = True
 
     # Print relevant simulation info
     if print_flag:
@@ -613,8 +598,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 "discrete", cdict)
         # Smooth colormap changes:
         if color_changes == "smooth":
-            # A default green-yellow-red map
-#            cmap = mpl.cm.RdYlGn_r
             # generated with colormap.org
             cmaps = np.load("colormaps_custom.npz")
             cmap_data = cmaps["GnYlRd_3"]
@@ -750,15 +733,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             "'bulkp_a/c', 'surf_a/c'.")
 
     ani = manim.FuncAnimation(
-        fig, animate, frames=numtimes, interval=50, blit=True,
-        repeat=False, init_func=init)
+        fig, animate, frames=numtimes, interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
-        ani.save("mpet_{type}.mp4".format(type=plot_type),
-                 fps=25, bitrate=5500,
-#                 writer='alzkes',
-#                 savefig_kwargs={'bbox_inches': 'tight'},
-                 )
-#                 extra_args=['-vcodec', 'libx264'])
+        ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
 
     return fig, ax, ani
 

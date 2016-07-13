@@ -4,29 +4,16 @@ import os.path as osp
 import time
 
 import matplotlib as mpl
-mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
-# Plot defaults
-axtickfsize = 18
-labelfsize = 20
-legfsize = labelfsize - 2
-txtfsize = labelfsize - 2
-lwidth = 3.
-markersize = 10
-mpl.rcParams['xtick.labelsize'] = axtickfsize
-mpl.rcParams['ytick.labelsize'] = axtickfsize
-mpl.rcParams['axes.labelsize'] = labelfsize
-mpl.rcParams['axes.labelsize'] = labelfsize
-mpl.rcParams['font.size'] = txtfsize
-mpl.rcParams['legend.fontsize'] = legfsize
-mpl.rcParams['lines.linewidth'] = lwidth
-mpl.rcParams['lines.markersize'] = markersize
-mpl.rcParams['lines.markeredgewidth'] = 0.1
 
-import mpet.mpet.io_utils as IO
-import mpet.tests.test_defns as defs
+import mpet.io_utils as IO
+import mpet.utils as utils
+import tests.test_defs as defs
+
+utils.set_plot_defaults(mpl)
+
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -40,6 +27,7 @@ def run_test_sims(runInfo, dirDict, pflag=True):
         if exception.errno != errno.ENOENT:
             raise
 
+
 def run_test_sims_analyt(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
         testDir = osp.join(dirDict["out"], testStr)
@@ -52,10 +40,12 @@ def run_test_sims_analyt(runInfo, dirDict, pflag=True):
         if exception.errno != errno.ENOENT:
             raise
 
+
 def get_sim_time(simDir):
     with open(osp.join(simDir, "run_info.txt")) as fi:
         simTime = float(fi.readlines()[-1].split()[-2])
     return simTime
+
 
 def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     failList = []
@@ -104,6 +94,7 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
                     failList.append(testStr)
                     break
     return failList
+
 
 def compare_with_ref(runInfo, dirDict, tol=1e-4):
     timeList_new = []
@@ -165,9 +156,11 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
     plt.close("all")
     return failList
 
+
 def show_fails(failList):
     for fail in failList:
         print((fail + " differs from the reference outputs!"))
+
 
 def main(compareDir):
     pflag = False
@@ -175,35 +168,16 @@ def main(compareDir):
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))
     dirDict["simOut"] = osp.join(os.getcwd(), "sim_output")
-    dirDict["out"] = osp.join(
-        os.getcwd(), "tests", time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+    dirDict["out"] = osp.join(dirDict["suite"], "test_outputs", time.strftime("%Y%m%d_%H%M%S"))
     dirDict["baseConfig"] = osp.join(dirDict["suite"], "baseConfigs")
     dirDict["refs"] = osp.join(dirDict["suite"], "ref_outputs")
 
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
-    runInfo = {
-        "test001": defs.test001,
-        "test002": defs.test002,
-        "test003": defs.test003,
-        "test004": defs.test004,
-        "test005": defs.test005,
-        "test006": defs.test006,
-        "test007": defs.test007,
-        "test008": defs.test008,
-        "test009": defs.test009,
-        "test010": defs.test010,
-        "test011": defs.test011,
-        "test012": defs.test012,
-        "test013": defs.test013,
-        "test014": defs.test014,
-        "test015": defs.test015,
-        "test016": defs.test016,
-        "test017": defs.test017,
-        "test018": defs.test018,
-        "test019": defs.test019,
-        }
+    n_tests = 19
+    runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
+               for i in range(1, n_tests+1)}
     runInfoAnalyt = {
         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
         "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),

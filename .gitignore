@@ -1,40 +1,36 @@
+# Vim files
 *.swp
-*.mat
+
+# Outputs users may generate
 *.m4v
 *.mp4
 *.avi
 *.png
 *.pdf
+
+# Python bytecode files
 *.pyc
-*.csv
-*.zip
-params*
-!params_default.cfg
-!configDefaults/*.cfg
-!tests/baseConfigs/*.cfg
-sim_output*
-archive/
+
+# Generally ignore config files
+*.cfg
+# Except those in the configs directory
+!configs/*.cfg
+
+# Ignore general simulation output stuff
 history/
-movies_figs/
-figs_movies/
-bai_LFP_data/
-graphite_data/
-oldParams/
-tests/ref_outputs_*
-tests/oldRefs
-tests/ref_outputs
+sim_output*
+tests/ref_outputs*
+tests/test_outputs/
+
+# Ignore scripts copied from mpet/bin/ to mpet/
+/mpetplot.py
+/mpetrun.py
+/mpettest.py
+
+# Misc
 mpetLogTimeSpace.py
 mpetMaterialsMHC.py
-plot_dataG*
-plot_data_graphite*
-
-py_mat_compare
-data_capacity.txt
-mpettest.m
-outputNotes.txt
-todo.txt
-
 venv/
 .remarkrc
 .vim
-tox.ini
+*/.flake8

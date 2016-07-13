@@ -24,7 +24,8 @@ class Model(dae.daeModel):
     def DeclareEquations(self):
         """Call DeclareEquations of base class and define equations."""
         dae.daeModel.DeclareEquations(self)
-        eq = self.CreateEquation('Time', 'Differential equation to calculate the time elapsed in the process')
+        eq = self.CreateEquation(
+            'Time', 'Differential equation to calculate the time elapsed in the process')
         eq.Residual = self.tau.dt() - 1.0
         eq.CheckUnitsConsistency = False
 

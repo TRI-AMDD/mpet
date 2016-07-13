@@ -9,13 +9,10 @@ import time
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
-#from daetools.solvers.superlu_mt import pySuperLU_MT
-#from daetools.solvers.trilinos import pyTrilinos
-#from daetools.solvers.intel_pardiso import pyIntelPardiso
 
-import mpet.mpet.data_reporting as data_reporting
-import mpet.mpet.io_utils as IO
-import mpet.mpet.sim as sim
+import mpet.data_reporting as data_reporting
+import mpet.io_utils as IO
+import mpet.sim as sim
 
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):

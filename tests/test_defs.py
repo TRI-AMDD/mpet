@@ -4,23 +4,28 @@ import shutil
 import numpy as np
 import scipy.special as spcl
 
-import mpet.tests.compare_plots as cmpr
-import mpet.mpet.main as main
-import mpet.mpet.io_utils as IO
+import tests.compare_plots as cmpr
+import mpet.main as main
+import mpet.io_utils as IO
 
 
 def corePlots(testDir, dirDict):
     cmpr.vt(testDir, dirDict)
     cmpr.curr(testDir, dirDict)
+
+
 def elytePlots(testDir, dirDict):
     cmpr.elytecons(testDir, dirDict)
     cmpr.elytecf(testDir, dirDict)
     cmpr.elytepf(testDir, dirDict)
     cmpr.elyteif(testDir, dirDict)
     cmpr.elytedivif(testDir, dirDict)
+
+
 def electrodePlots(testDir, dirDict, trode):
     cmpr.soc(testDir, dirDict, "c")
     cmpr.cbarLine(testDir, dirDict, "c")
+
 
 def test001(testDir, dirDict, pflag):
     """ LFP ACR C3 """
@@ -40,6 +45,7 @@ def test001(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test002(testDir, dirDict, pflag):
     """ LFP CHR cylinder """
@@ -63,6 +69,7 @@ def test002(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
 
+
 def test003(testDir, dirDict, pflag):
     """ LFP CHR sphere """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -84,6 +91,7 @@ def test003(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test004(testDir, dirDict, pflag):
     """ LFP CHR sphere with noise  """
@@ -110,6 +118,7 @@ def test004(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
 
+
 def test005(testDir, dirDict, pflag):
     """ LFP homog """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -133,6 +142,7 @@ def test005(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
 
+
 def test006(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmin """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -154,6 +164,7 @@ def test006(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
 
+
 def test007(testDir, dirDict, pflag):
     """ LFP homog with logPad, Vmax """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -174,6 +185,7 @@ def test007(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test008(testDir, dirDict, pflag):
     """ LFP homog_sdn """
@@ -200,6 +212,7 @@ def test008(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
 
+
 def test009(testDir, dirDict, pflag):
     """ Graphite-2param homog """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -219,6 +232,7 @@ def test009(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test010(testDir, dirDict, pflag):
     """ Graphite-2param CHR cylinder """
@@ -243,6 +257,7 @@ def test010(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test011(testDir, dirDict, pflag):
     """ Graphite-2param CHR sphere """
@@ -269,6 +284,7 @@ def test011(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test012(testDir, dirDict, pflag):
     """ Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2
@@ -314,6 +330,7 @@ def test012(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "a")
         cmpr.bulkpf(testDir, dirDict, "a")
 
+
 def test013(testDir, dirDict, pflag):
     """ Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2
     Marcus, BV_raw
@@ -358,6 +375,7 @@ def test013(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "a")
         cmpr.bulkpf(testDir, dirDict, "a")
 
+
 def test014(testDir, dirDict, pflag):
     """ LFP homog with CCsegments, MHC, Rser """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -381,6 +399,7 @@ def test014(testDir, dirDict, pflag):
     if pflag:
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def test015(testDir, dirDict, pflag):
     """ testRS homog with CVsegments, bulkCond, partCond """
@@ -413,6 +432,7 @@ def test015(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
 
+
 def test016(testDir, dirDict, pflag):
     """ test CC continuation """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -438,6 +458,7 @@ def test016(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
+
 
 def test017(testDir, dirDict, pflag):
     """ test CV continuation """
@@ -466,6 +487,7 @@ def test017(testDir, dirDict, pflag):
         electrodePlots(testDir, dirDict, "c")
         cmpr.bulkpf(testDir, dirDict, "c")
 
+
 def test018(testDir, dirDict, pflag):
     """ Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -491,6 +513,7 @@ def test018(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
 
+
 def test019(testDir, dirDict, pflag):
     """ SM electrolyte with LFP homog, sep + cathode, significant elyte polarization """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -514,6 +537,7 @@ def test019(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+
 
 def testAnalytSphDifn(testDir, dirDict):
     """ Analytical test for diffusion in a sphere """
@@ -545,6 +569,7 @@ def testAnalytSphDifn(testDir, dirDict):
     main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 
+
 def testAnalytCylDifn(testDir, dirDict):
     """ Analytical test for diffusion in a cylinder """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
@@ -575,6 +600,7 @@ def testAnalytCylDifn(testDir, dirDict):
     main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 
+
 def analytSphDifn(R, T):
     """ Analytical solution for diffusion in a sphere """
     n = 30
@@ -585,6 +611,7 @@ def analytSphDifn(R, T):
                   * (np.sin(lmbda) - lmbda*np.cos(lmbda))
                   * np.exp(-lmbda**2*T))
     return theta
+
 
 def analytCylDifn(R, T):
     """ Analytical solution for diffusion in a cylinder """
