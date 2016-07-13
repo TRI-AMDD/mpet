@@ -117,7 +117,11 @@ def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
 
 def get_padded_asc_vec(var, Nvol):
     out = np.empty(np.sum(list(Nvol.values())) + 2, dtype=object)
-    out[0:Nvol["a"]+1] = [var["a"] for vInd in range(Nvol["a"]+1)]
-    out[Nvol["a"]+1:Nvol["a"]+1 + Nvol["s"]] = [var["s"] for vInd in range(Nvol["s"])]
-    out[Nvol["a"]+1 + Nvol["s"]:] = [var["c"] for vInd in range(Nvol["c"]+1)]
+    tmp_a = np.array([var["a"] for vInd in range(Nvol["a"])])
+    tmp_s = np.array([var["s"] for vInd in range(Nvol["s"])])
+    tmp_c = np.array([var["c"] for vInd in range(Nvol["c"])])
+    tmp = np.hstack((tmp_a, tmp_s, tmp_c))
+    out[1:-1] = tmp
+    out[0] = out[1]
+    out[-1] = out[-2]
     return out
