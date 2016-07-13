@@ -1,6 +1,6 @@
 # MPET -- Multiphase Porous Electrode Theory
 
-This software is designed to run simulations of batteries with porous electrodes using the porous
+This software is designed to run simulations of batteries with porous electrodes using porous
 electrode theory, which is a volume-averaged, multiscale approach to capture the coupled behavior
 of electrolyte and active material within electrodes. As a result, with physical parameter inputs
 and run protocols (specified current or voltage profiles), it makes predictions about the internal
@@ -34,19 +34,21 @@ described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
 
-1.  Copy `mpetrun` and `mpetplot` from the repository to your working directory (the directory from
-    which you'll run simulations and in which output will be stored).
-2.  Copy the overall system parameters file,
-    `configDefaults/params_system.cfg`, to your working directory .
-3.  Copy at least one material parameters file from `configDefaults`
-    (e.g. `configDefaults/params_electrodes.cfg`) to the working directory
+1.  Enter the root repository directory. This will serve as your working directory. Simulations
+    will be run from here, and outputs will be stored here.
+2.  Copy `mpetrun.py` and `mpetplot.py` from the `bin` directory to your working directory.
+3.  Copy the overall system parameters file,
+    `configs/params_system.cfg`, to your working directory.
+3.  Copy at least one material parameters file from `configs`
+    (e.g. `configs/params_electrodes.cfg`) to the working directory.
 4.  Edit `params_system.cfg` to suit the simulation you're trying to run. Be
     sure to reference a material parameters file for the cathode and
     optionally one (the same or separate file) for the anode.
 5.  Edit the material parameters file(s) serving as the electrode
     materials.
-6.  Run `mpetrun`, passing `params_system.cfg` as an argument:
-    `mpetrun params_system.cfg` on Windows or `./mpetrun params_system.cfg` on Linux/Mac
+6.  Run `mpetrun.py`, passing `params_system.cfg` as an argument:
+    `python mpetrun.py params_system.cfg`
+    (or optionally `./mpetrun params_system.cfg` on Linux)
 
 The software will save the simulation output data in a folder called `sim_output` and will also
 keep a time-stamped copy in a folder called `history`. Each output directory should contain
@@ -65,9 +67,9 @@ is within `C:\daetools`.
 
 ## Analysis
 
-1.  Analyze output with `mpetplot` (pass output data directory, then
+1.  Analyze output with `mpetplot.py` (pass output data directory, then
     plot-type as arguments)
-    - e.g., voltage plot: `mpetplot sim_output v` or `./mpetplot sim_output v`
+    - e.g., voltage plot: `python mpetplot.py sim_output v`
     - other options (`full`, `c`, `a` indicate full cell, cathode, and anode):
       - `v` -- voltage vs filling fraction
       - `curr` -- current vs time
@@ -79,12 +81,12 @@ is within `C:\daetools`.
       - `bulkp_{c,a}` -- macroscopic electrode solid phase potential (movie)
       - `soc_{c,a}` -- electrode state of charge
 2.  Alternatively, convert the output to plain text (csv) format using
-    `mpetplot sim_output text` (or replace `sim_output` with
+    `python mpetplot.py sim_output text` (or replace `sim_output` with
     any subfolder in the `history` folder). Then analyze using whatever
     tools you prefer.
 
 If you want to save output to a movie (or figure), add `save` as an extra
-argument to `mpetplot`: `mpetplot sim_output cbar save`.
+argument to `mpetplot.py`: `python mpetplot.py sim_output cbar save`.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
@@ -102,7 +104,7 @@ specific cases. To run the tests, do the following:
    [here](http://mit.edu/smithrb/www/ref_outputs.zip) and unzip within
    the tests subdirectory. This should give a number of
    directories of the form `tests/ref_outputs/test###`.
-2. Copy `mpettest` to the working directory and run it. This will
+2. Copy `mpettest.py` to the working directory and run it. This will
    run a number of simulations and compare their outputs to those
    outputs from the downloaded reference outputs along with a few
    comparisons of simulations to their corresponding analytical
