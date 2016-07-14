@@ -13,6 +13,7 @@ from daetools.solvers.superlu import pySuperLU
 import mpet.data_reporting as data_reporting
 import mpet.io_utils as IO
 import mpet.sim as sim
+import mpet.utils as utils
 
 
 def consoleRun(ndD_s, ndD_e, tScale, outdir):
@@ -101,32 +102,28 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     # Store info about this script
     # mpet.py script directory
     localDir = os.path.dirname(os.path.abspath(__file__))
-    out1 = ""
+    commit_hash = ""
     try:
         # Git option, if it works -- commit info and current diff
-        out1 = subp.check_output(['git', '-C', localDir, 'rev-parse', '--short', 'HEAD'],
-                                 stderr=subp.STDOUT, universal_newlines=True)
-        out2 = subp.check_output(['git', '-C', localDir, 'diff'],
-                                 stderr=subp.STDOUT, universal_newlines=True)
-        out3 = subp.check_output(
-            ['git', '-C', localDir, 'rev-parse', '--abbrev-ref', 'HEAD'],
-            stderr=subp.STDOUT, universal_newlines=True)
+        branch_name, commit_hash, commit_diff = utils.get_git_info(localDir, shell=False)
+    except FileNotFoundError:
+        branch_name, commit_hash, commit_diff = utils.get_git_info(localDir, shell=True)
     except subp.CalledProcessError:
         pass
-    if out1 != "":
+    if commit_hash != "":
         # Store commit info to file, as well as how to patch if
         # there's a diff
         with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
             print("branch name:", file=fo)
-            print(out3, file=fo)
+            print(branch_name, file=fo)
             print("commit hash:", file=fo)
-            print(out1, file=fo)
+            print(commit_hash, file=fo)
             print("to run:", file=fo)
             print("$ git checkout [commit hash]", file=fo)
             print("$ patch -p1 < commit.diff:", file=fo)
             print("$ python[3] mpet.py input_params.cfg", file=fo)
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
-            print(out2, file=fo)
+            print(commit_diff, file=fo)
     else:
         # At least keep a copy of the python files in this directory
         # with the output
