@@ -60,11 +60,6 @@ keep a time-stamped copy in a folder called `history`. Each output directory sho
 - processed, dimensional and nondimensional parameters as
   Python-pickled dictionary objects
 
-Note, if you are seeing errors about reaching the maximum number of steps with suggestions about
-scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be found
-in the `daetools.cfg` file. In Linux, this file is found within `/etc/daetools`, and in Windows, it
-is within `C:\daetools`.
-
 ## Analysis
 
 1.  Analyze output with `mpetplot.py` (pass output data directory, then
@@ -90,6 +85,12 @@ argument to `mpetplot.py`: `python mpetplot.py sim_output cbar save`.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
+
+## Troubleshooting
+If you are seeing errors about reaching the maximum number of steps with suggestions about
+scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be
+found in the `daetools.cfg` file. In Linux, this file is found within `/etc/daetools`, and in
+Windows, it is within `C:\daetools`.
 
 ## Testing
 
