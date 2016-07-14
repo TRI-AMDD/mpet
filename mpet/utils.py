@@ -1,3 +1,5 @@
+import subprocess as subp
+
 import numpy as np
 
 import daetools.pyDAE as dae
@@ -108,3 +110,14 @@ def get_dxvec(L, Nvol):
     dxc = Nvol["c"] * [L["c"]/Nvol["c"]]
     out = np.array(dxa + dxs + dxc)
     return out
+
+
+def get_git_info(local_dir, shell=False):
+    commit_hash = subp.check_output(['git', '-C', local_dir, 'rev-parse', '--short', 'HEAD'],
+                                    stderr=subp.STDOUT, universal_newlines=True, shell=shell)
+    commit_diff = subp.check_output(['git', '-C', local_dir, 'diff'],
+                                    stderr=subp.STDOUT, universal_newlines=True, shell=shell)
+    branch_name = subp.check_output(
+        ['git', '-C', local_dir, 'rev-parse', '--abbrev-ref', 'HEAD'],
+        stderr=subp.STDOUT, universal_newlines=True)
+    return branch_name, commit_hash, commit_diff
