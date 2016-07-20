@@ -78,15 +78,11 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     try:
         os.makedirs(outdir)
     except OSError as exception:
-        if exception.errno != errno.EEXIST:
+        if exception.errno == errno.EEXIST:
+            print("The output directory, {dirname}, exists. Aborting.".format(dirname=outdir))
+            sys.exit()
+        else:
             raise
-        # Clean out the directory
-        for file_obj in os.listdir(outdir):
-            file_path = os.path.join(outdir, file_obj)
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-            else:
-                shutil.rmtree(file_path)
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(outdir, paramFileName)
     IO.writeConfigFile(P_s, filename=paramFile)
@@ -107,7 +103,10 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         # Git option, if it works -- commit info and current diff
         branch_name, commit_hash, commit_diff = utils.get_git_info(localDir, shell=False)
     except FileNotFoundError:
-        branch_name, commit_hash, commit_diff = utils.get_git_info(localDir, shell=True)
+        try:
+            branch_name, commit_hash, commit_diff = utils.get_git_info(localDir, shell=True)
+        except subp.CalledProcessError:
+            pass
     except subp.CalledProcessError:
         pass
     if commit_hash != "":
@@ -179,7 +178,9 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         if exception.errno != errno.EEXIST:
             raise
     for fname in os.listdir(outdir):
-        shutil.copy(os.path.join(outdir, fname), tmpDir)
+        tocopy = os.path.join(outdir, fname)
+        if os.path.isfile(tocopy):
+            shutil.copy(tocopy, tmpDir)
 
     if not keepArchive:
         shutil.rmtree(outdir)

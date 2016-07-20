@@ -7,9 +7,9 @@ and run protocols (specified current or voltage profiles), it makes predictions 
 dynamics within a battery (electrolyte concentration and potential, solid phase concentrations,
 reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as
 total current and voltage. In this way, it is similar to the
-[`dualfoil`](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers
-from Berkeley. This software has most of the functionality contained in `dualfoil` (it is currently
-missing temperature dependence). However, beyond the standard porous electrode theory
+[`dualfoil`](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and
+coworkers from Berkeley. This software has most of the functionality contained in `dualfoil` (it is
+currently missing temperature dependence). However, beyond the standard porous electrode theory
 simulations, this software can also simulate electrodes in which the active materials phase
 separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
 behavior is common in widely used electrode materials, including graphite and LiFePO4.
@@ -29,8 +29,8 @@ behavior is common in widely used electrode materials, including graphite and Li
 3.  Download a copy of this repository to some place on your system path (for example, put this
     directory within a working diretory in which you want to run simulations).
 
-If you want to use DAE Tools with a different version of Python 3, you can compile it from source as
-described [here](http://daetools.com/docs/getting_daetools.html).
+If you want to use DAE Tools with a different version of Python 3, you can compile it from source
+as described [here](http://daetools.com/docs/getting_daetools.html).
 
 ## Simulation
 
@@ -50,8 +50,9 @@ described [here](http://daetools.com/docs/getting_daetools.html).
     `python mpetrun.py params_system.cfg`
     (or optionally `./mpetrun params_system.cfg` on Linux)
 
-The software will save the simulation output data in a folder called `sim_output` and will also
-keep a time-stamped copy in a folder called `history`. Each output directory should contain
+The software will save the simulation output in a time-stamped subdirectory within a directory
+called `history`. The data contents of the most recent output will also be copied to a directory
+called `sim_output`. Each output directory should contain
 - the output data (`.mat` file)
 - copies of the input parameters files defining the simulation
 - a copy of the daetools config parameters (e.g. solver tolerances)
