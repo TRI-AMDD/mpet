@@ -117,10 +117,10 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             print(branch_name, file=fo)
             print("commit hash:", file=fo)
             print(commit_hash, file=fo)
-            print("to run:", file=fo)
+            print("to run, from the root repo directory, copy relevant files there, and:", file=fo)
             print("$ git checkout [commit hash]", file=fo)
             print("$ patch -p1 < commit.diff:", file=fo)
-            print("$ python[3] mpet.py input_params.cfg", file=fo)
+            print("$ python[3] mpetrun.py input_params_system.cfg", file=fo)
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
             print(commit_diff, file=fo)
     else:
