@@ -20,7 +20,8 @@ behavior is common in widely used electrode materials, including graphite and Li
     - Linux: Try using your package manager
     - Windows: Use Anaconda
         - Remove any other Python installation
-        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5)
+        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5).
+          Install for all users.
         - Open `cmd.exe`
         - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
         - Say "y" when prompted. This may take several minutes.
