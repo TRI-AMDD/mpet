@@ -153,26 +153,35 @@ def main(indir, genData=True, discData=True, elyteData=True,
                     print(",".join(map(str, ndD_s["psd_num"][l][vind,:])), file=fo)
 
     if elyteData:
+        valid_current = True
+        # If there wasn't an electrolyte, then a ghost point variable wouldn't have been created,
+        # so we'll get a KeyError in attempting to "plot" the electrolyte current density.
+        try:
+            plot_data.show_data(
+                indir, plot_type="elytei", print_flag=False, save_flag=False, data_only=True)
+        except KeyError:
+            valid_current = False
         elytecMat = plot_data.show_data(
             indir, plot_type="elytec", print_flag=False,
             save_flag=False, data_only=True)[1]
         elytepMat = plot_data.show_data(
             indir, plot_type="elytep", print_flag=False,
             save_flag=False, data_only=True)[1]
-        elyteiMat = plot_data.show_data(
-            indir, plot_type="elytei", print_flag=False,
-            save_flag=False, data_only=True)[1]
-        elytediviMat = plot_data.show_data(
-            indir, plot_type="elytedivi", print_flag=False,
-            save_flag=False, data_only=True)[1]
         np.savetxt(os.path.join(indir, "elyteConcData.txt"),
                    elytecMat, delimiter=dlm, header=elytecHdr)
         np.savetxt(os.path.join(indir, "elytePotData.txt"),
                    elytepMat, delimiter=dlm, header=elytepHdr)
-        np.savetxt(os.path.join(indir, "elyteCurrDensData.txt"),
-                   elyteiMat, delimiter=dlm, header=elyteiHdr)
-        np.savetxt(os.path.join(indir, "elyteDivCurrDensData.txt"),
-                   elytediviMat, delimiter=dlm, header=elytediviHdr)
+        if valid_current:
+            elyteiMat = plot_data.show_data(
+                indir, plot_type="elytei", print_flag=False,
+                save_flag=False, data_only=True)[1]
+            elytediviMat = plot_data.show_data(
+                indir, plot_type="elytedivi", print_flag=False,
+                save_flag=False, data_only=True)[1]
+            np.savetxt(os.path.join(indir, "elyteCurrDensData.txt"),
+                       elyteiMat, delimiter=dlm, header=elyteiHdr)
+            np.savetxt(os.path.join(indir, "elyteDivCurrDensData.txt"),
+                       elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
         dataFileName = "output_data.mat"
