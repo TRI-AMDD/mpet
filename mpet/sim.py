@@ -145,7 +145,7 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte[l].SetInitialCondition(
                         i, dPrev["c_lyte_" + l][-1,i])
                     self.m.phi_lyte[l].SetInitialGuess(
-                        i, dPrev["c_lyte_" + l][-1,i])
+                        i, dPrev["phi_lyte_" + l][-1,i])
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
