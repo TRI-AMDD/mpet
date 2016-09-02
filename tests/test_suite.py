@@ -119,7 +119,6 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
         for varKey in (set(refData.keys()) & set(newData.keys())):
             # If this test has already failed
             # TODO -- Consider keeping a list of the variables that fail
-            nTimes_new = len(newData["phi_cell_times"].flatten())
             if testStr in failList:
                 break
             # Ignore certain entries not of numerical output
@@ -127,11 +126,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 continue
             try:
                 varDataNew = newData[varKey]
-                timeAx = list(varDataNew.shape).index(nTimes_new)
                 varDataRef = refData[varKey]
-                allInds = [slice(None)]*varDataRef.ndim
-                allInds[timeAx] = slice(0, nTimes_new)
-                varDataRef = varDataRef[allInds]
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
                 print(testStr, "Fail from ValueError")
