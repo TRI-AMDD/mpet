@@ -158,10 +158,7 @@ class SimMPET(dae.daeSimulation):
         """
         time = 0.
         tScale = self.tScale
-        while self.CurrentTime < self.TimeHorizon:
-            nextTime = time + self.ReportingInterval
-            if nextTime > self.TimeHorizon:
-                nextTime = self.TimeHorizon
+        for nextTime in self.ReportingTimes:
             self.Log.Message(
                 "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
                     t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)

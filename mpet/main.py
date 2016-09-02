@@ -9,6 +9,7 @@ import time
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
+import numpy as np
 
 import mpet.data_reporting as data_reporting
 import mpet.io_utils as IO
@@ -36,7 +37,8 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
 
     # Set the time horizon and the reporting interval
     simulation.TimeHorizon = ndD_s["tend"]
-    simulation.ReportingInterval = ndD_s["tend"] / ndD_s['tsteps']
+    # The list of reporting times excludes the first index (zero, which is implied)
+    simulation.ReportingTimes = list(np.linspace(0, ndD_s["tend"], ndD_s["tsteps"] + 1))[1:]
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
