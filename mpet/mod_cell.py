@@ -405,7 +405,7 @@ class ModCell(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-        if self.profileType == "CC":
+        if self.profileType in ["CC", "CCsegments"]:
             # Set the condition to terminate the simulation upon reaching
             # a cutoff voltage.
             self.stopCondition = (
