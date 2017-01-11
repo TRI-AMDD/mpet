@@ -193,7 +193,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             ax.set_xlabel("Time [s]")
         ax.set_ylabel("Voltage [V]")
         if save_flag:
-            fig.savefig("mpet_v.png", bbox_inches="tight")
+            fig.savefig("mpet_v.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot surface conc.
@@ -231,7 +231,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Filling Fraciton [dimless]")
         if save_flag:
-            fig.savefig("mpet_soc.png", bbox_inches="tight")
+            fig.savefig("mpet_soc.pdf", bbox_inches="tight")
         return fig, ax
 
     # Check to make sure mass is conserved in elyte
