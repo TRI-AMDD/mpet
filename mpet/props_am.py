@@ -288,6 +288,24 @@ class muRfuncs():
         muR = muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
+    def graphite1paramHomog_3(self, y, Omga, Omgb, ISfuncs=None):
+        """ Helper function with low hysteresis and soft tail """
+        width = 5e-2
+        tailScl = 5e-2
+        muLtail = -tailScl*1./(y**(0.85))
+        muRtail = tailScl*1./((1-y)**(0.85))
+        muRtail = 1.0e1*stepUp(y, 1.0, 0.045)
+        muLlin = (0.15*Omga*12*(0.40-y**0.98)
+                  * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
+        muRlin = (0.1*Omga*4*(0.74-y) + 0.90*Omgb)*stepUp(y, 0.5, 0.4*width)
+        muLMod = (0.
+                  + 40*(-np.exp(-y/0.015))
+                  + 0.75*(np.tanh((y-0.17)/0.02) - 1)
+                  + 1.0*(np.tanh((y-0.22)/0.040) - 1)
+                  )*stepDown(y, 0.35, width)
+        muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
+        return muR
+
     def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
@@ -379,7 +397,7 @@ class muRfuncs():
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
         ndD = self.ndD
-        muRhomog = self.graphite1paramHomog_2(
+        muRhomog = self.graphite1paramHomog_3(
             y, ndD["Omga"], ndD["Omgb"], ISfuncs)
         muRnonHomog = self.generalNonHomog(y, ybar)
         muR = muRhomog + muRnonHomog
