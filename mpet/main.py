@@ -39,6 +39,9 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
     simulation.TimeHorizon = ndD_s["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
     simulation.ReportingTimes = list(np.linspace(0, ndD_s["tend"], ndD_s["tsteps"] + 1))[1:]
+    # Example logspacing for output times:
+    # simulation.ReportingTimes = list(
+    #     np.logspace(-4, np.log10(simulation.TimeHorizon), ndD_s['tsteps']))
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
