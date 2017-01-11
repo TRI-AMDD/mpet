@@ -93,6 +93,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
+    scl = 1.0  # static
+#    scl = 1.2  # movies
+    figsize = (scl*6, scl*4)
 
     # Print relevant simulation info
     if print_flag:
@@ -172,7 +175,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         voltage = (Vstd -
                    (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
             if data_only:
                 plt.close(fig)
@@ -219,7 +222,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         ffvec = data[pfx + 'ffrac_{trode}'.format(trode=trode)][0]
         if data_only:
             return times*td, ffvec
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         print(ffvec[-1])
         ax.plot(times*td, ffvec)
         xmin = np.min(ffvec)
@@ -440,7 +443,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
         if data_only:
             raise NotImplemented("no data-only output for csld/phisld")
-        fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True)
+        fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True, figsize=figsize)
         if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
             type2c = False
         elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
@@ -735,6 +738,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     ani = manim.FuncAnimation(
         fig, animate, frames=numtimes, interval=50, blit=True, repeat=False, init_func=init)
     if save_flag:
+        fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
 
     return fig, ax, ani
