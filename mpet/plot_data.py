@@ -437,8 +437,24 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
 
     # Plot all solid concentrations or potentials
     elif plot_type[:-2] in ["csld", "musld"]:
-        t0ind = 0
+        timettl = False  # Plot the current simulation time as title
+        # Plot title in seconds
+        ttlscl, ttlunit = 1, "s"
+        # For example, to plot title in hours:
+        # ttlscl, ttlunit = 1./3600, "hr"
+        save_shot = False
+        if save_shot:
+            t0ind = 300
+            print("Time at screenshot: {ts} s".format(ts=times[t0ind]*td))
+        else:
+            t0ind = 0
         trode = plot_type[-1]
+        if plot_type[0] == "c":
+            plt_cavg = True
+        else:
+            plt_cavg = False
+        plt_legend = True
+        plt_axlabels = True
         Nv, Np = Nvol[trode], Npart[trode]
         partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
         if data_only:
@@ -465,11 +481,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             c2barstr = np.empty((Np, Nv), dtype=object)
             lines1 = np.empty((Np, Nv), dtype=object)
             lines2 = np.empty((Np, Nv), dtype=object)
+            lines3 = np.empty((Np, Nv), dtype=object)
         lens = np.zeros((Np, Nv))
         if plot_type[:-2] in ["csld"]:
             ylim = (0, 1.01)
         elif plot_type[:-2] in ["musld"]:
-            ylim = (-2, 2)
+            ylim = (-4, 4)
         for pInd in range(Np):
             for vInd in range(Nv):
                 lens[pInd,vInd] = psd_len[trode][vInd,pInd]
@@ -480,7 +497,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                     c2barstr[pInd,vInd] = c2barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay1 = data[c1str[pInd,vInd]][t0ind]
                     datay2 = data[c2str[pInd,vInd]][t0ind]
+                    datay3 = 0.5*(datay1 + datay2)
+                    lbl1, lbl2 = r"$\widetilde{c}_1$", r"$\widetilde{c}_2$"
+                    lbl3 = r"$\overline{c}$"
                     if plot_type[:-2] in ["musld"]:
+                        lbl1, lbl2 = r"$\mu_1/k_\mathrm{B}T$", r"$\mu_2/k_\mathrm{B}T$"
                         c1bar = data[c1barstr[pInd,vInd]][0][t0ind]
                         c2bar = data[c2barstr[pInd,vInd]][0][t0ind]
                         muRfunc = props_am.muRfuncs(
@@ -488,9 +509,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         datay1, datay2 = muRfunc(
                             (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay1)
-                    datax = np.linspace(0, lens[pInd,vInd], numy)
-                    line1, = ax[pInd,vInd].plot(datax, datay1)
-                    line2, = ax[pInd,vInd].plot(datax, datay2)
+                    datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
+                    line1, = ax[pInd,vInd].plot(datax, datay1, label=lbl1)
+                    line2, = ax[pInd,vInd].plot(datax, datay2, label=lbl2)
+                    if plt_cavg:
+                        line3, = ax[pInd,vInd].plot(datax, datay3, '--', label=lbl3)
+                        lines3[pInd,vInd] = line3
                     lines1[pInd,vInd] = line1
                     lines2[pInd,vInd] = line2
                 else:
@@ -503,13 +527,31 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                             ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
                         datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay)
-                    datax = np.linspace(0, lens[pInd,vInd], numy)
+                    datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
                     lines[pInd,vInd] = line
                 ax[pInd,vInd].set_ylim(ylim)
-                ax[pInd,vInd].set_xlim((0, lens[pInd,vInd]))
+                ax[pInd,vInd].set_xlim((0, lens[pInd,vInd] * Lfac))
+                if plt_legend:
+                    ax[pInd, vInd].legend(loc="best")
+                if plt_axlabels:
+                    ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
+                    if plot_type[0] == "c":
+                        ax[pInd, vInd].set_ylabel(r"$\widetilde{{c}}$")
+                    elif plot_type[:2] == "mu":
+                        ax[pInd, vInd].set_ylabel(r"$\mu/k_\mathrm{B}T$")
+                if timettl:
+                    mpl.animation.Animation._blit_draw = _blit_draw
+                    ttl = ax[pInd, vInd].text(
+                        0.5, 1.04, "t = {tval:3.3f} {ttlu}".format(
+                            tval=times[t0ind]*td*ttlscl, ttlu=ttlunit),
+                        verticalalignment="center", horizontalalignment="center",
+                        transform=ax[pInd, vInd].transAxes)
+        if save_shot:
+            fig.savefig("mpet_{pt}.pdf".format(pt=plot_type), bbox_inches="tight")
 
         def init():
+            toblit = []
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
@@ -517,42 +559,57 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                         maskTmp = np.zeros(numy)
                         lines1[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                         lines2[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
+                        lines_local = np.vstack((lines1, lines2))
+                        if plt_cavg:
+                            lines3[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
+                            lines_local = np.vstack((lines_local, lines3))
                     else:
                         numy = len(data[cstr[pInd,vInd]][t0ind])
                         maskTmp = np.zeros(numy)
                         lines[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
-            if type2c:
-                return tuple(np.vstack((lines1, lines2)).reshape(-1))
-            else:
-                return tuple(lines.reshape(-1))
+                        lines_local = lines.copy()
+                    toblit.extend(lines_local.reshape(-1))
+                    if timettl:
+                        ttl.set_text("")
+                        toblit.extend([ttl])
+            return tuple(toblit)
 
         def animate(tind):
+            toblit = []
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
                         datay1 = data[c1str[pInd,vInd]][tind]
                         datay2 = data[c2str[pInd,vInd]][tind]
+                        datay3 = 0.5*(datay1 + datay2)
                         if plot_type[:-2] in ["musld"]:
-                            c1bar = data[c1barstr[pInd,vInd]][0][t0ind]
-                            c2bar = data[c2barstr[pInd,vInd]][0][t0ind]
+                            c1bar = data[c1barstr[pInd,vInd]][0][tind]
+                            c2bar = data[c2barstr[pInd,vInd]][0][tind]
                             muRfunc = props_am.muRfuncs(
                                 ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
                             datay1, datay2 = muRfunc(
                                 (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                         lines1[pInd,vInd].set_ydata(datay1)
                         lines2[pInd,vInd].set_ydata(datay2)
+                        lines_local = np.vstack((lines1, lines2))
+                        if plt_cavg:
+                            lines3[pInd,vInd].set_ydata(datay3)
+                            lines_local = np.vstack((lines_local, lines3))
                     else:
                         datay = data[cstr[pInd,vInd]][tind]
                         if plot_type[:-2] in ["musld"]:
-                            cbar = data[cbarstr[pInd,vInd]][0][t0ind]
+                            cbar = data[cbarstr[pInd,vInd]][0][tind]
                             muRfunc = props_am.muRfuncs(
                                 ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
                             datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                         lines[pInd,vInd].set_ydata(datay)
-            if type2c:
-                return tuple(np.vstack((lines1, lines2)).reshape(-1))
-            else:
-                return tuple(lines.reshape(-1))
+                        lines_local = lines.copy()
+                    toblit.extend(lines_local.reshape(-1))
+                    if timettl:
+                        ttl.set_text("t = {tval:3.3f} {ttlu}".format(
+                            tval=times[tind]*td*ttlscl, ttlu=ttlunit))
+                        toblit.extend([ttl])
+            return tuple(toblit)
 
     # Plot average solid concentrations
     elif plot_type in ["cbar_c", "cbar_a", "cbar_full"]:
