@@ -82,6 +82,8 @@ class muRfuncs():
         materialData['LiC6'] = self.LiC6
         materialData['LiC6_1param'] = self.LiC6_1param
         materialData['testRS'] = self.testRS
+        materialData['testRS_ps'] = self.testRS_ps
+        materialData['testRS_ss'] = self.testRS_ss
         self.muRfunc = materialData[ndD["muRfunc"]]
 
     def get_muR_from_OCV(self, OCV, muR_ref):
@@ -220,6 +222,17 @@ class muRfuncs():
 
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
         OCV = -self.kToe*np.log(y/(1-y))
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = self.get_actR_None(y)
+        return muR, actR
+
+    def testRS_ss(self, y, ybar, muR_ref, ISfuncs=None):
+        # Based Omg = 3*k*T_ref
+        yL = 0.07072018
+        yR = 0.92927982
+        OCV_rs = -self.kToe*self.regSln(y, self.ndD["Omga"], ISfuncs)
+        width = 0.005
+        OCV = OCV_rs*stepDown(y, yL, width) + OCV_rs*stepUp(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -408,6 +421,15 @@ class muRfuncs():
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
         muR = self.regSln(y, self.ndD["Omga"], ISfuncs)
+        actR = np.exp(muR/self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
+    def testRS_ps(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = -self.eokT*2.
+        muRhomog = self.regSln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.generalNonHomog(y, ybar)
+        muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
