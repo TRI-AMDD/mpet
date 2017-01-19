@@ -16,7 +16,7 @@ import mpet.utils as utils
 utils.set_plot_defaults(mpl)
 
 
-def show_data(indir, plot_type, print_flag, save_flag, data_only):
+def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
@@ -199,12 +199,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
     # Plot surface conc.
     if plot_type[:-2] in ["surf"]:
         trode = plot_type[-1]
-        if data_only:
-            raise NotImplemented("no data-only output for surf")
-        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
         str_base = (pfx
                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
+        if data_only:
+            sol_str = str_base.format(pInd=pOut, vInd=vOut)
+            datay = data[sol_str][:,-1]
+            return times*td, datay
+        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
         ylim = (0, 1.01)
         datax = times
         for pInd in range(Npart[trode]):
@@ -344,7 +346,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
         if fplot:
             datay = datay[t0ind]
         if data_only:
-            return datax, datay
+            return datax, datay, L_a, L_s
         dataMin, dataMax = np.min(datay), np.max(datay)
         dataRange = dataMax - dataMin
         ymin = dataMin - 0.05*dataRange
@@ -405,6 +407,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
                 str2_base = pfx + partStr + "dc2bardt"
         ylim = (0, 1.01)
         datax = times*td
+        if data_only:
+            plt.close(fig)
+            if type2c:
+                sol1_str = str1_base.format(pInd=pOut, vInd=vOut)
+                sol2_str = str2_base.format(pInd=pOut, vInd=vOut)
+                datay1 = data[sol1_str][0]
+                datay2 = data[sol2_str][0]
+                datay = (datay1, datay2)
+            else:
+                sol_str = str_base.format(pInd=pOut, vInd=vOut)
+                datay = data[sol_str][0]
+            return datax, datay
         xLblNCutoff = 4
         xLbl = "Time [s]"
         yLbl = "Particle Average Filling Fraction"
@@ -455,15 +469,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             plt_cavg = False
         plt_legend = True
         plt_axlabels = True
-        Nv, Np = Nvol[trode], Npart[trode]
-        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
-        if data_only:
-            raise NotImplemented("no data-only output for csld/phisld")
-        fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True, figsize=figsize)
         if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
             type2c = False
         elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
             type2c = True
+        Nv, Np = Nvol[trode], Npart[trode]
+        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
+        fig, ax = plt.subplots(Np, Nv, squeeze=False, sharey=True, figsize=figsize)
         if not type2c:
             cstr_base = pfx + partStr + "c"
             cbarstr_base = pfx + partStr + "cbar"
@@ -483,6 +495,38 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only):
             lines2 = np.empty((Np, Nv), dtype=object)
             lines3 = np.empty((Np, Nv), dtype=object)
         lens = np.zeros((Np, Nv))
+        if data_only:
+            print("tInd_{}".format(tOut), "time =", times[tOut]*td, "s")
+            lenval = psd_len[trode][vOut, pOut]
+            if type2c:
+                c1str = c1str_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                c2str = c2str_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                c1barstr = c1barstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                c2barstr = c2barstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                datay1 = data[c1str[pOut,vOut]][tOut]
+                datay2 = data[c2str[pOut,vOut]][tOut]
+                if plot_type[:-2] in ["musld"]:
+                    c1bar = data[c1barstr[pOut,vOut]][0][tOut]
+                    c2bar = data[c2barstr[pOut,vOut]][0][tOut]
+                    muRfunc = props_am.muRfuncs(
+                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
+                    datay1, datay2 = muRfunc(
+                        (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
+                datay = (datay1, datay2)
+                numy = len(datay1)
+            else:
+                cstr = cstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                cbarstr = cbarstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
+                datay = data[cstr][tOut]
+                if plot_type[:-2] in ["musld"]:
+                    cbar = data[cbarstr[pOut,vOut]][0][tOut]
+                    muRfunc = props_am.muRfuncs(
+                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
+                    datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
+                numy = len(datay)
+            datax = np.linspace(0, lenval * Lfac, numy)
+            plt.close(fig)
+            return datax, datay
         if plot_type[:-2] in ["csld"]:
             ylim = (0, 1.01)
         elif plot_type[:-2] in ["musld"]:
