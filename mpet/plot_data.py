@@ -206,7 +206,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             sol_str = str_base.format(pInd=pOut, vInd=vOut)
             datay = data[sol_str][:,-1]
             return times*td, datay
-        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
+        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True,
+                               figsize=figsize)
         ylim = (0, 1.01)
         datax = times
         for pInd in range(Npart[trode]):
@@ -238,7 +239,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Check to make sure mass is conserved in elyte
     if plot_type == "elytecons":
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         eps = 1e-2
         ymin = 1-eps
         ymax = 1+eps
@@ -270,7 +271,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ffvec = data[pfx + 'ffrac_c'][0]
         if data_only:
             return times*td, current
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         ax.plot(times*td, current)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
@@ -351,7 +352,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         dataRange = dataMax - dataMin
         ymin = dataMin - 0.05*dataRange
         ymax = dataMax + 0.05*dataRange
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
         ax.set_ylabel(ylbl)
         ttl = ax.text(
@@ -389,7 +390,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot solid particle-average concentrations
     elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
         trode = plot_type[-1]
-        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True)
+        fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True,
+                               figsize=figsize)
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         type2c = False
         if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
@@ -710,7 +712,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         # Implement hack to be able to animate title
         mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
-        fig, axs = plt.subplots(1, len(trvec), squeeze=False)
+        fig, axs = plt.subplots(1, len(trvec), squeeze=False, figsize=figsize)
         ttlx = 0.5 if len(trvec) < 2 else 1.1
         ttl = axs[0,0].text(
             ttlx, 1.05, ttl_fmt.format(perc=0),
@@ -796,7 +798,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         fplot = (True if plot_type[-3] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
         ax.set_ylabel('Potential of cathode [nondim]')
         ttl = ax.text(0.5, 1.05, ttl_fmt.format(perc=0),
