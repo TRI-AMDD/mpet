@@ -479,7 +479,7 @@ def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType, act_R=None,
                     eta, T, rxnType)
     elif rxnType == "MHC":
         k0_MHC = k0/MHC_kfunc(0., lmbda)
-        Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, c_lyte)
+        Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, act_R, c_lyte, act_lyte)
     return Rate
 
 
@@ -634,21 +634,23 @@ def MHC_kfunc(eta, lmbda):
                / (2*np.sqrt(lmbda)))))
 
 
-def R_MHC(k0, lmbda, eta, T, c_sld, c_lyte):
+def R_MHC(k0, lmbda, eta, T, c_sld, act_R, c_lyte, act_lyte):
     # See Zeng, Smith, Bai, Bazant 2014
     # Convert to "MHC overpotential"
     eta_f = eta + T*np.log(c_lyte/c_sld)
     gamma_ts = 1./(1. - c_sld)
+    alpha = 0.5
+    ecd_extras = act_lyte**(1-alpha) * act_R**(alpha) / (gamma_ts*np.sqrt(c_lyte*c_sld))
     if isinstance(eta, np.ndarray):
         Rate = np.empty(len(eta), dtype=object)
         for i, etaval in enumerate(eta):
             krd = k0*MHC_kfunc(-eta_f[i], lmbda)
             kox = k0*MHC_kfunc(eta_f[i], lmbda)
-            Rate[i] = (1./gamma_ts[i])*(krd*c_lyte - kox*c_sld[i])
+            Rate[i] = ecd_extras[i]*(krd*c_lyte - kox*c_sld[i])
     else:
         krd = k0*MHC_kfunc(-eta_f, lmbda)
         kox = k0*MHC_kfunc(eta_f, lmbda)
-        Rate = (1./gamma_ts)*(krd*c_lyte - kox*c_sld)
+        Rate = ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
 
 
