@@ -415,6 +415,7 @@ class ModCell(dae.daeModel):
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
+    T = ndD["T"]
     c_edges_int = utils.mean_harmonic(c_lyte)
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]
@@ -422,9 +423,9 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
-                            - Dm*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
+                            - Dm/T*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup*zp**2*Dp + num*zm**2*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
+                       - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
@@ -436,9 +437,9 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
         def sigma(c):
             return eps_o_tau*sigma_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -sigma(c_edges_int) * (
+        i_edges_int = -sigma(c_edges_int)/T * (
             np.diff(phi_lyte)/dxd1
-            + nu*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
             * thermFac(c_edges_int)
             * np.diff(np.log(c_lyte))/dxd1
             )
