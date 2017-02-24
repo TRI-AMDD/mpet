@@ -108,8 +108,8 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["simBulkCond"] = {
         "a": P_s.getboolean('Conductivity', 'simBulkCond_a'),
         "c": P_s.getboolean('Conductivity', 'simBulkCond_c')}
-    dD_s["mcond"] = {"a": P_s.getfloat('Conductivity', 'mcond_a'),
-                     "c": P_s.getfloat('Conductivity', 'mcond_c')}
+    dD_s["sigma_s"] = {"a": P_s.getfloat('Conductivity', 'sigma_s_a'),
+                       "c": P_s.getfloat('Conductivity', 'sigma_s_c')}
     ndD_s["simPartCond"] = {
         "a": P_s.getboolean('Conductivity', 'simPartCond_a'),
         "c": P_s.getboolean('Conductivity', 'simPartCond_c')}
@@ -215,7 +215,7 @@ def getDictsFromConfigs(P_s, P_e):
         D_ref = dD_s["D_ref"] = Damb
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
-    dD_s["mcond_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
+    dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
     dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
@@ -261,7 +261,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["L"] = {}
     ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
     ndD_s["beta"] = {}
-    ndD_s["mcond"] = {}
+    ndD_s["sigma_s"] = {}
     ndD_s["phiRef"] = {"a": 0.}  # temporary, used for Vmax, Vmin
     for trode in ndD_s["trodes"]:
         # System scale parameters
@@ -292,7 +292,7 @@ def getDictsFromConfigs(P_s, P_e):
             dD_s["psd_vol"][trode] / Vuvec[:, np.newaxis])
         ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
         ndD_s["beta"][trode] = dD_e[trode]["csmax"]/c_ref
-        ndD_s["mcond"][trode] = dD_s['mcond'][trode] / dD_s["mcond_ref"]
+        ndD_s["sigma_s"][trode] = dD_s['sigma_s'][trode] / dD_s["sigma_s_ref"]
         vols = dD_s["psd_vol"][trode]
         ndD_s["G"][trode] = (
             dD_s["G"][trode] * (k*T_ref/e) * t_ref

@@ -7,7 +7,7 @@ binary electrolytes.
 Each electrolyte set must output functions for the following as a
 function of c (electrolyte concentration, M)
  - Dchem [m^2/s] = the prefactor for grad(c) in species conservation
- - kappa [S/m] = the conductivity
+ - sigma [S/m] = the conductivity
  - (1 + dln(f_\pm)/dln(c)) = the "thermodynamic factor"
  - t_+^0 = the transference number of the cations
 """
@@ -34,7 +34,7 @@ def LiClO4_PC():
     def thermFac(c):
         return 1.
 
-    def kappa(cin):
+    def sigma(cin):
         c = cin * 1000  # mol/m^3
         p_max = 0.542
         p_u = 0.6616
@@ -51,10 +51,10 @@ def LiClO4_PC():
     def D_ndim(c):
         return D(c) / Dref
 
-    def kappa_ndim(c):
-        return kappa(c) * (
+    def sigma_ndim(c):
+        return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, kappa_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, thermFac, tp0, Dref
 
 
 def valoen_reimers():
@@ -70,7 +70,7 @@ def valoen_reimers():
         tmp = 0.601 - 0.24*c**(0.5) + 0.982*(1 - 0.0052*(Tref - 294))*c**(1.5)
         return tmp/(1-tp0(c))
 
-    def kappa(c):
+    def sigma(c):
         (k00, k01, k02,
          k10, k11, k12,
          k20, k21) = (
@@ -87,10 +87,10 @@ def valoen_reimers():
     def D_ndim(c):
         return D(c) / Dref
 
-    def kappa_ndim(c):
-        return kappa(c) * (
+    def sigma_ndim(c):
+        return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, kappa_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, thermFac, tp0, Dref
 
 
 def valoen_bernardi():
@@ -100,7 +100,7 @@ def valoen_bernardi():
     """
     D_ndim, Ign, thermFac, tp0, Dref = valoen_reimers()
 
-    def kappa(c):
+    def sigma(c):
         (k00, k01, k02,
          k10, k11, k12,
          k20, k21) = (
@@ -113,10 +113,10 @@ def valoen_bernardi():
         out *= 0.1  # S/m
         return out
 
-    def kappa_ndim(c):
-        return kappa(c) * (
+    def sigma_ndim(c):
+        return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, kappa_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, thermFac, tp0, Dref
 
 
 def test1():
@@ -136,17 +136,17 @@ def test1():
     def tp0(c):
         return Dp/(Dp+Dm)
 
-    def kappa(c):
+    def sigma(c):
         return Dm*(1000*c)*N_A*e**2/(k*Tref*(1-tp0(c)))  # S/m
     Dref = D(cref)
 
     def D_ndim(c):
         return D(c) / Dref
 
-    def kappa_ndim(c):
-        return kappa(c) * (
+    def sigma_ndim(c):
+        return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, kappa_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, thermFac, tp0, Dref
 
 
 def getProps(elytePropSet):

@@ -239,7 +239,7 @@ class ModCell(dae.daeModel):
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
                 dx = ndD["L"][trode]/Nvol[trode]
-                dvg_curr_dens = np.diff(-poros_walls*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
+                dvg_curr_dens = np.diff(-poros_walls*ndD["sigma_s"][trode]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
@@ -427,16 +427,16 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
                        - (nup*zp**2*Dp + num*zm**2*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
-        D_fs, kappa_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+        D_fs, sigma_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
         # modify the free solution transport properties for porous media
 
         def D(c):
             return eps_o_tau*D_fs(c)
 
-        def kappa(c):
-            return eps_o_tau*kappa_fs(c)
+        def sigma(c):
+            return eps_o_tau*sigma_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -kappa(c_edges_int) * (
+        i_edges_int = -sigma(c_edges_int) * (
             np.diff(phi_lyte)/dxd1
             + nu*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
             * thermFac(c_edges_int)
