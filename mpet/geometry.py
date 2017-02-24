@@ -78,7 +78,7 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     return curv
 
 
-def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
+def get_elyte_disc(Nvol, L, poros, BruggExp):
     out = {}
     # Discretization
     out["dxvec"] = utils.get_dxvec(L, Nvol)
@@ -96,8 +96,5 @@ def get_elyte_disc(Nvol, L, poros, epsbeta, BruggExp):
     # Vector of posority/tortuosity (assuming Bruggeman)
     porostortvec_pad = porosvec_pad/porosvec_pad**(Brugg_pad)
     out["eps_o_tau_edges"] = utils.mean_harmonic(porostortvec_pad)
-
-    # The epsbeta vector
-    out["epsbetavec"] = utils.get_asc_vec(epsbeta, Nvol)
 
     return out

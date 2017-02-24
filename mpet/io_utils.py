@@ -215,7 +215,7 @@ def getDictsFromConfigs(P_s, P_e):
         D_ref = dD_s["D_ref"] = Damb
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
-    dD_s["mcond_ref"] = (L_ref**2 * F**2 * c0) / (t_ref * k * N_A * T_ref)
+    dD_s["mcond_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
     dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
@@ -260,7 +260,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["psd_vol_FracVol"] = {}
     ndD_s["L"] = {}
     ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
-    ndD_s["epsbeta"] = {}
+    ndD_s["beta"] = {}
     ndD_s["mcond"] = {}
     ndD_s["phiRef"] = {"a": 0.}  # temporary, used for Vmax, Vmin
     for trode in ndD_s["trodes"]:
@@ -291,9 +291,7 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["psd_vol_FracVol"][trode] = (
             dD_s["psd_vol"][trode] / Vuvec[:, np.newaxis])
         ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
-        ndD_s["epsbeta"][trode] = (
-            (1-ndD_s['poros'][trode]) * ndD_s['P_L'][trode]
-            * dD_e[trode]["csmax"]/c0)
+        ndD_s["beta"][trode] = dD_e[trode]["csmax"]/c_ref
         ndD_s["mcond"][trode] = dD_s['mcond'][trode] / dD_s["mcond_ref"]
         vols = dD_s["psd_vol"][trode]
         ndD_s["G"][trode] = (
