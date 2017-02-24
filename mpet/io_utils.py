@@ -334,19 +334,22 @@ def getDictsFromConfigs(P_s, P_e):
                 plen = dD_s["psd_len"][trode][i,j]
                 parea = dD_s["psd_area"][trode][i,j]
                 pvol = dD_s["psd_vol"][trode][i,j]
-                ndD_tmp["kappa"] = (
-                    dD_e[trode]['kappa']
-                    / (k*T_ref*N_A*dD_e[trode]['cs_ref']*plen**2))
-                ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc']
-                                     * plen * N_A*dD_e[trode]['cs_ref']
-                                     / dD_e[trode]['kappa'])
+                # Define a few reference scales
+                cs_ref_part = N_A*dD_e[trode]['cs_ref']  # part/m^3
+                F_s_ref = plen*cs_ref_part/t_ref  # part/(m^2 s)
+                i_s_ref = e*F_s_ref  # A/m^2
+                kappa_ref = k*T_ref*cs_ref_part*plen**2  # J/m
+                gamma_S_ref = kappa_ref/plen  # J/m^2
+                # non-dimensional quantities
+                ndD_tmp["kappa"] = dD_e[trode]['kappa'] / kappa_ref
+                nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
+                ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
-                ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
-                                 / (F*dD_e[trode]["cs_ref"]))
-                ndD_tmp["Rfilm"] = (
-                    dD_e[trode]["Rfilm"] / (
-                        t_ref*k*T_ref/(e*F*plen*dD_e[trode]["cs_ref"])))
-                ndD_tmp["delta_L"] = pvol/(parea*plen)
+                ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
+                ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
+                ndD_tmp["delta_L"] = (parea*plen)/pvol
+                # If we're using the model that varies Omg_a with particle size,
+                # overwrite its value for each particle
                 if Type in ["homog_sdn", "homog2_sdn"]:
                     ndD_tmp["Omga"] = size2regsln(plen)
 
