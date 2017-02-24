@@ -415,7 +415,7 @@ def test015(testDir, dirDict, pflag):
             "[(-0.3, 25), (0., 10), (0.3, 30)]")
     P_s.set("Sim Params", "tramp", "1e+0")
     P_s.set("Conductivity", "simBulkCond_c", "true")
-    P_s.set("Conductivity", "mcond_c", "1e-2")
+    P_s.set("Conductivity", "sigma_s_c", "1e-2")
     P_s.set("Conductivity", "simPartCond_c", "true")
     P_s.set("Conductivity", "G_mean_c", "1e-14")
     IO.writeConfigFile(P_s, psys)
