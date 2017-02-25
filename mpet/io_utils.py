@@ -18,11 +18,11 @@ import mpet.props_am as props_am
 import mpet.props_elyte as props_elyte
 
 
-def getConfigs(paramfile="params.cfg"):
+def get_configs(paramfile="params.cfg"):
     # system-level config
     if not os.path.isfile(paramfile):
         raise Exception("System param file doesn't exist!")
-    P_s = getConfig(paramfile)
+    P_s = get_config(paramfile)
 
     # electrode config(s)
     P_e = {}
@@ -34,7 +34,7 @@ def getConfigs(paramfile="params.cfg"):
     paramfile_c = os.path.join(paramfileLoc, paramfile_c)
     if not os.path.isfile(paramfile_c):
         raise Exception("Cathode param file doesn't exist!")
-    P_e["c"] = getConfig(paramfile_c)
+    P_e["c"] = get_config(paramfile_c)
 
     # anode config
     if P_s.getint('Sim Params', 'Nvol_a') >= 1:
@@ -42,11 +42,11 @@ def getConfigs(paramfile="params.cfg"):
         paramfile_a = os.path.join(paramfileLoc, paramfile_a)
         if not os.path.isfile(paramfile_a):
             raise Exception("Anode param file doesn't exist!")
-        P_e["a"] = getConfig(paramfile_a)
+        P_e["a"] = get_config(paramfile_a)
     return P_s, P_e
 
 
-def getDictsFromConfigs(P_s, P_e):
+def get_dicts_from_configs(P_s, P_e):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
     dD_e = {}
@@ -141,7 +141,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.getProps(SMset)[-1]
+    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.get_props(SMset)[-1]
     ndD_s["n_refTrode"] = P_s.getfloat('Electrolyte', 'n')
     ndD_s["sp"] = P_s.getfloat('Electrolyte', 'sp')
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
@@ -274,7 +274,7 @@ def getDictsFromConfigs(P_s, P_e):
             dD_s["psd_vol"][trode] = psd_vol[trode]
             dD_s["G"][trode] = G[trode]
         else:
-            dD_sPrev, ndD_sPrev = readDicts(
+            dD_sPrev, ndD_sPrev = read_dicts(
                 os.path.join(ndD_s["prevDir"], "input_dict_system"))
             dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
             ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
@@ -390,7 +390,7 @@ def getDictsFromConfigs(P_s, P_e):
         # Pad the last segment so no extrapolation occurs
         dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
-    if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
+    if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
         ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     return dD_s, ndD_s, dD_e, ndD_e
@@ -410,7 +410,7 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
         solidType = ndD_e[trode]["type"]
         # Make a length-sampled particle size distribution
         # Log-normally distributed
-        if isClose(dD_s["psd_stddev"][trode], 0.):
+        if are_close(dD_s["psd_stddev"][trode], 0.):
             raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
         else:
             var = stddev**2
@@ -461,7 +461,7 @@ def distr_G(dD, ndD):
         Np = ndD["Npart"][trode]
         mean = dD["G_mean"][trode]
         stddev = dD["G_stddev"][trode]
-        if isClose(stddev, 0.):
+        if are_close(stddev, 0.):
             G[trode] = mean * np.ones((Nv, Np))
         else:
             var = stddev**2
@@ -506,7 +506,7 @@ def size2regsln(size):
 
 
 def test_system_input(dD, ndD):
-    if not isClose(dD['Tabs'], 298.):
+    if not are_close(dD['Tabs'], 298.):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
@@ -516,7 +516,7 @@ def test_system_input(dD, ndD):
 
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
-    T298 = isClose(dD_s['Tabs'], 298.)
+    T298 = are_close(dD_s['Tabs'], 298.)
     if not T298:
         raise NotImplementedError("Temperature dependence not supported")
     solidType = ndD['type']
@@ -535,17 +535,17 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
         raise NotImplementedError("homog_snd req. Tabs=298")
 
 
-def writeConfigFile(P, filename="input_params.cfg"):
+def write_config_file(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)
 
 
-def writeDicts(dD, ndD, filenamebase="input_dict"):
+def write_dicts(dD, ndD, filenamebase="input_dict"):
     pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
     pickle.dump(ndD, open(filenamebase + "_ndD.p", "wb"))
 
 
-def readDicts(filenamebase="input_dict"):
+def read_dicts(filenamebase="input_dict"):
     try:
         dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
         ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
@@ -555,14 +555,14 @@ def readDicts(filenamebase="input_dict"):
     return dD, ndD
 
 
-def getConfig(inFile):
+def get_config(inFile):
     P = configparser.RawConfigParser()
     P.optionxform = str
     P.read(inFile)
     return P
 
 
-def isClose(a, b):
+def are_close(a, b):
     if np.abs(a - b) < 1e-12:
         return True
     else:

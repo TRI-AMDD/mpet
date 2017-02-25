@@ -33,14 +33,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
-    dD_s, ndD_s = IO.readDicts(os.path.join(indir, "input_dict_system"))
+    dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
     dD_e = {}
     ndD_e = {}
     for trode in trodes:
-        dD_e[trode], ndD_e[trode] = IO.readDicts(
+        dD_e[trode], ndD_e[trode] = IO.read_dicts(
             os.path.join(indir, "input_dict_{t}".format(t=trode)))
     # Pick out some useful constants/calculated values
     k = dD_s['k']                      # Boltzmann constant, J/(K Li)

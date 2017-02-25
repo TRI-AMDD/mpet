@@ -144,9 +144,9 @@ class ModCell(dae.daeModel):
                         "Bulk electrode port to particles")
                     solidType = ndD_e[trode]["indvPart"][vInd,pInd]['type']
                     if solidType in ndD_s["2varTypes"]:
-                        pMod = mod_electrodes.mod2var
+                        pMod = mod_electrodes.Mod2var
                     elif solidType in ndD_s["1varTypes"]:
-                        pMod = mod_electrodes.mod1var
+                        pMod = mod_electrodes.Mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
                     self.particles[trode][vInd,pInd] = pMod(
@@ -428,7 +428,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+        D_fs, sigma_fs, thermFac, tp0 = props_elyte.get_props(ndD["SMset"])[:-1]
         # modify the free solution transport properties for porous media
 
         def D(c):

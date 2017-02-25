@@ -17,12 +17,12 @@ import mpet.sim as sim
 import mpet.utils as utils
 
 
-def consoleRun(ndD_s, ndD_e, tScale, outdir):
+def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Create Log, Solver, DataReporter and Simulation object
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()
     simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
-    datareporter = data_reporting.setupDataReporters(simulation, outdir)
+    datareporter = data_reporting.setup_data_reporters(simulation, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
@@ -72,8 +72,8 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    P_s, P_e = IO.getConfigs(paramfile)
-    dD_s, ndD_s, dD_e, ndD_e = IO.getDictsFromConfigs(P_s, P_e)
+    P_s, P_e = IO.get_configs(paramfile)
+    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -90,15 +90,15 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             raise
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(outdir, paramFileName)
-    IO.writeConfigFile(P_s, filename=paramFile)
+    IO.write_config_file(P_s, filename=paramFile)
     dictFile = os.path.join(outdir, "input_dict_system")
-    IO.writeDicts(dD_s, ndD_s, filenamebase=dictFile)
+    IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
     for trode in ndD_s["trodes"]:
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
-        IO.writeConfigFile(P_e[trode], filename=paramFile)
+        IO.write_config_file(P_e[trode], filename=paramFile)
         dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
-        IO.writeDicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
+        IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
 
     # Store info about this script
     # mpet.py script directory
@@ -155,7 +155,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             pass
 
     # Carry out the simulation
-    consoleRun(ndD_s, ndD_e, dD_s["td"], outdir)
+    run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
 
     # Final output for user
     if paramfile == "params_default.cfg":

@@ -25,7 +25,7 @@ import mpet.utils as utils
 eps = -1e-12
 
 
-class mod2var(dae.daeModel):
+class Mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
                  ndD_s=None):
         dae.daeModel.__init__(self, Name, Parent, Description)
@@ -143,15 +143,15 @@ class mod2var(dae.daeModel):
         c2[:] = [self.c2(k) for k in range(N)]
         if ndD["type"] in ["diffn2", "CHR2"]:
             # Equations for 1D particles of 1 field varible
-            self.sldDynamics1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
         elif ndD["type"] in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sldDynamics0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
+    def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         T = self.ndD_s["T"]
         c1_surf = c1
@@ -182,7 +182,7 @@ class mod2var(dae.daeModel):
             eq1.Residual += noise1[0]()
             eq2.Residual += noise2[0]()
 
-    def sldDynamics1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
+    def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -237,7 +237,7 @@ class mod2var(dae.daeModel):
 #                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
-                Flux1_vec, Flux2_vec = calc_Flux_CHR2(
+                Flux1_vec, Flux2_vec = calc_flux_CHR2(
                     c1, c2, mu1R, mu2R, ndD["D"], Dfunc, Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
@@ -271,7 +271,7 @@ class mod2var(dae.daeModel):
                 eq2.Residual += noise2[k]()
 
 
-class mod1var(dae.daeModel):
+class Mod1var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
                  ndD_s=None):
         dae.daeModel.__init__(self, Name, Parent, Description)
@@ -362,15 +362,15 @@ class mod1var(dae.daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if ndD["type"] in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sldDynamics1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
         elif ndD["type"] in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sldDynamics0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sldDynamics0D1var(self, c, muO, act_lyte, ISfuncs, noise):
+    def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         T = self.ndD_s["T"]
         c_surf = c
@@ -388,7 +388,7 @@ class mod1var(dae.daeModel):
         if ndD["noise"]:
             eq.Residual += noise[0]()
 
-    def sldDynamics1D1var(self, c, muO, act_lyte, ISfuncs, noise):
+    def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
@@ -432,9 +432,9 @@ class mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_Flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_Flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -489,7 +489,7 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_Flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
@@ -499,7 +499,7 @@ def calc_Flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     return Flux_vec
 
 
-def calc_Flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     if isinstance(c[0], dae.pyCore.adouble):
         MIN, MAX = dae.Min, dae.Max
     else:
@@ -516,7 +516,7 @@ def calc_Flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     return Flux_vec
 
 
-def calc_Flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
+def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     if isinstance(c1[0], dae.pyCore.adouble):
         MIN, MAX = dae.Min, dae.Max
     else:

@@ -31,7 +31,7 @@ def LiClO4_PC():
     def D(c):
         return 2.58e-10  # m^2/s
 
-    def thermFac(c):
+    def therm_fac(c):
         return 1.
 
     def sigma(cin):
@@ -54,7 +54,7 @@ def LiClO4_PC():
     def sigma_ndim(c):
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
 def valoen_reimers():
@@ -66,7 +66,7 @@ def valoen_reimers():
         return (
             10**(-4) * 10**(-4.43 - 54/(Tref - (229 + 5*c)) - 0.22*c))  # m^2/s
 
-    def thermFac(c):
+    def therm_fac(c):
         tmp = 0.601 - 0.24*c**(0.5) + 0.982*(1 - 0.0052*(Tref - 294))*c**(1.5)
         return tmp/(1-tp0(c))
 
@@ -90,7 +90,7 @@ def valoen_reimers():
     def sigma_ndim(c):
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
 def valoen_bernardi():
@@ -98,7 +98,7 @@ def valoen_bernardi():
     Valoen and Reimers 2005. The only change from Valoen and Reimers
     is the conductivity.
     """
-    D_ndim, Ign, thermFac, tp0, Dref = valoen_reimers()
+    D_ndim, Ign, therm_fac, tp0, Dref = valoen_reimers()
 
     def sigma(c):
         (k00, k01, k02,
@@ -116,7 +116,7 @@ def valoen_bernardi():
     def sigma_ndim(c):
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
 def test1():
@@ -130,7 +130,7 @@ def test1():
     def D(c):
         return (2*Dp*Dm/(Dp+Dm))  # m^2/s
 
-    def thermFac(c):
+    def therm_fac(c):
         return 1.
 
     def tp0(c):
@@ -146,10 +146,10 @@ def test1():
     def sigma_ndim(c):
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, thermFac, tp0, Dref
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
-def getProps(elytePropSet):
+def get_props(elytePropSet):
     if elytePropSet == "test1":
         return test1()
     elif elytePropSet == "valoen_bernardi":
