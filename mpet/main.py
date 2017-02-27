@@ -138,23 +138,9 @@ def main(paramfile, keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
-    if sys.platform in ["linux", "linux2"]:
-        cfgLoc = os.path.join("/", "etc", "daetools", "daetools.cfg")
-    elif sys.platform in ["win32"]:
-        cfgLoc = os.path.join("/", "daetools", "daetools.cfg")
-    elif sys.platform in ["cygwin"]:
-        cfgLoc = os.path.join("/", "cygdrive", "c", "daetools", "daetools.cfg")
-    try:
-        shutil.copy(cfgLoc, outdir)
-    except:
-        if sys.platform in ["linux", "linux2"]:
-            try:
-                cfgdir = os.path.join(os.environ["HOME"], ".daetools")
-                shutil.copy(os.path.join(cfgdir, "daetools.cfg"), outdir)
-            except:
-                pass
-        else:
-            pass
+    cfg = dae.daeGetConfig()
+    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
+        print(cfg, file=fo)
 
     # Carry out the simulation
     run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
