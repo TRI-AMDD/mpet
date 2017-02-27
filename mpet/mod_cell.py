@@ -63,7 +63,7 @@ class ModCell(dae.daeModel):
         self.phi_lyte = {}
         self.phi_bulk = {}
         self.phi_part = {}
-        self.j_plus = {}
+        self.R_Vp = {}
         self.ffrac = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
@@ -83,9 +83,9 @@ class ModCell(dae.daeModel):
                 "phi_part_{trode}".format(trode=trode), elec_pot_t, self,
                 "Electrostatic potential at each particle",
                 [self.DmnCell[trode], self.DmnPart[trode]])
-            self.j_plus[trode] = dae.daeVariable(
-                "j_plus_{trode}".format(trode=trode), dae.no_t, self,
-                "Rate of reaction of positives per solid volume",
+            self.R_Vp[trode] = dae.daeVariable(
+                "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of reaction of positives per electrode volume",
                 [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
@@ -144,9 +144,9 @@ class ModCell(dae.daeModel):
                         "Bulk electrode port to particles")
                     solidType = ndD_e[trode]["indvPart"][vInd,pInd]['type']
                     if solidType in ndD_s["2varTypes"]:
-                        pMod = mod_electrodes.mod2var
+                        pMod = mod_electrodes.Mod2var
                     elif solidType in ndD_s["1varTypes"]:
-                        pMod = mod_electrodes.mod1var
+                        pMod = mod_electrodes.Mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
                     self.particles[trode][vInd,pInd] = pMod(
@@ -184,20 +184,21 @@ class ModCell(dae.daeModel):
                     tmp += self.particles[trode][vInd,pInd].cbar() * Vj * dx
             eq.Residual -= tmp
 
-        # Define dimensionless j_plus for each electrode volume
+        # Define dimensionless R_Vp for each electrode volume
         for trode in trodes:
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
-                    "j_plus_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    "R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
-                res = 0
+                RHS = 0
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    res += self.particles[trode][vInd,pInd].dcbardt() * Vj
-                eq.Residual = self.j_plus[trode](vInd) - res
+                    RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
+                             * self.particles[trode][vInd,pInd].dcbardt())
+                eq.Residual = self.R_Vp[trode](vInd) - RHS
 
         # Define output port variables
         for trode in trodes:
@@ -238,15 +239,13 @@ class ModCell(dae.daeModel):
                     # reference (set)
                     phi_tmp[-1] = ndD["phi_cathode"]
                 dx = ndD["L"][trode]/Nvol[trode]
-                RHS_phi_tmp = -np.diff(
-                    -poros_walls*ndD["mcond"][trode]*np.diff(phi_tmp)/dx)/dx
+                dvg_curr_dens = np.diff(-poros_walls*ndD["sigma_s"][trode]*np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
                     "phi_ac_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 if simBulkCond:
-                    eq.Residual = (-ndD["epsbeta"][trode]*self.j_plus[trode](vInd)
-                                   - RHS_phi_tmp[vInd])
+                    eq.Residual = -dvg_curr_dens[vInd] - self.R_Vp[trode](vInd)
                 else:
                     if trode == "a":  # anode
                         eq.Residual = self.phi_bulk[trode](vInd) - self.phi_cell()
@@ -292,13 +291,11 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            disc = geom.get_elyte_disc(
-                Nvol, ndD["L"], ndD["poros"], ndD["epsbeta"], ndD["BruggExp"])
+            disc = geom.get_elyte_disc(Nvol, ndD["L"], ndD["poros"], ndD["BruggExp"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
-            jvec = utils.get_asc_vec(self.j_plus, Nvol)
-            Rvvec = -disc["epsbetavec"]*jvec
+            Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)
             # Apply concentration and potential boundary conditions
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
@@ -360,11 +357,12 @@ class ModCell(dae.daeModel):
         eq.Residual = self.current()
         limtrode = ("c" if ndD["z"] < 1 else "a")
         dx = 1./Nvol[limtrode]
+        rxn_scl = ndD["beta"][limtrode] * (1-ndD["poros"][limtrode]) * ndD["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
             if limtrode == "a":
-                eq.Residual += dx * self.j_plus[limtrode](vInd)
+                eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
             else:
-                eq.Residual -= dx * self.j_plus[limtrode](vInd)
+                eq.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
@@ -384,8 +382,6 @@ class ModCell(dae.daeModel):
             eq.Residual = self.phi_applied() - (
                 ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
                 * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
-#                * 1
-#                * np.tanh(dae.Time()/(45.0)))
                 )
         elif "segments" in self.profileType:
             if self.profileType == "CCsegments":
@@ -419,6 +415,7 @@ class ModCell(dae.daeModel):
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
+    T = ndD["T"]
     c_edges_int = utils.mean_harmonic(c_lyte)
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]
@@ -426,23 +423,23 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
-                            - Dm*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
+                            - Dm/T*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup*zp**2*Dp + num*zm**2*Dm)*c_edges_int*np.diff(phi_lyte)/dxd1)
+                       - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
-        D_fs, kappa_fs, thermFac, tp0 = props_elyte.getProps(ndD["SMset"])[:-1]
+        D_fs, sigma_fs, thermFac, tp0 = props_elyte.get_props(ndD["SMset"])[:-1]
         # modify the free solution transport properties for porous media
 
         def D(c):
             return eps_o_tau*D_fs(c)
 
-        def kappa(c):
-            return eps_o_tau*kappa_fs(c)
+        def sigma(c):
+            return eps_o_tau*sigma_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -kappa(c_edges_int) * (
+        i_edges_int = -sigma(c_edges_int)/T * (
             np.diff(phi_lyte)/dxd1
-            + nu*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
             * thermFac(c_edges_int)
             * np.diff(np.log(c_lyte))/dxd1
             )

@@ -27,7 +27,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     oned_as='row')
 
 
-def setupDataReporters(simulation, outdir):
+def setup_data_reporters(simulation, outdir):
     """Create daeDelegateDataReporter and add data reporter."""
     datareporter = dae.daeDelegateDataReporter()
     simulation.dr = MyMATDataReporter()

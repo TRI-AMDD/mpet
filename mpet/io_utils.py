@@ -18,11 +18,11 @@ import mpet.props_am as props_am
 import mpet.props_elyte as props_elyte
 
 
-def getConfigs(paramfile="params.cfg"):
+def get_configs(paramfile="params.cfg"):
     # system-level config
     if not os.path.isfile(paramfile):
         raise Exception("System param file doesn't exist!")
-    P_s = getConfig(paramfile)
+    P_s = get_config(paramfile)
 
     # electrode config(s)
     P_e = {}
@@ -34,7 +34,7 @@ def getConfigs(paramfile="params.cfg"):
     paramfile_c = os.path.join(paramfileLoc, paramfile_c)
     if not os.path.isfile(paramfile_c):
         raise Exception("Cathode param file doesn't exist!")
-    P_e["c"] = getConfig(paramfile_c)
+    P_e["c"] = get_config(paramfile_c)
 
     # anode config
     if P_s.getint('Sim Params', 'Nvol_a') >= 1:
@@ -42,11 +42,11 @@ def getConfigs(paramfile="params.cfg"):
         paramfile_a = os.path.join(paramfileLoc, paramfile_a)
         if not os.path.isfile(paramfile_a):
             raise Exception("Anode param file doesn't exist!")
-        P_e["a"] = getConfig(paramfile_a)
+        P_e["a"] = get_config(paramfile_a)
     return P_s, P_e
 
 
-def getDictsFromConfigs(P_s, P_e):
+def get_dicts_from_configs(P_s, P_e):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
     dD_e = {}
@@ -108,8 +108,8 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["simBulkCond"] = {
         "a": P_s.getboolean('Conductivity', 'simBulkCond_a'),
         "c": P_s.getboolean('Conductivity', 'simBulkCond_c')}
-    dD_s["mcond"] = {"a": P_s.getfloat('Conductivity', 'mcond_a'),
-                     "c": P_s.getfloat('Conductivity', 'mcond_c')}
+    dD_s["sigma_s"] = {"a": P_s.getfloat('Conductivity', 'sigma_s_a'),
+                       "c": P_s.getfloat('Conductivity', 'sigma_s_c')}
     ndD_s["simPartCond"] = {
         "a": P_s.getboolean('Conductivity', 'simPartCond_a'),
         "c": P_s.getboolean('Conductivity', 'simPartCond_c')}
@@ -141,7 +141,7 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.getProps(SMset)[-1]
+    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.get_props(SMset)[-1]
     ndD_s["n_refTrode"] = P_s.getfloat('Electrolyte', 'n')
     ndD_s["sp"] = P_s.getfloat('Electrolyte', 'sp')
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
@@ -215,7 +215,7 @@ def getDictsFromConfigs(P_s, P_e):
         D_ref = dD_s["D_ref"] = Damb
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
-    dD_s["mcond_ref"] = (L_ref**2 * F**2 * c0) / (t_ref * k * N_A * T_ref)
+    dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
     dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
@@ -260,8 +260,8 @@ def getDictsFromConfigs(P_s, P_e):
     ndD_s["psd_vol_FracVol"] = {}
     ndD_s["L"] = {}
     ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
-    ndD_s["epsbeta"] = {}
-    ndD_s["mcond"] = {}
+    ndD_s["beta"] = {}
+    ndD_s["sigma_s"] = {}
     ndD_s["phiRef"] = {"a": 0.}  # temporary, used for Vmax, Vmin
     for trode in ndD_s["trodes"]:
         # System scale parameters
@@ -274,7 +274,7 @@ def getDictsFromConfigs(P_s, P_e):
             dD_s["psd_vol"][trode] = psd_vol[trode]
             dD_s["G"][trode] = G[trode]
         else:
-            dD_sPrev, ndD_sPrev = readDicts(
+            dD_sPrev, ndD_sPrev = read_dicts(
                 os.path.join(ndD_s["prevDir"], "input_dict_system"))
             dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
             ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
@@ -291,10 +291,8 @@ def getDictsFromConfigs(P_s, P_e):
         ndD_s["psd_vol_FracVol"][trode] = (
             dD_s["psd_vol"][trode] / Vuvec[:, np.newaxis])
         ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
-        ndD_s["epsbeta"][trode] = (
-            (1-ndD_s['poros'][trode]) * ndD_s['P_L'][trode]
-            * dD_e[trode]["csmax"]/c0)
-        ndD_s["mcond"][trode] = dD_s['mcond'][trode] / dD_s["mcond_ref"]
+        ndD_s["beta"][trode] = dD_e[trode]["csmax"]/c_ref
+        ndD_s["sigma_s"][trode] = dD_s['sigma_s'][trode] / dD_s["sigma_s_ref"]
         vols = dD_s["psd_vol"][trode]
         ndD_s["G"][trode] = (
             dD_s["G"][trode] * (k*T_ref/e) * t_ref
@@ -336,19 +334,22 @@ def getDictsFromConfigs(P_s, P_e):
                 plen = dD_s["psd_len"][trode][i,j]
                 parea = dD_s["psd_area"][trode][i,j]
                 pvol = dD_s["psd_vol"][trode][i,j]
-                ndD_tmp["kappa"] = (
-                    dD_e[trode]['kappa']
-                    / (k*T_ref*N_A*dD_e[trode]['cs_ref']*plen**2))
-                ndD_tmp["beta_s"] = (dD_e[trode]['dgammadc']
-                                     * plen * N_A*dD_e[trode]['cs_ref']
-                                     / dD_e[trode]['kappa'])
+                # Define a few reference scales
+                cs_ref_part = N_A*dD_e[trode]['cs_ref']  # part/m^3
+                F_s_ref = plen*cs_ref_part/t_ref  # part/(m^2 s)
+                i_s_ref = e*F_s_ref  # A/m^2
+                kappa_ref = k*T_ref*cs_ref_part*plen**2  # J/m
+                gamma_S_ref = kappa_ref/plen  # J/m^2
+                # non-dimensional quantities
+                ndD_tmp["kappa"] = dD_e[trode]['kappa'] / kappa_ref
+                nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
+                ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
-                ndD_tmp["k0"] = ((parea/pvol)*dD_e[trode]['k0']*t_ref
-                                 / (F*dD_e[trode]["cs_ref"]))
-                ndD_tmp["Rfilm"] = (
-                    dD_e[trode]["Rfilm"] / (
-                        t_ref*k*T_ref/(e*F*plen*dD_e[trode]["cs_ref"])))
-                ndD_tmp["delta_L"] = pvol/(parea*plen)
+                ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
+                ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
+                ndD_tmp["delta_L"] = (parea*plen)/pvol
+                # If we're using the model that varies Omg_a with particle size,
+                # overwrite its value for each particle
                 if Type in ["homog_sdn", "homog2_sdn"]:
                     ndD_tmp["Omga"] = size2regsln(plen)
 
@@ -389,7 +390,7 @@ def getDictsFromConfigs(P_s, P_e):
         # Pad the last segment so no extrapolation occurs
         dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
-    if ndD_s["profileType"] == "CC" and not isClose(ndD_s["currset"], 0.):
+    if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
         ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     return dD_s, ndD_s, dD_e, ndD_e
@@ -409,7 +410,7 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
         solidType = ndD_e[trode]["type"]
         # Make a length-sampled particle size distribution
         # Log-normally distributed
-        if isClose(dD_s["psd_stddev"][trode], 0.):
+        if are_close(dD_s["psd_stddev"][trode], 0.):
             raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
         else:
             var = stddev**2
@@ -460,7 +461,7 @@ def distr_G(dD, ndD):
         Np = ndD["Npart"][trode]
         mean = dD["G_mean"][trode]
         stddev = dD["G_stddev"][trode]
-        if isClose(stddev, 0.):
+        if are_close(stddev, 0.):
             G[trode] = mean * np.ones((Nv, Np))
         else:
             var = stddev**2
@@ -505,7 +506,7 @@ def size2regsln(size):
 
 
 def test_system_input(dD, ndD):
-    if not isClose(dD['Tabs'], 298.):
+    if not are_close(dD['Tabs'], 298.):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
@@ -515,7 +516,7 @@ def test_system_input(dD, ndD):
 
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
-    T298 = isClose(dD_s['Tabs'], 298.)
+    T298 = are_close(dD_s['Tabs'], 298.)
     if not T298:
         raise NotImplementedError("Temperature dependence not supported")
     solidType = ndD['type']
@@ -534,17 +535,17 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
         raise NotImplementedError("homog_snd req. Tabs=298")
 
 
-def writeConfigFile(P, filename="input_params.cfg"):
+def write_config_file(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)
 
 
-def writeDicts(dD, ndD, filenamebase="input_dict"):
+def write_dicts(dD, ndD, filenamebase="input_dict"):
     pickle.dump(dD, open(filenamebase + "_dD.p", "wb"))
     pickle.dump(ndD, open(filenamebase + "_ndD.p", "wb"))
 
 
-def readDicts(filenamebase="input_dict"):
+def read_dicts(filenamebase="input_dict"):
     try:
         dD = pickle.load(open(filenamebase + "_dD.p", "rb"))
         ndD = pickle.load(open(filenamebase + "_ndD.p", "rb"))
@@ -554,14 +555,14 @@ def readDicts(filenamebase="input_dict"):
     return dD, ndD
 
 
-def getConfig(inFile):
+def get_config(inFile):
     P = configparser.RawConfigParser()
     P.optionxform = str
     P.read(inFile)
     return P
 
 
-def isClose(a, b):
+def are_close(a, b):
     if np.abs(a - b) < 1e-12:
         return True
     else:

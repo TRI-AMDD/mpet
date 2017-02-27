@@ -33,14 +33,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
-    dD_s, ndD_s = IO.readDicts(os.path.join(indir, "input_dict_system"))
+    dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
     dD_e = {}
     ndD_e = {}
     for trode in trodes:
-        dD_e[trode], ndD_e[trode] = IO.readDicts(
+        dD_e[trode], ndD_e[trode] = IO.read_dicts(
             os.path.join(indir, "input_dict_{t}".format(t=trode)))
     # Pick out some useful constants/calculated values
     k = dD_s['k']                      # Boltzmann constant, J/(K Li)
@@ -330,7 +330,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmat = np.hstack((cGP_L.T, datay_c, datay_c[:, -1].reshape((numtimes, 1))))
             pmat = np.hstack((pGP_L.T, datay_p, datay_p[:, -1].reshape((numtimes, 1))))
             disc = geom.get_elyte_disc(
-                Nvol, ndD_s["L"], ndD_s["poros"], ndD_s["epsbeta"], ndD_s["BruggExp"])
+                Nvol, ndD_s["L"], ndD_s["poros"], ndD_s["BruggExp"])
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(

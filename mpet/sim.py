@@ -58,7 +58,7 @@ class SimMPET(dae.daeSimulation):
                 self.m.ffrac[l].SetInitialGuess(cs0)
                 for i in range(Nvol[l]):
                     # Guess initial volumetric reaction rates
-                    self.m.j_plus[l].SetInitialGuess(i, 0.0)
+                    self.m.R_Vp[l].SetInitialGuess(i, 0.0)
                     # Guess initial value for the potential of the
                     # electrodes
                     if l == "a":  # anode
@@ -107,8 +107,8 @@ class SimMPET(dae.daeSimulation):
                 self.m.ffrac[l].SetInitialGuess(
                     dPrev["ffrac_" + l][0,-1])
                 for i in range(Nvol[l]):
-                    self.m.j_plus[l].SetInitialGuess(
-                        i, dPrev["j_plus_" + l][-1,i])
+                    self.m.R_Vp[l].SetInitialGuess(
+                        i, dPrev["R_Vp_" + l][-1,i])
                     self.m.phi_bulk[l].SetInitialGuess(
                         i, dPrev["phi_bulk_" + l][-1,i])
                     for j in range(Npart[l]):

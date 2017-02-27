@@ -17,12 +17,12 @@ import mpet.sim as sim
 import mpet.utils as utils
 
 
-def consoleRun(ndD_s, ndD_e, tScale, outdir):
+def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Create Log, Solver, DataReporter and Simulation object
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()
     simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
-    datareporter = data_reporting.setupDataReporters(simulation, outdir)
+    datareporter = data_reporting.setup_data_reporters(simulation, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
@@ -68,12 +68,12 @@ def consoleRun(ndD_s, ndD_e, tScale, outdir):
     simulation.Finalize()
 
 
-def main(paramfile="params_default.cfg", keepArchive=True):
+def main(paramfile, keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    P_s, P_e = IO.getConfigs(paramfile)
-    dD_s, ndD_s, dD_e, ndD_e = IO.getDictsFromConfigs(P_s, P_e)
+    P_s, P_e = IO.get_configs(paramfile)
+    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -90,15 +90,15 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             raise
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(outdir, paramFileName)
-    IO.writeConfigFile(P_s, filename=paramFile)
+    IO.write_config_file(P_s, filename=paramFile)
     dictFile = os.path.join(outdir, "input_dict_system")
-    IO.writeDicts(dD_s, ndD_s, filenamebase=dictFile)
+    IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
     for trode in ndD_s["trodes"]:
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
-        IO.writeConfigFile(P_e[trode], filename=paramFile)
+        IO.write_config_file(P_e[trode], filename=paramFile)
         dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
-        IO.writeDicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
+        IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
 
     # Store info about this script
     # mpet.py script directory
@@ -122,7 +122,9 @@ def main(paramfile="params_default.cfg", keepArchive=True):
             print(branch_name, file=fo)
             print("commit hash:", file=fo)
             print(commit_hash, file=fo)
-            print("to run, from the root repo directory, copy relevant files there, and:", file=fo)
+            print("to run, from the root repo directory, copy relevant files there,")
+            print("edit input_params_system.cfg to point to correct material params files,")
+            print("and:", file=fo)
             print("$ git checkout [commit hash]", file=fo)
             print("$ patch -p1 < commit.diff:", file=fo)
             print("$ python[3] mpetrun.py input_params_system.cfg", file=fo)
@@ -136,35 +138,15 @@ def main(paramfile="params_default.cfg", keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
-    if sys.platform in ["linux", "linux2"]:
-        cfgLoc = os.path.join("/", "etc", "daetools", "daetools.cfg")
-    elif sys.platform in ["win32"]:
-        cfgLoc = os.path.join("/", "daetools", "daetools.cfg")
-    elif sys.platform in ["cygwin"]:
-        cfgLoc = os.path.join("/", "cygdrive", "c", "daetools", "daetools.cfg")
-    try:
-        shutil.copy(cfgLoc, outdir)
-    except:
-        if sys.platform in ["linux", "linux2"]:
-            try:
-                cfgdir = os.path.join(os.environ["HOME"], ".daetools")
-                shutil.copy(os.path.join(cfgdir, "daetools.cfg"), outdir)
-            except:
-                pass
-        else:
-            pass
+    cfg = dae.daeGetConfig()
+    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
+        print(cfg, file=fo)
 
     # Carry out the simulation
-    consoleRun(ndD_s, ndD_e, dD_s["td"], outdir)
+    run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
 
     # Final output for user
-    if paramfile == "params_default.cfg":
-        print("\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
-            fname=default_file))
-        print("Pass other parameter file as an argument to this script\n")
-    else:
-        print("\n\nUsed parameter file ""{fname}""\n\n".format(
-            fname=paramfile))
+    print("\n\nUsed parameter file ""{fname}""\n\n".format(fname=paramfile))
     timeEnd = time.time()
     tTot = timeEnd - timeStart
     print("Total time:", tTot, "s")

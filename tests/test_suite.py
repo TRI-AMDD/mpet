@@ -52,8 +52,8 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     for testStr in sorted(runInfo.keys()):
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
         newDataFile = osp.join(newDir, "output_data.mat")
-        dD_s, ndD_s = IO.readDicts(osp.join(newDir, "input_dict_system"))
-        tmp = IO.readDicts(osp.join(newDir, "input_dict_c"))
+        dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
+        tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
         dD_e = {}
         ndD_e = {}
         dD_e["c"], ndD_e["c"] = tmp
@@ -163,7 +163,7 @@ def show_fails(failList):
 
 
 def main(compareDir):
-    pflag = False
+    pflag = True
     dirDict = {}
     # Get the default configs
     dirDict["suite"] = osp.dirname(osp.abspath(__file__))

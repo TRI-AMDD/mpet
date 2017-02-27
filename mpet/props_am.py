@@ -157,10 +157,10 @@ class muRfuncs():
         """ Bernardi and Go 2011 """
         p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)
         sfac = 0.3
-        OCV = (p1*stepDown(y, 1., sfac*0.02)
-               + (p2 - p1)*stepDown(y, 0.5, 0.005)
-               + (p3 - p2)*stepDown(y, 0.1944, sfac*0.03571)
-               + (p4 - p3)*stepDown(y, 0., sfac*0.08333))
+        OCV = (p1*step_down(y, 1., sfac*0.02)
+               + (p2 - p1)*step_down(y, 0.5, 0.005)
+               + (p3 - p2)*step_down(y, 0.1944, sfac*0.03571)
+               + (p4 - p3)*step_down(y, 0., sfac*0.08333))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -177,11 +177,11 @@ class muRfuncs():
         rEdge = 1 - edgeLen
         width = 1e-4
         vshift = 1e-2
-        lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)) - vshift) * stepDown(y, lEdge, width))
-        rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)) + vshift) * stepUp(y, rEdge, width))
+        lSide = -((np.log(y/(1-y)) - np.log(lEdge/(1-lEdge)) - vshift)*step_down(y, lEdge, width))
+        rSide = -((np.log(y/(1-y)) - np.log(rEdge/(1-rEdge)) + vshift)*step_up(y, rEdge, width))
         OCV = (
             Vstd
-            + Vstep*(stepDown(y, 0.5, 0.013) - 1)
+            + Vstep*(step_down(y, 0.5, 0.013) - 1)
             + self.kToe*(lSide + rSide)
             )
         muR = self.get_muR_from_OCV(OCV, muR_ref)
@@ -221,18 +221,23 @@ class muRfuncs():
         return muR, actR
 
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
+        """Ideal solution material for testing."""
         OCV = -self.kToe*np.log(y/(1-y))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
 
     def testRS_ss(self, y, ybar, muR_ref, ISfuncs=None):
+        """
+        Regular solution material which phase separates at binodal points,
+        for modeling as a solid solution. For testing.
+        """
         # Based Omg = 3*k*T_ref
         yL = 0.07072018
         yR = 0.92927982
-        OCV_rs = -self.kToe*self.regSln(y, self.ndD["Omga"], ISfuncs)
+        OCV_rs = -self.kToe*self.reg_sln(y, self.ndD["Omga"], ISfuncs)
         width = 0.005
-        OCV = OCV_rs*stepDown(y, yL, width) + OCV_rs*stepUp(y, yR, width) + 2
+        OCV = OCV_rs*step_down(y, yL, width) + OCV_rs*step_up(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = self.get_actR_None(y)
         return muR, actR
@@ -241,7 +246,7 @@ class muRfuncs():
     # Functions based on thermodynamic models
     ######
 
-    def idealSln(self, y, ISfuncs=None):
+    def ideal_sln(self, y, ISfuncs=None):
         """ Helper function: Should not be called directly from
         simulation. Call a specific material instead. """
         T = self.T
@@ -252,38 +257,38 @@ class muRfuncs():
             muR = T*np.log(y/(1-y))
         return muR
 
-    def regSln(self, y, Omga, ISfuncs=None):
+    def reg_sln(self, y, Omga, ISfuncs=None):
         """ Helper function """
-        muR_IS = self.idealSln(y, ISfuncs=ISfuncs)
+        muR_IS = self.ideal_sln(y, ISfuncs=ISfuncs)
         enthalpyTerm = Omga*(1-2*y)
         muR = muR_IS + enthalpyTerm
         return muR
 
-    def graphite2paramHomog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
+    def graphite_2param_homog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
         """ Helper function """
         y1, y2 = y
         ISfuncs1, ISfuncs2 = ISfuncs
-        muR1 = self.regSln(y1, Omga, ISfuncs1)
-        muR2 = self.regSln(y2, Omga, ISfuncs2)
+        muR1 = self.reg_sln(y1, Omga, ISfuncs1)
+        muR2 = self.reg_sln(y2, Omga, ISfuncs2)
         muR1 += Omgb*y2 + Omgc*y2*(1-y2)*(1-2*y1)
         muR2 += Omgb*y1 + Omgc*y1*(1-y1)*(1-2*y2)
         muR1 += EvdW * (30 * y1**2 * (1-y1)**2)
         muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
-    def graphite1paramHomog(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog(self, y, Omga, Omgb, ISfuncs=None):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
         muLtail = -tailScl*1./(y**(0.85))
         muRtail = tailScl*1./((1-y)**(0.85))
         slpScl = 0.45
-        muLlin = slpScl*Omga*4*(0.26-y)*stepDown(y, 0.5, width)
-        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
+        muLlin = slpScl*Omga*4*(0.26-y)*step_down(y, 0.5, width)
+        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*step_up(y, 0.5, width)
         muR = muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def graphite1paramHomog_2(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog_2(self, y, Omga, Omgb, ISfuncs=None):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
@@ -291,35 +296,35 @@ class muRfuncs():
         muLtail = -tailScl*1./(y**(0.85))
         muRtail = tailScl*1./((1-y)**(0.85))
         muLlin = (slpScl*Omga*12*(0.40-y)
-                  * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
-        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*stepUp(y, 0.5, width)
+                  * step_down(y, 0.49, 0.9*width)*step_up(y, 0.35, width))
+        muRlin = (slpScl*Omga*4*(0.74-y) + Omgb)*step_up(y, 0.5, width)
         muLMod = (0.
                   + 40*(-np.exp(-y/0.015))
                   + 0.75*(np.tanh((y-0.17)/0.02) - 1)
                   + 1.0*(np.tanh((y-0.22)/0.040) - 1)
-                  )*stepDown(y, 0.35, width)
+                  )*step_down(y, 0.35, width)
         muR = muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def graphite1paramHomog_3(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog_3(self, y, Omga, Omgb, ISfuncs=None):
         """ Helper function with low hysteresis and soft tail """
         width = 5e-2
         tailScl = 5e-2
         muLtail = -tailScl*1./(y**(0.85))
         muRtail = tailScl*1./((1-y)**(0.85))
-        muRtail = 1.0e1*stepUp(y, 1.0, 0.045)
+        muRtail = 1.0e1*step_up(y, 1.0, 0.045)
         muLlin = (0.15*Omga*12*(0.40-y**0.98)
-                  * stepDown(y, 0.49, 0.9*width)*stepUp(y, 0.35, width))
-        muRlin = (0.1*Omga*4*(0.74-y) + 0.90*Omgb)*stepUp(y, 0.5, 0.4*width)
+                  * step_down(y, 0.49, 0.9*width)*step_up(y, 0.35, width))
+        muRlin = (0.1*Omga*4*(0.74-y) + 0.90*Omgb)*step_up(y, 0.5, 0.4*width)
         muLMod = (0.
                   + 40*(-np.exp(-y/0.015))
                   + 0.75*(np.tanh((y-0.17)/0.02) - 1)
                   + 1.0*(np.tanh((y-0.22)/0.040) - 1)
-                  )*stepDown(y, 0.35, width)
+                  )*step_down(y, 0.35, width)
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def nonHomogRectFixedCsurf(self, y, ybar, B, kappa, ywet):
+    def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
         ytmp = np.empty(N+2, dtype=object)
@@ -331,7 +336,7 @@ class muRfuncs():
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
 
-    def nonHomogRoundWetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
+    def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
         Rs = 1.
@@ -339,7 +344,7 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-    def generalNonHomog(self, y, ybar):
+    def general_non_homog(self, y, ybar):
         """ Helper function """
         ptype = self.ndD["type"]
         mod1var, mod2var = False, False
@@ -359,7 +364,7 @@ class muRfuncs():
             if shape == "C3":
                 if mod1var:
                     cwet = self.ndD["cwet"]
-                    muR_nh = self.nonHomogRectFixedCsurf(
+                    muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
@@ -367,12 +372,12 @@ class muRfuncs():
                 beta_s = self.ndD["beta_s"]
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
-                    muR_nh = self.nonHomogRoundWetting(
+                    muR_nh = self.non_homog_round_wetting(
                         y, ybar, B, kappa, beta_s, shape, r_vec)
                 elif mod2var:
-                    muR1_nh = self.nonHomogRoundWetting(
+                    muR1_nh = self.non_homog_round_wetting(
                         y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
-                    muR2_nh = self.nonHomogRoundWetting(
+                    muR2_nh = self.non_homog_round_wetting(
                         y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
                     muR_nh = (muR1_nh, muR2_nh)
         else:  # homogeneous particle
@@ -385,8 +390,8 @@ class muRfuncs():
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
-        muRhomog = self.regSln(y, self.ndD["Omga"], ISfuncs)
-        muRnonHomog = self.generalNonHomog(y, ybar)
+        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
@@ -396,9 +401,9 @@ class muRfuncs():
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
         ndD = self.ndD
-        muR1homog, muR2homog = self.graphite2paramHomog(
+        muR1homog, muR2homog = self.graphite_2param_homog(
             y, ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"], ISfuncs)
-        muR1nonHomog, muR2nonHomog = self.generalNonHomog(y, ybar)
+        muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
         actR1 = np.exp(muR1/self.T)
@@ -410,9 +415,9 @@ class muRfuncs():
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
         ndD = self.ndD
-        muRhomog = self.graphite1paramHomog_3(
+        muRhomog = self.graphite_1param_homog_3(
             y, ndD["Omga"], ndD["Omgb"], ISfuncs)
-        muRnonHomog = self.generalNonHomog(y, ybar)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
@@ -420,24 +425,24 @@ class muRfuncs():
 
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
-        muR = self.regSln(y, self.ndD["Omga"], ISfuncs)
+        muR = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
 
     def testRS_ps(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*2.
-        muRhomog = self.regSln(y, self.ndD["Omga"], ISfuncs)
-        muRnonHomog = self.generalNonHomog(y, ybar)
+        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
 
 
-def stepDown(x, xc, delta):
+def step_down(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
 
 
-def stepUp(x, xc, delta):
+def step_up(x, xc, delta):
     return 0.5*(np.tanh((x - xc)/delta) + 1)

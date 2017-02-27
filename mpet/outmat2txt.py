@@ -84,7 +84,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
 
-    def getTrodeStr(l):
+    def get_trode_str(l):
         return ("Anode" if l == "a" else "Cathode")
     if "a" in trodes:
         psd_len_a = dD_s["psd_len"]["a"]
@@ -144,7 +144,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
             print(particleDiscExpl, file=fo)
             for l in trodes:
                 print(file=fo)
-                Trode = getTrodeStr(l)
+                Trode = get_trode_str(l)
                 print((Trode + " particle sizes [m]"), file=fo)
                 for vind in range(ndD_s["Nvol"][l]):
                     print(",".join(map(str, dD_s["psd_len"][l][vind,:])), file=fo)
@@ -188,7 +188,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         dataFile = os.path.join(indir, dataFileName)
         data = sio.loadmat(dataFile)
         for l in trodes:
-            Trode = getTrodeStr(l)
+            Trode = get_trode_str(l)
             type2c = False
             if ndD_e[l]["type"] in ndD_s["1varTypes"]:
                 str_base = partStr + "c"
@@ -221,7 +221,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
             indir, plot_type="cbar_full", print_flag=False,
             save_flag=False, data_only=True)
         for l in trodes:
-            Trode = getTrodeStr(l)
+            Trode = get_trode_str(l)
             fname = "cbar{l}Data.txt".format(l=Trode)
             Nv, Np = ndD_s["Nvol"][l], ndD_s["Npart"][l]
             NpartTot = Nv*Np
