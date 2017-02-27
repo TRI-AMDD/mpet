@@ -8,30 +8,33 @@ dynamics within a battery (electrolyte concentration and potential, solid phase 
 reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as
 total current and voltage. In this way, it is similar to the
 [`dualfoil`](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and
-coworkers from Berkeley. This software has most of the functionality contained in `dualfoil` (it is
-currently missing temperature dependence). However, beyond the standard porous electrode theory
-simulations, this software can also simulate electrodes in which the active materials phase
+coworkers from Berkeley. This software has much of the functionality contained in `dualfoil` (it is
+currently missing, e.g., temperature dependence). However, beyond the standard porous electrode
+theory simulations, this software can also simulate electrodes in which the active materials phase
 separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
 behavior is common in widely used electrode materials, including graphite and LiFePO4.
 
 ## Installation
 
-1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4`
-    - Linux: Try using your package manager
+1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4` (Note: `pyqt4` should be safe to
+    neglect if you don't plan to run any DAE Tools tutorials.)
+    - Linux: Try using your package manager or using Anaconda as in the Windows instructions.
     - Windows: Use Anaconda
         - Remove any other Python installation
-        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.5).
+        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.x).
           Install for all users.
         - Open `cmd.exe`
         - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
         - Say "y" when prompted. This may take several minutes.
-2.  Install [DAE Tools](https://sourceforge.net/projects/daetools/files/1.4.0)
+2.  Install the most recent version of [DAE Tools](https://sourceforge.net/projects/daetools/files)
     - Get the version corresponding to your operating system (and py34 if on Windows)
 3.  Download a copy of this repository to some place on your system path (for example, put this
     directory within a working diretory in which you want to run simulations).
 
 If you want to use DAE Tools with a different version of Python 3, you can compile it from source
 as described [here](http://daetools.com/docs/getting_daetools.html).
+Also note that DAE Tools can be installed within a python virtual environment, so feel free to take
+that approach instead.
 
 ## Simulation
 
@@ -68,15 +71,17 @@ called `sim_output`. Each output directory should contain
     plot-type as arguments)
     - e.g., voltage plot: `python mpetplot.py sim_output v`
     - other options (`full`, `c`, `a` indicate full cell, cathode, and anode):
-      - `v` -- voltage vs filling fraction
+      - `v` or `vt` -- voltage vs filling fraction or vs time
       - `curr` -- current vs time
-      - `elytec` -- electrolyte concentration (movie)
-      - `elytep` -- electrolyte potential (movie)
-      - `csld_{c,a}` -- solid concentrations (all, movie, used with `solidType_{c,a}` not homog)
-      - `phisld_{c,a}` -- solid potential (all, movie, used with `simSurfCond_{c,a}` = true)
-      - `cbar_{full,c,a}` -- average solid concentrations (movie)
+      - `elytec{f}` -- electrolyte concentration (movie) or final snapshot with `f`
+      - `elytep{f}` -- electrolyte potential (movie) or final snapshot with `f`
+      - `elytei{f}` -- electrolyte current density (movie) or final snapshot with `f`
+      - `surf_{c,a}` -- solid surface concentrations
+      - `soc_{c,a}` -- overall utilization / state of charge of electrode
+      - `csld_{c,a}` -- solid concentrations of particles in electrode (movie; used with `solidType_{c,a}` not homog)
+      - `cbarLine_{c,a}` -- average concentration in each particle of electrode
+      - `cbar_{full,c,a}` -- average solid concentrations as changing colors (movie)
       - `bulkp_{c,a}` -- macroscopic electrode solid phase potential (movie)
-      - `soc_{c,a}` -- electrode state of charge
 2.  Alternatively, convert the output to plain text (csv) format using
     `python mpetplot.py sim_output text` (or replace `sim_output` with
     any subfolder in the `history` folder). Then analyze using whatever
@@ -91,8 +96,9 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of
 ## Troubleshooting
 If you are seeing errors about reaching the maximum number of steps with suggestions about
 scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be
-found in the `daetools.cfg` file. In Linux, this file is found within `/etc/daetools`, and in
-Windows, it is within `C:\daetools`.
+found in the `daetools.cfg` file. This is found within the DAE Tools install directory.
+
+Otherwise, please use the bitbucket website to file issues and/or bug reports with the software.
 
 ## Testing
 

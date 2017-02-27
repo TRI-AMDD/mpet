@@ -831,12 +831,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return line1, ttl
 
     else:
-        raise Exception(
-            "Unexpected plot type argument. " +
-            "Try 'v', 'curr', 'elytec', 'elytep', " +
-            "'soc_a/c', " +
-            "'cbar_a/c', 'csld_a/c', 'phisld_a/c', " +
-            "'bulkp_a/c', 'surf_a/c'.")
+        raise Exception("Unexpected plot type argument. See README.md.")
 
     ani = manim.FuncAnimation(
         fig, animate, frames=numtimes, interval=50, blit=True, repeat=False, init_func=init)
