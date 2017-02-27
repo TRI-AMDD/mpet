@@ -68,7 +68,7 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     simulation.Finalize()
 
 
-def main(paramfile="params_default.cfg", keepArchive=True):
+def main(paramfile, keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
@@ -158,13 +158,7 @@ def main(paramfile="params_default.cfg", keepArchive=True):
     run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
 
     # Final output for user
-    if paramfile == "params_default.cfg":
-        print("\n\n*** WARNING: Used default file, ""{fname}"" ***".format(
-            fname=default_file))
-        print("Pass other parameter file as an argument to this script\n")
-    else:
-        print("\n\nUsed parameter file ""{fname}""\n\n".format(
-            fname=paramfile))
+    print("\n\nUsed parameter file ""{fname}""\n\n".format(fname=paramfile))
     timeEnd = time.time()
     tTot = timeEnd - timeStart
     print("Total time:", tTot, "s")

@@ -4,4 +4,8 @@ import sys
 
 import mpet.main as main
 
-main.main(sys.argv[1])
+try:
+    main.main(sys.argv[1])
+except IndexError:
+    print("ERROR: No parameter file specified. Aborting")
+    raise
