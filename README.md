@@ -14,6 +14,13 @@ theory simulations, this software can also simulate electrodes in which the acti
 separate using non-equilibrium thermodynamics within a phase field modeling framework. Such
 behavior is common in widely used electrode materials, including graphite and LiFePO4.
 
+If you use this software in academic work, please cite the relevant references detailing its
+development as presented in the `LICENSE` file. For more details on the theory implemeneted in the
+code, see:
+
+Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, submitted,
+preprint on [arXiv](https://arxiv.org/abs/1702.08432).
+
 ## Installation
 
 1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4` (Note: `pyqt4` should be safe to
@@ -94,6 +101,7 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of
 `MPlayer`) installed.
 
 ## Troubleshooting
+
 If you are seeing errors about reaching the maximum number of steps with suggestions about
 scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be
 found in the `daetools.cfg` file. This is found within the DAE Tools install directory.

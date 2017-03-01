@@ -12,18 +12,15 @@ furnished to do so, subject to the following conditions:
 When the Software is used in academic works, cite the following papers which
 detail its development:
 
-1. Ferguson, T. and Bazant, M. Z., 2012, Nonequilibrium Thermodynamics
+1. Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, submitted,
+preprint on arXiv (https://arxiv.org/abs/1702.08432)
+
+2. Ferguson, T. and Bazant, M. Z., 2012, Nonequilibrium Thermodynamics
 of Porous Electrodes, J. Electrochem. Soc., 159 (12) A1967-A1985
 
-2. Bazant, M. Z., 2013, Theory of Chemical Kinetics and Charge
+3. Bazant, M. Z., 2013, Theory of Chemical Kinetics and Charge
 Transfer based on Nonequilibrium Thermodynamics,
 Acc. Chem. Res., 46 (5) 1144-1160
-
-3. Li Y., El Gabaly, F., Ferguson, T., Smith, R., Bartlet, N.,
-Sugar, J., Fenton K. R., Cogswell, D., Kilcoyne A. L., Tyliszczak, T.,
-Bazant, M. Z., Chueh, W., 2014, Current-Induced Transition from
-Particle-by-Particle to Concurrent Intercalation in Phase-Separating
-Battery Electrodes, Nature Materials, 13 (12) 1149-1156
 
 as well as the following papers when using specific electrode material models:
 
@@ -36,13 +33,19 @@ Kinetics of Phase Separation in LiFePO4 Nanoparticles, ACS Nano,
 2. Ferguson, T. and Bazant, M. Z., 2014, Phase Transformation Dynamics
 in Porous Battery Electrodes, 146 89-97
 
+3. Li Y., El Gabaly, F., Ferguson, T., Smith, R. B., Bartlet, N.,
+Sugar, J., Fenton K. R., Cogswell, D., Kilcoyne A. L., Tyliszczak, T.,
+Bazant, M. Z., Chueh, W., 2014, Current-Induced Transition from
+Particle-by-Particle to Concurrent Intercalation in Phase-Separating
+Battery Electrodes, Nature Materials, 13 (12) 1149-1156
+
 Graphite:
 
 1. Ferguson, T. and Bazant, M. Z., 2014, Phase Transformation Dynamics
 in Porous Battery Electrodes, 146 89-97
 
-2. Smith, R. and Bazant, M. Z., Intercalation Kinetics in Multiphse
-Layered Materials, to be published
+2. Smith, R. B., Khoo, E., and Bazant, M. Z., Intercalation Kinetics in Multiphase
+Layered Materials, submitted, preprint on arXiv (https://arxiv.org/abs/1701.08858)
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
