@@ -350,7 +350,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return datax, datay, L_a, L_s
         dataMin, dataMax = np.min(datay), np.max(datay)
         dataRange = dataMax - dataMin
-        ymin = dataMin - 0.05*dataRange
+        ymin = max(0, dataMin - 0.05*dataRange)
         ymax = dataMax + 0.05*dataRange
         fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
