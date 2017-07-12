@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2015 Raymond B. Smith
+Copyright (c) 2017 Raymond B. Smith
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -12,8 +12,8 @@ furnished to do so, subject to the following conditions:
 When the Software is used in academic works, cite the following papers which
 detail its development:
 
-1. Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, submitted,
-preprint on arXiv (https://arxiv.org/abs/1702.08432)
+1. Smith, R. B., and Bazant M. Z., 2017, Multiphase Porous Electrode Theory,
+J. Electrochem. Soc., 2017, 164 (11) E3291-E3310, doi: 10.1149/2.0171711jes
 
 2. Ferguson, T. and Bazant, M. Z., 2012, Nonequilibrium Thermodynamics
 of Porous Electrodes, J. Electrochem. Soc., 159 (12) A1967-A1985
@@ -45,7 +45,8 @@ Graphite:
 in Porous Battery Electrodes, 146 89-97
 
 2. Smith, R. B., Khoo, E., and Bazant, M. Z., Intercalation Kinetics in Multiphase
-Layered Materials, submitted, preprint on arXiv (https://arxiv.org/abs/1701.08858)
+Layered Materials, J. Phys. Chem. C, 2017, 121 (23), pp 12505–12523, doi: 10.1021/acs.jpcc.7b00185,
+preprint on arXiv (https://arxiv.org/abs/1701.08858)
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.

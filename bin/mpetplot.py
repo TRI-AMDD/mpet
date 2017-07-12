@@ -3,10 +3,6 @@
 import os
 import sys
 
-import matplotlib as mpl
-# DAE Tools uses Qt4Agg, so we might as well use the same.
-# Any installed interactive backend other than Qt5Agg should work.
-mpl.use("Qt4Agg")
 import matplotlib.pyplot as plt
 
 import mpet.outmat2txt as outmat2txt

@@ -18,28 +18,27 @@ If you use this software in academic work, please cite the relevant references d
 development as presented in the `LICENSE` file. For more details on the theory implemeneted in the
 code, see:
 
-Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, submitted,
+Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory,
+[Journal of the Electrochemical Society](https://doi.org/10.1149/2.0171711jes),
+2017, 164 (11) E3291-E3310,
 preprint on [arXiv](https://arxiv.org/abs/1702.08432).
 
 ## Installation
 
-1.  Install `python3.4`, `numpy`, `scipy`, `matplotlib`, `pyqt4` (Note: `pyqt4` should be safe to
+1.  Install `python3.6`, `numpy`, `scipy`, `matplotlib`, `pyqt5` (Note: `pyqt5` should be safe to
     neglect if you don't plan to run any DAE Tools tutorials.)
     - Linux: Try using your package manager or using Anaconda as in the Windows instructions.
     - Windows: Use Anaconda
         - Remove any other Python installation
-        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.x).
+        - Get and install [Anaconda](https://www.continuum.io/downloads) (32 bit, Python 3.6).
           Install for all users.
-        - Open `cmd.exe`
-        - `$ conda install python=3.4 anaconda` to convert to a Python 3.4 installation
-        - Say "y" when prompted. This may take several minutes.
-2.  Install the most recent version of [DAE Tools](https://sourceforge.net/projects/daetools/files)
-    - Get the version corresponding to your operating system (and py34 if on Windows)
+2.  Install the most recent version of [DAE Tools](http://daetools.com/downloads.html)
+    - Get the version corresponding to your operating system
+    - Use your method of choice for installing python packages
+      (e.g. `python setup.py install`)
 3.  Download a copy of this repository to some place on your system path (for example, put this
     directory within a working diretory in which you want to run simulations).
 
-If you want to use DAE Tools with a different version of Python 3, you can compile it from source
-as described [here](http://daetools.com/docs/getting_daetools.html).
 Also note that DAE Tools can be installed within a python virtual environment, so feel free to take
 that approach instead.
 
