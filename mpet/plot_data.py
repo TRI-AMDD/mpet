@@ -147,7 +147,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 print("lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"])
             if ndD_s['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- " +
-                      "dim_mcond [S/m]: " + str(dD_s['mcond'][trode]))
+                      "sigma_s [S/m]: " + str(dD_s['sigma_s'][trode]))
             else:
                 print(trode + " bulk conductivity loss: No")
             try:
