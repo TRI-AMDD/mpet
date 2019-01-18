@@ -38,6 +38,16 @@ preprint on [arXiv](https://arxiv.org/abs/1702.08432).
       (e.g. `python setup.py install`)
 3.  Download a copy of this repository to some place on your system path (for example, put this
     directory within a working diretory in which you want to run simulations).
+    
+4.  EDIT (Jan, 2019): There have been a number of updates to DAE Tools and Anaconda recently. 
+    In case the above procedure produces errors in a conda terminal in Windows 10
+    (such as certain modules not being detected while running the code), here is a set of instructions
+    to get MPET set up in a 64-bit Windows 10 PC (tested on Enterprise and Pro Editions)      
+    - Download the latest version of Anaconda 64-bit, in the same way as stated in the
+      original procedure.
+    - Downgrade your python version to python 3.6. The way to do this is to run: 
+      'conda install python=3.6' on your Anaconda terminal after starting it with admin level rights.
+    - Get a copy of DAE Tools 1.7.2 Win64, and use your method of choice to install python packages, as stated above.
 
 Also note that DAE Tools can be installed within a python virtual environment, so feel free to take
 that approach instead.
