@@ -48,6 +48,8 @@ preprint on [arXiv](https://arxiv.org/abs/1702.08432).
     - Downgrade your python version to python 3.6. The way to do this is to run: 
       'conda install python=3.6' on your Anaconda terminal after starting it with admin level rights.
     - Get a copy of DAE Tools 1.7.2 Win64, and use your method of choice to install python packages, as stated above.
+5. EDIT (May, 2019): For Ubuntu 16.04, use DAETools version 1.8.1 with python 3.6. It is very important to match these
+   versions while setting up the software. We will update this page with more version compatibility information soon.
 
 Also note that DAE Tools can be installed within a python virtual environment, so feel free to take
 that approach instead.
