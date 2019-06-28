@@ -1,0 +1,12 @@
+branch name:
+updates-for-paper
+
+commit hash:
+1e74c2c
+
+and:
+$ git checkout [commit hash]
+$ patch -p1 < commit.diff:
+$ python[3] mpetrun.py input_params_system.cfg
+
+Total run time: 0.4263956546783447 s

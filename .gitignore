@@ -19,7 +19,10 @@
 # Ignore general simulation output stuff
 history/
 sim_output*
-tests/ref_outputs*
+
+#Ignore test outputs but not ref_outputs
+!tests/ref_outputs/*/*.cfg
+!tests/ref_outputs/*/sim_output
 tests/test_outputs/
 
 # Ignore scripts copied from mpet/bin/ to mpet/
