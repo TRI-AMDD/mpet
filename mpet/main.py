@@ -138,7 +138,11 @@ def main(paramfile, keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
+    
+    # External functions are not supported by the Compute Stack approach.
+    # Therefore, activate the Evaluation Tree approach
     cfg = dae.daeGetConfig()
+    cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
