@@ -142,7 +142,8 @@ def main(paramfile, keepArchive=True):
     # External functions are not supported by the Compute Stack approach.
     # Therefore, activate the Evaluation Tree approach
     cfg = dae.daeGetConfig()
-    cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+    if cfg.has_key('daetools.core.equations.evaluationMode'):
+        cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
