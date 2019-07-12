@@ -124,6 +124,8 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             # Ignore certain entries not of numerical output
             if varKey[0:2] == "__":
                 continue
+
+            #Compute the difference between the solution and the reference
             try:
                 varDataNew = newData[varKey]
                 varDataRef = refData[varKey]
@@ -136,9 +138,9 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 print(testStr, "Fail from KeyError")
                 failList.append(testStr)
                 continue
-            # TODO -- What is the right way to compare here?
-            absTol = tol*(np.max(varDataNew) - np.min(varDataNew))
-            if np.max(diffMat) > absTol:
+            
+            # #Check absolute and relative error against tol
+            if np.max(diffMat) > tol and np.max(diffMat) > tol*np.max(np.abs(varDataRef)):
                 print(testStr, "Fail from tolerance")
                 print("variable failing:", varKey)
                 print("max error:", np.max(diffMat))
@@ -192,7 +194,7 @@ def main(compareDir):
     else:
         dirDict["out"] = compareDir
         dirDict["plots"] = osp.join(dirDict["out"], "plots")
-    failList = compare_with_ref(runInfo, dirDict, tol=1e-3)
+    failList = compare_with_ref(runInfo, dirDict, tol=1e-4)
     failListAnalyt = compare_with_analyt(runInfoAnalyt, dirDict, tol=1e-4)
 
     if len(failList) > 0:
