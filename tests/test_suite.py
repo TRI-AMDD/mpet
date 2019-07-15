@@ -101,6 +101,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
     timeList_ref = []
     failList = []
     for testStr in sorted(runInfo.keys()):
+        testFailed = False
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
         refDir = osp.join(dirDict["refs"], testStr, "sim_output")
         newDataFile = osp.join(newDir, "output_data.mat")
@@ -115,12 +116,11 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 raise
             print("No simulation data for " + testStr)
             continue
+        
         refData = sio.loadmat(refDataFile)
         for varKey in (set(refData.keys()) & set(newData.keys())):
-            # If this test has already failed
             # TODO -- Consider keeping a list of the variables that fail
-            if testStr in failList:
-                break
+
             # Ignore certain entries not of numerical output
             if varKey[0:2] == "__":
                 continue
@@ -132,11 +132,11 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
                 print(testStr, "Fail from ValueError")
-                failList.append(testStr)
+                testFailed = True
                 continue
             except KeyError:
                 print(testStr, "Fail from KeyError")
-                failList.append(testStr)
+                testFailed = True
                 continue
             
             # #Check absolute and relative error against tol
@@ -144,7 +144,10 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 print(testStr, "Fail from tolerance")
                 print("variable failing:", varKey)
                 print("max error:", np.max(diffMat))
-                failList.append(testStr)
+                testFailed = True
+        
+        if testFailed:
+            failList.append(testStr)
 
     scl = 1.3
     fig, ax = plt.subplots(figsize=(scl*6, scl*4))
@@ -197,13 +200,19 @@ def main(compareDir):
     failList = compare_with_ref(runInfo, dirDict, tol=1e-4)
     failListAnalyt = compare_with_analyt(runInfoAnalyt, dirDict, tol=1e-4)
 
+    #Print a summary of test results
+    print("\n")
+    print("--------------------------------------------------------------")
     if len(failList) > 0:
         print("Comparison fails:")
-        show_fails(failList)
+        for fail in failList:
+            print("\t" + fail + " differs from the reference outputs!")
     else:
         print("All comparison tests passed!")
     if len(failListAnalyt) > 0:
         print("Analytical fails:")
-        show_fails(failListAnalyt)
+        for fail in failListAnalyt:
+            print("\t" + fail + " differs from the reference outputs!")
     else:
         print("All analytical tests passed!")
+    print("--------------------------------------------------------------")
