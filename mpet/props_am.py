@@ -66,25 +66,9 @@ class muRfuncs():
         e = 1.602e-19
         self.eokT = e/(k*Tabs)
         self.kToe = (k*Tabs)/e
-        materialData = {}
-        materialData['LiMn2O4_ss'] = self.LiMn2O4_ss
-        materialData['LiMn2O4_ss2'] = self.LiMn2O4_ss2
-        materialData['LiC6_coke_ss'] = self.LiC6_coke_ss
-        materialData['LiC6_coke_ss2'] = self.LiC6_coke_ss2
-        materialData['LiC6_ss'] = self.LiC6_ss
-        materialData['LiC6_ss2'] = self.LiC6_ss2
-        materialData['LiC6_2step_ss'] = self.LiC6_2step_ss
-        materialData['Li_ss'] = self.Li_ss
-        materialData['NCA_ss1'] = self.NCA_ss1
-        materialData['NCA_ss2'] = self.NCA_ss2
-        materialData['testIS_ss'] = self.testIS_ss
-        materialData['LiFePO4'] = self.LiFePO4
-        materialData['LiC6'] = self.LiC6
-        materialData['LiC6_1param'] = self.LiC6_1param
-        materialData['testRS'] = self.testRS
-        materialData['testRS_ps'] = self.testRS_ps
-        materialData['testRS_ss'] = self.testRS_ss
-        self.muRfunc = materialData[ndD["muRfunc"]]
+
+        #Convert "muRfunc" to a callable function
+        self.muRfunc = getattr(self,ndD["muRfunc"])
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
