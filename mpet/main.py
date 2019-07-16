@@ -11,6 +11,7 @@ import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
 import numpy as np
 
+import mpet
 import mpet.data_reporting as data_reporting
 import mpet.io_utils as IO
 import mpet.sim as sim
@@ -114,20 +115,27 @@ def main(paramfile, keepArchive=True):
             pass
     except subp.CalledProcessError:
         pass
+
+    fo=open(os.path.join(outdir, 'run_info.txt'), 'w')
+    
+    #Print mpet version
+    print("mpet version:", file=fo)
+    print(mpet.__version__+"\n", file=fo)
+
+    #Print git commit info if it exists
     if commit_hash != "":
         # Store commit info to file, as well as how to patch if
         # there's a diff
-        with open(os.path.join(outdir, 'run_info.txt'), 'w') as fo:
-            print("branch name:", file=fo)
-            print(branch_name, file=fo)
-            print("commit hash:", file=fo)
-            print(commit_hash, file=fo)
-            print("to run, from the root repo directory, copy relevant files there,", file=fo)
-            print("edit input_params_system.cfg to point to correct material", file=fo)
-            print("params files, and:", file=fo)
-            print("$ git checkout [commit hash]", file=fo)
-            print("$ patch -p1 < commit.diff:", file=fo)
-            print("$ python[3] mpetrun.py input_params_system.cfg", file=fo)
+        print("branch name:", file=fo)
+        print(branch_name, file=fo)
+        print("commit hash:", file=fo)
+        print(commit_hash, file=fo)
+        print("to run, from the root repo directory, copy relevant files there,", file=fo)
+        print("edit input_params_system.cfg to point to correct material", file=fo)
+        print("params files, and:", file=fo)
+        print("$ git checkout [commit hash]", file=fo)
+        print("$ patch -p1 < commit.diff:", file=fo)
+        print("$ python[3] mpetrun.py input_params_system.cfg", file=fo)
         with open(os.path.join(outdir, 'commit.diff'), 'w') as fo:
             print(commit_diff, file=fo)
     else:
@@ -138,6 +146,8 @@ def main(paramfile, keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
+    
+    fo.close()
     
     # External functions are not supported by the Compute Stack approach.
     # Therefore, activate the Evaluation Tree approach
