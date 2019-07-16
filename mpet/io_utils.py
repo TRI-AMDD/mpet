@@ -167,12 +167,12 @@ def get_dicts_from_configs(P_s, P_e):
 
         # Material
         # both 1var and 2var parameters
-        dD["Omga"] = P.getfloat('Material', 'Omega_a')
-        dD["Omgb"] = P.getfloat('Material', 'Omega_b')
-        dD["Omgc"] = P.getfloat('Material', 'Omega_c')
+        dD["Omga"] = P.getfloat('Material', 'Omega_a',fallback=None)
+        dD["Omgb"] = P.getfloat('Material', 'Omega_b',fallback=None)
+        dD["Omgc"] = P.getfloat('Material', 'Omega_c',fallback=None)
         dD["kappa"] = P.getfloat('Material', 'kappa')
         dD["B"] = P.getfloat('Material', 'B')
-        dD["EvdW"] = P.getfloat('Material', 'EvdW')
+        dD["EvdW"] = P.getfloat('Material', 'EvdW',fallback=None)
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
@@ -300,11 +300,15 @@ def get_dicts_from_configs(P_s, P_e):
 
         # Electrode particle parameters
         ndD_e[trode]["lambda"] = dD_e[trode]["lambda"]/(k*T_ref)
-        ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*T_ref)
-        ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*T_ref)
-        ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
+        if dD_e[trode]["Omga"] is not None:
+            ndD_e[trode]["Omga"] = dD_e[trode]["Omga"] / (k*T_ref)
+        if dD_e[trode]["Omgb"] is not None:
+            ndD_e[trode]["Omgb"] = dD_e[trode]["Omgb"] / (k*T_ref)
+        if dD_e[trode]["Omgc"] is not None:
+            ndD_e[trode]["Omgc"] = dD_e[trode]["Omgc"] / (k*T_ref)
         ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*N_A*dD_e[trode]['cs_ref'])
-        ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
+        if dD_e[trode]["EvdW"] is not None:
+            ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
         muRfunc = props_am.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
         cs0bar = ndD_s["cs0"][trode]
         cs0 = np.array([cs0bar])
