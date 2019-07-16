@@ -1,8 +1,10 @@
 import setuptools
 
+exec(open('mpet/version.py').read())
+
 setuptools.setup(
     name='mpet',
-    version='0.1.0',
+    version=__version__,
     description='Multiphase porous electrode theory',
     author='Dan Cogswell',
     author_email='cogswell@mit.edu',
