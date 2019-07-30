@@ -150,9 +150,11 @@ def main(paramfile, keepArchive=True):
     fo.close()
     
     # External functions are not supported by the Compute Stack approach.
-    # Therefore, activate the Evaluation Tree approach
+    # Therefore, activate the Evaluation Tree approach if noise or logPad are used
     cfg = dae.daeGetConfig()
-    if cfg.has_key('daetools.core.equations.evaluationMode'):
+    noise=ndD_e['c']['noise']
+    logPad=ndD_e['c']['logPad']
+    if (noise or logPad) and cfg.has_key('daetools.core.equations.evaluationMode'):
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
