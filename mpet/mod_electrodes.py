@@ -500,27 +500,16 @@ def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
 
 
 def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
-    if isinstance(c[0], dae.pyCore.adouble):
-        MIN, MAX = dae.Min, dae.Max
-    else:
-        MIN, MAX = min, max
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_harmonic(c)
-    # Keep the concentration between 0 and 1
-    c_edges = np.array([MAX(1e-6, c_edges[i]) for i in range(N-1)])
-    c_edges = np.array([MIN(1-1e-6, c_edges[i]) for i in range(N-1)])
     Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
     return Flux_vec
 
 
 def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
-    if isinstance(c1[0], dae.pyCore.adouble):
-        MIN, MAX = dae.Min, dae.Max
-    else:
-        MIN, MAX = min, max
     N = len(c1)
     Flux1_vec = np.empty(N+1, dtype=object)
     Flux2_vec = np.empty(N+1, dtype=object)
@@ -530,15 +519,6 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[-1] = Flux2_bc
     c1_edges = utils.mean_harmonic(c1)
     c2_edges = utils.mean_harmonic(c2)
-    # keep the concentrations between 0 and 1
-    c1_edges = np.array([
-        MAX(1e-6, c1_edges[i]) for i in range(len(c1_edges))])
-    c1_edges = np.array([
-        MIN((1-1e-6), c1_edges[i]) for i in range(len(c1_edges))])
-    c2_edges = np.array([
-        MAX(1e-6, c2_edges[i]) for i in range(len(c1_edges))])
-    c2_edges = np.array([
-        MIN((1-1e-6), c2_edges[i]) for i in range(len(c1_edges))])
     Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
     Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
