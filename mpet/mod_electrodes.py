@@ -66,6 +66,9 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
+        #Get reaction rate function from dictionary name
+        self.calc_rxn_rate=globals()[ndD["rxnType"]]
+
         # Ports
         self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self, "Inlet port from electrolyte")
@@ -162,11 +165,11 @@ class Mod2var(dae.daeModel):
         eta2 = calc_eta(mu2R_surf, muO)
         eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
         eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
-        Rxn1 = calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn1 = self.calc_rxn_rate(
+            eta1_eff, c1_surf, self.c_lyte, ndD["k0"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
-        Rxn2 = calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn2 = self.calc_rxn_rate(
+            eta2_eff, c2_surf, self.c_lyte, ndD["k0"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq1 = self.CreateEquation("Rxn1")
         eq2 = self.CreateEquation("Rxn2")
@@ -207,11 +210,11 @@ class Mod2var(dae.daeModel):
         else:
             eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
             eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
-        Rxn1 = calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn1 = self.calc_rxn_rate(
+            eta1_eff, c1_surf, self.c_lyte, ndD["k0"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
-        Rxn2 = calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn2 = self.calc_rxn_rate(
+            eta2_eff, c2_surf, self.c_lyte, ndD["k0"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR2"]:
             for i in range(N):
@@ -302,6 +305,9 @@ class Mod1var(dae.daeModel):
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
+        #Get reaction rate function from dictionary name
+        self.calc_rxn_rate=globals()[ndD["rxnType"]]
+
         # Ports
         self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self,
@@ -377,8 +383,8 @@ class Mod1var(dae.daeModel):
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
-        Rxn = calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn = self.calc_rxn_rate(
+            eta_eff, c_surf, self.c_lyte, ndD["k0"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
@@ -412,8 +418,8 @@ class Mod1var(dae.daeModel):
             eta_eff = np.array([eta[i] + self.Rxn(i)*ndD["Rfilm"] for i in range(N)])
         else:
             eta_eff = eta + self.Rxn()*ndD["Rfilm"]
-        Rxn = calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte, ndD["k0"], T, ndD["rxnType"],
+        Rxn = self.calc_rxn_rate(
+            eta_eff, c_surf, self.c_lyte, ndD["k0"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR"]:
             for i in range(N):
@@ -449,19 +455,6 @@ class Mod1var(dae.daeModel):
             eq.Residual = LHS_vec[k] - RHS[k]
             if ndD["noise"]:
                 eq.Residual += noise[k]()
-
-
-def calc_rxn_rate(eta, c_sld, c_lyte, k0, T, rxnType, act_R=None,
-                  act_lyte=None, lmbda=None, alpha=None):
-    if rxnType == "Marcus":
-        Rate = R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T)
-    elif rxnType[0:2] == "BV":
-        Rate = R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R,
-                    eta, T, rxnType)
-    elif rxnType == "MHC":
-        k0_MHC = k0/MHC_kfunc(0., lmbda)
-        Rate = R_MHC(k0_MHC, lmbda, eta, T, c_sld, act_R, c_lyte, act_lyte)
-    return Rate
 
 
 def calc_eta(muR, muO):
@@ -542,30 +535,50 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     return muR, actR
 
 
-def R_BV(k0, alpha, c_lyte, c_sld, act_lyte, act_R, eta, T, rxnType):
-    if rxnType in ["BV", "BV_gMod01"]:
-        if act_R is None:
-            act_R = c_sld/(1-c_sld)
-        if rxnType == "BV":
-            gamma_ts = (1./(1-c_sld))
-        elif rxnType == "BV_gMod01":
-            gamma_ts = (1./(c_sld*(1-c_sld)))
-        ecd = (k0 * act_lyte**(1-alpha)
+#Reaction rate functions 
+#Should have the same name as the rxnType config field
+def BV(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
+    if act_R is None:
+        act_R = c_sld/(1-c_sld)
+    gamma_ts = (1./(1-c_sld))
+    ecd = (k0 * act_lyte**(1-alpha)
                * act_R**(alpha) / gamma_ts)
-    elif rxnType in ["BV_raw", "BV_mod01", "BV_mod02"]:
-        if rxnType == "BV_raw":
-            ecd = k0
-        elif rxnType == "BV_mod01":
-            ecd = (k0 * c_lyte**(1-alpha)
-                   * (1.0 - c_sld)**(1 - alpha) * c_sld**alpha)
-        elif rxnType == "BV_mod02":
-            ecd = (k0 * c_lyte**(1-alpha)
-                   * (0.5 - c_sld)**(1 - alpha) * c_sld**alpha)
     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
 
+def BV_gMod01(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
+    if act_R is None:
+        act_R = c_sld/(1-c_sld)
+    gamma_ts = (1./(c_sld*(1-c_sld)))
+    ecd = (k0 * act_lyte**(1-alpha)
+               * act_R**(alpha) / gamma_ts)
+    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    return Rate
 
-def R_Marcus(k0, lmbda, c_lyte, c_sld, eta, T):
+def BV_raw(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
+    ecd=k0
+    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    return Rate
+
+def BV_mod01(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
+    ecd = (k0 * c_lyte**(1-alpha)
+           * (1.0 - c_sld)**(1 - alpha) * c_sld**alpha)
+    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    return Rate
+
+def BV_mod02(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
+    ecd = (k0 * c_lyte**(1-alpha)
+           * (0.5 - c_sld)**(1 - alpha) * c_sld**alpha)
+    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    return Rate
+
+def Marcus(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
     if isinstance(c_sld, np.ndarray):
         c_sld = np.array([
             dae.Max(eps, c_sld[i]) for i in range(len(c_sld))])
@@ -595,9 +608,11 @@ def MHC_kfunc(eta, lmbda):
                / (2*np.sqrt(lmbda)))))
 
 
-def R_MHC(k0, lmbda, eta, T, c_sld, act_R, c_lyte, act_lyte):
+def MHC(eta, c_sld, c_lyte, k0, T, act_R=None,
+                  act_lyte=None, lmbda=None, alpha=None):
     # See Zeng, Smith, Bai, Bazant 2014
     # Convert to "MHC overpotential"
+    k0=k0/MHC_kfunc(0., lmbda)
     eta_f = eta + T*np.log(c_lyte/c_sld)
     gamma_ts = 1./(1. - c_sld)
     alpha = 0.5
