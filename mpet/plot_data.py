@@ -11,9 +11,19 @@ import mpet.geometry as geom
 import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
 import mpet.props_am as props_am
-import mpet.utils as utils
 
-utils.set_plot_defaults(mpl)
+"""Set list of matplotlib rc parameters to make more readable plots."""
+# axtickfsize = 18
+# labelfsize = 20
+# mpl.rcParams['xtick.labelsize'] = axtickfsize
+# mpl.rcParams['ytick.labelsize'] = axtickfsize
+# mpl.rcParams['axes.labelsize'] = labelfsize
+# mpl.rcParams['font.size'] = labelfsize - 2
+# mpl.rcParams['legend.fontsize'] = labelfsize - 2
+# mpl.rcParams['lines.linewidth'] = 3
+# mpl.rcParams['lines.markersize'] = 10
+# mpl.rcParams['lines.markeredgewidth'] = 0.1
+#mpl.rcParams['text.usetex'] = True
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):

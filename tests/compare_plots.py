@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import mpet.plot_data as pd
-import mpet.utils as utils
-
-utils.set_plot_defaults(mpl)
 
 
 def vt(testDir, dirDict):

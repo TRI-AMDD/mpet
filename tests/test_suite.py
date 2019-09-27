@@ -9,10 +9,7 @@ import numpy as np
 import scipy.io as sio
 
 import mpet.io_utils as IO
-import mpet.utils as utils
 import tests.test_defs as defs
-
-utils.set_plot_defaults(mpl)
 
 
 def run_test_sims(runInfo, dirDict, pflag=True):
