@@ -373,16 +373,22 @@ class ModCell(dae.daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            eq.Residual = self.current() - (
-                ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
-                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
+            if ndD["tramp"]>0:
+                eq.Residual = self.current() - (
+                    ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
+            else:
+                eq.Residual = self.current() - ndD["currset"]
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            eq.Residual = self.phi_applied() - (
-                ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
-                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
-                )
+            if ndD["tramp"]>0:
+                eq.Residual = self.phi_applied() - (
+                    ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
+                    )
+            else:
+                eq.Residual = self.phi_applied() - ndD["Vset"]
         elif "segments" in self.profileType:
             if self.profileType == "CCsegments":
                 ndD["segments_setvec"][0] = ndD["currPrev"]
