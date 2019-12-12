@@ -389,20 +389,20 @@ class ModCell(dae.daeModel):
                     )
             else:
                 eq.Residual = self.phi_applied() - ndD["Vset"]
-        elif "segments" in self.profileType:
-            if self.profileType == "CCsegments":
-                ndD["segments_setvec"][0] = ndD["currPrev"]
-            elif self.profileType == "CVsegments":
-                ndD["segments_setvec"][0] = ndD["phiPrev"]
+        elif self.profileType == "CCsegments":
+            ndD["segments_setvec"][0] = ndD["currPrev"]
             self.segSet = extern_funcs.InterpTimeScalar(
                 "segSet", self, dae.unit(), dae.Time(),
                 ndD["segments_tvec"], ndD["segments_setvec"])
-            if self.profileType == "CCsegments":
-                eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - self.segSet()
-            elif self.profileType == "CVsegments":
-                eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - self.segSet()
+            eq = self.CreateEquation("Total_Current_Constraint")
+            eq.Residual = self.current() - self.segSet()
+        elif self.profileType == "CVsegments":
+            ndD["segments_setvec"][0] = ndD["phiPrev"]
+            self.segSet = extern_funcs.InterpTimeScalar(
+                "segSet", self, dae.unit(), dae.Time(),
+                ndD["segments_tvec"], ndD["segments_setvec"])
+            eq = self.CreateEquation("applied_potential")
+            eq.Residual = self.phi_applied() - self.segSet()
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
