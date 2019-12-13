@@ -166,9 +166,7 @@ class SimMPET(dae.daeSimulation):
                 nextTime, dae.eStopAtModelDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
-            if time < nextTime:
-                # This means that the Integrate function returned
-                # before reaching the specified nextTime.
-                # This implies that the simulation stopped at the
-                # "discontinuity".
+
+            #Break when a volage limit condition is reached
+            if self.LastSatisfiedCondition:
                 break
