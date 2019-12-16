@@ -63,7 +63,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
-    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
+    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
