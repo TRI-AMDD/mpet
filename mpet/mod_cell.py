@@ -8,6 +8,8 @@ This includes the equations defining
  - potential drop between simulated particles
 """
 import daetools.pyDAE as dae
+from pyUnits import m, kg, s, K, Pa, mol, J, W
+
 import numpy as np
 
 import mpet.extern_funcs as extern_funcs
@@ -373,30 +375,81 @@ class ModCell(dae.daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            eq.Residual = self.current() - (
-                ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
-                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
+            if ndD["tramp"]>0:
+                eq.Residual = self.current() - (
+                    ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
+            else:
+                eq.Residual = self.current() - ndD["currset"]
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            eq.Residual = self.phi_applied() - (
-                ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
-                * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
-                )
-        elif "segments" in self.profileType:
-            if self.profileType == "CCsegments":
+            if ndD["tramp"]>0:
+                eq.Residual = self.phi_applied() - (
+                    ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
+                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
+                    )
+            else:
+                eq.Residual = self.phi_applied() - ndD["Vset"]
+        elif self.profileType == "CCsegments":
+            if ndD["tramp"]>0:
                 ndD["segments_setvec"][0] = ndD["currPrev"]
-            elif self.profileType == "CVsegments":
-                ndD["segments_setvec"][0] = ndD["phiPrev"]
-            self.segSet = extern_funcs.InterpTimeScalar(
-                "segSet", self, dae.unit(), dae.Time(),
-                ndD["segments_tvec"], ndD["segments_setvec"])
-            if self.profileType == "CCsegments":
+                self.segSet = extern_funcs.InterpTimeScalar(
+                    "segSet", self, dae.unit(), dae.Time(),
+                    ndD["segments_tvec"], ndD["segments_setvec"])
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - self.segSet()
-            elif self.profileType == "CVsegments":
+            
+            #CCsegments implemented as discontinuous equations
+            else:
+                #First segment
+                time=ndD["segments"][0][1]
+                self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                eq = self.CreateEquation("Total_Current_Constraint")
+                eq.Residual = self.current() - ndD["segments"][0][0]
+
+                #Middle segments
+                for i in range(1,len(ndD["segments"])-1):
+                    time=time+ndD["segments"][i][1]
+                    self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                    eq = self.CreateEquation("Total_Current_Constraint")
+                    eq.Residual = self.current() - ndD["segments"][i][0]
+
+                #Last segment
+                self.ELSE()
+                eq = self.CreateEquation("Total_Current_Constraint")
+                eq.Residual = self.current() - ndD["segments"][-1][0]
+                self.END_IF()
+
+        elif self.profileType == "CVsegments":
+            if ndD["tramp"]>0:
+                ndD["segments_setvec"][0] = ndD["phiPrev"]
+                self.segSet = extern_funcs.InterpTimeScalar(
+                    "segSet", self, dae.unit(), dae.Time(),
+                    ndD["segments_tvec"], ndD["segments_setvec"])
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - self.segSet()
+            
+            #CVsegments implemented as discontinuous equations
+            else:
+                #First segment
+                time=ndD["segments"][0][1]
+                self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                eq = self.CreateEquation("applied_potential")
+                eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+
+                #Middle segments
+                for i in range(1,len(ndD["segments"])-1):
+                    time=time+ndD["segments"][i][1]
+                    self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                    eq = self.CreateEquation("applied_potential")
+                    eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+
+                #Last segment
+                self.ELSE()
+                eq = self.CreateEquation("applied_potential")
+                eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
+                self.END_IF()
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

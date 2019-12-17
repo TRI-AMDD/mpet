@@ -63,7 +63,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
-    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp')
+    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
@@ -364,6 +364,15 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
     ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
+    #Nondimensionalize current and voltage segments
+    ndD_s["segments"] = []
+    if ndD_s["profileType"] == "CCsegments":
+        for i in range(len(dD_s["segments"])):
+            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+    elif ndD_s["profileType"] == "CVsegments":
+        for i in range(len(dD_s["segments"])):
+            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
+        
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
     dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
