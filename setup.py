@@ -8,6 +8,7 @@ setuptools.setup(
     description='Multiphase porous electrode theory',
     author='Dan Cogswell',
     author_email='cogswell@mit.edu',
+    license='MIT',
     url='https://bitbucket.org/bazantgroup/mpet',
     packages=['mpet','mpet.electrode'],
     python_requires='>=3.5,<3.7',
