@@ -23,7 +23,7 @@ Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of 
 ## Simulation
 
 1.  Copy the overall system parameters file, `configs/params_system.cfg`, to your working directory.
-2.  Copy the material parameter files referred to in the system parameters file (e.g. `configs/params_LFP.cfg` and `configs/params_graphite.cfg`) to the working directory.
+2.  Copy the material parameter files referred to in the system parameters file (e.g. `configs/params_LFP.cfg` and `configs/params__graphite_1param.cfg`) to the working directory.
 3.  Edit `params_system.cfg` to suit the simulation you're trying to run. Be sure to reference a material parameters file for the cathode and optionally one (the same or separate file) for the anode.
 4.  Edit the material parameters file(s) serving as the electrode materials.
 5.  Run `mpetrun.py`, passing `params_system.cfg` as an argument:
