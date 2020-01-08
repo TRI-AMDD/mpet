@@ -147,16 +147,3 @@ def test1():
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
-
-
-def get_props(elytePropSet):
-    if elytePropSet == "test1":
-        return test1()
-    elif elytePropSet == "valoen_bernardi":
-        return valoen_bernardi()
-    elif elytePropSet == "LiClO4_PC":
-        return LiClO4_PC()
-    elif elytePropSet == "valoen_reimers":
-        return valoen_reimers()
-    else:
-        raise NotImplementedError("Unrecognized elytePropSet")

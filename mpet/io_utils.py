@@ -141,7 +141,7 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-    D_ref = dD_s["D_ref"] = dD_s["Dref"] = props_elyte.get_props(SMset)[-1]
+    D_ref = dD_s["D_ref"] = dD_s["Dref"] = getattr(props_elyte,SMset)()[-1]
     ndD_s["n_refTrode"] = P_s.getfloat('Electrolyte', 'n')
     ndD_s["sp"] = P_s.getfloat('Electrolyte', 'sp')
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
