@@ -73,12 +73,6 @@ class muRfuncs():
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
 
-    def get_actR_None(self, y):
-        try:
-            actR = np.empty(y.shape, dtype=object)
-        except AttributeError:
-            actR = None
-        return actR
 
     ######
     # Solid solution functions
@@ -95,7 +89,7 @@ class muRfuncs():
                0.157123*np.exp(-0.04738*y**8) +
                0.810239*np.exp(-40*(y - 0.133875)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
@@ -106,14 +100,14 @@ class muRfuncs():
                0.045*np.exp(-71.69*y**8) +
                0.01*np.exp(-200*(y - 0.19)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiC6_coke_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Doyle, Newman, 1996 """
         OCV = (-0.16 + 1.32*np.exp(-3.0*y) + 10.*np.exp(-2000.*y))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiC6_coke_ss2(self, y, ybar, muR_ref, ISfuncs=None):
@@ -123,7 +117,7 @@ class muRfuncs():
         c3 = -3.52312
         OCV = c1 + c2*np.exp(c3*y)
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
@@ -134,7 +128,7 @@ class muRfuncs():
                0.6875*np.tanh((y + 0.0117)/0.0529) -
                0.0175*np.tanh((y - 0.5692)/0.0875))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiC6_ss2(self, y, ybar, muR_ref, ISfuncs=None):
@@ -146,7 +140,7 @@ class muRfuncs():
                + (p3 - p2)*step_down(y, 0.1944, sfac*0.03571)
                + (p4 - p3)*step_down(y, 0., sfac*0.08333))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def LiC6_2step_ss(self, y, ybar, muR_ref, ISfuncs=None):
@@ -169,7 +163,7 @@ class muRfuncs():
             + self.kToe*(lSide + rSide)
             )
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def Li_ss(self, y, ybar, muR_ref, ISfuncs=None):
@@ -185,7 +179,7 @@ class muRfuncs():
         OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4 -
                0.06*np.log(y/(1-y)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def NCA_ss2(self, y, ybar, muR_ref, ISfuncs=None):
@@ -201,14 +195,14 @@ class muRfuncs():
                + 4.12178 - 0.2338*y - 1.24566*y**2 + 1.16769*y**3
                - 0.20745*y**4)
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """Ideal solution material for testing."""
         OCV = -self.kToe*np.log(y/(1-y))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     def testRS_ss(self, y, ybar, muR_ref, ISfuncs=None):
@@ -223,7 +217,7 @@ class muRfuncs():
         width = 0.005
         OCV = OCV_rs*step_down(y, yL, width) + OCV_rs*step_up(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
-        actR = self.get_actR_None(y)
+        actR = None
         return muR, actR
 
     ######

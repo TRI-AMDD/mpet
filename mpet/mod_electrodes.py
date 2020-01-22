@@ -411,7 +411,10 @@ class Mod1var(dae.daeModel):
             muR, actR = calc_muR(c, self.cbar(), T, ndD, ISfuncs)
             c_surf = c[-1]
             muR_surf = muR[-1]
-            actR_surf = actR[-1]
+            if actR is None:
+                actR_surf = None
+            else:
+                actR_surf = actR[-1]
         eta = calc_eta(muR_surf, muO)
         if ndD["type"] in ["ACR"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*ndD["Rfilm"] for i in range(N)])
