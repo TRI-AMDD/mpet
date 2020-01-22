@@ -98,8 +98,9 @@ class SimMPET(dae.daeSimulation):
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
                     self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
-            # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(0.0)
+
+            # Set the initial cell voltage to be the OCV
+            self.m.phi_applied.SetInitialGuess(self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"])
 
         else:
             dPrev = self.dataPrev
