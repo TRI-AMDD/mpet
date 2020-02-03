@@ -18,7 +18,7 @@ import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.props_elyte as props_elyte
 import mpet.utils as utils
-
+from mpet.daeVariableTypes import *
 
 class ModCell(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
@@ -49,17 +49,6 @@ class ModCell(dae.daeModel):
                 "Particles sampled in each control " +
                 "volume in electrode {trode}".format(trode=trode))
 
-        # Define some variable types
-        atol = ndD_s["absTol"]
-        mole_frac_t = dae.daeVariableType(
-            name="mole_frac_t", units=dae.unit(), lowerBound=0,
-            upperBound=1, initialGuess=0.25, absTolerance=atol)
-        conc_t = dae.daeVariableType(
-            name="conc_t", units=dae.unit(), lowerBound=0,
-            upperBound=1e20, initialGuess=1.00, absTolerance=atol)
-        elec_pot_t = dae.daeVariableType(
-            name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
-            upperBound=1e20, initialGuess=0, absTolerance=atol)
         # Variables
         self.c_lyte = {}
         self.phi_lyte = {}

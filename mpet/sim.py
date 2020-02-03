@@ -11,6 +11,7 @@ import numpy as np
 import scipy.io as sio
 
 import mpet.mod_cell as mod_cell
+import mpet.daeVariableTypes
 
 
 class SimMPET(dae.daeSimulation):
@@ -29,6 +30,12 @@ class SimMPET(dae.daeSimulation):
                 osp.join(ndD_s["prevDir"], "output_data.mat"))
             ndD_s["currPrev"] = self.dataPrev["current"][0,-1]
             ndD_s["phiPrev"] = self.dataPrev["phi_applied"][0,-1]
+
+        #Set absolute tolerances for variableTypes
+        mpet.daeVariableTypes.mole_frac_t.AbsoluteTolerance=ndD_s["absTol"]
+        mpet.daeVariableTypes.conc_t.AbsoluteTolerance=ndD_s["absTol"]
+        mpet.daeVariableTypes.elec_pot_t.AbsoluteTolerance=ndD_s["absTol"]
+
         # Define the model we're going to simulate
         self.m = mod_cell.ModCell("mpet", ndD_s=ndD_s, ndD_e=ndD_e)
 

@@ -22,7 +22,7 @@ import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
-
+from mpet.daeVariableTypes import *
 
 class Mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -37,10 +37,6 @@ class Mod2var(dae.daeModel):
         self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
                                  "discretization domain")
 
-        # Define some variable types
-        mole_frac_t = dae.daeVariableType(
-            name="mole_frac_t", units=dae.unit(), lowerBound=0,
-            upperBound=1, initialGuess=0.25, absTolerance=ndD_s["absTol"])
         # Variables
         self.c1 = dae.daeVariable(
             "c1", mole_frac_t, self,
@@ -287,10 +283,6 @@ class Mod1var(dae.daeModel):
         self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
                                  "discretization domain")
 
-        # Define some variable types
-        mole_frac_t = dae.daeVariableType(
-            name="mole_frac_t", units=dae.unit(), lowerBound=0,
-            upperBound=1, initialGuess=0.25, absTolerance=ndD_s["absTol"])
         # Variables
         self.c = dae.daeVariable("c", mole_frac_t, self,
                                  "Concentration in active particle",
