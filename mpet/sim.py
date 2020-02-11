@@ -176,5 +176,5 @@ class SimMPET(dae.daeSimulation):
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
             #Break when a volage limit condition is reached
-            if self.LastSatisfiedCondition:
-                break
+            # if self.LastSatisfiedCondition:
+                # break
