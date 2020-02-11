@@ -368,23 +368,36 @@ class ModCell(dae.daeModel):
                     ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
             else:
-
                 self.stnCCCV=self.STN("CCCV")
-
-                self.STATE("CC")
-                eq = self.CreateEquation("Total_Current_Constraint")
+#DZ added new states
+#first state is const current charging until we hit Vset
+                self.STATE("CC_charge")
+                eq = self.CreateEquation("Total_Current_Constraint_Charge")
                 eq.Residual = self.current() - ndD["currset"]
 
-                self.ON_CONDITION(-self.phi_applied()>=-ndD["Vset"],
-                                  switchToStates = [('CCCV','CV')],
+                self.ON_CONDITION(-self.phi_applied() >= -ndD["Vset"],
+                                  switchToStates = [('CCCV','CV_charge')],
                                   setVariableValues = [],
                                   triggerEvents = [],
                                   userDefinedActions = [])
 
-
-                self.STATE("CV")
+#second state is const voltage charging for some time
+                self.STATE("CV_charge")
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["Vset"]
+
+#                self.ON_CONDITION(dae.Time() > dae.Constant(10*s), #for now we just discharge for the last bit hackily
+                self.ON_CONDITION(-self.phi_applied() >= -ndD["Vset"],
+                                  switchToStates = [('CCCV','CC_discharge')],
+                                  setVariableValues = [],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+
+#then we discharge for a bit
+                self.STATE("CC_discharge")
+                print("discharge")
+                eq = self.CreateEquation("Total_Current_Constraint_Discharge")
+                eq.Residual = self.current() + ndD["currset"]
 
                 self.END_STN()
 
