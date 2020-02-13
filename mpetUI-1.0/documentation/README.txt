@@ -1,0 +1,1 @@
+The excel spread sheet in this directory contains a comparison of parameters from dualfoil and mpet. Some parameters can be matched directly while others are indirectly related. 
