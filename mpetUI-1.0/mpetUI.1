@@ -929,6 +929,28 @@ mpetUI can be run in command line mode using the following command.
   --Sim_geo_sep_por=0.4 --Sim_elprop_SMpropset=LiClO4_PC 
 .RE
 
+Example 2: To input parameter configuration files (used by legacy mpet code) through mpetUI
+
+.PP
+.nf
+.RS
+These files can be input through GUI mode using
+  $mpetUI --gui
+1. In the GUI navigate to 'MPET simulation launch' menu,
+2. Check the overwrite data with parameter configuration file/files to 'True'
+3. Specify file by clicking 'Browse' button.
+
+This allows the user to input parameter configuration files through the GUI. 
+
+OR
+
+The parameter configuratuon files can be input through command line mode using the following command.
+Say if we want to input the Anode and Cathode configuration file
+  $mpetUI --Anode_config_file= <path to the file> --Cathode_config_file= <path to the file>
+.RE
+.fi
+.PP
+
 
 .SH EXIT STATUS
 While using command line mode, if the parameter name doesnt match the UI parameters the program exits showing the possible name of the misspelled parameter name. 
