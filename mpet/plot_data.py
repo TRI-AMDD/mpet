@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import matplotlib as mpl
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
@@ -191,6 +192,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 plt.close(fig)
                 return ffvec, voltage
             ax.plot(ffvec, voltage)
+            np.savetxt('mpet.dat', np.column_stack([ffvec, voltage]))
+            print("here")
             xmin = 0.
             xmax = 1.
             ax.set_xlim((xmin, xmax))
