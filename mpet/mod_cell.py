@@ -463,40 +463,7 @@ class ModCell(dae.daeModel):
 
             self.END_STN()
 
-           
          
-##second state is const voltage charging for some time
-#            self.STATE("CV_charge")
-#            eq = self.CreateEquation("applied_potential")
-#            eq.Residual = self.phi_applied() - ndD["Vset"]
-#
-#            #for in each loop, we do a different state. then transition to the next state
-#            self.ON_CONDITION(-self.phi_applied() >= -ndD["Vset"],
-#                              switchToStates = [('CCCV','CC_discharge')],
-#                              setVariableValues = [],
-#                              triggerEvents = [],
-#                              userDefinedActions = [])
-#
-#            self.STATE("CC_discharge")
-#            eq = self.CreateEquation("Total_Current_Constraint_Discharge")
-#            eq.Residual = self.current() - ndD["currset"]
-#
-#            self.ON_CONDITION(self.phi_applied() <= ndD["Vset"] or self.,
-#                              switchToStates = [('CCCV','CC_charge')],
-#                              setVariableValues = (cycle_counter, self.cycle_counter + 1)],
-##should also increment cycle counter
-#                              triggerEvents = [],
-#                              userDefinedActions = [])
-#
-#
-#            self.STATE("Rest")
-#            eq = self.CreateEquation("Rest")
-#            eq.Residual = self.current() + ndD["currset"]
-#
-#
-#            self.END_STN()
-
-
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
@@ -506,7 +473,6 @@ class ModCell(dae.daeModel):
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
                     )
             else:
-                print(ndD["Vset"])
                 eq.Residual = self.phi_applied() - ndD["Vset"]
         elif self.profileType == "CCsegments":
             if ndD["tramp"]>0:
@@ -524,7 +490,6 @@ class ModCell(dae.daeModel):
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - ndD["segments"][0][0]
-                print(ndD["segments"][0][0])
 
                 #Middle segments
                 for i in range(1,len(ndD["segments"])-1):
@@ -555,7 +520,6 @@ class ModCell(dae.daeModel):
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["segments"][0][0]
-                print(ndD["segments"][0][0])
 
                 #Middle segments
                 for i in range(1,len(ndD["segments"])-1):
@@ -569,89 +533,6 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
                 self.END_IF()
-
-#DZ 02/11/20
-#        elif self.profileType == "CCCVcycle":
-#            if ndD["tramp"]>0: #need to do smoethign!
-#                ndD["segments_setvec"][0] = ndD["currPrev"]
-#                self.segSet = extern_funcs.InterpTimeScalar(
-#                    "segSet", self, dae.unit(), dae.Time(),
-#                    ndD["segments_tvec"], ndD["segments_setvec"])
-#                eq = self.CreateEquation("Total_Current_Constraint")
-#                eq.Residual = self.current() - self.segSet()
-#                                
-#            #CCCVsegments implemented as discontinuous equations
-#            else:
-#                seg_array = np.array(ndD["segments"])
-#                voltage_cutoffs = seg_array[:,1]
-#                cap_frac_cutoffs = seg_array[:,2]
-#                equation_type = seg_array[:,3]
-#                cutoffs = seg_array[:, 0]
-#       #         self.IF(self.phi_applied() <= voltage_cutoffs[0], 1e-3)
-#                self.IF(dae.Time()<dae.Constant(ndD["segments"][0][1]*s), 1.e-3)
-#                eq = self.CreateEquation("Total_Current_Constraint")
-#                eq.Residual = self.current() - cutoffs[0]
-#                print("first eq")
-#                #Middle segments
-#                for i in range(1,len(ndD["segments"])-1):
-#                    if equation_type[i] == 1:
-#                     #   self.ELSE_IF(self.phi_applied() <= voltage_cutoffs[i], 1.e-3)
-#                        self.ElSE_IF(dae.Time()<dae.Constant(4*s), 1.e-3)
-#                        eq = self.CreateEquation("Total_Current_Constraint")
-#                        eq.Residual = self.current() - cutoffs[i]
-#                        print("CCch eq " + str(i))
-#                    elif equation_type[i] == 2:
-#                     #   self.ELSE_IF(self.ffrac[limtrode]() <= cap_frac_cutoffs[i], 1.e-3)
-#                        self.ELSE_IF(dae.Time()<dae.Constant(7*s), 1.e-3)
-#                        eq = self.CreateEquation("applied_potential")
-#                        eq.Residual = self.phi_applied() - cutoffs[i]
-#                        print("CVch eq " + str(i))
-#                    elif equation_type[i] == 3:
-#                        self.ELSE_IF(dae.Time()<dae.Constant(9.5*s), 1.e-3)
-#                  #      self.ELSE_IF(self.ffrac[limtrode]() >= cap_frac_cutoffs[i] and self.phi_applied() >= voltage_cutoffs[i], 1.e-3)
-#                        eq = self.CreateEquation("total_current_constraint")
-#                        eq.Residual = self.current() - cutoffs[i]
-#                        print("CCdisch eq " + str(i))
-#              
-#                #Last segment
-#                self.ELSE()
-#                eq = self.CreateEquation("total_current_constraint")
-#                eq.Residual = self.current() - cutoffs[-1]
-#                print("end")
-#                self.END_IF()
-
-           #we use the filling fraction to determine if the capacity fraction.
-            #since we know limtrode is the limiting electrode, we can find the max filling            #fraction by multiplying z, which is the ratio of the limiting electrode to
-            #the larger electrode, with the capacity percent we are capping the system at
-            #currently hardcoded for a CC CV CC cycle
-
-#                for ndD["cycle_counter"] in range(ndD["total_cycle"]): #through n cycles
-#                    if ndD["charge_type_counter"] == 0: #if it's the first type of current
-#                        print("charge1")
-#                        self.IF(self.phi_applied() <= ndD["segments"][0][1], 1e-3) #less than required voltage for breaking CC charging
-#                        # then we have constant current charging
-#                        eq = self.CreateEquation("Total_Current_Constraint")
-#                        eq.Residual = self.current() - ndD["segments"][0][0]
-#                        else: #else, we need to switch to cv charge
-#                            ndD["charge_type_counter"] = 1
-#                    elif ndD["charge_type_counter"] == 1: #switch to CV charge
-#                        print("charge2")
-#                        if self.ffrac[dD_s["limtrode"]] <= ndD_s['z'] * ndD["segments"][1][2]: #if capfrac for breaking CV charging is not reached
-#                           # then we have constant voltage charging
-#                           eq = self.CreateEquation("applied_potential")
-#                           eq.Residual = self.phi_applied() - ndD["segments"][i][0] 
-#                        else: #need to switch to discharging
-#                           ndD["charge_type_counter"] = 2
-#                    elif ndD["charge_type_counter"] == 2: #switch to CC discharge
-#                        print("charge3")
-#                        if self.ffrac[dD_s["limtrode"]] >= ndD_s['z'] * ndD["segments"][2][2] and self.phi_applied() >= ndD["segments"][2][1]:
-#                           #if capfrac for breakign CC discharge and voltage cutoff have not been hit
-#                           #const current discharge
-#                           eq = self.CreateEquation("Total_Current_Constraint")
-#                           eq.Residual = self.current() - ndD["segments"][0][0]
-#                        else: #need to switch to charging and restart charge counter
-#                           ndD["cycle_counter"] += 1
-#                           ndD["charge_type_counter"] = 0
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
