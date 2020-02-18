@@ -56,6 +56,7 @@ class ModCell(dae.daeModel):
         self.phi_part = {}
         self.R_Vp = {}
         self.ffrac = {}
+        self.charge_discharge = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -110,6 +111,9 @@ class ModCell(dae.daeModel):
             "Voltage between electrodes (phi_applied less series resistance)")
         self.current = dae.daeVariable(
             "current", dae.no_t, self, "Total current of the cell")
+        # DZ: added another variable to aid counting of current. +1 for charge, -1 for discharge
+        self.charge_discharge = dae.daeVariable(
+            "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
         self.dummyVar = dae.daeVariable("dummyVar", dae.no_t, self, "dummyVar")
 
         # Create models for representative particles within electrode
@@ -387,6 +391,9 @@ class ModCell(dae.daeModel):
             self.STATE("state_0")
             eq = self.CreateEquation("Total_Current_Constraint_Charge")
             eq.Residual = self.current() - constraints[0]
+#add new variable to assign +1 -1 for charge/discharge
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
 #assume we start with CC charge initially
 
 #if the voltage cutoff is hit, switch to next segment state_1
@@ -410,6 +417,9 @@ class ModCell(dae.daeModel):
                               setVariableValues = [],
                               triggerEvents = [],
                               userDefinedActions = [])
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() - 1
+
 #if is CV charge, then we set up equation and capacity cutoff
                 elif equation_type[i] == 2:
                     #capacity fraction in battery is found by the filling fraction of the limiting electrode
@@ -425,6 +435,9 @@ class ModCell(dae.daeModel):
                               setVariableValues = [],
                               triggerEvents = [],
                               userDefinedActions = [])
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() - 1
+
                 elif equation_type[i] == 3:
 #if CC discharge, we set up capacity cutoff and voltage cutoff
                     eq.Residual = self.current() - constraints[i] 
@@ -439,7 +452,10 @@ class ModCell(dae.daeModel):
                               setVariableValues = [],
                               triggerEvents = [],
                               userDefinedActions = [])
-            
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() + 1
+
+           
             #for the last element, will always be CC discharge assume
             N = len(constraints)-1 
             self.STATE("state_" + str(N))
@@ -456,10 +472,16 @@ class ModCell(dae.daeModel):
                       setVariableValues = [],
                       triggerEvents = [],
                       userDefinedActions = [])
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() + 1
+
 
             self.STATE("Rest")
             eq = self.CreateEquation("Rest")
             eq.Residual = self.current()
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
 
             self.END_STN()
 

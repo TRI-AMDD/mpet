@@ -10,3 +10,6 @@ conc_t = dae.daeVariableType(
 elec_pot_t = dae.daeVariableType(
     name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
     upperBound=1e20, initialGuess=0, absTolerance=1.e-6)
+charge_discharge_t = dae.daeVariableType(
+    name="charge_discharge_t", units=dae.unit(), lowerBound=-1.1,
+    upperBound=1.1, initialGuess=1, absTolerance=1.e-6)
