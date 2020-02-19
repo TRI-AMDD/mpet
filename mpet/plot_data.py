@@ -294,8 +294,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         return fig, ax
 
     #DZ 02/18/20
-    if plot_type == "cap_v_cycle":
-        # first figure out the number of cycles
+    if plot_type[0:5] == "cycle":
         current = data[pfx + "current"][0] * 3600/td
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
@@ -304,18 +303,32 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
         #get the discharge currents (are multiplied by 0 if it is not the segment we want)
         discharge_currents = np.multiply(neg_discharge_seg, current) #we wang tot_cycle * timesteps array
-        capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
+        discharge_capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
         #use trapezoid rule to integrate Q = int(i dt), convert to mAh from As
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.plot(cycle_numbers, capacities, 'o')
-        ax.set_xlabel("Cycle Number")
-        ax.set_ylabel("Capacity [mAh]")
-        ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
-        if save_flag:
-            fig.savefig("mpet_current.png", bbox_inches="tight")
-        return fig, ax
-        #we have times*td which is the times    
-
+        # first figure out the number of cycles
+        if plot_type == "cycle_capacity":
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, discharge_capacities, 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Capacity [mAh]")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_current.png", bbox_inches="tight")
+            return fig, ax
+            #we have times*td which is the times    
+        elif plot_type == "cycle_efficiency":
+            charge_currents = np.multiply(pos_charge_seg, current)
+            charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
+            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, efficiencies, 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Cycle Efficiency")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_current.png", bbox_inches="tight")
+            return fig, ax
+	     
 
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
