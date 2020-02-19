@@ -306,7 +306,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         discharge_capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
         #use trapezoid rule to integrate Q = int(i dt), convert to mAh from As
         # first figure out the number of cycles
-        if plot_type == "cycle_capacity":
+        if plot_type == "cycle_capacity": #plots discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, discharge_capacities, 'o')
             ax.set_xlabel("Cycle Number")
@@ -319,6 +319,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type == "cycle_efficiency":
             charge_currents = np.multiply(pos_charge_seg, current)
             charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
+            #efficiency = discharge_cap/charge_cap
             efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, efficiencies, 'o')
@@ -328,7 +329,19 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if save_flag:
                 fig.savefig("mpet_current.png", bbox_inches="tight")
             return fig, ax
-	     
+        elif plot_type == "cycle_cap_frac":	     
+            discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            #normalize by the first discharge capacity
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, discharge_cap_fracs, 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Discharge Capacity/Original Discharge Capacity")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_current.png", bbox_inches="tight")
+            return fig, ax
+            
+
 
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
