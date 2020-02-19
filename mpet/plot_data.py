@@ -1,6 +1,5 @@
 import os
 
-import numpy as np
 import matplotlib as mpl
 import matplotlib.animation as manim
 import matplotlib.collections as mcollect
@@ -12,6 +11,7 @@ import mpet.geometry as geom
 import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
 import mpet.props_am as props_am
+import mpet.utils as utils
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18
@@ -45,6 +45,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         sStr = "."
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
+    tot_cycle = dD_s["total_cycle"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
@@ -192,8 +193,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 plt.close(fig)
                 return ffvec, voltage
             ax.plot(ffvec, voltage)
-            np.savetxt('mpet.dat', np.column_stack([ffvec, voltage]))
-            print("here")
             xmin = 0.
             xmax = 1.
             ax.set_xlim((xmin, xmax))
@@ -294,10 +293,34 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
+    #DZ 02/18/20
+    if plot_type == "cap_v_cycle":
+        # first figure out the number of cycles
+        current = data[pfx + "current"][0] * 3600/td
+        charge_discharge = data[pfx + "charge_discharge"]
+        neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
+        #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
+        #in the y axis
+        cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
+        #get the discharge currents (are multiplied by 0 if it is not the segment we want)
+        discharge_currents = np.multiply(neg_discharge_seg, current) #we wang tot_cycle * timesteps array
+        capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
+        #use trapezoid rule to integrate Q = int(i dt), convert to mAh from As
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(cycle_numbers, capacities, 'o')
+        ax.set_xlabel("Cycle Number")
+        ax.set_ylabel("Capacity [mAh]")
+        ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+        if save_flag:
+            fig.savefig("mpet_current.png", bbox_inches="tight")
+        return fig, ax
+        #we have times*td which is the times    
+
+
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
                        "elytei", "elyteif", "elytedivi", "elytedivif"]:
-        fplot = (True if plot_type[-1] == "f" else False)
+        fplet = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
         datax = cellsvec

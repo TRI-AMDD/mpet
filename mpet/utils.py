@@ -101,3 +101,43 @@ def get_git_info(local_dir, shell=False):
         ['git', '-C', local_dir, 'rev-parse', '--abbrev-ref', 'HEAD'],
         stderr=subp.STDOUT, universal_newlines=True)
     return branch_name, commit_hash, commit_diff
+
+
+def get_negative_sign_change_arrays(input_array):
+    """This function takes an array of (+1, +1, +1, -1, -1, -1... +1, -1 ...) and splits it
+       into a number of arrays in the y direction which are (0, 0, 0, 1, 1, 1... 0, 0) 
+       whenever the array hits a sign change. It should have the number of cycles as rows.
+       Thus it will be size (N*M), where N is the number of 1 segments
+       (discharge) segments and M is the size of the array.
+       pos_segments is true if we want to output an array of positive segments, and neg_segments
+       is true if we want arrays of negative segments.
+       """
+    sign_mults = np.zeros((len(input_array) - 1)) #is +1 if no sign change, -1 if sign change@i+1
+    for i in range(len(input_array)-1):
+        sign_mults[i] = (input_array[i] * input_array[i+1] - 1) / (-2)
+    #ends up 0 if no sign change, +1 if sign change
+    #the odd sign changes indicate the beginning of the discharge cycle
+    indices = np.array(np.nonzero(sign_mults)).flatten() #get indices of nonzero elements
+    neg_indices_start = indices[::2]
+    neg_indices_end = indices[1::2]
+    pos_indices_start = indices[1::2]
+    pos_indices_start = np.delete(pos_indices_start, -1)
+    pos_indices_start = np.insert(pos_indices_start, 0, 0)
+    pos_indices_end = neg_indices_start
+    #gets the beginning and ends of the charge and discharge cycles
+    #pos_start, pos_end, neg_start, neg_end
+    tot_cycle_number = len(neg_indices_start)
+    #starts counting charge cycle at beginning and removes rest cycle element
+    output_array_neg = np.zeros((tot_cycle_number, len(input_array)))
+    output_array_pos = np.zeros((tot_cycle_number, len(input_array)))
+    for j in range(tot_cycle_number):
+    #for each segment
+       #discharge segment
+       ones_array = np.ones(neg_indices_end[j] - neg_indices_start[j])
+       output_array_neg[j, neg_indices_start[j]:neg_indices_end[j]] = ones_array
+       #fills with ones if it is the discharge segment number j
+       #charge segment
+       ones_array = np.ones(pos_indices_end[j] - pos_indices_start[j])
+       output_array_pos[j, pos_indices_start[j]:pos_indices_end[j]] = ones_array
+       #fills with ones if it is the charge segment number j
+    return output_array_neg, output_array_pos

@@ -15,6 +15,7 @@ import mpet.plot_data as plot_data
 plotTypes=OrderedDict([
     ('v','voltage vs filling fraction'),
     ('vt','voltage vs time'),
+    ('cap_v_cycle', 'capacity vs cycle number (only for battery cycling)'),
     ('curr','current vs time'),
     ('elytec','electrolyte concentration (movie)'),
     ('elytecf','electrolyte concentration final snapshot'),
