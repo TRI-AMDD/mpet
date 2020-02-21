@@ -46,6 +46,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
     tot_cycle = dD_s["total_cycle"]
+    psd_vol = dD_s["psd_vol"]
+    limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
@@ -61,6 +63,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     F = dD_s['F']                      # C/mol
     td = dD_s["td"]
     Etheta = {"a": 0.}
+    density = dD_e[limtrode]["density"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
@@ -295,7 +298,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current"][0] * 3600/td
+        current = data[pfx + "current"][0]
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
@@ -306,11 +309,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         discharge_capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
         #use trapezoid rule to integrate Q = int(i dt), convert to mAh from As
         # first figure out the number of cycles
+        
+        #find mass of limiting electrode
+        total_vol = np.sum(psd_vol[limtrode])
+        print(total_vol)
+        mass = total_vol * float(density) * 1000 #convert from kg to g
+        print(mass)
+
         if plot_type == "cycle_capacity": #plots discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
-            ax.plot(cycle_numbers, discharge_capacities, 'o')
+            ax.plot(cycle_numbers, discharge_capacities/mass, 'o')
             ax.set_xlabel("Cycle Number")
-            ax.set_ylabel("Capacity [mAh]")
+            ax.set_ylabel("Gravimetric Capacity [mAh/g]")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_current.png", bbox_inches="tight")

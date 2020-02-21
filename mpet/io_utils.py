@@ -181,6 +181,7 @@ def get_dicts_from_configs(P_s, P_e):
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
+        dD["density"] = P.getfloat('Material', 'density')
         ndD["logPad"] = P.getboolean('Material', 'logPad')
         ndD["noise"] = P.getboolean('Material', 'noise')
         ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
@@ -235,7 +236,7 @@ def get_dicts_from_configs(P_s, P_e):
     else:
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
-    limtrode = ("c" if ndD_s["z"] < 1 else "a")
+    limtrode = dD_s["limtrode"] = ("c" if ndD_s["z"] < 1 else "a")
     CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
