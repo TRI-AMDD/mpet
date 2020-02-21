@@ -375,6 +375,9 @@ class ModCell(dae.daeModel):
             else:
                 eq.Residual = self.current() - ndD["currset"]
 
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+#       
 ##DZ 02/12/20
         elif self.profileType == "CCCVcycle":
 #assume tramp = 0
@@ -496,6 +499,10 @@ class ModCell(dae.daeModel):
                     )
             else:
                 eq.Residual = self.phi_applied() - ndD["Vset"]
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
+
         elif self.profileType == "CCsegments":
             if ndD["tramp"]>0:
                 ndD["segments_setvec"][0] = ndD["currPrev"]
@@ -526,6 +533,9 @@ class ModCell(dae.daeModel):
                 eq.Residual = self.current() - ndD["segments"][-1][0]
                 self.END_IF()
 
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+#
         elif self.profileType == "CVsegments":
             if ndD["tramp"]>0:
                 ndD["segments_setvec"][0] = ndD["phiPrev"]
@@ -555,7 +565,9 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
                 self.END_IF()
-
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+#
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
