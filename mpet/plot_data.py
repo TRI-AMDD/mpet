@@ -46,7 +46,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
     tot_cycle = dD_s["total_cycle"]
-    psd_vol = dD_s["psd_vol"]
+#    psd_vol = dD_s["psd_vol"]
     limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
@@ -63,7 +63,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     F = dD_s['F']                      # C/mol
     td = dD_s["td"]
     Etheta = {"a": 0.}
-    density = dD_e[limtrode]["density"]
+    material_type = dD_e[limtrode]["material_type"]
+# get information from limiting electrodes
+    L = dD_s["L"][limtrode]
+    P_L = ndD_s["P_L"][limtrode]
+    cap = dD_e[limtrode]["cap"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
@@ -298,36 +302,41 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current"][0]
+        current = data[pfx + "current"][0] /td #gives us C-rates in /s
+     #   np.set_printoptions(threshold=sys.maxsize)
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
         #in the y axis
         cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
-        #get the discharge currents (are multiplied by 0 if it is not the segment we want)
-        discharge_currents = np.multiply(neg_discharge_seg, current) #we wang tot_cycle * timesteps array
-        discharge_capacities = np.trapz(discharge_currents, times*td) * 1000/3600 #mAh
-        #use trapezoid rule to integrate Q = int(i dt), convert to mAh from As
         # first figure out the number of cycles
-        
         #find mass of limiting electrode
-        total_vol = np.sum(psd_vol[limtrode])
-        print(total_vol)
-        mass = total_vol * float(density) * 1000 #convert from kg to g
-        print(mass)
-
+     #   total_vol = np.sum(psd_vol[limtrode]) #m^3
+        density = utils.get_density(material_type) #kg/m^3
+     #   mol_weight = utils.get_mol_weight(material_type) # g/imol
+     #   mass = total_vol * density * 1000 #in g
+        #print(F)
+     #   Q = dD_e[limtrode]["cap"] # C/m^2
+     #   Q = 1 * F * (mass/mol_weight) # in C
+      #  print(Q)
+        #get the discharge currents (are multiplied by 0 if it is not the segment we want)
+        discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
+        ##we wang tot_cycle * timesteps array, A/m^2 * s
+        discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+        #use trapezoid rule to integrate Q = int(i dt), convert to mAh/m^2 from As/m^2
+        gravimetric_caps = discharge_capacities/(P_L * L * density) / 1000 #mAh/g
         if plot_type == "cycle_capacity": #plots discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
-            ax.plot(cycle_numbers, discharge_capacities/mass, 'o')
+            ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
             ax.set_ylabel("Gravimetric Capacity [mAh/g]")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_current.png", bbox_inches="tight")
             return fig, ax
-            #we have times*td which is the times    
         elif plot_type == "cycle_efficiency":
-            charge_currents = np.multiply(pos_charge_seg, current)
+            #do we need to change this q because molweight changed? should be okay because Nm still same
+            charge_currents = cap * np.multiply(pos_charge_seg, current)
             charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
             #efficiency = discharge_cap/charge_cap
             efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
@@ -343,7 +352,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
             #normalize by the first discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
-            ax.plot(cycle_numbers, discharge_cap_fracs, 'o')
+            ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
             ax.set_ylabel("Discharge Capacity/Original Discharge Capacity")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))

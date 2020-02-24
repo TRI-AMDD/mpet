@@ -181,7 +181,7 @@ def get_dicts_from_configs(P_s, P_e):
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
-        dD["density"] = P.getfloat('Material', 'density')
+        dD["material_type"] = P.get('Material', 'material_type')
         ndD["logPad"] = P.getboolean('Material', 'logPad')
         ndD["noise"] = P.getboolean('Material', 'noise')
         ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')

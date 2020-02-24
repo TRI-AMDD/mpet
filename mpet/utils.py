@@ -118,12 +118,12 @@ def get_negative_sign_change_arrays(input_array):
     #ends up 0 if no sign change, +1 if sign change
     #the odd sign changes indicate the beginning of the discharge cycle
     indices = np.array(np.nonzero(sign_mults)).flatten() #get indices of nonzero elements
-    neg_indices_start = indices[::2]
-    neg_indices_end = indices[1::2]
-    pos_indices_start = indices[1::2]
+    neg_indices_start = indices[::2] + 1
+    neg_indices_end = indices[1::2] + 1
+    pos_indices_start = indices[1::2] + 1
     pos_indices_start = np.delete(pos_indices_start, -1)
     pos_indices_start = np.insert(pos_indices_start, 0, 0)
-    pos_indices_end = neg_indices_start
+    pos_indices_end = indices[::2] + 1
     #gets the beginning and ends of the charge and discharge cycles
     #pos_start, pos_end, neg_start, neg_end
     tot_cycle_number = len(neg_indices_start)
@@ -141,3 +141,27 @@ def get_negative_sign_change_arrays(input_array):
        output_array_pos[j, pos_indices_start[j]:pos_indices_end[j]] = ones_array
        #fills with ones if it is the charge segment number j
     return output_array_neg, output_array_pos
+
+
+def get_density(material_type):
+    """Gets active material density from input material type"""
+    if material_type == "LiMn2O4": #cathode, so do LiMn2O4
+        return 4.01e3
+    elif material_type == "LiC6":
+        return 2.26e3  #anode, so do graphite
+    elif material_type == "NCA":
+        return 4.45e3
+    elif material_type == "LFP":
+        return 4.45e3 #is not correct
+#
+#
+#def get_mol_weight(material_type):
+#    """Gets active material weight from input material type"""
+#    if material_type == "LiMn2O4":
+#        return 180.8
+#    elif material_type == "LiC6":
+#        return 12.01
+#    elif material_type == "NCA":
+#        return 183.54
+#    elif material_type == "LFP":
+#        return 157.757
