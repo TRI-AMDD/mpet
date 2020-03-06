@@ -32,16 +32,14 @@ area = float(sys.argv[5]) #in m^2
 #to the end of the parameter
 
 
-def f(inputs, pickle_file, A, params_sys, params_cathode, params_anode, params_list):
+def f(inputs, pickle_file, A, params_sys, params_cathode, params_anode, params_list, f_handle):
     """The function that finds the residual of the input parameter values.
        Takes in the values of the parameters that we are optimizing in inputs.
        args is [pickle_file_name, area of electrode(m^2), params_sys, params_cathode, params_anode,
-       [list of params to optimize]]
+       [list of params to optimize], file_handle of iteration file]
        replaces them, and runs
        an MPET simulation. Outputs the residual between experimental data and MPET simulation
        by calling function plot_area_difference"""
-    print("iteration")
-    print(inputs)
     #sed the parameters that we are trying to sub pythonically
     modify_mpet_params(params_sys, params_cathode, params_anode, params_list, inputs)
     main.main(params_sys) #runs simulation after subbing new parameters
@@ -54,6 +52,9 @@ def f(inputs, pickle_file, A, params_sys, params_cathode, params_anode, params_l
     mpet_Q, mpet_V = calculate_VQ(general_data, A)
     expt_Q, expt_V = process_experimental_data(pickle_file)
     residual = area_difference(mpet_Q, mpet_V, expt_Q, expt_V) #find residual of plot area
+    output_string = "iteration: " + str(inputs) + "  residual:  " + str(residual) + '\n'
+    print(output_string)
+    f_handle.write(output_string)
     return residual
 
 
@@ -87,9 +88,7 @@ def calculate_VQ(data, A):
     V_array = data[:,3]
     time_array = data[:,0]
     I_array = data[:,5]
-    print(V_array.shape, time_array.shape, I_array.shape)
     Q_array = integrate.cumtrapz(I_array, time_array, initial  = 0) * A
-    print(Q_array.shape)
     return Q_array, V_array
 
 
@@ -111,17 +110,22 @@ def process_experimental_data(pickle_file_name):
 
 
 #tests to see if parameter file works!! 
-try:
-    main.main(mpet_params_sys)
-except IndexError:
-    print("ERROR: No parameter file specified. Aborting")
-    raise
+#try:
+#    main.main(mpet_params_sys)
+#except IndexError:
+#    print("ERROR: No parameter file specified. Aborting")
+#    raise
 
 #puts in initial guesses and parameters to tweak
 params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
 x0 = [1.6e-1, 3.0e-2, 0.5, 0.5, 5.3e-19, 1.25e-12]
 
-arg_list = [pickle_name, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list]
+#open iteration file
+f_handle = open('iteration_file', 'w')
 
-result = optimize.minimize(f, x0, args = (pickle_name, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list), method = 'BFGS')
+arg_list = [pickle_name, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle]
+bnds = ((0, None), (0, None), (0, 1), (0, 1), (0, None), (0, None)) #bounds on parameters
+
+result = optimize.minimize(f, x0, args = tuple(arg_list), bounds = bnds, method = 'Nelder-Mead')
+f_handle.close()
 print(result.success) # check if solver was successful
