@@ -40,20 +40,24 @@ def f(inputs, pickle_file, A, params_sys, params_cathode, params_anode, params_l
        replaces them, and runs
        an MPET simulation. Outputs the residual between experimental data and MPET simulation
        by calling function plot_area_difference"""
+    print("iteration")
+    print(inputs)
     #sed the parameters that we are trying to sub pythonically
     modify_mpet_params(params_sys, params_cathode, params_anode, params_list, inputs)
-    main.main(params_sys)
+    main.main(params_sys) #runs simulation after subbing new parameters
     #run simulation, call plotter to get text file
-    outmat2txt.main("sim_output") 
+    if not os.path.exists(os.path.join(os.getcwd(), "sim_output")):
+        raise Exception("Input file doesn't exist")
+    outmat2txt.main("sim_output")  #generates data
     general_data = np.loadtxt("sim_output/generalData.txt", delimiter = ",")
     #now saves data in general_data.txt
     mpet_Q, mpet_V = calculate_VQ(general_data, A)
-    expt_Q, expt_V = process_experimental_data(pickle_file_name)
+    expt_Q, expt_V = process_experimental_data(pickle_file)
     residual = area_difference(mpet_Q, mpet_V, expt_Q, expt_V) #find residual of plot area
     return residual
 
 
-def modify_mpet_params(param_sys, params_cathode, params_anode, params_to_modify, param_values):
+def modify_mpet_params(params_sys, params_cathode, params_anode, params_to_modify, param_values):
     """Modifies the inputs of the mpet parameter files.
        Inputs are the parameter file, a list of the parameters of modify,
        and respectively the parameter values to modify them to. Cannot
@@ -61,16 +65,18 @@ def modify_mpet_params(param_sys, params_cathode, params_anode, params_to_modify
        No output, just returns the modified files"""
     #use subprocess.run()
     for index in range(len(params_to_modify)):
-        args = "sed -i '/" + params_to_modify[index] + "*/c\\" + params_to_modify[index] + " = " + param_values[index] + " "
+        #sed in params_sys 
+        param_name = params_to_modify[index]
+        file_name = params_sys
         if params_to_modify[index][-7:] == "cathode":
-            args = args + params_cathode
-            #sed -i "s/$i*/c\$i = $j" params_sys
+             param_name = params_to_modify[index][:-8]
+             file_name = params_cathode
+             #sed -i "s/$i*/c\$i = $j" params_sys
         elif params_to_modify[index][-5:] == "anode":
-            args = args + params_anode
-        else:
-            #sed in params_sys 
-            args = args + params_sys
-        subprocess.run(args)
+             param_name = params_to_modify[index][:-6]
+             file_name = params_anode
+        args = "sed -i '/" + param_name + " = "+ "*/c\\" + param_name + " = " + str(param_values[index]) + "' " + file_name
+        subprocess.run([args], shell = True)
     return
 
 
@@ -81,7 +87,9 @@ def calculate_VQ(data, A):
     V_array = data[:,3]
     time_array = data[:,0]
     I_array = data[:,5]
-    Q_array = integrate.cumtrapz(I_array, time_array) * A
+    print(V_array.shape, time_array.shape, I_array.shape)
+    Q_array = integrate.cumtrapz(I_array, time_array, initial  = 0) * A
+    print(Q_array.shape)
     return Q_array, V_array
 
 
@@ -115,5 +123,5 @@ x0 = [1.6e-1, 3.0e-2, 0.5, 0.5, 5.3e-19, 1.25e-12]
 
 arg_list = [pickle_name, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list]
 
-result = optimize.minimize(f, x0, args = arg_list, method = 'BFGS')
+result = optimize.minimize(f, x0, args = (pickle_name, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list), method = 'BFGS')
 print(result.success) # check if solver was successful
