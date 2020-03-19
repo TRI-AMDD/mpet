@@ -102,7 +102,7 @@ def area_difference(x1, y1, x2, y2):
 def process_experimental_data(pickle_file_name):
     """Reloads experimental data pickle file. inputs pickle file name for a batch
        returns the Q, V of the pickle file for a specific cell"""
-    bat_dict = pickle.load(open(pickle_name, 'rb'))
+    bat_dict = pickle.load(open(pickle_file_name, 'rb'))
     Q_array = bat_dict['b3c43']['cycles']['10']['Qd']
     V_array = bat_dict['b3c43']['cycles']['10']['V']
     QV_array = np.vstack((Q_array, V_array))
