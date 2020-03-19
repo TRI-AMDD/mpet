@@ -84,7 +84,7 @@ def calculate_VQ(data, A):
        Inputs are generalData np array from the results of our simulation, and the area in m^2
        Output is the array of voltages and capacities during filling"""
     V_array = data[:,3]
-    time_array = data[:,0]
+    time_array = data[:,0]/3600 #converts s to hr
     I_array = data[:,5]
     #Q = int(i*dt) * A in Ah/m^2 * m^2
     Q_array = integrate.cumtrapz(I_array, time_array, initial  = 0) * A
