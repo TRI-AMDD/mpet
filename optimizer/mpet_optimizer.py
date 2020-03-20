@@ -120,6 +120,8 @@ def plot_functions(opt_args, expt_QV, A):
     #now saves data in general_data.txt
     mpet_Q, mpet_V = calculate_VQ(general_data, A)
     plt.plot(mpet_Q, mpet_V, 'r', expt_QV[:,0], expt_QV[:,1], 'b')
+    plt.xlabel('Q (A*hr)')
+    plt.ylabel('V (V)')
     plt.legend(['MPET Simulation Fit', 'Experimental Data'])
     plt.show()
     return
