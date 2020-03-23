@@ -98,7 +98,9 @@ class SimMPET(dae.daeSimulation):
             
             #Determine a guess for the initial cell voltage
             ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
-            if ndD_s['profileType']=='CV':
+            if ndD_s['tramp']>0:
+                phi_guess=0
+            elif ndD_s['profileType']=='CV':
                 phi_guess = self.ndD_s['Vset']-ndDVref
             else:
                 phi_guess = ndDVref
