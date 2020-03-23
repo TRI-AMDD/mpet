@@ -102,6 +102,8 @@ class SimMPET(dae.daeSimulation):
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
                 phi_guess = self.ndD_s['Vset']-ndDVref
+            elif ndD_s['profileType']=='CVsegments':
+                phi_guess = self.ndD_s['segments'][0][0]
             else:
                 phi_guess = ndDVref
 
