@@ -365,7 +365,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
                        "elytei", "elyteif", "elytedivi", "elytedivif"]:
-        fplet = (True if plot_type[-1] == "f" else False)
+        fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         mpl.animation.Animation._blit_draw = _blit_draw
         datax = cellsvec
