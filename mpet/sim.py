@@ -95,9 +95,20 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(k, cs0+rnd1[k])
                                 part.c2.SetInitialCondition(k, cs0+rnd2[k])
+            
+            #Determine a guess for the initial cell voltage
+            ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
+            if ndD_s['tramp']>0:
+                phi_guess=0
+            elif ndD_s['profileType']=='CV':
+                phi_guess = self.ndD_s['Vset']-ndDVref
+            elif ndD_s['profileType']=='CVsegments':
+                phi_guess = self.ndD_s['segments'][0][0]
+            else:
+                phi_guess = ndDVref
+
             # Electrolyte
             c_lyte_init = ndD_s['c0']
-            phi_guess = 0.
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(i, c_lyte_init)
                 self.m.phi_lyte["s"].SetInitialGuess(i, phi_guess)
@@ -106,8 +117,7 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
                     self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
 
-            # Set the initial cell voltage to be the OCV
-            self.m.phi_applied.SetInitialGuess(self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"])
+            self.m.phi_applied.SetInitialGuess(phi_guess)
 
         else:
             dPrev = self.dataPrev
