@@ -40,7 +40,7 @@ class ModCell(dae.daeModel):
             self.DmnCell["s"] = dae.daeDomain(
                 "DmnCell_s", self, dae.unit(),
                 "Simulated volumes in the separator")
-        or trode in trodes:
+        for trode in trodes:
             self.DmnCell[trode] = dae.daeDomain(
                 "DmnCell_{trode}".format(trode=trode), self, dae.unit(),
                 "Simulated volumes in electrode {trode}".format(trode=trode))
@@ -402,7 +402,7 @@ class ModCell(dae.daeModel):
             #if it hits time cutoff condition
             time_cond = False if time_cutoffs[0] == None else self.time_counter() >= time_cutoffs[0]
 #assume we start with CC charge initially 
-            v_cond = False if voltage_cutoffs[0] == None elsed -self.phi_applied() >= -voltage_cutoffs[0] 
+            v_cond = False if voltage_cutoffs[0] == None else -self.phi_applied() >= -voltage_cutoffs[0] 
             cap_cond = False if capfrac_cutoffs[0] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[0]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[0]))
  
 #if the voltage cutoff is hit, switch to next segment state_1
@@ -424,7 +424,7 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.current() - constraints[i]
                     # if hits voltage cutoff, switch to next state
                     #if no voltage/capfrac cutoffs exist, automatically true, else is condition
-                    v_cond = False if voltage_cutoffs[i] == None elsed -self.phi_applied() >= -voltage_cutoffs[i] 
+                    v_cond = False if voltage_cutoffs[i] == None else -self.phi_applied() >= -voltage_cutoffs[i] 
                     cap_cond = False if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
@@ -432,7 +432,7 @@ class ModCell(dae.daeModel):
                               setVariableValues = [(time_counter, 0)],
                               triggerEvents = [],
                               userDefinedActions = [])
-                    eq = self.Creat	eEquation("Charge_Discharge_Sign_Equation")
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() - 1
 
 #if is CV charge, then we set up equation and capacity cutoff

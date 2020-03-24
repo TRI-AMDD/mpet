@@ -379,16 +379,16 @@ def get_dicts_from_configs(P_s, P_e):
     elif ndD_s["profileType"] == "CCCVcycle":
         for j in range(dD_s["total_cycle"]):
             for i in range(len(dD_s["segments"])):
-                volt_cut = None if dD_s["segments"][i][1] == "None" else -((e/(k*T_ref))*dD_s["segments"][i][1]+ndDVref)
+                volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*dD_s["segments"][i][1]+ndDVref)
                 #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
-                capfrac_cut = None if dD_s["segments"][i][2] == "None" else dD_s["segments"][i][2]
-                crate_cut = None if dD_s["segments"][i][3] == "None" else dD_s["segments"][i][3]
-                time_cut = None if dD_s["segments"][i][4] == "None" else dD_s["segments"][i][4]*60/t_ref
+                capfrac_cut = None if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                crate_cut = None if dD_s["segments"][i][3] == None else dD_s["segments"][i][3]
+                time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
                 if not (volt_cut or capfrac_cut or crate_cut or time_cut):
                     print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
                 if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
                     #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
-                    ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, volt_cut, cap_cut, None, time_cut, dD_s["segments"][i][5]))
+                    ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
                 elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
                     #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
                     ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
@@ -408,7 +408,12 @@ def get_dicts_from_configs(P_s, P_e):
         dD_s["segments_tvec"][2*segIndx] = tNext
         tPrev = tNext
         # Factor of 60 here to convert to s
-        tNext = tPrev + (segs[segIndx][1] * 60 - dD_s["tramp"])
+        time_seg = segs[segIndx][1]
+        #if CCCVcycle, then we need the fourth term as time cutoff
+        #it also isn't from start time, so kinda useless
+        if ndD_s["profileType"] == "CCCVcycle":
+            time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
+        tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
         dD_s["segments_tvec"][2*segIndx+1] = tNext
         tPrev = tNext
         setNext = segs[segIndx][0]
@@ -428,21 +433,21 @@ def get_dicts_from_configs(P_s, P_e):
         ndD_s["segments_setvec"] = -(
             (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
 #DZ 02/11/20
-    elif ndD_s["profileType"] == "CCCVcycle":
-        initial_element = 0
-        #we assume we always start from a charging cycle. change if necessary
- 
-        ndD_s["segments_setvec"] = np.zeros(2*numsegs)
-        for segIndx in range(numsegs):
-            setNext = segs[segIndx][0]
-            if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
-                ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
-                ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
-            elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
-                ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
-                ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
-        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["total_cycle"])
-        np.insert(ndD_s["segments_setvec"], 0, initial_element)
+#    elif ndD_s["profileType"] == "CCCVcycle":
+#        initial_element = 0
+#        #we assume we always start from a charging cycle. change if necessary
+# 
+#        ndD_s["segments_setvec"] = np.zeros(2*numsegs)
+#        for segIndx in range(numsegs):
+#            setNext = segs[segIndx][0]
+#            if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
+#                ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
+#                ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
+#            elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
+#                ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
+#                ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
+#        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["total_cycle"])
+#        np.insert(ndD_s["segments_setvec"], 0, initial_element)
     if "segments" in ndD_s["profileType"]:
         dD_s["tend"] = dD_s["segments_tvec"][-1]
         # Pad the last segment so no extrapolation occurs

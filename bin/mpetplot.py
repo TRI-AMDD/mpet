@@ -21,6 +21,8 @@ plotTypes=OrderedDict([
     ('cycle_efficiency', 'cycle efficiency vs cycle number (only for battery cycling)'),
     ('elytec','electrolyte concentration (movie)'),
     ('elytecf','electrolyte concentration final snapshot'),
+    ('elytep','electrolyte potential (movie)'),
+    ('elytepf','electroloyte potential final snapshot'),
     ('elytei','electrolyte potential (movie)'),
     ('elyteif','electrolyte potential final snapshot'),
     ('surf_c','cathode surface concentrations'),
