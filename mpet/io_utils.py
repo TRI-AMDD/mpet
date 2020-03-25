@@ -433,21 +433,21 @@ def get_dicts_from_configs(P_s, P_e):
         ndD_s["segments_setvec"] = -(
             (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
 #DZ 02/11/20
-#    elif ndD_s["profileType"] == "CCCVcycle":
-#        initial_element = 0
-#        #we assume we always start from a charging cycle. change if necessary
-# 
-#        ndD_s["segments_setvec"] = np.zeros(2*numsegs)
-#        for segIndx in range(numsegs):
-#            setNext = segs[segIndx][0]
-#            if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
-#                ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
-#                ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
-#            elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
-#                ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
-#                ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
-#        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["total_cycle"])
-#        np.insert(ndD_s["segments_setvec"], 0, initial_element)
+    elif ndD_s["profileType"] == "CCCVcycle":
+        initial_element = 0
+        #we assume we always start from a charging cycle. change if necessary
+ 
+        ndD_s["segments_setvec"] = np.zeros(2*numsegs)
+        for segIndx in range(numsegs):
+            setNext = segs[segIndx][0]
+            if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
+                ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
+                ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
+            elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
+                ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
+                ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
+        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["total_cycle"])
+        np.insert(ndD_s["segments_setvec"], 0, initial_element)
     if "segments" in ndD_s["profileType"]:
         dD_s["tend"] = dD_s["segments_tvec"][-1]
         # Pad the last segment so no extrapolation occurs
