@@ -168,6 +168,7 @@ class SimMPET(dae.daeSimulation):
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
         self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
+        self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
 
     def Run(self):
         """

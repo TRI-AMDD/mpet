@@ -8,6 +8,7 @@ This includes the equations defining
  - potential drop between simulated particles
 """
 import daetools.pyDAE as dae
+from daetools.pyDAE.variable_types import time_t
 from pyUnits import m, kg, s, K, Pa, mol, J, W
  
 import numpy as np
@@ -117,7 +118,7 @@ class ModCell(dae.daeModel):
             "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
         # DZ: added time counter to keep track of when new section starts
         self.time_counter = dae.daeVariable(
-            "time_counter", s, self, "restarts counter every time a new section is hit")
+            "time_counter", time_t, self, "restarts counter every time a new section is hit")
         self.dummyVar = dae.daeVariable("dummyVar", dae.no_t, self, "dummyVar")
 
         # Create models for representative particles within electrode
@@ -401,20 +402,19 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Total_Current_Constraint_Charge")
             eq.Residual = self.current() - constraints[0]
 #add new variable to assign +1 -1 for charge/discharge
-#            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-#            eq.Residual = self.charge_discharge() - 1
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
             #if it hits time cutoff condition
-            time_cond = (self.time_counter() < 0) if time_cutoffs[0] == None else (self.time_counter() >= time_cutoffs[0])
+            time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[0] == None else (dae.Time() >= dae.Constant(time_cutoffs[0]*s))
 #assume we start with CC charge initially 
-            v_cond = (self.time_counter() < 0) if voltage_cutoffs[0] == None else (-self.phi_applied() >= -voltage_cutoffs[0])
-            cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[0] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[0]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[0]))
+            v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[0] == None else (-self.phi_applied() >= -voltage_cutoffs[0])
+            cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[0] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[0]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[0]))
  
 #if the voltage cutoff is hit, switch to next segment state_1
             self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                   switchToStates = [('CCCV', 'state_1')],
 				  #add new variable to assign +1 -1 for charge/discharge
-                                  setVariableValues = [(self.time_counter, dae.Time()),
-                                                       (self.charge_discharge, 1)],
+                                  setVariableValues = [(self.time_counter, dae.Time())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
 #loops through segments 2...N-1
@@ -425,70 +425,66 @@ class ModCell(dae.daeModel):
                 new_state = "state_" + str(i+1)
 #if is CC charge, we set up equation and voltage cutoff      
                 #calculates some conditions that are needed for all
-                time_cond = (self.time_counter() < 0) if time_cutoffs[i] == None else (self.time_counter()-dae.Time() >= time_cutoffs[i])
+                time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
                 if equation_type[i] == 1:
                     eq.Residual = self.current() - constraints[i]
                     # if hits voltage cutoff, switch to next state
                     #if no voltage/capfrac cutoffs exist, automatically true, else is condition
-                    v_cond = (self.time_counter() < 0) if voltage_cutoffs[i] == None else (-self.phi_applied() >= -voltage_cutoffs[i])
-                    cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
+                    v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() >= -voltage_cutoffs[i])
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.charge_discharge, 1)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-#                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-#                    eq.Residual = self.charge_discharge() - 1
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() - 1
 
 #if is CV charge, then we set up equation and capacity cutoff
                 elif equation_type[i] == 2:
                     #capacity fraction in battery is found by the filling fraction of the limiting electrode
                     #if is anode, will be capped at cap_frac, if is cathode needs to be capped at 1-cap_frac
                     #calc capacity and curr conditions (since Crate neg, we need to flip sign)
-                    crate_cond = (self.time_counter() < 0) if crate_cutoffs[i] == None else (-self.current() <= -crate_cutoffs[i])
-                    cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
+                    crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (-self.current() <= -crate_cutoffs[i])
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
 
                     eq.Residual = self.phi_applied() - constraints[i]
                     #if past cap_frac, switch to next state
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.charge_discharge, 1)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-#                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-#                    eq.Residual = self.charge_discharge() - 1
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() - 1
 
                 elif equation_type[i] == 3:
 #if CC discharge, we set up capacity cutoff and voltage cutoff
                     eq.Residual = self.current() - constraints[i] 
                     #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
                     #since discharging is delithiating anode and charging is lithiating anode       
-                    cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
                     #voltage cutoff
-                    v_cond = (self.time_counter() < 0) if voltage_cutoffs[i] == None else (-self.phi_applied() <= -voltage_cutoffs[i])
+                    v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() <= -voltage_cutoffs[i])
                     #if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.charge_discharge, -1)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-#                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-#                    eq.Residual = self.charge_discharge() + 1
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() + 1
                 elif equation_type[i] == 4:
 #if CV discharge, we set up 
                     eq.Residual = self.phi_applied() - constraints[i]
                     #conditions for cutting off: hits capacity fraction cutoff 
-                    cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
                     #or hits crate limit
-                    crate_cond = (self.time_counter() < 0) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
+                    crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.charge_discharge, -1)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
@@ -500,14 +496,12 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Constraint_" + str(N))
             #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
             #since discharging is delithiating anode and charging is lithiating anode       
-            cap_cond = (self.time_counter() < 0) if capfrac_cutoffs[N] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[N]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[N]))
-            time_cond = (self.time_counter() < 0) if time_cutoffs[N] == None else (self.time_counter() - dae.Time() >= time_cutoffs[N])
-            if limtrode == "c":
-                condition = (self.ffrac[limtrode]() >= 1-capfrac_cutoffs[N])
+            cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[N] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[N]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[N]))
+            time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[N] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[N]*s))
             if equation_type[N] == 3: #if we end w CCdischarge
                 eq.Residual = self.current() - constraints[N] 
                 #voltage cutoff
-                v_cond = (self.time_counter() < 0) if voltage_cutoffs[N] == None else (-self.phi_applied() <= -voltage_cutoffs[N])
+                v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[N] == None else (-self.phi_applied() <= -voltage_cutoffs[N])
                 #if hits capacity fraction or voltage cutoff, switch to rest state since end
                 self.ON_CONDITION(v_cond | cap_cond | time_cond,
                           switchToStates = [('CCCV', 'Rest')],
@@ -516,7 +510,7 @@ class ModCell(dae.daeModel):
                           userDefinedActions = [])
             elif equation_type[N] == 4: #if we end w CVdischarge
                 eq.Residual = self.phi_applied() - constraints[N] 
-                crate_cond = (self.time_counter() < 0) if crate_cutoffs[N] == None else (self.current() <= crate_cutoffs[N])
+                crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[N] == None else (self.current() <= crate_cutoffs[N])
                 #if hits capacity fraction or voltage cutoff, switch to rest state since end
                 self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                           switchToStates = [('CCCV', 'Rest')],
@@ -524,8 +518,8 @@ class ModCell(dae.daeModel):
                           triggerEvents = [],
                           userDefinedActions = [])
                
-#            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-#            eq.Residual = self.charge_discharge() + 1
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() + 1
 
 
             self.STATE("Rest")
