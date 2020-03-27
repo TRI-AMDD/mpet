@@ -398,33 +398,34 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["segments_tvec"] = np.zeros(2*numsegs)
     dD_s["segments_setvec"] = np.zeros(2*numsegs)
     initial_element = 0
-    if ndD_s["profileType"] == "CVsegments":
-        initial_element = -(k*T_ref/e)*ndDVref
-    elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
-        #we assume we always start from a charging cycle. change if necessary
-        initial_element = 0.
-    tPrev = 0.
-    for segIndx in range(numsegs):
-        tNext = tPrev + dD_s["tramp"]
-        dD_s["segments_tvec"][2*segIndx] = tNext
-        tPrev = tNext
-        # Factor of 60 here to convert to s
-        time_seg = segs[segIndx][1]
-        #if CCCVcycle, then we need the fourth term as time cutoff
-        #it also isn't from start time, so kinda useless
-        if ndD_s["profileType"] == "CCCVcycle":
-            time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
-        tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
-        dD_s["segments_tvec"][2*segIndx+1] = tNext
-        tPrev = tNext
-        setNext = segs[segIndx][0]
-        dD_s["segments_setvec"][2*segIndx] = setNext
-        dD_s["segments_setvec"][2*segIndx+1] = setNext
-# does n times for number of cycles
-    dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["total_cycle"])
-    np.insert(dD_s["segments_setvec"], 0, initial_element)
-    dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["total_cycle"])
-    np.insert(dD_s["segments_tvec"], 0, 0)
+    if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle": 
+        if nndD_s["profileType"] == "CVsegments":
+            initial_element = -(k*T_ref/e)*ndDVref
+        elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
+            #we assume we always start from a charging cycle. change if necessary
+            initial_element = 0.
+        tPrev = 0.
+        for segIndx in range(numsegs):
+            tNext = tPrev + dD_s["tramp"]
+            dD_s["segments_tvec"][2*segIndx] = tNext
+            tPrev = tNext
+            # Factor of 60 here to convert to s
+            time_seg = segs[segIndx][1]
+            #if CCCVcycle, then we need the fourth term as time cutoff
+            #it also isn't from start time, so kinda useless
+            if ndD_s["profileType"] == "CCCVcycle":
+                time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
+            tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
+            dD_s["segments_tvec"][2*segIndx+1] = tNext
+            tPrev = tNext
+            setNext = segs[segIndx][0]
+            dD_s["segments_setvec"][2*segIndx] = setNext
+            dD_s["segments_setvec"][2*segIndx+1] = setNext
+    # does n times for number of cycles
+        dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["total_cycle"])
+        np.insert(dD_s["segments_setvec"], 0, initial_element)
+        dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["total_cycle"])
+        np.insert(dD_s["segments_tvec"], 0, 0)
 
 
     ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
