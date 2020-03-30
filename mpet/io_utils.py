@@ -399,7 +399,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["segments_setvec"] = np.zeros(2*numsegs)
     initial_element = 0
     if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle": 
-        if nndD_s["profileType"] == "CVsegments":
+        if ndD_s["profileType"] == "CVsegments":
             initial_element = -(k*T_ref/e)*ndDVref
         elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
             #we assume we always start from a charging cycle. change if necessary
