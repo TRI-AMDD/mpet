@@ -106,7 +106,6 @@ def process_experimental_data(pickle_file_name):
     Q_array = bat_dict['b3c43']['cycles']['10']['Qd']
     V_array = bat_dict['b3c43']['cycles']['10']['V']
     QV_array = np.vstack((Q_array, V_array))
-    print(QV_array.shape)
     return QV_array
 
 
@@ -136,7 +135,7 @@ except IndexError:
 
 #puts in initial guesses and parameters to tweak
 params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
-x0 = [1.6e-1, 3.0e-2, 0.5, 0.5, 5.3e-19, 1.25e-12]
+x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
 
 #process and extract experimental data
 expt_QV_dat = process_experimental_data(pickle_name)
