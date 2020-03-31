@@ -115,7 +115,7 @@ class SimMPET(dae.daeSimulation):
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
-                    self.m.phi_lyte[l].SetInitialGuess(i, phi_guess)
+                    self.m.phi_lyte[l].SetInitialGuess(i, self.ndD_s["phiRef"][l])
 
             self.m.phi_applied.SetInitialGuess(phi_guess)
 
