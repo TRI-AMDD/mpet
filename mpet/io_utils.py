@@ -455,8 +455,8 @@ def get_dicts_from_configs(P_s, P_e):
         # Pad the last segment so no extrapolation occurs
         dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
-    # if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
-    #     ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
+    if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
+        ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     return dD_s, ndD_s, dD_e, ndD_e
 
