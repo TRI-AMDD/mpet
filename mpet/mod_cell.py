@@ -425,7 +425,8 @@ class ModCell(dae.daeModel):
                     #checks if the voltage, capacity fraction, or time segment conditions are broken
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, 0)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     #increases time_counter to increment to the beginning of the next segment
@@ -447,7 +448,8 @@ class ModCell(dae.daeModel):
                     #checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, 0)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
@@ -464,8 +466,9 @@ class ModCell(dae.daeModel):
                     #if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
-                              triggerEvents = [],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, 0)],
+                             triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
@@ -478,7 +481,8 @@ class ModCell(dae.daeModel):
                     crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, 0)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
