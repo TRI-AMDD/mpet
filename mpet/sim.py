@@ -96,7 +96,7 @@ class SimMPET(dae.daeSimulation):
                                 part.c1.SetInitialCondition(k, cs0+rnd1[k])
                                 part.c2.SetInitialCondition(k, cs0+rnd2[k])
             
-            #Determine a guess for the initial cell voltage
+            #Cell potential initialization
             ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
             if ndD_s['tramp']>0:
                 phi_guess=0
@@ -106,19 +106,19 @@ class SimMPET(dae.daeSimulation):
                 phi_guess = self.ndD_s['segments'][0][0]
             else:
                 phi_guess = ndDVref
+            self.m.phi_applied.SetInitialGuess(phi_guess)
 
-            # Electrolyte
-            c_lyte_init = ndD_s['c0']
+            #Separator electrolyte initialization
             for i in range(Nvol["s"]):
-                self.m.c_lyte["s"].SetInitialCondition(i, c_lyte_init)
+                self.m.c_lyte["s"].SetInitialCondition(i, ndD_s['c0'])
                 self.m.phi_lyte["s"].SetInitialGuess(i, .5*(self.ndD_s["phiRef"]["c"]
                                                            +self.ndD_s["phiRef"]["a"]))
+            
+            #Anode and cathode electrolyte initialization
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
-                    self.m.c_lyte[l].SetInitialCondition(i, c_lyte_init)
+                    self.m.c_lyte[l].SetInitialCondition(i, ndD_s['c0'])
                     self.m.phi_lyte[l].SetInitialGuess(i, self.ndD_s["phiRef"][l])
-
-            self.m.phi_applied.SetInitialGuess(phi_guess)
 
         else:
             dPrev = self.dataPrev
