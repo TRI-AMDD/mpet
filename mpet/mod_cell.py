@@ -394,6 +394,10 @@ class ModCell(dae.daeModel):
             time_cutoffs = seg_array[:,4]
             equation_type = seg_array[:,5]
 
+            #calculates new initialization values for CCCV
+            ndDVref = ndD["phiRef"]["c"]-ndD["phiRef"]["a"]
+            phi_guess = ndDVref
+
 #start state transition network
             self.stnCCCV=self.STN("CCCV")
 
@@ -414,6 +418,12 @@ class ModCell(dae.daeModel):
                 #if it is not None, we use a cutoff
                 #if time is past the first cutoff, switch to nextstate
                 time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
+
+                #set phi_guess based on the next step: if CC just set to ndDVref
+                if i <= len(constraints)-2: #break before the last step
+                    if np.mod(equation_type[i+1],2) == 0: #if it's CV
+                        phi_guess = constraints[i+1] - ndDVref
+
                 if equation_type[i] == 1:
                     eq.Residual = self.current() - constraints[i]
                     # if hits voltage cutoff, switch to next state
@@ -425,7 +435,8 @@ class ModCell(dae.daeModel):
                     #checks if the voltage, capacity fraction, or time segment conditions are broken
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, phi_guess)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     #increases time_counter to increment to the beginning of the next segment
@@ -447,7 +458,8 @@ class ModCell(dae.daeModel):
                     #checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, phi_guess)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
@@ -464,7 +476,8 @@ class ModCell(dae.daeModel):
                     #if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, phi_guess)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
@@ -478,7 +491,8 @@ class ModCell(dae.daeModel):
                     crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
+                              setVariableValues = [(self.time_counter, dae.Time()),
+                                                   (self.phi_applied, phi_guess)],
                               triggerEvents = [],
                               userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
