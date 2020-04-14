@@ -62,6 +62,7 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     except Exception as e:
         print(str(e))
         simulation.ReportData(simulation.CurrentTime)
+        raise
     except KeyboardInterrupt:
         print("\nphi_applied at ctrl-C:",
               simulation.m.phi_applied.GetValue(), "\n")
