@@ -32,7 +32,7 @@ area = float(sys.argv[5]) #in m^2
 #to the end of the parameter
 
 
-def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list, f_handle):
+def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list, f_handle, x_0):
     """The function that finds the residual of the input parameter values.
        Takes in the values of the parameters that we are optimizing in inputs.
        args is [pickle_file_name, area of electrode(m^2), params_sys, params_cathode, params_anode,
@@ -41,7 +41,7 @@ def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list,
        an MPET simulation. Outputs the residual between experimental data and MPET simulation
        by calling function plot_area_difference"""
     #sed the parameters that we are trying to sub pythonically
-    modify_mpet_params(params_sys, params_cathode, params_anode, params_list, inputs)
+    modify_mpet_params(params_sys, params_cathode, params_anode, params_list, np.multiply(inputs, x_0))
     main.main(params_sys) #runs simulation after subbing new parameters
     #run simulation, call plotter to get text file
     outmat2txt.main("sim_output")  #generates data
@@ -50,6 +50,7 @@ def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list,
     mpet_Q, mpet_V = calculate_VQ(general_data, A) #generates MPET Q, V data
     residual = area_difference(mpet_Q, mpet_V, expt_QV[:,0], expt_QV[:,1]) #find residual of plot area
     output_string = "Iteration: " + str(inputs) + "  residual:  " + str(residual) + '\n'
+    print(output_string)
     f_handle.write(output_string)
     return residual
 
@@ -122,9 +123,18 @@ def plot_functions(opt_args, expt_QV, A):
     plt.xlabel('Q (A*hr)')
     plt.ylabel('V (V)')
     plt.legend(['MPET Simulation Fit', 'Experimental Data'])
-    plt.show()
+    plt.savefig('final_fit.png')
     return
 
+#puts in initial guesses and parameters to tweak
+params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
+x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
+
+#we feed in x0prime = all ones after rescaled
+x0_prime = np.ones(6)
+
+#process and extract experimental data
+expt_QV_dat = process_experimental_data(pickle_name)
 
 #tests to see if parameter file works!! 
 try:
@@ -133,22 +143,19 @@ except IndexError:
     print("ERROR: No parameter file specified. Aborting")
     raise
 
-#puts in initial guesses and parameters to tweak
-params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
-x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
-
-#process and extract experimental data
-expt_QV_dat = process_experimental_data(pickle_name)
-
 #open iteration file
 f_handle = open('iteration_file', 'w')
 
 #generates function arguments and variable bounds for parameters
-arg_list = [expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle]
-bnds = ((0, None), (0, None), (0, 1), (0, 1), (0, None), (0, None)) #bounds on parameters
+arg_list = [expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle, x0]
+b1 = np.zeros(6)
+b2 = np.array([np.inf, np.inf, 1/x0[2], 1/x0[3], np.inf, np.inf])
+A = np.eye(6)
 
-result = optimize.minimize(f, x0, args = tuple(arg_list), bounds = bnds, method = 'L-BFGS-B')
-f_handle.close()
+cons = [{"type": "ineq", "fun": lambda x: A@x - b1}, {"type": "ineq", "fun": lambda x: -A@x + b2}]
+result = optimize.minimize(f, x0_prime, args = tuple(arg_list), constraints = cons, method = 'COBYLA', options = {'rhobeg': 0.1})
 print(result.success) # check if solver was successful
 
-plot_functions(results.inputs, expt_QV_dat, area)
+print("Final Optimal Parameters", np.multiply(result.inputs*x0))
+
+plot_functions(np.multiply(result.inputs*x0), expt_QV_dat, area)
