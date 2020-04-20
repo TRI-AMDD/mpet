@@ -108,6 +108,11 @@ class SimMPET(dae.daeSimulation):
                 phi_guess = ndDVref
             self.m.phi_applied.SetInitialGuess(phi_guess)
 
+            #Initialize the ghost points used for boundary conditions
+            if not self.m.SVsim:
+                self.m.c_lyteGP_L.SetInitialGuess(ndD_s["c0"])
+                self.m.phi_lyteGP_L.SetInitialGuess(0)
+
             #Separator electrolyte initialization
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(i, ndD_s['c0'])
