@@ -104,9 +104,14 @@ class SimMPET(dae.daeSimulation):
                 phi_guess = self.ndD_s['Vset']
             elif ndD_s['profileType']=='CVsegments':
                 phi_guess = self.ndD_s['segments'][0][0]
+            elif ndD_s['profileType']=='CCCVcycle':
+                #if the first step is a CV step
+                if np.mod(ndD_s['segments'][0][5], 2) == 1:
+                    phi_guess = self.ndD_s['segments'][0][0]
             else:
                 phi_guess = ndDVref
             self.m.phi_applied.SetInitialGuess(phi_guess)
+            
 
             #Separator electrolyte initialization
             for i in range(Nvol["s"]):
@@ -189,5 +194,5 @@ class SimMPET(dae.daeSimulation):
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
             #Break when a volage limit condition is reached
-            # if self.LastSatisfiedCondition:
-                # break
+            if self.LastSatisfiedCondition:
+                break
