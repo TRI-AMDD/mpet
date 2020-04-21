@@ -381,7 +381,8 @@ def get_dicts_from_configs(P_s, P_e):
             for i in range(len(dD_s["segments"])):
                 volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*dD_s["segments"][i][1]+ndDVref)
                 #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
-                capfrac_cut = None if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
+                capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
                 crate_cut = None if dD_s["segments"][i][3] == None else dD_s["segments"][i][3]/curr_ref
                 time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
                 if not (volt_cut or capfrac_cut or crate_cut or time_cut):
