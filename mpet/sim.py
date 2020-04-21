@@ -101,12 +101,17 @@ class SimMPET(dae.daeSimulation):
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
-                phi_guess = self.ndD_s['Vset']-ndDVref
+                phi_guess = self.ndD_s['Vset']
             elif ndD_s['profileType']=='CVsegments':
                 phi_guess = self.ndD_s['segments'][0][0]
             else:
                 phi_guess = ndDVref
             self.m.phi_applied.SetInitialGuess(phi_guess)
+
+            #Initialize the ghost points used for boundary conditions
+            if not self.m.SVsim:
+                self.m.c_lyteGP_L.SetInitialGuess(ndD_s["c0"])
+                self.m.phi_lyteGP_L.SetInitialGuess(0)
 
             #Separator electrolyte initialization
             for i in range(Nvol["s"]):
