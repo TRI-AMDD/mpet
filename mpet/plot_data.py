@@ -332,7 +332,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             ax.set_ylabel("Gravimetric Capacity [mAh/g]")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
-                fig.savefig("mpet_current.png", bbox_inches="tight")
+                fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")
             return fig, ax
         elif plot_type == "cycle_efficiency":
             #do we need to change this q because molweight changed? should be okay because Nm still same
@@ -346,7 +346,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             ax.set_ylabel("Cycle Efficiency")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
-                fig.savefig("mpet_current.png", bbox_inches="tight")
+                fig.savefig("mpet_cycle_efficiency.png", bbox_inches="tight")
             return fig, ax
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
@@ -357,7 +357,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             ax.set_ylabel("Discharge Capacity/Original Discharge Capacity")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
-                fig.savefig("mpet_current.png", bbox_inches="tight")
+                fig.savefig("mpet_cycle_cap_frac.png", bbox_inches="tight")
             return fig, ax
             
 
