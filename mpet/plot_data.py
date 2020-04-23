@@ -306,6 +306,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
      #   np.set_printoptions(threshold=sys.maxsize)
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
+        print("pos seg", pos_charge_seg, "neg seg", neg_discharge_seg)
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
         #in the y axis
         cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
@@ -313,12 +314,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         #find mass of limiting electrode
      #   total_vol = np.sum(psd_vol[limtrode]) #m^3
         density = utils.get_density(material_type) #kg/m^3
-     #   mol_weight = utils.get_mol_weight(material_type) # g/imol
-     #   mass = total_vol * density * 1000 #in g
-        #print(F)
-     #   Q = dD_e[limtrode]["cap"] # C/m^2
-     #   Q = 1 * F * (mass/mol_weight) # in C
-      #  print(Q)
         #get the discharge currents (are multiplied by 0 if it is not the segment we want)
         discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
         ##we wang tot_cycle * timesteps array, A/m^2 * s

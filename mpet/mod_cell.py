@@ -434,21 +434,11 @@ class ModCell(dae.daeModel):
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                     #checks if the voltage, capacity fraction, or time segment conditions are broken
-                    #if i != len(constraints)-1: 
-                        #if its not the last state, we switch to the next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.phi_applied, phi_guess)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-                    #else:
-                    #     #else we set the 
-                    #     self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                    #              switchToStates = [('CCCV', new_state)],
-                    #              setVariableValues = [],#(self.dummyVar, 2)],
-                    #              triggerEvents = [],
-                    #              userDefinedActions = [])
                     #increases time_counter to increment to the beginning of the next segment
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     #add new variable to assign +1 -1 for charge/discharge
@@ -466,21 +456,11 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.phi_applied() - constraints[i]
                     #if past cap_frac, switch to next state
                     #checks if crate, cap frac, or time segment conditions are broken
-                    #if i != len(constraints)-1: 
-                        #if not at end state
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.phi_applied, phi_guess)],
-                                                   #(self.current, 0)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-                    #else:
-                    #    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                    #              switchToStates = [('CCCV', new_state)],
-                    #              setVariableValues = [],#(self.dummyVar, 2)],
-                    #              triggerEvents = [],
-                    #              userDefinedActions = []) 
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() - 1
 
@@ -493,21 +473,11 @@ class ModCell(dae.daeModel):
                     #voltage cutoff
                     v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() <= -voltage_cutoffs[i])
                     #if hits capacity fraction or voltage cutoff, switch to next state
-                    #if i != len(constraints)-1: 
-                        #if not at end state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.phi_applied, phi_guess)],
-                                                   #(self.current, 0)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-                    #else:
-                    #     self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                    #              switchToStates = [('CCCV', new_state)],
-                    #              setVariableValues = [],#(self.dummyVar, 2)],
-                    #              triggerEvents = [],
-                    #              userDefinedActions = [])
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
                 elif equation_type[i] == 4:
@@ -521,18 +491,9 @@ class ModCell(dae.daeModel):
                         #if not at end state
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                               switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time()),
-                                                   (self.phi_applied, phi_guess)],
-                                                  # (self.current, 0)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
                               triggerEvents = [],
                               userDefinedActions = [])
-                    #else:
-                    #    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                    #              switchToStates = [('CCCV', new_state)],
-                    #              setVariableValues = [],#(self.dummyVar, 2)],
-                    #              triggerEvents = [],
-                    #              userDefinedActions = [])
-            
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
 
