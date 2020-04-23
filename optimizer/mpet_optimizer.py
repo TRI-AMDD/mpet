@@ -5,6 +5,7 @@ import numpy as np
 import os
 import pickle
 from scipy import integrate
+from scipy import interpolate
 from scipy import optimize
 import subprocess
 import sys
@@ -32,7 +33,7 @@ area = float(sys.argv[5]) #in m^2
 #to the end of the parameter
 
 
-def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list, f_handle):
+def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list, f_handle, x_0):
     """The function that finds the residual of the input parameter values.
        Takes in the values of the parameters that we are optimizing in inputs.
        args is [pickle_file_name, area of electrode(m^2), params_sys, params_cathode, params_anode,
@@ -41,14 +42,14 @@ def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list,
        an MPET simulation. Outputs the residual between experimental data and MPET simulation
        by calling function plot_area_difference"""
     #sed the parameters that we are trying to sub pythonically
-    modify_mpet_params(params_sys, params_cathode, params_anode, params_list, inputs)
+    modify_mpet_params(params_sys, params_cathode, params_anode, params_list, np.multiply(inputs, x_0))
     main.main(params_sys) #runs simulation after subbing new parameters
     #run simulation, call plotter to get text file
     outmat2txt.main("sim_output")  #generates data
     general_data = np.loadtxt("sim_output/generalData.txt", delimiter = ",")
     #now saves data in general_data.txt
     mpet_Q, mpet_V = calculate_VQ(general_data, A) #generates MPET Q, V data
-    residual = area_difference(mpet_Q, mpet_V, expt_QV[:,0], expt_QV[:,1]) #find residual of plot area
+    residual = area_difference(mpet_Q, mpet_V, expt_QV[0,:], expt_QV[1,:]) #find residual of plot area
     output_string = "Iteration: " + str(inputs) + "  residual:  " + str(residual) + '\n'
     f_handle.write(output_string)
     return residual
@@ -95,7 +96,12 @@ def area_difference(x1, y1, x2, y2):
     """Finds the difference between two curves (x1, y1) and (x2, y2).
         Returns the area difference. Is a metric to compare the two results, but can possibly
         switch metrics in the future."""
-    area_diff = np.abs(np.trapz(y2, x2) - np.trapz(y1, x1))
+    fun1 = interpolate.interp1d(x1, y1, bounds_error = False, fill_value = 0)
+    fun2 = interpolate.interp1d(x2, y2, bounds_error = False, fill_value = 0)
+    max_x = max([np.amax(x1), np.amax(x2)])
+    min_x = min([np.amin(x1), np.amin(x2)])
+    xnew = np.linspace(min_x, max_x, 400)
+    area_diff = np.trapz(np.abs(fun1(xnew)-fun2(xnew)), x = xnew)
     return area_diff
 
 
@@ -122,9 +128,19 @@ def plot_functions(opt_args, expt_QV, A):
     plt.xlabel('Q (A*hr)')
     plt.ylabel('V (V)')
     plt.legend(['MPET Simulation Fit', 'Experimental Data'])
-    plt.show()
+    plt.savefig('final_fit.png')
     return
 
+
+#puts in initial guesses and parameters to tweak
+params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
+x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
+
+#we feed in x0prime = all ones after rescaled
+x0_prime = np.ones(6)
+
+#process and extract experimental data
+expt_QV_dat = process_experimental_data(pickle_name)
 
 #tests to see if parameter file works!! 
 try:
@@ -133,22 +149,19 @@ except IndexError:
     print("ERROR: No parameter file specified. Aborting")
     raise
 
-#puts in initial guesses and parameters to tweak
-params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cathode', 'D_anode']
-x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
-
-#process and extract experimental data
-expt_QV_dat = process_experimental_data(pickle_name)
-
 #open iteration file
 f_handle = open('iteration_file', 'w')
 
 #generates function arguments and variable bounds for parameters
-arg_list = [expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle]
-bnds = ((0, None), (0, None), (0, 1), (0, 1), (0, None), (0, None)) #bounds on parameters
+arg_list = [expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle, x0]
+b1 = np.zeros(len(x0))
+b2 = np.array([np.inf, np.inf, 1/x0[2], 1/x0[3], np.inf, np.inf])
+A = np.eye(len(x0))
 
-result = optimize.minimize(f, x0, args = tuple(arg_list), bounds = bnds, method = 'L-BFGS-B')
-f_handle.close()
+cons = [{"type": "ineq", "fun": lambda x: A@x - b1}, {"type": "ineq", "fun": lambda x: -A@x + b2}]
+result = optimize.minimize(f, x0_prime, args = tuple(arg_list), constraints = cons, method = 'COBYLA', options = {'rhobeg': 1})
 print(result.success) # check if solver was successful
 
-plot_functions(results.inputs, expt_QV_dat, area)
+print("Final Optimal Parameters", np.multiply(result.inputs*x0))
+
+plot_functions(np.multiply(result.inputs*x0), expt_QV_dat, area)
