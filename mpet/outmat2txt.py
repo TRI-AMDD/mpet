@@ -261,7 +261,6 @@ def main(indir, genData=True, discData=True, elyteData=True,
         cycNum, cycleCapacity = plot_data.show_data(
             indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
             data_only=True)
-        print(cycNum, cycleCapacity)
         cycleCapFrac = plot_data.show_data(
             indir, plot_type="cycle_cap_frac", print_flag=False,
             save_flag=False, data_only=True)[1]
