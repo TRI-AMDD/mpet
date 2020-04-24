@@ -144,7 +144,7 @@ def get_negative_sign_change_arrays(input_array):
 
 
 def get_density(material_type):
-    """Gets active material density from input material type"""
+    """Gets active material density from input material type, in units of kg/m^3"""
     if material_type == "LiMn2O4": #cathode, so do LiMn2O4
         return 4.01e3
     elif material_type == "LiC6":
@@ -152,7 +152,8 @@ def get_density(material_type):
     elif material_type == "NCA":
         return 4.45e3
     elif material_type == "LFP":
-        return 4.45e3 #is not correct
+        return 3.6e3
+        #https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf
 #
 #
 #def get_mol_weight(material_type):
