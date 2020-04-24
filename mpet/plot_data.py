@@ -67,6 +67,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 # get information from limiting electrodes
     L = dD_s["L"][limtrode]
     P_L = ndD_s["P_L"][limtrode]
+    poros = ndD_s["poros"][limtrode]
     cap = dD_e[limtrode]["cap"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
@@ -306,7 +307,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
      #   np.set_printoptions(threshold=sys.maxsize)
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
-        print("pos seg", pos_charge_seg, "neg seg", neg_discharge_seg)
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
         #in the y axis
         cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
@@ -319,8 +319,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ##we wang tot_cycle * timesteps array, A/m^2 * s
         discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
         #use trapezoid rule to integrate Q = int(i dt), convert to mAh/m^2 from As/m^2
-        gravimetric_caps = discharge_capacities/(P_L * L * density) / 1000 #mAh/g
+        gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
         if plot_type == "cycle_capacity": #plots discharge capacity
+            if data_only:
+                return cycle_numbers, np.round(gravimetric_caps, decimals =2)
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
@@ -335,6 +337,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
             #efficiency = discharge_cap/charge_cap
             efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            if data_only:
+                return cycle_numbers, efficiencies
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, efficiencies, 'o')
             ax.set_xlabel("Cycle Number")
@@ -345,6 +349,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            if data_only:
+                return cycle_numbers, np.round(discharge_cap_fracs, decimals = 2)
             #normalize by the first discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
