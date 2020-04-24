@@ -322,7 +322,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
         if plot_type == "cycle_capacity": #plots discharge capacity
             if data_only:
-                return cycle_numbers, np.round(gravimetric_caps, decimals =2)
+                return cycle_numbers, gravimetric_caps
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
@@ -350,7 +350,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
             if data_only:
-                return cycle_numbers, np.round(discharge_cap_fracs, decimals = 2)
+                return cycle_numbers, discharge_cap_fracs
             #normalize by the first discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
