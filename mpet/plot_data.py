@@ -321,6 +321,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         #use trapezoid rule to integrate Q = int(i dt), convert to mAh/m^2 from As/m^2
         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
         if plot_type == "cycle_capacity": #plots discharge capacity
+            if len(gravimetric_caps) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(gravimetric_caps)]
             if data_only:
                 return cycle_numbers, gravimetric_caps
             fig, ax = plt.subplots(figsize=figsize)
@@ -337,6 +340,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
             #efficiency = discharge_cap/charge_cap
             efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            if len(efficiencies) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(efficiencies)]
             if data_only:
                 return cycle_numbers, efficiencies
             fig, ax = plt.subplots(figsize=figsize)
@@ -349,6 +355,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            if len(discharge_cap_fracs) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(discharge_cap_fracs)]
             if data_only:
                 return cycle_numbers, discharge_cap_fracs
             #normalize by the first discharge capacity

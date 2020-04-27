@@ -107,10 +107,11 @@ def get_negative_sign_change_arrays(input_array):
     """This function takes an array of (+1, +1, +1, -1, -1, -1... +1, -1 ...) and splits it
        into a number of arrays in the y direction which are (0, 0, 0, 1, 1, 1... 0, 0) 
        whenever the array hits a sign change. It should have the number of cycles as rows.
-       Thus it will be size (N*M), where N is the number of 1 segments
-       (discharge) segments and M is the size of the array.
-       pos_segments is true if we want to output an array of positive segments, and neg_segments
-       is true if we want arrays of negative segments.
+       Thus it will be size (N*M) for each output, where N is the number of cycles 
+       and M is the size of the array. In each ith row there are only 1's for the ith charging
+       cycle.
+       pos_segments is an array of charging segments, and neg_segments
+       is true if we want arrays of discharge segments.
        """
     sign_mults = np.zeros((len(input_array) - 1)) #is +1 if no sign change, -1 if sign change@i+1
     for i in range(len(input_array)-1):
@@ -126,7 +127,8 @@ def get_negative_sign_change_arrays(input_array):
     pos_indices_end = indices[::2] + 1
     #gets the beginning and ends of the charge and discharge cycles
     #pos_start, pos_end, neg_start, neg_end
-    tot_cycle_number = len(neg_indices_start)
+    #if we did not finish the simulation, then we will 
+    tot_cycle_number = len(pos_indices_start)
     #starts counting charge cycle at beginning and removes rest cycle element
     output_array_neg = np.zeros((tot_cycle_number, len(input_array)))
     output_array_pos = np.zeros((tot_cycle_number, len(input_array)))
