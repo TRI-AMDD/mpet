@@ -194,7 +194,7 @@ class SimMPET(dae.daeSimulation):
                 "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
                     t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
             time = self.IntegrateUntilTime(
-                nextTime, dae.eStopAtModelDiscontinuity, True)
+                nextTime, dae.eDoNotStopAtDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
