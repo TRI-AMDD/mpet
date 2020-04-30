@@ -8,10 +8,8 @@ Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of 
 
 ## Prerequisites
 
-1.  [Python 3.6](https://www.python.org/) and the modules `numpy`, `scipy`, `matplotlib`, and `pyqt5`.
-    - Python 3.4 and 3.5 are also supported, but Python 3.7 is **not yet** supported
-2.  [DAE Tools](http://www.daetools.com/) version 1.8, which can be [downloaded here](https://sourceforge.net/projects/daetools/files/daetools/).
-    - DAE Tools 1.7 is also supported, but DAE Tools 1.9 or later is **not yet** supported.
+1.  [Python 3.7](https://www.python.org/) with the following packages installed: `numpy`, `scipy`, `matplotlib`, and `pyqt5`.
+2.  [DAE Tools](http://www.daetools.com/) version 1.9.0, which can be [downloaded here](https://sourceforge.net/projects/daetools/files/daetools/1.9.0/).
 
 ## Installation
 
@@ -63,6 +61,4 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of `MPlayer`) i
 
 ## Troubleshooting
 
-Please use the bitbucket website (https://bitbucket.org/bazantgroup/mpet) to file issues and/or bug reports with the software.
-
-If you are seeing errors about reaching the maximum number of steps with suggestions about scaling your tolerances, try increasing the IDAS:MaxNumSteps parameter to 100000. This can be found in the `daetools.cfg` file. This is found within the DAE Tools install directory.
+Please use the Issues section of the Bitbucket repository (https://bitbucket.org/bazantgroup/mpet/issues) to file issues and/or bug reports with the software.
