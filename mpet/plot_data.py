@@ -45,7 +45,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         sStr = "."
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
-    tot_cycle = dD_s["total_cycle"]
+    tot_cycle = dD_s["totalCycle"]
 #    psd_vol = dD_s["psd_vol"]
     limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes

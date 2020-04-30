@@ -84,7 +84,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         data_only=True)
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
     trodes = ndD_s["trodes"]
-    total_cycle = dD_s["total_cycle"]
+    totalCycle = dD_s["totalCycle"]
     CrateCurr = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     psd_len_c = dD_s["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
@@ -257,7 +257,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
                    delimiter=dlm, header=bulkpHdr)
 
-    if total_cycle > 1:
+    if totalCycle > 1:
         cycNum, cycleCapacity = plot_data.show_data(
             indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
             data_only=True)

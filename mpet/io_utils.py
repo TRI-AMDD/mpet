@@ -65,7 +65,7 @@ def get_dicts_from_configs(P_s, P_e):
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
 #DZ 02/11/20 cycle counter
-    dD_s["total_cycle"] = P_s.getint('Sim Params', 'total_cycle', fallback = 1)
+    dD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
@@ -377,7 +377,7 @@ def get_dicts_from_configs(P_s, P_e):
             ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
 #DZ 02/12/20 battery cycling
     elif ndD_s["profileType"] == "CCCVcycle":
-        for j in range(dD_s["total_cycle"]):
+        for j in range(dD_s["totalCycle"]):
             for i in range(len(dD_s["segments"])):
                 #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
                 hard_cut = 0.99 if dD_s["segments"][i][5] <= 2 else 0.01
@@ -426,9 +426,9 @@ def get_dicts_from_configs(P_s, P_e):
             dD_s["segments_setvec"][2*segIndx] = setNext
             dD_s["segments_setvec"][2*segIndx+1] = setNext
     # does n times for number of cycles
-        dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["total_cycle"])
+        dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["totalCycle"])
         np.insert(dD_s["segments_setvec"], 0, initial_element)
-        dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["total_cycle"])
+        dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["totalCycle"])
         np.insert(dD_s["segments_tvec"], 0, 0)
 
 
@@ -452,7 +452,7 @@ def get_dicts_from_configs(P_s, P_e):
             elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
                 ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
                 ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
-        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["total_cycle"])
+        ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["totalCycle"])
         np.insert(ndD_s["segments_setvec"], 0, initial_element)
     if "segments" in ndD_s["profileType"]:
         dD_s["tend"] = dD_s["segments_tvec"][-1]
@@ -579,7 +579,7 @@ def test_system_input(dD, ndD):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]:
+    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-5:] == ".json")):
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
 
