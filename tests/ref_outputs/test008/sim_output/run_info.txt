@@ -1,12 +1,17 @@
+mpet version:
+0.1.2
+
 branch name:
-updates-for-paper
+development
 
 commit hash:
-1e74c2c
+96c732a
 
-and:
+to run, from the root repo directory, copy relevant files there,
+edit input_params_system.cfg to point to correct material
+params files, and:
 $ git checkout [commit hash]
 $ patch -p1 < commit.diff:
 $ python[3] mpetrun.py input_params_system.cfg
 
-Total run time: 4.666375160217285 s
+Total run time: 0.2602696418762207 s
