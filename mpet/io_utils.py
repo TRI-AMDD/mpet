@@ -279,12 +279,12 @@ def get_dicts_from_configs(P_s, P_e):
         else:
             dD_sPrev = {}
             ndD_sPrev = {}
-            if os.path.isfile(ndD_s["prevDir"] + "/input_dict_system_dD.p"):
+            if os.path.isfile(os.path.join(ndD_s["prevDir"], "input_dict_system_dD.p")):
                 #if a normal continuation file, then we read from
                 # input_dict_system
                 dD_sPrev, ndD_sPrev = read_dicts(
                     os.path.join(ndD_s["prevDir"], "input_dict_system"))
-            elif os.path.isfile(ndD_s["prevDir"] + "/input_dict_system_0_dD.p"):
+            elif os.path.isfile(os.path.join(ndD_s["prevDir"], "input_dict_system_0_dD.p")):
                 #if maccor cycling procedure, read from a maccor cycling file
                 #since all the same, read from the first one
                 dD_sPrev, ndD_sPrev = read_dicts(
