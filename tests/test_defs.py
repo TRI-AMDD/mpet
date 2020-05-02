@@ -414,6 +414,7 @@ def test015(testDir, dirDict, pflag):
     P_s.set("Sim Params", "segments",
             "[(-0.3, 25), (0., 10), (0.3, 30)]")
     P_s.set("Sim Params", "tramp", "1e+0")
+    P_s.set("Sim Params", "absTol", "1e-5")
     P_s.set("Conductivity", "simBulkCond_c", "true")
     P_s.set("Conductivity", "sigma_s_c", "1e-2")
     P_s.set("Conductivity", "simPartCond_c", "true")
@@ -551,7 +552,6 @@ def testAnalytSphDifn(testDir, dirDict):
     P_s.set("Sim Params", "tend", "1e+6")
     P_s.set("Sim Params", "tsteps", "1800")
     P_s.set("Sim Params", "relTol", "1e-7")
-    P_s.set("Sim Params", "absTol", "1e-7")
     P_s.set("Sim Params", "tramp", "1e-6")
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "mean_c", "100e-9")
@@ -582,7 +582,6 @@ def testAnalytCylDifn(testDir, dirDict):
     P_s.set("Sim Params", "tend", "1e+6")
     P_s.set("Sim Params", "tsteps", "1800")
     P_s.set("Sim Params", "relTol", "1e-7")
-    P_s.set("Sim Params", "absTol", "1e-7")
     P_s.set("Sim Params", "tramp", "1e-6")
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "mean_c", "100e-9")

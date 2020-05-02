@@ -12,7 +12,7 @@ setuptools.setup(
     url='https://bitbucket.org/bazantgroup/mpet',
     packages=['mpet','mpet.electrode'],
     install_requires=["numpy","scipy","matplotlib","pyQt5"],
-    python_requires='>=3.5,<3.7',
+    python_requires='>=3.5,<3.8',
     scripts=['bin/mpetrun.py','bin/mpetplot.py'],
     classifiers=[
         "Programming Language :: Python :: 3",
