@@ -178,9 +178,17 @@ class SimMPET(dae.daeSimulation):
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
+            #Initialize the ghost points used for boundary conditions
+            if not self.m.SVsim:
+#                self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
+                self.m.c_lyteGP_L.SetInitialGuess(ndD_s["c0"])
+                self.m.phi_lyteGP_L.SetInitialGuess(0)
+#                self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
+
         self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
         #self.m.stnCCCV.ActiveState = "state_0" #sets active state to be state 0
+   
 
     def Run(self):
         """

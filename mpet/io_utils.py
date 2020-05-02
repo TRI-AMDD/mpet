@@ -277,8 +277,21 @@ def get_dicts_from_configs(P_s, P_e):
             dD_s["psd_vol"][trode] = psd_vol[trode]
             dD_s["G"][trode] = G[trode]
         else:
-            dD_sPrev, ndD_sPrev = read_dicts(
-                os.path.join(ndD_s["prevDir"], "input_dict_system"))
+            dD_sPrev = {}
+            ndD_sPrev = {}
+            if os.path.isfile(ndD_s["prevDir"] + "/input_dict_system_dD.p"):
+                #if a normal continuation file, then we read from
+                # input_dict_system
+                dD_sPrev, ndD_sPrev = read_dicts(
+                    os.path.join(ndD_s["prevDir"], "input_dict_system"))
+            elif os.path.isfile(ndD_s["prevDir"] + "/input_dict_system_0_dD.p"):
+                #if maccor cycling procedure, read from a maccor cycling file
+                #since all the same, read from the first one
+                dD_sPrev, ndD_sPrev = read_dicts(
+                    os.path.join(ndD_s["prevDir"], "input_dict_system_0"))
+            else:
+                raise NotImplementedError("No dict found in " + ndD_s["prevDir"])
+                
             dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
             ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
             dD_s["psd_len"][trode] = dD_sPrev["psd_len"][trode]

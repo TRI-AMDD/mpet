@@ -1,5 +1,5 @@
 import subprocess as subp
-
+import re
 import numpy as np
 
 import daetools.pyDAE as dae
@@ -156,6 +156,151 @@ def get_density(material_type):
     elif material_type == "LFP":
         return 3.6e3
         #https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf
+
+def get_dict_indexes(total_step_list):
+    """Processes dictionary and returns same dictionary but with the step number listed as a key
+    for easier processing in the state machine.
+    Inputs and outputs both total_step_list-dict of steps. but output is
+    updated with step_index. Also outputs max # of steps for use in ending state
+    machine"""
+    max_step = 1
+    for index, key in enumerate(total_step_list):
+        total_step_list[index]['StepIndex'] = index + 1
+        #not zero indexed
+        max_step = total_step_list[index]['StepIndex']
+    return max_step, total_step_list
+
+
+def next_loop(loop_counter, loop_index, step):
+    """Finishes a step and brings it to the next step. Updates loop_counter
+    Inputs:loop_counter, loop_index, step.
+    Outputs: updated loop_counter, loop_index, next_step_index"""
+    #sets number of cycles ran to total number
+    next_step_index = int(step['Ends']['EndEntry']['Step']) - 1 #XXXhow to get for only Loop Cnt?
+    if loop_counter[loop_index, 3]-1 == -1:
+        #if the outside loop is completed, then we exit loops
+        loop_counter = np.zeros((0, 4))
+        #delete loop_counter and reset loop index
+        loop_index = -1
+    else:
+        #if an inner loop completed, go to the outer loop
+        #loop index updates to the last loop where it was at loop_level -1 if theres no other loops in this outer loop of the same level
+        loop_index = int(np.nonzero(loop_counter[:,3] == loop_counter[loop_index, 3]-1)[-1])
+    return loop_counter, loop_index, next_step_index
+
+
+def process_ends(ends, curr_step_process, charge_type = 1):
+    """Function to process the end types.
+    Inputs: Ends of a step, curr_step_process,
+    charge_type = 1 if charging, 0 if discharge
+    Returns curr_step_process"""
+    #we use -1 as index because we update the cutfofs for the last step
+    #in each sequence of CC/CCCV
+    change_index = 0
+    next_step_index = 0 #voltage is default but is always overwritten by current/time
+    for end in ends['EndEntry']:
+        if end['EndType'] == "Voltage":
+            #process voltage cutoff
+            if charge_type == 1:
+                #if it is a charge step, we need a voltage upper lim only
+                if end['Oper'] == ">=" or end['Oper'] == "=":
+                    #only updates values if it is greater than prev value or currently no cutoff
+                    Vset = float(end['Value'])
+                    change_index += 1
+                    curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, "<")
+                    next_step_index = dum if change_index == 1 else next_step_index
+            #process voltage cutoff
+            else:
+                #if it is a discharge step, we need a voltage lower lim only
+                if end['Oper'] == "<=" or end['Oper'] == "=":
+                    #only updates values if it is smaller than prev value or currently no cutoff
+                    Vset = float(end['Value'])
+                    change_index += 1
+                    curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, ">")
+                    next_step_index = dum if change_index == 1 else next_step_index
+        elif end['EndType'] == "Current":
+            #process voltage cutoff
+            #if it is a charge step, we need a current lower lim only
+            if end['Oper'] == "<=" or end['Oper'] == "=":
+                #only updates values if it is smaller than prev value or currently no cutoff
+                curr_value = process_current(end['Value'], charge_type)
+                change_index += 1
+                curr_step_process, dum = replace_cutoff(3, curr_step_process, end, curr_value, ">")
+                next_step_index = dum if change_index == 1 else next_step_index
+        elif end['EndType'] == "StepTime":
+            #process timecutoff
+            end_str = end['Value'].split(':')
+            duration = 60*60*float(end_str[0]) + 60*float(end_str[1]) + float(end_str[2]) # [seconds]
+            change_index += 1
+            curr_step_process, dum = replace_cutoff(4, curr_step_process, end, duration, "<")
+            next_step_index = dum if change_index == 1 else next_step_index
+            #only updates value if it is smaller than previous value or currently there is no ctoff
+    #XXXneed to fix how we find next step index
+    return curr_step_process, next_step_index
+
+
+def process_current(curr_value, chg_dischg):
+    """Processes value of the current to input.
+    Inputs: curr_value is the SetValue in Maccor, chg_dischg is 1 for charge or 0 for discharge.
+    Outputs current in Crate"""
+    if curr_value[-1] != "C": #if in Ampere
+        curr_value = float(curr_value) #XXXconvert to Amperes
+    else:
+        curr_value = float(re.sub(r'[c,C]+', '', curr_value, re.I)) 
+    #curr_value is positive is if disch, else is positive
+    return curr_value if chg_dischg == 0 else -curr_value
+
+
+def replace_cutoff(index, curr_step_process, end, value, oper):
+    """Decides whether or not to replace cutoff.
+    if none, then replaces, otherwise if it is (oper) current value in array,
+    then replaces.
+    Inputs: index-index we want to replace (1 is V, 2 is capfrac, 3 is Crate, 4
+    is time); curr_step_process is the current steplist; end is the end step;
+    value is the value we are considering replacing it with;
+    oper-either > or <.
+    Outputs: rep (may be updated from replace or not)"""
+    next_step_index = 0
+    if curr_step_process[-1][index] == None:
+        #replace if no cutoffs in list
+        curr_step_process[-1][index] = value
+        next_step_index = int(end['Step']) - 1
+    else:
+        if oper == ">" and value > curr_step_process[-1][index]:
+            #if our value increases the min cutoff
+            curr_step_process[-1][index] = value
+            next_step_index = int(end['Step']) - 1
+        elif oper == "<" and value < curr_step_process[-1][index]:
+            #if our value reduces the max cutoff
+            curr_step_process[-1][index] = value
+            next_step_index = int(end['Step']) - 1
+    return curr_step_process, next_step_index
+
+
+def get_end_of_loop(loop_counter, loop_index):
+    """This function returns the last value of the internal loop indexes inside the outer loop
+    referenced by loop_index.
+    Inputs: loop_index, loop_counter
+    Outputs: max_loop_index (maximum loop index inside the array)""" 
+    mask = loop_counter[loop_index+1:,3] > loop_counter[loop_index,3]
+    #gets a mask for all values larger than 
+    mask = np.append(mask, False)
+    #appends value of False because will always be covered by outer loop
+    max_loop_index = np.argmax(~mask) + loop_index+1
+    return max_loop_index
+
+
+def find_loop_limit(step):
+    """Finds the loop limit number from a step.
+    Inputs: step.
+    Outputs: returns ste limits."""
+    cnt = 0
+    for end in step['Ends']['EndEntry']:
+        if end['EndType'] == "Loop Cnt":
+            cnt = end['Value']    
+    return cnt
+
+
 #
 #
 #def get_mol_weight(material_type):
