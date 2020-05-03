@@ -98,6 +98,7 @@ class SimMPET(dae.daeSimulation):
             
             #Cell potential initialization
             ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
+            phi_guess = ndDVref
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
@@ -106,7 +107,7 @@ class SimMPET(dae.daeSimulation):
                 phi_guess = self.ndD_s['segments'][0][0]
             elif ndD_s['profileType']=='CCCVcycle':
                 #if the first step is a CV step
-                if np.mod(ndD_s['segments'][0][5], 2) == 1:
+                if np.mod(ndD_s['segments'][0][5], 2) == 0:
                     phi_guess = self.ndD_s['segments'][0][0]
             else:
                 phi_guess = ndDVref
@@ -176,14 +177,11 @@ class SimMPET(dae.daeSimulation):
                     self.m.phi_lyte[l].SetInitialGuess(
                         i, dPrev["phi_lyte_" + l][-1,i])
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(
-                dPrev["phi_applied"][0,-1])
+            self.m.phi_applied.SetInitialGuess(dPrev["phi_applied"][0,-1])
+
             #Initialize the ghost points used for boundary conditions
-            if not self.m.SVsim:
-#                self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
-                self.m.c_lyteGP_L.SetInitialGuess(ndD_s["c0"])
-                self.m.phi_lyteGP_L.SetInitialGuess(0)
-#                self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
+            self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
+            self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
 
         self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
