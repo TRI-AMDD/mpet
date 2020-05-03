@@ -301,6 +301,18 @@ def find_loop_limit(step):
     return cnt
 
 
+def get_crate(crate, Cratecurr):
+    """Returns crate from Crate input in params.sys.
+    if it is in Crate, returns original number. otherwise converts
+    from A to Crate and returns that number."""
+    out = 0
+    if str(crate)[-1] != "A":
+        out = float(crate)
+    else:
+        amp_value = float(re.sub(r'[a,A]+', '', crate, re.I))
+        out = amp_value / Cratecurr
+    return out     
+
 #
 #
 #def get_mol_weight(material_type):

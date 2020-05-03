@@ -16,6 +16,7 @@ import numpy as np
 
 import mpet.props_am as props_am
 import mpet.props_elyte as props_elyte
+import mpet.utils as utils
 
 
 def get_configs(paramfile="params.cfg"):
@@ -60,7 +61,8 @@ def get_dicts_from_configs(P_s, P_e):
 
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
-    dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+    dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
+    #if it is a Crate, then no units. if A, then units
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
@@ -238,6 +240,7 @@ def get_dicts_from_configs(P_s, P_e):
         ndD_s['z'] = 0.
     limtrode = dD_s["limtrode"] = ("c" if ndD_s["z"] < 1 else "a")
     CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    dD_s["Crate"] = utils.get_crate(dD_s["Crate"], CrateCurr)
     dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
 
@@ -384,7 +387,7 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
             ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
@@ -399,13 +402,13 @@ def get_dicts_from_configs(P_s, P_e):
                 #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
                 #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
                 capfrac_cut = hard_cut if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
-                crate_cut = None if dD_s["segments"][i][3] == None else dD_s["segments"][i][3]/curr_ref
+                crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], CrateCurr)/curr_ref
                 time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
                 if not (volt_cut or capfrac_cut or crate_cut or time_cut):
                     print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
                 if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
                     #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
-                    ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
+                   ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
                 elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
                     #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
                     ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
@@ -414,35 +417,35 @@ def get_dicts_from_configs(P_s, P_e):
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs)
     dD_s["segments_setvec"] = np.zeros(2*numsegs)
-    initial_element = 0
-    if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle": 
-        if ndD_s["profileType"] == "CVsegments":
-            initial_element = -(k*T_ref/e)*ndDVref
-        elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
-            #we assume we always start from a charging cycle. change if necessary
-            initial_element = 0.
-        tPrev = 0.
-        for segIndx in range(numsegs):
-            tNext = tPrev + dD_s["tramp"]
-            dD_s["segments_tvec"][2*segIndx] = tNext
-            tPrev = tNext
-            # Factor of 60 here to convert to s
-            time_seg = segs[segIndx][1]
-            #if CCCVcycle, then we need the fourth term as time cutoff
-            #it also isn't from start time, so kinda useless
-            if ndD_s["profileType"] == "CCCVcycle":
-                time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
-            tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
-            dD_s["segments_tvec"][2*segIndx+1] = tNext
-            tPrev = tNext
-            setNext = segs[segIndx][0]
-            dD_s["segments_setvec"][2*segIndx] = setNext
-            dD_s["segments_setvec"][2*segIndx+1] = setNext
-    # does n times for number of cycles
-        dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["totalCycle"])
-        np.insert(dD_s["segments_setvec"], 0, initial_element)
-        dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["totalCycle"])
-        np.insert(dD_s["segments_tvec"], 0, 0)
+    #initial_element = 0
+    #if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle": 
+    #    if ndD_s["profileType"] == "CVsegments":
+    #        initial_element = -(k*T_ref/e)*ndDVref
+    #    elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
+    #        #we assume we always start from a charging cycle. change if necessary
+    #        initial_element = 0.
+    #    tPrev = 0.
+    #    for segIndx in range(numsegs):
+    #        tNext = tPrev + dD_s["tramp"]
+    #        dD_s["segments_tvec"][2*segIndx] = tNext
+    #        tPrev = tNext
+    #        # Factor of 60 here to convert to s
+    #        time_seg = segs[segIndx][1]
+    #        #if CCCVcycle, then we need the fourth term as time cutoff
+    #        #it also isn't from start time, so kinda useless
+    #        if ndD_s["profileType"] == "CCCVcycle":
+    #            time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
+    #        tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
+    #        dD_s["segments_tvec"][2*segIndx+1] = tNext
+    #        tPrev = tNext
+    #        setNext = segs[segIndx][0]
+    #        dD_s["segments_setvec"][2*segIndx] = setNext
+    #        dD_s["segments_setvec"][2*segIndx+1] = setNext
+    ## does n times for number of cycles
+    #    dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["totalCycle"])
+    #    np.insert(dD_s["segments_setvec"], 0, initial_element)
+    #    dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["totalCycle"])
+    #    np.insert(dD_s["segments_tvec"], 0, 0)
 
 
     ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
