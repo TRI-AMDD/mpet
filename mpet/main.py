@@ -187,13 +187,11 @@ def main(paramfile, keepArchive=True):
             else: #if its not the first simulation, then set prevDir
                 P_s.set('Sim Params', 'prevDir', outdir)
             #sets the segments and total cycle numbers for each set we are going to run
-            print(str(cycling_dicts["step_" + str(i)].get("segments")))
             P_s.set('Sim Params', 'segments', str(cycling_dicts["step_" + str(i)].get("segments")))
             P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
             P_s.set('Sim Params', 'profileType', 'CCCVcycle')
             dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
             #reset everything in dictionaries too
-            print(P_s['Sim Params']['segments'])
             paramFileName = "input_params_system_{j}.cfg".format(j=str(i))
             paramFile = os.path.join(outdir, paramFileName)
             IO.write_config_file(P_s, filename=paramFile)

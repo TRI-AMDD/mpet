@@ -329,7 +329,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
-            ax.set_ylabel("Gravimetric Capacity [mAh/g]")
+            ax.set_ylabel("Capacity [mAh/g]")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")
@@ -364,7 +364,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
-            ax.set_ylabel("Discharge Capacity/Original Discharge Capacity")
+            ax.set_ylabel("State of Health")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_cycle_cap_frac.png", bbox_inches="tight")
