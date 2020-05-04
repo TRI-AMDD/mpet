@@ -1,5 +1,6 @@
 import subprocess as subp
 import re
+import sys
 import numpy as np
 
 import daetools.pyDAE as dae
@@ -114,6 +115,9 @@ def get_negative_sign_change_arrays(input_array):
        is true if we want arrays of discharge segments.
        """
     sign_mults = np.zeros((len(input_array) - 1)) #is +1 if no sign change, -1 if sign change@i+1
+    if np.all(sign_mults == 0):
+        print("ERROR: Did not complete a single cycle, cannot plot cycling plots")
+        sys.exit()
     for i in range(len(input_array)-1):
         sign_mults[i] = (input_array[i] * input_array[i+1] - 1) / (-2)
     #ends up 0 if no sign change, +1 if sign change
