@@ -12,6 +12,9 @@ from daetools.pyDAE.variable_types import time_t
 from pyUnits import m, kg, s, K, Pa, mol, J, W
  
 import numpy as np
+import sympy as sym
+
+from sympy.parsing.sympy_parser import parse_expr
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
@@ -382,6 +385,23 @@ class ModCell(dae.daeModel):
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
+
+
+        elif self.profileType == "Cwaveform":
+            #if we have a current waveform expression
+            eq = self.CreateEquation("Total_Current_Constraint")
+            #finds time in period [0, period]
+            t = sym.Symbol("t")
+            print(ndD["currset"])
+
+            f = sym.lambdify(t, ndD["currset"], modules = "numpy")
+            f = sym.lambdify(t, sym.sin(t), modules = "numpy")
+            #eq.Residual = ndD["currset"].subs(t, dae.Time().Value).evalf() - self.current()
+            eq.Residual = f(dae.Time()) - self.current()
+
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
 #       
 ##DZ 02/12/20
         elif self.profileType == "CCCVcycle":

@@ -1,9 +1,13 @@
 import subprocess as subp
 import re
 import sys
+import sympy as sym
 import numpy as np
 
 import daetools.pyDAE as dae
+
+from sympy.parsing.sympy_parser import parse_expr
+
 
 
 def mean_linear(a, b=None):
@@ -115,12 +119,13 @@ def get_negative_sign_change_arrays(input_array):
        is true if we want arrays of discharge segments.
        """
     sign_mults = np.zeros((len(input_array) - 1)) #is +1 if no sign change, -1 if sign change@i+1
+    for i in range(len(input_array)-1):
+    #ends up 0 if no sign change, +1 if sign change
+        sign_mults[i] = (input_array[i] * input_array[i+1] - 1) / (-2)
+    #if we have no outputs with sign change, then end
     if np.all(sign_mults == 0):
         print("ERROR: Did not complete a single cycle, cannot plot cycling plots")
         sys.exit()
-    for i in range(len(input_array)-1):
-        sign_mults[i] = (input_array[i] * input_array[i+1] - 1) / (-2)
-    #ends up 0 if no sign change, +1 if sign change
     #the odd sign changes indicate the beginning of the discharge cycle
     indices = np.array(np.nonzero(sign_mults)).flatten() #get indices of nonzero elements
     neg_indices_start = indices[::2] + 1
@@ -305,17 +310,47 @@ def find_loop_limit(step):
     return cnt
 
 
-def get_crate(crate, Cratecurr):
+def get_crate(crate, Cratecurr, profileType):
     """Returns crate from Crate input in params.sys.
     if it is in Crate, returns original number. otherwise converts
     from A to Crate and returns that number."""
     out = 0
-    if str(crate)[-1] != "A":
-        out = float(crate)
-    else:
-        amp_value = float(re.sub(r'[a,A]+', '', crate, re.I))
-        out = amp_value / Cratecurr
+    if profileType == "Cwaveform":
+    #if waveform, we output original formula
+        out = crate
+    elif profileType == "CC":
+    #if not waveform, output float
+        if str(crate)[-1] != "A":
+            out = float(crate)
+        else:
+            amp_value = float(re.sub(r'[a,A]+', '', crate, re.I))
+            out = amp_value / Cratecurr
     return out     
+
+
+def process_waveform_inputs(P_s, variable):
+    """Processes value of input for Crate or Vset.
+    value is the input value. If it is a waveform, will return a sympy
+    function, otherwise will return a float or a string value with Crate
+    or the value of current in amps.
+    variable is the option of Crate of Vset to process"""
+    out = 0
+    profileType = P_s.get('Sim Params', 'profileType')
+    period = P_s.getfloat('Sim Params', 'period')
+    #t is t in normal time units
+    t = sym.Symbol('t')
+    if variable == "Vset":
+        #if variable is waveform, need to parse variable
+        if profileType == "Vwaveform":
+            out = parse_expr(P_s.get('Sim Params', variable)).subs(t, t % period)
+        elif profileType == "CV":
+            out = P_s.getfloat('Sim Params', variable)
+    elif variable == "Crate":
+       if profileType == "Cwaveform":
+            out = parse_expr(P_s.get('Sim Params', variable)).subs(t, t % period)
+       elif profileType == "CC":
+            out = P_s.get('Sim Params', variable)
+    return out
 
 #
 #
