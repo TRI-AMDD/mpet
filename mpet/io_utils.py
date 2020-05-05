@@ -547,7 +547,8 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if solidType == "homog_sdn" and not T298:
         raise NotImplementedError("homog_snd req. Tabs=298")
 
-
+#SD insert 05/04/2020
+#test
 def write_config_file(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)
