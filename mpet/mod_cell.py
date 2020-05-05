@@ -392,12 +392,10 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Total_Current_Constraint")
             #finds time in period [0, period]
             t = sym.Symbol("t")
-            print(ndD["currset"])
-
+            #lambdifies waveform so that we can run with numpy functions 
             f = sym.lambdify(t, ndD["currset"], modules = "numpy")
-            f = sym.lambdify(t, sym.sin(t), modules = "numpy")
-            #eq.Residual = ndD["currset"].subs(t, dae.Time().Value).evalf() - self.current()
-            eq.Residual = f(dae.Time()) - self.current()
+            #uses floor to get time in periodic units
+            eq.Residual =  f(dae.Time() - dae.Floor(dae.Time()/ndD["period"])*ndD["period"]) - self.current()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
@@ -540,6 +538,22 @@ class ModCell(dae.daeModel):
                 eq.Residual = self.phi_applied() - ndD["Vset"]
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
+
+
+        elif self.profileType == "Vwaveform":
+            #if we have a current waveform expression
+            eq = self.CreateEquation("Total_Voltage_Constraint")
+            #finds time in period [0, period]
+            t = sym.Symbol("t")
+            #lambdifies waveform so that we can run with numpy functions 
+            f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
+            #uses floor to get time in periodic units
+            eq.Residual =  f(dae.Time() - dae.Floor(dae.Time()/ndD["period"])*ndD["period"]) - self.phi_applied()
+
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
+
 
 
         elif self.profileType == "CCsegments":

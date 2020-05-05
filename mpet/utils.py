@@ -313,7 +313,8 @@ def find_loop_limit(step):
 def get_crate(crate, Cratecurr, profileType):
     """Returns crate from Crate input in params.sys.
     if it is in Crate, returns original number. otherwise converts
-    from A to Crate and returns that number."""
+    from A to Crate and returns that number.
+    if it is in waveform, returns waveform"""
     out = 0
     if profileType == "Cwaveform":
     #if waveform, we output original formula
@@ -342,12 +343,12 @@ def process_waveform_inputs(P_s, variable):
     if variable == "Vset":
         #if variable is waveform, need to parse variable
         if profileType == "Vwaveform":
-            out = parse_expr(P_s.get('Sim Params', variable)).subs(t, t % period)
+            out = parse_expr(P_s.get('Sim Params', variable))
         elif profileType == "CV":
             out = P_s.getfloat('Sim Params', variable)
     elif variable == "Crate":
        if profileType == "Cwaveform":
-            out = parse_expr(P_s.get('Sim Params', variable)).subs(t, t % period)
+            out = parse_expr(P_s.get('Sim Params', variable))
        elif profileType == "CC":
             out = P_s.get('Sim Params', variable)
     return out
