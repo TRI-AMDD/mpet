@@ -388,7 +388,7 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr, ndD_s["profileType"])/curr_ref, dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
             ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
@@ -403,13 +403,13 @@ def get_dicts_from_configs(P_s, P_e):
                 #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
                 #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
                 capfrac_cut = hard_cut if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
-                crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], CrateCurr)/curr_ref
+                crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], ndD_s["profileType"])/curr_ref
                 time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
                 if not (volt_cut or capfrac_cut or crate_cut or time_cut):
                     print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
                 if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
                     #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
-                   ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
+                   ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr, ndD_s["profileType"])/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
                 elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
                     #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
                     ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
@@ -480,7 +480,7 @@ def get_dicts_from_configs(P_s, P_e):
         ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     #nondimensionalize waveforms
-    ndD_s["period"] = dD_s["period"] / t_ref
+    ndD_s["period"] = dD_s["period"]*60/t_ref
 
     return dD_s, ndD_s, dD_e, ndD_e
 

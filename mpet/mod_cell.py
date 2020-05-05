@@ -395,7 +395,7 @@ class ModCell(dae.daeModel):
             #lambdifies waveform so that we can run with numpy functions 
             f = sym.lambdify(t, ndD["currset"], modules = "numpy")
             #uses floor to get time in periodic units
-            eq.Residual =  f(dae.Time() - dae.Floor(dae.Time()/ndD["period"])*ndD["period"]) - self.current()
+            eq.Residual =  f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.current()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
@@ -548,7 +548,7 @@ class ModCell(dae.daeModel):
             #lambdifies waveform so that we can run with numpy functions 
             f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
             #uses floor to get time in periodic units
-            eq.Residual =  f(dae.Time() - dae.Floor(dae.Time()/ndD["period"])*ndD["period"]) - self.phi_applied()
+            eq.Residual = f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.phi_applied()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1

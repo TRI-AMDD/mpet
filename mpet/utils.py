@@ -319,7 +319,7 @@ def get_crate(crate, Cratecurr, profileType):
     if profileType == "Cwaveform":
     #if waveform, we output original formula
         out = crate
-    elif profileType == "CC":
+    elif profileType == "CC" or profileType == "CCsegments" or profileType == "CCCVcycle":
     #if not waveform, output float
         if str(crate)[-1] != "A":
             out = float(crate)
@@ -343,13 +343,13 @@ def process_waveform_inputs(P_s, variable):
     if variable == "Vset":
         #if variable is waveform, need to parse variable
         if profileType == "Vwaveform":
-            out = parse_expr(P_s.get('Sim Params', variable))
-        elif profileType == "CV":
+            out = parse_expr(P_s.get('Sim Params', variable)) 
+        elif profileType == "CV" or profileType == "CVsegments" or profileType == "CCCVcycle":
             out = P_s.getfloat('Sim Params', variable)
     elif variable == "Crate":
        if profileType == "Cwaveform":
             out = parse_expr(P_s.get('Sim Params', variable))
-       elif profileType == "CC":
+       elif profileType == "CC" or profileType == "CCsegments" or profileType == "CCCVcycle":
             out = P_s.get('Sim Params', variable)
     return out
 
