@@ -204,5 +204,4 @@ def get_cycling_dict(ndD_s):
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal
             step_list, step_index = process_basic_step(curr_step, step_list)
-    print(cycling_dict)
     return cycling_dict
