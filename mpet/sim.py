@@ -102,7 +102,9 @@ class SimMPET(dae.daeSimulation):
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
-                phi_guess = self.ndD_s['Vset']
+                if "t" not in str(ndD_s['Vset']):
+                    #if it is a float set value, we set initial guess to be set point
+                    phi_guess = self.ndD_s['Vset']
             elif ndD_s['profileType']=='CVsegments':
                 phi_guess = self.ndD_s['segments'][0][0]
             elif ndD_s['profileType']=='CCCVcycle':

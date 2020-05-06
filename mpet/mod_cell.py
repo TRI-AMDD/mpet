@@ -381,21 +381,16 @@ class ModCell(dae.daeModel):
                     ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
             else:
-                eq.Residual = self.current() - ndD["currset"]
-
-            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-            eq.Residual = self.charge_discharge() - 1
-
-
-        elif self.profileType == "Cwaveform":
-            #if we have a current waveform expression
-            eq = self.CreateEquation("Total_Current_Constraint")
-            #finds time in period [0, period]
-            t = sym.Symbol("t")
-            #lambdifies waveform so that we can run with numpy functions 
-            f = sym.lambdify(t, ndD["currset"], modules = "numpy")
-            #uses floor to get time in periodic units
-            eq.Residual =  f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.current()
+                if "t" not in str(ndD["currset"]):
+                    #check to see if it's a waveform type
+                    eq.Residual = self.current() - ndD["currset"]
+                else: #if it is waveform, use periodic time to find the value of function
+                    #finds time in period [0, period]
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions 
+                    f = sym.lambdify(t, ndD["currset"], modules = "numpy")
+                    #periodic time = mod(time, period) / nondimenionalized period
+                    eq.Residual =  f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.current()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
@@ -535,25 +530,20 @@ class ModCell(dae.daeModel):
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
                     )
             else:
-                eq.Residual = self.phi_applied() - ndD["Vset"]
-            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-            eq.Residual = self.charge_discharge() - 1
+                if "t" not in str(ndD["Vset"]):
+                    #check to see if it's a waveform type
+                    eq.Residual = self.phi_applied() - ndD["Vset"]
+                else: #if it is waveform, use periodic time to find the value of function
+                    #finds time in period [0, period]
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions 
+                    f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
+                    #uses floor to get time in periodic units
+                    eq.Residual = f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.phi_applied()
 
-
-        elif self.profileType == "Vwaveform":
-            #if we have a current waveform expression
-            eq = self.CreateEquation("Total_Voltage_Constraint")
-            #finds time in period [0, period]
-            t = sym.Symbol("t")
-            #lambdifies waveform so that we can run with numpy functions 
-            f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
-            #uses floor to get time in periodic units
-            eq.Residual = f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.phi_applied()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
-
-
 
 
         elif self.profileType == "CCsegments":

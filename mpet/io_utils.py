@@ -62,7 +62,7 @@ def get_dicts_from_configs(P_s, P_e):
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["period"] = P_s.getfloat('Sim Params', 'period', fallback = 0)
-    dD_s["Crate"] = utils.process_waveform_inputs(P_s, 'Crate')
+    dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     #if it is a Crate, then no units. if A, then units
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
@@ -83,7 +83,7 @@ def get_dicts_from_configs(P_s, P_e):
         # This should affect all calls to np.random throughout the
         # simulation.
         np.random.seed(ndD_s["seed"])
-    dD_s["Vset"] = utils.process_waveform_inputs(P_s, 'Vset')
+    dD_s["Vset"] = P_s.get('Sim Params', 'Vset')
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
@@ -241,9 +241,12 @@ def get_dicts_from_configs(P_s, P_e):
         ndD_s['z'] = 0.
     limtrode = dD_s["limtrode"] = ("c" if ndD_s["z"] < 1 else "a")
     CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
-    dD_s["Crate"] = utils.get_crate(dD_s["Crate"], CrateCurr, ndD_s["profileType"])
+    dD_s["Crate"] = utils.get_crate(dD_s["Crate"], CrateCurr)
     dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
+
+    #get Vset (float value vs time dependent waveform)
+    dD_s["Vset"] = utils.get_vset(dD_s["Vset"])
 
     # Some nondimensional parameters
     ndD_s["T"] = Tabs / T_ref
@@ -476,8 +479,9 @@ def get_dicts_from_configs(P_s, P_e):
         # Pad the last segment so no extrapolation occurs
         dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
-    if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
-        ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
+    if "t" not in str(ndD_s["currset"]):
+        if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
+            ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     #nondimensionalize waveforms
     ndD_s["period"] = dD_s["period"]*60/t_ref
@@ -599,7 +603,7 @@ def test_system_input(dD, ndD):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle", "Cwaveform", "Vwaveform"]) or (ndD["profileType"][-5:] == ".json")):
+    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-5:] == ".json")):
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
 
