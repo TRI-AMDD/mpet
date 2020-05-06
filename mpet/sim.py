@@ -6,6 +6,7 @@ been differentiated in time).
 """
 import os.path as osp
 
+import sympy as sym
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.io as sio
@@ -105,8 +106,20 @@ class SimMPET(dae.daeSimulation):
                 if "t" not in str(ndD_s['Vset']):
                     #if it is a float set value, we set initial guess to be set point
                     phi_guess = self.ndD_s['Vset']
+                else:
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions
+                    f = sym.lambdify(t, self.ndD_s['Vset'], modules = "numpy") 
+                    phi_guess = f(0)
             elif ndD_s['profileType']=='CVsegments':
-                phi_guess = self.ndD_s['segments'][0][0]
+                if "t" not in str(ndD_s['segments'][0][0]):
+                #if a float value, we just set initial guess
+                    phi_guess = self.ndD_s['segments'][0][0]
+                else:
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions
+                    f = sym.lambdify(t, self.ndD_s['segments'][0][0], modules = "numpy") 
+                    phi_guess = f(0) 
             elif ndD_s['profileType']=='CCCVcycle':
                 #if the first step is a CV step
                 if np.mod(ndD_s['segments'][0][5], 2) == 0:

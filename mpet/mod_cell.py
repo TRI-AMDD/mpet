@@ -373,6 +373,9 @@ class ModCell(dae.daeModel):
         eq.Residual = self.phi_cell() - (
             self.phi_applied() - ndD["Rser"]*self.current())
 
+        #declare useful variable
+        t = sym.Symbol("t")
+
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
@@ -386,7 +389,6 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.current() - ndD["currset"]
                 else: #if it is waveform, use periodic time to find the value of function
                     #finds time in period [0, period]
-                    t = sym.Symbol("t")
                     #lambdifies waveform so that we can run with numpy functions 
                     f = sym.lambdify(t, ndD["currset"], modules = "numpy")
                     #periodic time = mod(time, period) / nondimenionalized period
@@ -535,7 +537,6 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.phi_applied() - ndD["Vset"]
                 else: #if it is waveform, use periodic time to find the value of function
                     #finds time in period [0, period]
-                    t = sym.Symbol("t")
                     #lambdifies waveform so that we can run with numpy functions 
                     f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
                     #uses floor to get time in periodic units
@@ -561,24 +562,44 @@ class ModCell(dae.daeModel):
                 time=ndD["segments"][0][1]
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][0][0]
+                if "t" not in str(ndD["segments"][0][0]):
+                    eq.Residual = self.current() - ndD["segments"][0][0]
+                else:
+                    #use periodic time units of mod(Time, period), but need to multiply by period
+                    #to recover units in dimless time
+                    per = ndD["period"][0]
+                    f = sym.lambdify(t, ndD["segments"][0][0], modules = "numpy")
+                    #lambdifies waveform so that we can run with numpy functions   
+                    eq.Residual = f(dae.Time()/dae.Constant(per*s) - dae.Floor(dae.Time()/dae.Constant(per*s))) - self.current()
 
                 #Middle segments
-                for i in range(1,len(ndD["segments"])-1):
+                for i in range(1,len(ndD["segments"])):
+                    old_time=time
                     time=time+ndD["segments"][i][1]
+                    per = ndD["period"][i]
                     self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("Total_Current_Constraint")
-                    eq.Residual = self.current() - ndD["segments"][i][0]
+                    if "t" not in str(ndD["segments"][i][0]):
+                        eq.Residual = self.current() - ndD["segments"][i][0]
+                    else:
+                        #subtracts old_time because this is the end time of previous segment
+                        #always start segment at new time
+                        f = sym.lambdify(t, ndD["segments"][i][0], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions    
+                        eq.Residual = f((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s) - dae.Floor((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s))) - self.current()
+
 
                 #Last segment
                 self.ELSE()
+                #rest state
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][-1][0]
+                eq.Residual = self.current()
                 self.END_IF()
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
-#
+
+
         elif self.profileType == "CVsegments":
             if ndD["tramp"]>0:
                 ndD["segments_setvec"][0] = ndD["phiPrev"]
@@ -592,22 +613,36 @@ class ModCell(dae.daeModel):
             else:
                 #First segment
                 time=ndD["segments"][0][1]
+                per = ndD["period"][0]
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+                if "t" not in str(ndD["segments"][0][0]):
+                    eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+                else:
+                    f = sym.lambdify(t, ndD["segments"][0][0], modules = "numpy")
+                    #lambdifies waveform so that we can run with numpy functions
+                    eq.Residual = f(dae.Time()/dae.Constant(per*s) - dae.Floor(dae.Time()/dae.Constant(per*s))) - self.phi_applied()
 
                 #Middle segments
-                for i in range(1,len(ndD["segments"])-1):
+                for i in range(1,len(ndD["segments"])):
+                    old_time=time
                     time=time+ndD["segments"][i][1]
+                    per = ndD["period"][i]
                     self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("applied_potential")
-                    eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+                    if "t" not in str(ndD["segments"][i][0]):
+                        eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+                    else:
+                        f = sym.lambdify(t, ndD["segments"][i][0], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions
+                        eq.Residual = f((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s) - dae.Floor((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s))) - self.phi_applied()
 
                 #Last segment
                 self.ELSE()
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
+                eq.Residual = self.current()
                 self.END_IF()
+
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
 #

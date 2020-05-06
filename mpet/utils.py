@@ -1,4 +1,5 @@
 import subprocess as subp
+import ast
 import re
 import sys
 import sympy as sym
@@ -316,7 +317,7 @@ def get_crate(crate, Cratecurr):
     from A to Crate and returns that number.
     if it is in waveform, returns waveform"""
     out = 0
-    if "t" in crate:
+    if "t" in str(crate):
     #if waveform, we output original formula
         if str(crate)[-1] != "A":
             out = parse_expr(crate)
@@ -338,38 +339,13 @@ def get_vset(vset):
     """Gets the Vset value from the input value. Depending on the profile type,
     can be voltage or waveform"""
     out = 0
-    if "t" in vset:
+    if "t" in str(vset):
         out = parse_expr(vset)
     else:
         out = float(vset)
     return out
 
 
-#def process_waveform_inputs(P_s, variable):
-#    """Processes value of input for Crate or Vset.
-#    value is the input value. If it is a waveform, will return a sympy
-#    function, otherwise will return a float or a string value with Crate
-#    or the value of current in amps.
-#    variable is the option of Crate of Vset to process"""
-#    out = 0
-#    profileType = P_s.get('Sim Params', 'profileType')
-#    period = P_s.getfloat('Sim Params', 'period')
-#    #t is t in normal time units
-#    t = sym.Symbol('t')
-#    if variable == "Vset":
-#        #if variable is waveform, need to parse variable
-#        if profileType == "Vwaveform":
-#            out = parse_expr(P_s.get('Sim Params', variable)) 
-#        elif profileType == "CV" or profileType == "CVsegments" or profileType == "CCCVcycle":
-#            out = P_s.getfloat('Sim Params', variable)
-#    elif variable == "Crate":
-#       if profileType == "Cwaveform":
-#            out = parse_expr(P_s.get('Sim Params', variable))
-#       elif profileType == "CC" or profileType == "CCsegments" or profileType == "CCCVcycle":
-#            out = P_s.get('Sim Params', variable)
-#    return out
-
-#
 #
 #def get_mol_weight(material_type):
 #    """Gets active material weight from input material type"""
