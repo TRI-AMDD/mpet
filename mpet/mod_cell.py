@@ -441,7 +441,18 @@ class ModCell(dae.daeModel):
                         phi_guess = constraints[i+1]
 
                 if equation_type[i] == 1:
-                    eq.Residual = self.current() - constraints[i]
+
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.current() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+
                     # if hits voltage cutoff, switch to next state
                     #if no voltage/capfrac cutoffs exist, automatically true, else is condition
                     v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() >= -voltage_cutoffs[i])
@@ -461,14 +472,25 @@ class ModCell(dae.daeModel):
 
 #if is CV charge, then we set up equation and capacity cutoff
                 elif equation_type[i] == 2:
-                    #capacity fraction in battery is found by the filling fraction of the limiting electrode
+ 
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.phi_applied() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+
+                   #capacity fraction in battery is found by the filling fraction of the limiting electrode
                     #if is anode, will be capped at cap_frac, if is cathode needs to be capped at 1-cap_frac
                     #calc capacity and curr conditions (since Crate neg, we need to flip sign) to cut off crate
                     #crate cutoff instead of voltage cutoff compared to CC
                     crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (-self.current() <= -crate_cutoffs[i])
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #equation: constraining voltage
-                    eq.Residual = self.phi_applied() - constraints[i]
                     #if past cap_frac, switch to next state
                     #checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
@@ -480,8 +502,19 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.charge_discharge() - 1
 
                 elif equation_type[i] == 3:
-#if CC discharge, we set up capacity cutoff and voltage cutoff
-                    eq.Residual = self.current() - constraints[i] 
+
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.current() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+
+                    #if CC discharge, we set up capacity cutoff and voltage cutoff
                     #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
                     #since discharging is delithiating anode and charging is lithiating anode       
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
@@ -496,8 +529,18 @@ class ModCell(dae.daeModel):
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
                 elif equation_type[i] == 4:
-#if CV discharge, we set up
-                    eq.Residual = self.phi_applied() - constraints[i]
+                    #if CV discharge, we set up
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.phi_applied() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+
                     #conditions for cutting off: hits capacity fraction cutoff 
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
                     #or hits crate limit

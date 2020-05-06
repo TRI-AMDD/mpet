@@ -483,8 +483,8 @@ def get_dicts_from_configs(P_s, P_e):
         if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
-    #nondimensionalize waveforms
-    ndD_s["period"] = np.array(dD_s["period"]).astype(float)*60/t_ref
+    #nondimensionalize waveforms and repeat if we have cycles
+    ndD_s["period"] = np.tile(np.array(dD_s["period"]).astype(float)*60/t_ref, dD_s["totalCycle"])
 
     return dD_s, ndD_s, dD_e, ndD_e
 
