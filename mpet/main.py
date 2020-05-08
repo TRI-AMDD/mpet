@@ -174,7 +174,7 @@ def main(paramfile, keepArchive=True):
         run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
     else:
         #if it is a maccor cycling procedure file
-        cycling_dicts = maccor_reader.get_cycling_dict(ndD_s)
+        cycling_dicts = maccor_reader.get_cycling_dict(ndD_s, dD_s)
         for i in range(len(cycling_dicts)):
             if i == 0:
                 #only saves data for electrodes once since it doesnt change
@@ -186,10 +186,13 @@ def main(paramfile, keepArchive=True):
                     IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)       
             else: #if its not the first simulation, then set prevDir
                 P_s.set('Sim Params', 'prevDir', outdir)
+            num_steps = len(cycling_dicts["step_" + str(i)].get("segments"))
+            P_s.set('Sim Params', 'period', str([1e80]*num_steps))
             #sets the segments and total cycle numbers for each set we are going to run
             P_s.set('Sim Params', 'segments', str(cycling_dicts["step_" + str(i)].get("segments")))
             P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
             P_s.set('Sim Params', 'profileType', 'CCCVcycle')
+            #fills in period for waveofmr
             dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
             #reset everything in dictionaries too
             paramFileName = "input_params_system_{j}.cfg".format(j=str(i))

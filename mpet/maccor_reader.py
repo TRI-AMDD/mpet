@@ -107,7 +107,7 @@ def finish_loop_process(step, loop_index, loop_counter):
     return cycle_number, loop_index, loop_counter, next_step_index
 
 
-def process_basic_step(step, step_list):
+def process_basic_step(step, step_list, area):
     """Processes each step of the JSON file. Selects through step types
     and creates a state for each step.
     Inputs: step is current step, step_list is list of steps that need to be run.
@@ -117,7 +117,7 @@ def process_basic_step(step, step_list):
     [CC/CV set point, Vmin/Vmax, capfracmin/max, Cmin/Cmax, timemax, CC/CV type]
     CC/CV type: 1 is CC charge, 2 is CCdisch, 3 is CV charge, 4 is CV discharge
     """
-    curr_step_properties, next_step_index = st.StepTypeLogic(step)(step)
+    curr_step_properties, next_step_index = st.StepTypeLogic(step, area)(step, area)
     step_list.append(curr_step_properties)
     return step_list, next_step_index
 
@@ -145,13 +145,14 @@ def run_simulation(step_list, index_number, cycling_dict, cycle_number = 1):
     return step_list, index_number, cycling_dict
 
  
-def get_cycling_dict(ndD_s):
+def get_cycling_dict(ndD_s, dD_s):
     """Inputs: ndD_s (uses the maccor file and processes it to return cycling_dict)
     which is a dictionary of steps to take in the cycler. Each step is a dictionary
     of format {'segments' (the step segments to take in this MPET run), and
     'totalCycle', the number of times to cycle this step}"""
     #process inputs
     maccor_file = ndD_s["profileType"]
+    area = dD_s["active_area"]
     
     #%% Load the data and save variable of the TestSteps
     with open(maccor_file) as f:
@@ -203,5 +204,5 @@ def get_cycling_dict(ndD_s):
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal
-            step_list, step_index = process_basic_step(curr_step, step_list)
+            step_list, step_index = process_basic_step(curr_step, step_list, area)
     return cycling_dict

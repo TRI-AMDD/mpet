@@ -64,6 +64,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = 0))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     #if it is a Crate, then no units. if A, then units
+    dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area')
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)

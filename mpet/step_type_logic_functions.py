@@ -19,7 +19,7 @@ from mpet.utils import *
 #Cases for StepType
 
 
-def StepTypeLogic(step):
+def StepTypeLogic(step, area):
     """Processes normal step types (rest, charge, discharge and chg_func).
     Inputs: step-current step we are at. Outputs: curr_step_process-
     a 1*6 or 2*6 array of the steps to tack onto the step list coming from this
@@ -37,17 +37,17 @@ def StepTypeLogic(step):
     return func
 
 
-def case_Rest(step):
+def case_Rest(step, area):
     """Processes rest steps as CC = 0 steps. Inputs and outputs same as
     SwitchTypeLogic."""
     #gets end entry time
     curr_step_process = np.reshape(np.array([0, None, None, None, None, 1]), (1, 6))
     #assign CC = 0 as set value and CC charge
-    curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, charge_type = 1) 
+    curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, area, charge_type = 1) 
     return curr_step_process, next_step_index
 
 
-def case_Charge(step): # add Ends and Limits for current/voltage
+def case_Charge(step, area): # add Ends and Limits for current/voltage
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #negative C rates because charge
@@ -55,27 +55,27 @@ def case_Charge(step): # add Ends and Limits for current/voltage
     #initialize guess
     if StepMode == 'Current':
        curr_step_process[0][5] = 1 #specify CC charge
-       curr_step_process[0][0] = process_current(StepValue, 1) #set CC
+       curr_step_process[0][0] = process_current(StepValue, 1, area) #set CC
        if step['Limits'] != None:
            if 'Voltage' in step['Limits'].keys():
                 #CCCV step
                 curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
                 #if first step CC, cutoff is Vlim
                 curr_step_process[0][1] = float(step['Limits']['Voltage'])
-                curr_step_process[1][5] = 3 #CV charge
+                curr_step_process[1][5] = 2 #CV charge
                 curr_step_process[1][0] = curr_step_process[0][1] #set Vset
            else:
                 print("CC + CC step functionality not handled")
     elif StepMode == 'Voltage':
         #CV step
-        curr_step_process[0][5] = 3 #specify CV charge
+        curr_step_process[0][5] = 2 #specify CV charge
         curr_step_process[0][0] = float(StepValue) #set CV
         if step['Limits'] != None: 
             if 'Current' in step['Limits'].keys():
                 #CVCC step
                 curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
                 #if first step CV, cutofff is CC, negative because of charge
-                curr_step_process[0][3] = process_current(step['Limits']['Current'], 1)
+                curr_step_process[0][3] = process_current(step['Limits']['Current'], 1, area)
                 curr_step_process[1][5] = 1 #CC charge
                 curr_step_process[1][0] = curr_step_process[0][3] #set Cset
             else:
@@ -84,12 +84,12 @@ def case_Charge(step): # add Ends and Limits for current/voltage
     else:
         print('invalid StepMode in StepType=Charge')
 
-    curr_step_process, next_step_index = process_ends(step['Ends'], curr_step_process, charge_type = 1)
+    curr_step_process, next_step_index = process_ends(step['Ends'], curr_step_process, area, charge_type = 1)
     #processes step ends
     return curr_step_process, next_step_index
 
 
-def case_ChgFunc(step):
+def case_ChgFunc(step, area):
     #assigning temporarily
     StepValue = step['StepValue']
     y0 = float(StepValue.split('|')[0])
@@ -111,14 +111,14 @@ def case_ChgFunc(step):
     else:
         chg_dichg = -1
     #assign CC = 0 as set value and CC charge
-    curr_step_process = np.reshape(np.array([f, None, None, None, None, chg_dichg]), (1, 6))
+    curr_step_process = np.reshape(np.array([str(f), None, None, None, None, chg_dichg]), (1, 6))
     #assign CC = 0 as set value and CC charge
-    curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, charge_type = 1) 
+    curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, area, charge_type = 1) 
     return curr_step_process, next_step_index
     # Do we intend to use this type of step? I thought we would use waveform instead.
 
 
-def case_Dischrge(step): # need to add in duration,EndType cases
+def case_Dischrge(step, area): # need to add in duration,EndType cases
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #we assume only the first end entry value has meaning
@@ -126,8 +126,8 @@ def case_Dischrge(step): # need to add in duration,EndType cases
 
     if StepMode == 'Current':
         #CC step
-        curr_step_process[0][5] = 2 #specify CC discharge
-        curr_step_process[0][0] = process_current(StepValue, 0) #set CC
+        curr_step_process[0][5] = 3 #specify CC discharge
+        curr_step_process[0][0] = process_current(StepValue, 0, area) #set CC
         if step['Limits'] != None:
             if 'Voltage' in step['Limits'].keys():
                 #CCCV step
@@ -147,15 +147,15 @@ def case_Dischrge(step): # need to add in duration,EndType cases
                 #CVCCstep
                 curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
                 #if first step CV, cutofff is CC, negative because of charge
-                curr_step_process[0][3] = process_current(step['Limits']['Current'], 0)
-                curr_step_process[1][5] = 2 #CC charge
+                curr_step_process[0][3] = process_current(step['Limits']['Current'], 0, area)
+                curr_step_process[1][5] = 3 #CC charge
                 curr_step_process[1][0] = curr_step_process[0][3] #set Cset
             else:
                 print("CV + CV step functionality not handled")
     else:
         print('invalid StepMode in StepType=DisCharge')
    
-    curr_step_process, next_step_index = process_ends(step['Ends'], curr_step_process, charge_type = 0)
+    curr_step_process, next_step_index = process_ends(step['Ends'], curr_step_process, area, charge_type = 0)
     #processes step ends
     return curr_step_process, next_step_index
 

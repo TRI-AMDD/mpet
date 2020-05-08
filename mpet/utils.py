@@ -199,7 +199,7 @@ def next_loop(loop_counter, loop_index, step):
     return loop_counter, loop_index, next_step_index
 
 
-def process_ends(ends, curr_step_process, charge_type = 1):
+def process_ends(ends, curr_step_process, area, charge_type = 1):
     """Function to process the end types.
     Inputs: Ends of a step, curr_step_process,
     charge_type = 1 if charging, 0 if discharge
@@ -233,7 +233,7 @@ def process_ends(ends, curr_step_process, charge_type = 1):
             #if it is a charge step, we need a current lower lim only
             if end['Oper'] == "<=" or end['Oper'] == "=":
                 #only updates values if it is smaller than prev value or currently no cutoff
-                curr_value = process_current(end['Value'], charge_type)
+                curr_value = process_current(end['Value'], charge_type, area)
                 change_index += 1
                 curr_step_process, dum = replace_cutoff(3, curr_step_process, end, curr_value, ">")
                 next_step_index = dum if change_index == 1 else next_step_index
@@ -249,16 +249,23 @@ def process_ends(ends, curr_step_process, charge_type = 1):
     return curr_step_process, next_step_index
 
 
-def process_current(curr_value, chg_dischg):
+def process_current(curr_value, chg_dischg, area):
     """Processes value of the current to input.
     Inputs: curr_value is the SetValue in Maccor, chg_dischg is 1 for charge or 0 for discharge.
     Outputs current in Crate"""
     if curr_value[-1] != "C": #if in Ampere
-        curr_value = float(curr_value) #XXXconvert to Amperes
+        if chg_dischg == 0: 
+            curr_value = float(curr_value)/area #XXXconvert to Amperes
+        else:
+            curr_value = -float(curr_value)/area
+        curr_value = str(curr_value) + "A"
     else:
-        curr_value = float(re.sub(r'[c,C]+', '', curr_value, re.I)) 
+        if chg_dischg == 0:
+            curr_value = float(re.sub(r'[c,C]+', '', curr_value, re.I)) 
+        else:
+            curr_value = -float(re.sub(r'[c,C]+', '', curr_value, re.I))
     #curr_value is positive is if disch, else is positive
-    return curr_value if chg_dischg == 0 else -curr_value
+    return curr_value
 
 
 def replace_cutoff(index, curr_step_process, end, value, oper):
