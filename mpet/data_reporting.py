@@ -21,21 +21,21 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             # file to be read by, e.g., MATLAB.
             dkeybase = dkeybase.replace(".", "_")
             mdict[dkeybase] = var.Values 
+            #if we are not in a continuation directory
+            mdict[dkeybase + '_times'] = var.TimeValues
+
             #if we are in a directory that has continued simulations (maccor reader)
-            if os.path.isfile("output_data.mat"):
-                if os.stat("output_data.mat").st_size != 0:
-                    mat_dat = sio.loadmat("output_data.mat")
+            if os.path.isfile(self.ConnectionString + ".mat"):
+                if os.stat(self.ConnectionString + ".mat").st_size != 0:
+                    mat_dat = sio.loadmat(self.ConnectionString + ".mat")
                     #increment time by the previous end time of the last simulation
                     tend = mat_dat[dkeybase + '_times'][0, -1]
                     #get previous values from old output_mat
                     mdict[dkeybase + '_times'] = var.TimeValues + tend
                     mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase])
                     mdict[dkeybase + '_times'] = np.append(mat_dat[dkeybase + '_times'],  mdict[dkeybase + '_times'])
-            else:        
-                mdict[dkeybase + '_times'] = var.TimeValues
 
-
-        sio.savemat(self.ConnectionString,
+        sio.savemat(self.ConnectionString + ".mat",
                     mdict, appendmat=False, format='5',
                     long_field_names=False, do_compression=False,
                     oned_as='row')
@@ -49,7 +49,8 @@ def setup_data_reporters(simulation, outdir):
     # Connect data reporters
     simName = simulation.m.Name + time.strftime(" [%d.%m.%Y %H:%M:%S]",
                                                 time.localtime())
-    matDataName = "output_data.mat"
+    #we name it another name so it doesn't overwrite our output data file
+    matDataName = "output_data"
     matfilename = os.path.join(outdir, matDataName)
     if not simulation.dr.Connect(matfilename, simName):
         sys.exit()
