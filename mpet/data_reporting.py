@@ -31,8 +31,13 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     #increment time by the previous end time of the last simulation
                     tend = mat_dat[dkeybase + '_times'][0, -1]
                     #get previous values from old output_mat
-                    mdict[dkeybase + '_times'] = var.TimeValues + tend
-                    mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase])
+                    mdict[dkeybase + '_times'] = (var.TimeValues + tend).T
+                    #may flatten array, so we specify axis
+                    if mat_dat[dkeybase].shape[0] == 1:
+                        mat_dat[dkeybase] = mat_dat[dkeybase].T
+                        mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
+                    #data output does weird arrays where its (n, 2) but (1, n) if only one row
+                    mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase], axis = 0)
                     mdict[dkeybase + '_times'] = np.append(mat_dat[dkeybase + '_times'],  mdict[dkeybase + '_times'])
 
         sio.savemat(self.ConnectionString + ".mat",
