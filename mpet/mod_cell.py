@@ -28,6 +28,7 @@ class ModCell(dae.daeModel):
         if (ndD_s is None) or (ndD_e is None):
             raise Exception("Need input parameter dictionaries")
         self.ndD = ndD_s
+        self.ndD_e = ndD_e # SD added 05/07/2020
         self.profileType = ndD_s['profileType']
         Nvol = ndD_s["Nvol"]
         Npart = ndD_s["Npart"]
@@ -144,7 +145,7 @@ class ModCell(dae.daeModel):
                         "partTrode{trode}vol{vInd}part{pInd}".format(
                             trode=trode, vInd=vInd, pInd=pInd),
                         self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
-                        ndD_s=ndD_s)
+                        ndD_s=ndD_s) # this is now an initialized object of the class Mod2var or Mod1var
                     self.ConnectPorts(self.portsOutLyte[trode][vInd],
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
@@ -156,6 +157,7 @@ class ModCell(dae.daeModel):
         # Some values of domain lengths
         trodes = self.trodes
         ndD = self.ndD
+        ndD_e = self.ndD_e
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
         Nlyte = np.sum(list(Nvol.values()))
@@ -188,7 +190,12 @@ class ModCell(dae.daeModel):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
                     RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
-                             * self.particles[trode][vInd,pInd].dcbardt())
+                             * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
+                    #SD insert for SEI 05/07/2020 #################################################################################
+                    if ndD_e[trode]["SEI"]:
+                       RHS += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                            * Vj * self.particles[trode][vInd,pInd].dcSEIbardt() ) # this imposes the current constraint 
+                    ###############################################################################################################           
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
         # Define output port variables
@@ -265,12 +272,12 @@ class ModCell(dae.daeModel):
                     eq = self.CreateEquation(
                         "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
                             vInd=vInd, trode=trode, pInd=pInd))
-                    if simPartCond:
+                    if simPartCond: #series resistance
                         # -dcsbar/dt = I_l - I_r
                         eq.Residual = (
                             self.particles[trode][vInd,pInd].dcbardt()
                             + ((-G_l * (phi_n - phi_l))
-                               - (-G_r * (phi_r - phi_n))))
+                               - (-G_r * (phi_r - phi_n)))) #equation 28 in paper
                     else:
                         eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
 

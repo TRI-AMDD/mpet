@@ -97,3 +97,11 @@ def MHC(eta, c_sld, c_lyte, k0, T, act_R=None,
         kox = k0*MHC_kfunc(eta_f, lmbda)
         Rate = ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
+
+############################## SD added 05/07/2020 ##############################################
+def SEI(eta,c_eSEI,c_Li,k0,T,alpha=None):
+    # ecd = k0 * (c_eSEI*c_Li)**(1-alpha)
+    #Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    Rate = 1e-4 #placeholder value
+    return Rate
+#################################################################################################

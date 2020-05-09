@@ -64,6 +64,12 @@ class Mod2var(dae.daeModel):
         #Get reaction rate function from dictionary name
         self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
 
+        ################################# SD added 05/07/2020 ##########################################
+        if ndD["SEI"]:
+            self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
+        ################################################################################################
+        # SD: Actual eqns for SEI are only defined in the Mod1var class for now (05/07/2020)
+        
         # Ports
         self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self, "Inlet port from electrolyte")
@@ -276,7 +282,7 @@ class Mod1var(dae.daeModel):
 
         if (ndD is None) or (ndD_s is None):
             raise Exception("Need input parameter dictionary")
-        self.ndD = ndD
+        self.ndD = ndD #electrode specific, gets fed from 138-144 in mod_cell
         self.ndD_s = ndD_s
 
         # Domain
@@ -291,13 +297,58 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+
         if ndD["type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
+        
+        ###### added by SD 05/07/2020
+        self.Rxn_deg = dae.daeVariable("Rxn_deg", dae.no_t, self,
+                "Rate of degradation reaction")
+        self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
+                "Rate of SEI growth on particle volume basis")
 
+        ######################### SD added 05/07/2020 ###########################################################################
+        if ndD["SEI"]: # SEI growth is active
+            #self.cSEI = dae.daeVariable("c_sei", mole_frac_t, self,
+            #    "Concentration of degradation product")
+            #self.cSEIbar = dae.daeVariable(
+            #    "cbar", mole_frac_t, self,
+            #    "Average concentration of degradation product")
+            self.L_film = dae.daeVariable("L_film", dae.no_t, self,
+                "Film thickness")
+            self.Rxn_SEI_inner = dae.daeVariable("Rxn_SEI_inner", dae.no_t, self,
+                "Rate of inner (solvent) SEI reaction")
+            self.Rxn_SEI_outer = dae.daeVariable("Rxn_SEI_outer", dae.no_t, self,
+                "Rate of outer (lithium ion) SEI reaction")
+            self.phi_SEI_inner = dae.daeVariable("phi_SEI_inner", dae.no_t, self,
+                "Electrostatic potential at electrode/SEI interface")
+            self.phi_SEI_outer = dae.daeVariable("phi_SEI_outer", dae.no_t, self,
+                "Electrostatic potential at SEI/electrolyte interface")  
+            # self.c_Li = dae.daeVariable("c_Li", dae.no_t, self,
+            # "Concentration of Lithium ions in the SEI layer")
+            self.c_Li_log10 = dae.daeVariable("c_Li_log10", dae.no_t, self,
+                "Concentration of Lithium ions in the SEI layer (log base 10)")
+            self.cond_e = dae.daeVariable("cond_e", dae.no_t, self,
+                "Electronic conductivity within SEI")
+            # self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
+            #     "Rate of SEI growth on particle volume basis")
+            # self.delta_film = dae.daeVariable(
+            #     "delta_film", dae.no_t, self, "Film Thickness")
+            # self.c_solv_surf = dae.daeVariable(
+            #     "c_solv_surf", conc_ref_t, self, "Concentration of solvent")
+            # self.Rxn_SEI = dae.daeVariable("Rxn_SEI", dae.no_t, self, "Rate of SEI reaction")
+        ###################################### SD: not sure if we need all these variables, will clean up #########################   
+         
         #Get reaction rate function from dictionary name
         self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+
+        ################################# SD added 05/07/2020 #####################################################################
+        if ndD["SEI"]:
+            self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
+        ##########################################################################################################################
+
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -355,6 +406,14 @@ class Mod1var(dae.daeModel):
         for k in range(N):
             eq.Residual -= self.c.dt(k) * volfrac_vec[k]
 
+        # Define average degradation rate    | SD added 05/07/2020 ##########################
+        #if ndD["SEI"]:
+        #    eq = self.CreateEquation("dcSEIbardt")
+        #    eq.Residual = self.dcSEIbardt()
+        #    for k in range(N):
+        #        eq.Residual -= self.c.dt(k), define here if cSEI is spatially dependent
+        #####################################################################################
+
         c = np.empty(N, dtype=object)
         c[:] = [self.c(k) for k in range(N)]
         if ndD["type"] in ["ACR", "diffn", "CHR"]:
@@ -371,7 +430,13 @@ class Mod1var(dae.daeModel):
         ndD = self.ndD
         T = self.ndD_s["T"]
         c_surf = c
-        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+
+        if ndD["SEI"]: ###### modified by SD 05/07/2020 ###############################
+            muR_surf, actR_surf, muR_deg, actR_deg = calc_muR(
+                c_surf, self.cbar(), T, ndD, ISfuncs)
+        else:
+            muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
@@ -380,10 +445,31 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
 
+        ############# SD added 05/07/2020 ###################################################
+        # Define degradation reaction initial condition
+        if ndD["SEI"]:
+            eta_deg = calc_eta(muR_deg, muO)
+            Rxn_deg = self.calc_rxn_rate_SEI(
+            eta_deg, self.cbar(), self.cbar(), ndD["k0"], T, ndD["alpha"])
+            eq = self.CreateEquation("Rxn_deg")
+            eq.Residual = self.Rxn_deg() - Rxn_deg[0]
+        else:
+            eq = self.CreateEquation("Rxn_deg")
+            eq.Residual = self.Rxn_deg() - 0
+        ####################################################################################
+
         eq = self.CreateEquation("dcsdt")
-        eq.Residual = self.c.dt(0) - ndD["delta_L"]*self.Rxn()
+        eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn() - self.Rxn_deg()) # modified by SD 05/07/2020 ######
         if ndD["noise"]:
             eq.Residual += noise[0]()
+
+        ############# Added by SD 05/07/2020 ##############################################
+        eq = self.CreateEquation("dcSEIbardt")
+        eq.Residual = self.dcSEIbardt()
+        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #check units
+        ###################################################################################
+
+
 
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
@@ -397,16 +483,26 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if ndD["type"] in ["ACR"]:
             c_surf = c
-            muR_surf, actR_surf = calc_muR(
-                c_surf, self.cbar(), T, ndD, ISfuncs)
+            if ndD["SEI"]: ###### modified by SD 05/07/2020 ###############################
+                muR_surf, actR_surf, muR_deg, actR_deg = calc_muR(
+                    c_surf, self.cbar(), T, ndD, ISfuncs)
+            else:
+                muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+
         elif ndD["type"] in ["diffn", "CHR"]:
-            muR, actR = calc_muR(c, self.cbar(), T, ndD, ISfuncs)
+            if ndD["SEI"]: ###### modified by SD 05/07/2020 ###############################
+                muR, actR, muR_deg, actR_deg = calc_muR(
+                    c, self.cbar(), T, ndD, ISfuncs)
+            else:
+                muR, actR = calc_muR(c, self.cbar(), T, ndD, ISfuncs)
+
             c_surf = c[-1]
             muR_surf = muR[-1]
             if actR is None:
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
+
         eta = calc_eta(muR_surf, muO)
         if ndD["type"] in ["ACR"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*ndD["Rfilm"] for i in range(N)])
@@ -423,13 +519,27 @@ class Mod1var(dae.daeModel):
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
 
+        ################# Added by SD 05/07/2020 ####################################
+        # Define degradation reaction initial condition
+        if ndD["SEI"]:
+            eta_deg = calc_eta(muR_deg, muO)
+            Rxn_deg = self.calc_rxn_rate_SEI(
+            eta_deg, c_surf, c_surf, ndD["k0"], T, ndD["alpha"]) # it is c_surf instead of cbar
+            #because c_surf influences degradation in CHR and not cbar
+            eq = self.CreateEquation("Rxn_deg")
+            eq.Residual = self.Rxn_deg() - Rxn_deg[0]
+        else:
+            eq = self.CreateEquation("Rxn_deg")
+            eq.Residual = self.Rxn_deg() - 0
+        ####################################################################################
+
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["ACR"]:
-            RHS = np.array([ndD["delta_L"]*self.Rxn(i) for i in range(N)])
+            RHS = np.array([ndD["delta_L"]*(self.Rxn(i)-self.Rxn_deg()) for i in range(N)]) # modified by SD 05/07/2020 #######
         elif ndD["type"] in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux_bc = -self.Rxn()
+            Flux_bc = -(self.Rxn() - self.Rxn_deg()) #BC is only the intercalation current, excluding degradationl; SD 05/07/2020 #####
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
                 Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
@@ -446,9 +556,15 @@ class Mod1var(dae.daeModel):
         LHS_vec = MX(Mmat, dcdt_vec)
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            eq.Residual = LHS_vec[k] - RHS[k]
+            eq.Residual = LHS_vec[k] - RHS[k] #RHS with degradation is smaller, leads to lesser dcdt. Consistent.
             if ndD["noise"]:
                 eq.Residual += noise[k]()
+
+        ############# Added by SD 05/07/2020 ##############################################
+        eq = self.CreateEquation("dcSEIbardt")
+        eq.Residual = self.dcSEIbardt()
+        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #check units, may need to initialize csei 
+        ###################################################################################
 
 
 def calc_eta(muR, muO):
@@ -521,13 +637,19 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
 
-
+############################## Modified by SD 05/07/2020 ################################
 def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     muRfunc = props_am.muRfuncs(T, ndD).muRfunc
-    muR_ref = ndD["muR_ref"]
+    muR_ref = ndD["muR_ref"] # SD: for SEI, sometimes this works with muR_ref=0
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
+    if ndD["SEI"]:
+        muRdeg = props_am.muRfuncs(T, ndD).muRdeg
+        muR_ref = 0
+        muR_d, actR_d = muRdeg(c, cbar, muR_ref, ISfuncs)
+        return muR, actR, muR_d, actR_d
+    
     return muR, actR
-
+##########################################################################################
 
 def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):

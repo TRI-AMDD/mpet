@@ -67,8 +67,10 @@ class muRfuncs():
         self.eokT = e/(k*Tabs)
         self.kToe = (k*Tabs)/e
 
-        #Convert "muRfunc" to a callable function
+        #Convert "muRfunc" and "muRdeg" to callable functions
         self.muRfunc = getattr(self,ndD["muRfunc"])
+        if ndD["SEI"]:
+            self.muRdeg = getattr(self,ndD["muRdeg"]) ######## SD added 05/07/2020 ########
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
@@ -219,6 +221,14 @@ class muRfuncs():
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
+    
+    ################################### SD added 05/07/2020 ############################################
+    def SEI_early(self, y, ybar, muR_ref, ISfuncs=None):
+        OCV = 0.73 #+ self.kToe*np.log(y**2)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+    ###################################################################################################
 
     ######
     # Functions based on thermodynamic models

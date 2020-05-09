@@ -190,7 +190,22 @@ def get_dicts_from_configs(P_s, P_e):
         ndD["alpha"] = P.getfloat('Reactions', 'alpha')
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
-
+        
+        ######################################################## SD added 05/07/2020 ############################
+        # Degradation 
+        ndD["SEI"] = P.getboolean('Degradation','SEI')
+        dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI',fallback=None)
+        dD["k_inner"] = P.getfloat('Degradation','k_inner',fallback=None)
+        dD["k_outer"] = P.getfloat('Degradation', 'k_outer',fallback=None)
+        ndD["alpha_SEI"] = P.getfloat('Degradation','alpha_SEI',fallback=None)
+        dD["h_s"] = P.getfloat('Degradation','h_s',fallback=None)
+        ndD["beta_cond"] = P.getfloat('Degradation','beta_cond',fallback=None)
+        dD["cond_e"] = P.getfloat('Degradation','cond_e',fallback=None)
+        dD["E_ads"] = P.getfloat('Degradation','E_ads',fallback=None)
+        dD["D_solv"] = P.getfloat('Degradation','D_solv',fallback=None)
+        dD["gamma"] = P.getfloat('Degradation','gamma',fallback=None)
+        dD["cond_factor"] = P.getfloat('Degradation','cond_factor',fallback=None)
+        ###########################################################################################################
         # electrode parameters
         dD_e[trode] = dD.copy()
         ndD_e[trode] = ndD.copy()
