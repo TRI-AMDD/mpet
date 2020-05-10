@@ -71,6 +71,11 @@ positions (see discData.txt).
 bulkpHdr = ("Bulk electrode electric potential [V]\n" + RowsStr + bulkpHdrP2)
 fnameBulkpBase = "bulkPot{l}Data.txt"
 
+RowStrHdr1 = "First column corresponds to the cycle number.\n"
+RowStrHdr2 = "Second, third and fourth columns respond to gravimetric capacity of limiting electrode in mAh/g, cycle capacity fraction relative to original capacity, and cycle efficiency (discharge capacity/charge capacity).\n"
+cyclerHdr = ("Cycling Data\n" + RowStrHdr1 + RowStrHdr2)
+fnameCycleBase = "cycleData.txt"
+
 
 def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
@@ -79,6 +84,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         data_only=True)
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
     trodes = ndD_s["trodes"]
+    totalCycle = dD_s["totalCycle"]
     CrateCurr = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     psd_len_c = dD_s["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
@@ -250,5 +256,23 @@ def main(indir, genData=True, discData=True, elyteData=True,
         fname = fnameBulkpBase.format(l="Cathode")
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
                    delimiter=dlm, header=bulkpHdr)
+
+    if totalCycle > 1:
+        cycNum, cycleCapacity = plot_data.show_data(
+            indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
+            data_only=True)
+        cycleCapFrac = plot_data.show_data(
+            indir, plot_type="cycle_cap_frac", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        cycleEfficiency = plot_data.show_data(
+            indir, plot_type="cycle_efficiency", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        genMat = np.zeros((len(cycNum), 4))
+        genMat[:,0] = cycNum
+        genMat[:,1] = cycleCapacity
+        genMat[:,2] = cycleCapFrac
+        genMat[:,3] = cycleEfficiency
+        np.savetxt(os.path.join(indir, fnameCycleBase), genMat, delimiter=dlm,
+              header=cyclerHdr)
 
     return

@@ -11,6 +11,7 @@ import mpet.geometry as geom
 import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
 import mpet.props_am as props_am
+import mpet.utils as utils
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18
@@ -44,6 +45,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         sStr = "."
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
+    tot_cycle = dD_s["totalCycle"]
+#    psd_vol = dD_s["psd_vol"]
+    limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
@@ -59,6 +63,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     F = dD_s['F']                      # C/mol
     td = dD_s["td"]
     Etheta = {"a": 0.}
+    material_type = dD_e[limtrode]["material_type"]
+# get information from limiting electrodes
+    L = dD_s["L"][limtrode]
+    P_L = ndD_s["P_L"][limtrode]
+    poros = ndD_s["poros"][limtrode]
+    cap = dD_e[limtrode]["cap"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
@@ -290,6 +300,79 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         if save_flag:
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
+
+    #DZ 02/18/20
+    if plot_type[0:5] == "cycle":
+        current = data[pfx + "current"][0] /td #gives us C-rates in /s
+     #   np.set_printoptions(threshold=sys.maxsize)
+        charge_discharge = data[pfx + "charge_discharge"]
+        neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
+        #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
+        #in the y axis
+        cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
+        # first figure out the number of cycles
+        #find mass of limiting electrode
+     #   total_vol = np.sum(psd_vol[limtrode]) #m^3
+        density = utils.get_density(material_type) #kg/m^3
+        #get the discharge currents (are multiplied by 0 if it is not the segment we want)
+        discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
+        ##we wang tot_cycle * timesteps array, A/m^2 * s
+        discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+        #use trapezoid rule to integrate Q = int(i dt), convert to mAh/m^2 from As/m^2
+        gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
+        if plot_type == "cycle_capacity": #plots discharge capacity
+            if len(gravimetric_caps) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(gravimetric_caps)]
+            if data_only:
+                return cycle_numbers, gravimetric_caps
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Capacity [mAh/g]")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")
+            return fig, ax
+        elif plot_type == "cycle_efficiency":
+            #do we need to change this q because molweight changed? should be okay because Nm still same
+            charge_currents = cap * np.multiply(pos_charge_seg, current)
+            charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
+            #efficiency = discharge_cap/charge_cap
+            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            if len(efficiencies) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(efficiencies)]
+            if data_only:
+                return cycle_numbers, efficiencies
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, efficiencies, 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Cycle Efficiency")
+            ax.set_ylim(0, 1.1)
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_efficiency.png", bbox_inches="tight")
+            return fig, ax
+        elif plot_type == "cycle_cap_frac":	     
+            discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            if len(discharge_cap_fracs) != len(cycle_numbers):
+                #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(discharge_cap_fracs)]
+            if data_only:
+                return cycle_numbers, discharge_cap_fracs
+            #normalize by the first discharge capacity
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("State of Health")
+            ax.set_ylim(0, 1.1)
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_cap_frac.png", bbox_inches="tight")
+            return fig, ax
+            
+
 
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",

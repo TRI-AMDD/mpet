@@ -8,9 +8,13 @@ This includes the equations defining
  - potential drop between simulated particles
 """
 import daetools.pyDAE as dae
+from daetools.pyDAE.variable_types import time_t
 from pyUnits import m, kg, s, K, Pa, mol, J, W
-
+ 
 import numpy as np
+import sympy as sym
+
+from sympy.parsing.sympy_parser import parse_expr
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
@@ -57,6 +61,8 @@ class ModCell(dae.daeModel):
         self.phi_part = {}
         self.R_Vp = {}
         self.ffrac = {}
+        self.charge_discharge = {}
+        self.time_counter = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -111,6 +117,12 @@ class ModCell(dae.daeModel):
             "Voltage between electrodes (phi_applied less series resistance)")
         self.current = dae.daeVariable(
             "current", dae.no_t, self, "Total current of the cell")
+        # DZ: added two vars to aid counting of current. +1 for charge, -1 for discharge
+        self.charge_discharge = dae.daeVariable(
+            "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
+        # DZ: added time counter to keep track of when new section starts
+        self.time_counter = dae.daeVariable(
+            "time_counter", time_t, self, "restarts counter every time a new section is hit")
         self.dummyVar = dae.daeVariable("dummyVar", dae.no_t, self, "dummyVar")
 
         # Create models for representative particles within electrode
@@ -368,6 +380,9 @@ class ModCell(dae.daeModel):
         eq.Residual = self.phi_cell() - (
             self.phi_applied() - ndD["Rser"]*self.current())
 
+        #declare useful variable
+        t = sym.Symbol("t")
+
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
@@ -376,7 +391,202 @@ class ModCell(dae.daeModel):
                     ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
             else:
-                eq.Residual = self.current() - ndD["currset"]
+                if "t" not in str(ndD["currset"]):
+                    #check to see if it's a waveform type
+                    eq.Residual = self.current() - ndD["currset"]
+                else: #if it is waveform, use periodic time to find the value of function
+                    #finds time in period [0, period]
+                    #lambdifies waveform so that we can run with numpy functions 
+                    f = sym.lambdify(t, ndD["currset"], modules = "numpy")
+                    #periodic time = mod(time, period) / nondimenionalized period
+                    eq.Residual =  f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.current()
+
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
+#       
+##DZ 02/12/20
+        elif self.profileType == "CCCVcycle":
+#assume tramp = 0
+            seg_array = np.array(ndD["segments"])
+            constraints = seg_array[:,0]
+            voltage_cutoffs = seg_array[:,1]
+            capfrac_cutoffs = seg_array[:,2]
+            crate_cutoffs = seg_array[:,3]
+            time_cutoffs = seg_array[:,4]
+            equation_type = seg_array[:,5]
+
+            #calculates new initialization values for CCCV
+            ndDVref = ndD["phiRef"]["c"]-ndD["phiRef"]["a"]
+            phi_guess = ndDVref
+
+#start state transition network
+            self.stnCCCV=self.STN("CCCV")
+
+            #start at a 0C state -1 for better initializing
+            self.STATE("state_start")
+            eq = self.CreateEquation("Constraint_start")
+            eq.Residual = self.current()
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            #add new variable to assign +1 -1 for charge/discharge
+            eq.Residual = self.charge_discharge() - 1
+            self.ON_CONDITION(dae.Time() > dae.Constant(0*s),
+                      switchToStates = [('CCCV', 'state_0')],
+                      setVariableValues = [(self.time_counter, dae.Time())],
+                      triggerEvents = [],
+                      userDefinedActions = [])
+
+
+#loops through segments 1...N with indices 0...N-1
+#selects the correct charge/discharge type: 1 CCcharge, 2 CVcharge, 3 CCdisch, 4 CVdisch
+            for i in range(0, len(constraints)):
+#creates new state
+                self.STATE("state_" + str(i))
+                eq = self.CreateEquation("Constraint_" + str(i))
+                new_state = "state_" + str(i+1)
+#if is CC charge, we set up equation and voltage cutoff      
+                #calculates time condition--if difference between current and prev start time is larger than time cutoff
+                #switch to next section
+                #for our conditions for switching transition states, because we have multiple different conditions
+                #for switching transition states. if they are none the default to switch is always false for that 
+                #condition
+                #we use self.time_counter() < 0 as a default false condition because daeTools does not accept False
+                #if it is not None, we use a cutoff
+                #if time is past the first cutoff, switch to nextstate
+                time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
+
+                #set phi_guess based on the next step: if CC just set to ndDVref
+                #comment to test out initialize with CC = 0
+                if i <= len(constraints)-2: #break before the last step
+                    if np.mod(equation_type[i+1],2) == 0: #if it's CV
+                        phi_guess = constraints[i+1]
+
+                if equation_type[i] == 1:
+
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.current() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+
+                    # if hits voltage cutoff, switch to next state
+                    #if no voltage/capfrac cutoffs exist, automatically true, else is condition
+                    v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() >= -voltage_cutoffs[i])
+                    #capacity fraction depends on cathode/anode. if charging, we cut off at the capfrac
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
+                    #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
+                    #checks if the voltage, capacity fraction, or time segment conditions are broken
+                    self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                              switchToStates = [('CCCV', new_state)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
+                              triggerEvents = [],
+                              userDefinedActions = [])
+                    #increases time_counter to increment to the beginning of the next segment
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    #add new variable to assign +1 -1 for charge/discharge
+                    eq.Residual = self.charge_discharge() - 1
+
+#if is CV charge, then we set up equation and capacity cutoff
+                elif equation_type[i] == 2:
+ 
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.phi_applied() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+
+                   #capacity fraction in battery is found by the filling fraction of the limiting electrode
+                    #if is anode, will be capped at cap_frac, if is cathode needs to be capped at 1-cap_frac
+                    #calc capacity and curr conditions (since Crate neg, we need to flip sign) to cut off crate
+                    #crate cutoff instead of voltage cutoff compared to CC
+                    crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (-self.current() <= -crate_cutoffs[i])
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
+                    #equation: constraining voltage
+                    #if past cap_frac, switch to next state
+                    #checks if crate, cap frac, or time segment conditions are broken
+                    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                              switchToStates = [('CCCV', new_state)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
+                              triggerEvents = [],
+                              userDefinedActions = [])
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() - 1
+
+                elif equation_type[i] == 3:
+
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.current() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+
+                    #if CC discharge, we set up capacity cutoff and voltage cutoff
+                    #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
+                    #since discharging is delithiating anode and charging is lithiating anode       
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
+                    #voltage cutoff
+                    v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() <= -voltage_cutoffs[i])
+                    #if hits capacity fraction or voltage cutoff, switch to next state
+                    self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                              switchToStates = [('CCCV', new_state)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
+                              triggerEvents = [],
+                              userDefinedActions = [])
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() + 1
+                elif equation_type[i] == 4:
+                    #if CV discharge, we set up
+                    if "t" not in str(constraints[i]):
+                        #if not waveform input, set to constant value
+                        eq.Residual = self.phi_applied() - constraints[i]
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+
+                    #conditions for cutting off: hits capacity fraction cutoff 
+                    cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
+                    #or hits crate limit
+                    crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
+                    #if i != len(constraints)-1: 
+                        #if not at end state
+                    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                              switchToStates = [('CCCV', new_state)],
+                              setVariableValues = [(self.time_counter, dae.Time())],
+                              triggerEvents = [],
+                              userDefinedActions = [])
+                    eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+                    eq.Residual = self.charge_discharge() + 1
+
+            #end at new rest state, which we should not hit
+            new_state = "state_" + str(len(constraints))
+            self.STATE(new_state)
+            eq = self.CreateEquation("Rest")
+            eq.Residual = self.current()
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
+            self.END_STN()
+
+         
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
@@ -386,7 +596,21 @@ class ModCell(dae.daeModel):
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
                     )
             else:
-                eq.Residual = self.phi_applied() - ndD["Vset"]
+                if "t" not in str(ndD["Vset"]):
+                    #check to see if it's a waveform type
+                    eq.Residual = self.phi_applied() - ndD["Vset"]
+                else: #if it is waveform, use periodic time to find the value of function
+                    #finds time in period [0, period]
+                    #lambdifies waveform so that we can run with numpy functions 
+                    f = sym.lambdify(t, ndD["Vset"], modules = "numpy")
+                    #uses floor to get time in periodic units
+                    eq.Residual = f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.phi_applied()
+
+
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
+
         elif self.profileType == "CCsegments":
             if ndD["tramp"]>0:
                 ndD["segments_setvec"][0] = ndD["currPrev"]
@@ -402,20 +626,43 @@ class ModCell(dae.daeModel):
                 time=ndD["segments"][0][1]
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][0][0]
+                if "t" not in str(ndD["segments"][0][0]):
+                    eq.Residual = self.current() - ndD["segments"][0][0]
+                else:
+                    #use periodic time units of mod(Time, period), but need to multiply by period
+                    #to recover units in dimless time
+                    per = ndD["period"][0]
+                    f = sym.lambdify(t, ndD["segments"][0][0], modules = "numpy")
+                    #lambdifies waveform so that we can run with numpy functions   
+                    eq.Residual = f(dae.Time()/dae.Constant(per*s) - dae.Floor(dae.Time()/dae.Constant(per*s))) - self.current()
 
                 #Middle segments
-                for i in range(1,len(ndD["segments"])-1):
+                for i in range(1,len(ndD["segments"])):
+                    old_time=time
                     time=time+ndD["segments"][i][1]
+                    per = ndD["period"][i]
                     self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("Total_Current_Constraint")
-                    eq.Residual = self.current() - ndD["segments"][i][0]
+                    if "t" not in str(ndD["segments"][i][0]):
+                        eq.Residual = self.current() - ndD["segments"][i][0]
+                    else:
+                        #subtracts old_time because this is the end time of previous segment
+                        #always start segment at new time
+                        f = sym.lambdify(t, ndD["segments"][i][0], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions    
+                        eq.Residual = f((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s) - dae.Floor((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s))) - self.current()
+
 
                 #Last segment
                 self.ELSE()
+                #rest state
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][-1][0]
+                eq.Residual = self.current()
                 self.END_IF()
+
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
 
         elif self.profileType == "CVsegments":
             if ndD["tramp"]>0:
@@ -430,23 +677,39 @@ class ModCell(dae.daeModel):
             else:
                 #First segment
                 time=ndD["segments"][0][1]
+                per = ndD["period"][0]
                 self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+                if "t" not in str(ndD["segments"][0][0]):
+                    eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+                else:
+                    f = sym.lambdify(t, ndD["segments"][0][0], modules = "numpy")
+                    #lambdifies waveform so that we can run with numpy functions
+                    eq.Residual = f(dae.Time()/dae.Constant(per*s) - dae.Floor(dae.Time()/dae.Constant(per*s))) - self.phi_applied()
 
                 #Middle segments
-                for i in range(1,len(ndD["segments"])-1):
+                for i in range(1,len(ndD["segments"])):
+                    old_time=time
                     time=time+ndD["segments"][i][1]
+                    per = ndD["period"][i]
                     self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("applied_potential")
-                    eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+                    if "t" not in str(ndD["segments"][i][0]):
+                        eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+                    else:
+                        f = sym.lambdify(t, ndD["segments"][i][0], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions
+                        eq.Residual = f((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s) - dae.Floor((dae.Time()-dae.Constant(old_time*s))/dae.Constant(per*s))) - self.phi_applied()
 
                 #Last segment
                 self.ELSE()
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
+                eq.Residual = self.current()
                 self.END_IF()
 
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+#
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 

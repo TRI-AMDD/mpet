@@ -6,6 +6,7 @@ been differentiated in time).
 """
 import os.path as osp
 
+import sympy as sym
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.io as sio
@@ -98,15 +99,42 @@ class SimMPET(dae.daeSimulation):
             
             #Cell potential initialization
             ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
+            phi_guess = ndDVref
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
-                phi_guess = self.ndD_s['Vset']
+                if "t" not in str(ndD_s['Vset']):
+                    #if it is a float set value, we set initial guess to be set point
+                    phi_guess = self.ndD_s['Vset']
+                else:
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions
+                    f = sym.lambdify(t, self.ndD_s['Vset'], modules = "numpy") 
+                    phi_guess = f(0)
             elif ndD_s['profileType']=='CVsegments':
-                phi_guess = self.ndD_s['segments'][0][0]
+                if "t" not in str(ndD_s['segments'][0][0]):
+                #if a float value, we just set initial guess
+                    phi_guess = self.ndD_s['segments'][0][0]
+                else:
+                    t = sym.Symbol("t")
+                    #lambdifies waveform so that we can run with numpy functions
+                    f = sym.lambdify(t, self.ndD_s['segments'][0][0], modules = "numpy") 
+                    phi_guess = f(0) 
+            elif ndD_s['profileType']=='CCCVcycle':
+                #if the first step is a CV step
+                if np.mod(ndD_s['segments'][0][5], 2) == 0:
+                    if "t" not in str(ndD_s['segments'][0][0]):
+                        #if a float value, we just set initial guess
+                        phi_guess = self.ndD_s['segments'][0][0]
+                    else:
+                        t = sym.Symbol("t")
+                        #lambdifies waveform so that we can run with numpy functions
+                        f = sym.lambdify(t, self.ndD_s['segments'][0][0], modules = "numpy") 
+                        phi_guess = f(0)
             else:
                 phi_guess = ndDVref
             self.m.phi_applied.SetInitialGuess(phi_guess)
+            
 
             #Initialize the ghost points used for boundary conditions
             if not self.m.SVsim:
@@ -171,9 +199,16 @@ class SimMPET(dae.daeSimulation):
                     self.m.phi_lyte[l].SetInitialGuess(
                         i, dPrev["phi_lyte_" + l][-1,i])
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(
-                dPrev["phi_applied"][0,-1])
+            self.m.phi_applied.SetInitialGuess(dPrev["phi_applied"][0,-1])
+
+            ##Initialize the ghost points used for boundary conditions
+            #self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
+            #self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
+
         self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
+        self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
+        #self.m.stnCCCV.ActiveState = "state_0" #sets active state to be state 0
+   
 
     def Run(self):
         """
@@ -187,10 +222,10 @@ class SimMPET(dae.daeSimulation):
                 "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
                     t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
             time = self.IntegrateUntilTime(
-                nextTime, dae.eStopAtModelDiscontinuity, True)
+                nextTime, dae.eDoNotStopAtDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
             #Break when a volage limit condition is reached
-            if self.LastSatisfiedCondition:
-                break
+            #if self.LastSatisfiedCondition:
+            #    break

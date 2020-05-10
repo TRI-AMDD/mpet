@@ -13,6 +13,7 @@ import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
+import mpet.maccor_reader as maccor_reader
 import mpet.io_utils as IO
 import mpet.sim as sim
 import mpet.utils as utils
@@ -90,17 +91,6 @@ def main(paramfile, keepArchive=True):
             sys.exit()
         else:
             raise
-    paramFileName = "input_params_system.cfg"
-    paramFile = os.path.join(outdir, paramFileName)
-    IO.write_config_file(P_s, filename=paramFile)
-    dictFile = os.path.join(outdir, "input_dict_system")
-    IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
-    for trode in ndD_s["trodes"]:
-        paramFileName = "input_params_{t}.cfg".format(t=trode)
-        paramFile = os.path.join(outdir, paramFileName)
-        IO.write_config_file(P_e[trode], filename=paramFile)
-        dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
-        IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
 
     # Store info about this script
     # mpet.py script directory
@@ -156,14 +146,62 @@ def main(paramfile, keepArchive=True):
     cfg = dae.daeGetConfig()
     noise=ndD_e['c']['noise']
     logPad=ndD_e['c']['logPad']
-    segments = ndD_s["profileType"] in ["CCsegments","CVsegments"]
+    segments = ndD_s["profileType"] in ["CCsegments","CVsegments","CCCVcycle"]
     if (noise or logPad or (segments and ndD_s["tramp"]>0)) and cfg.has_key('daetools.core.equations.evaluationMode'):
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
-    # Carry out the simulation
-    run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
+
+    P_s.set('Electrodes', 'cathode', 'input_params_c.cfg')
+    P_s.set('Electrodes', 'anode', 'input_params_a.cfg')
+
+    #save our input files and runs simulations
+    if ndD_s["profileType"][-5:] != ".json":
+        #if it is not a maccor cycling procedure file
+        paramFileName = "input_params_system.cfg"
+        paramFile = os.path.join(outdir, paramFileName)
+        IO.write_config_file(P_s, filename=paramFile)
+        dictFile = os.path.join(outdir, "input_dict_system")
+        IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
+        for trode in ndD_s["trodes"]:
+            paramFileName = "input_params_{t}.cfg".format(t=trode)
+            paramFile = os.path.join(outdir, paramFileName)
+            IO.write_config_file(P_e[trode], filename=paramFile)
+            dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
+            IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
+        #carry out simulation
+        run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
+    else:
+        #if it is a maccor cycling procedure file
+        cycling_dicts = maccor_reader.get_cycling_dict(ndD_s, dD_s)
+        for i in range(len(cycling_dicts)):
+            if i == 0:
+                #only saves data for electrodes once since it doesnt change
+                for trode in ndD_s["trodes"]:
+                    paramFileName = "input_params_{t}.cfg".format(t=trode)
+                    paramFile = os.path.join(outdir, paramFileName)
+                    IO.write_config_file(P_e[trode], filename=paramFile)
+                    dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
+                    IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)       
+            else: #if its not the first simulation, then set prevDir
+                P_s.set('Sim Params', 'prevDir', outdir)
+            num_steps = len(cycling_dicts["step_" + str(i)].get("segments"))
+            P_s.set('Sim Params', 'period', str([1e80]*num_steps))
+            #sets the segments and total cycle numbers for each set we are going to run
+            P_s.set('Sim Params', 'segments', str(cycling_dicts["step_" + str(i)].get("segments")))
+            P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
+            P_s.set('Sim Params', 'profileType', 'CCCVcycle')
+            #fills in period for waveofmr
+            dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
+            #reset everything in dictionaries too
+            paramFileName = "input_params_system_{j}.cfg".format(j=str(i))
+            paramFile = os.path.join(outdir, paramFileName)
+            IO.write_config_file(P_s, filename=paramFile)
+            dictFile = os.path.join(outdir, "input_dict_system_" + str(i))
+            IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
+            #carries out simulation
+            run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
 
     # Final output for user
     print("\n\nUsed parameter file ""{fname}""\n\n".format(fname=paramfile))

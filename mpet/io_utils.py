@@ -16,6 +16,7 @@ import numpy as np
 
 import mpet.props_am as props_am
 import mpet.props_elyte as props_elyte
+import mpet.utils as utils
 
 
 def get_configs(paramfile="params.cfg"):
@@ -60,10 +61,15 @@ def get_dicts_from_configs(P_s, P_e):
 
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
-    dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+    dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = 0))
+    dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
+    #if it is a Crate, then no units. if A, then units
+    dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area', fallback = 1)
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
+#DZ 02/11/20 cycle counter
+    dD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
@@ -78,7 +84,7 @@ def get_dicts_from_configs(P_s, P_e):
         # This should affect all calls to np.random throughout the
         # simulation.
         np.random.seed(ndD_s["seed"])
-    dD_s["Vset"] = P_s.getfloat('Sim Params', 'Vset')
+    dD_s["Vset"] = P_s.get('Sim Params', 'Vset')
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
@@ -179,6 +185,7 @@ def get_dicts_from_configs(P_s, P_e):
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
+        dD["material_type"] = P.get('Material', 'material_type')
         ndD["logPad"] = P.getboolean('Material', 'logPad')
         ndD["noise"] = P.getboolean('Material', 'noise')
         ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')
@@ -249,10 +256,14 @@ def get_dicts_from_configs(P_s, P_e):
     else:
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
-    limtrode = ("c" if ndD_s["z"] < 1 else "a")
+    limtrode = dD_s["limtrode"] = ("c" if ndD_s["z"] < 1 else "a")
     CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    dD_s["Crate"] = utils.get_crate(dD_s["Crate"], CrateCurr)
     dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
+
+    #get Vset (float value vs time dependent waveform)
+    dD_s["Vset"] = utils.get_vset(dD_s["Vset"])
 
     # Some nondimensional parameters
     ndD_s["T"] = Tabs / T_ref
@@ -290,8 +301,21 @@ def get_dicts_from_configs(P_s, P_e):
             dD_s["psd_vol"][trode] = psd_vol[trode]
             dD_s["G"][trode] = G[trode]
         else:
-            dD_sPrev, ndD_sPrev = read_dicts(
-                os.path.join(ndD_s["prevDir"], "input_dict_system"))
+            dD_sPrev = {}
+            ndD_sPrev = {}
+            if os.path.isfile(os.path.join(ndD_s["prevDir"], "input_dict_system_dD.p")):
+                #if a normal continuation file, then we read from
+                # input_dict_system
+                dD_sPrev, ndD_sPrev = read_dicts(
+                    os.path.join(ndD_s["prevDir"], "input_dict_system"))
+            elif os.path.isfile(os.path.join(ndD_s["prevDir"], "input_dict_system_0_dD.p")):
+                #if maccor cycling procedure, read from a maccor cycling file
+                #since all the same, read from the first one
+                dD_sPrev, ndD_sPrev = read_dicts(
+                    os.path.join(ndD_s["prevDir"], "input_dict_system_0"))
+            else:
+                raise NotImplementedError("No dict found in " + ndD_s["prevDir"])
+                
             dD_s["psd_raw"][trode] = dD_sPrev["psd_raw"][trode]
             ndD_s["psd_num"][trode] = ndD_sPrev["psd_num"][trode]
             dD_s["psd_len"][trode] = dD_sPrev["psd_len"][trode]
@@ -384,43 +408,103 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
-        
+            ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), dD_s["segments"][i][1]*60/t_ref))
+#DZ 02/12/20 battery cycling
+    elif ndD_s["profileType"] == "CCCVcycle":
+        for j in range(dD_s["totalCycle"]):
+            for i in range(len(dD_s["segments"])):
+                #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
+                hard_cut = 0.99 if dD_s["segments"][i][5] <= 2 else 0.01
+                #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
+                volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][1])+ndDVref)
+                #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
+                #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                capfrac_cut = hard_cut if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], CrateCurr)/curr_ref
+                time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
+                if not (volt_cut or capfrac_cut or crate_cut or time_cut):
+                    print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
+                if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
+                    #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
+                   ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
+                elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
+                    #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
+                    ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
+               
+
     # Current or voltage segments profiles
-    dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
-    dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
-    if ndD_s["profileType"] == "CVsegments":
-        dD_s["segments_setvec"][0] = -(k*T_ref/e)*ndDVref
-    elif ndD_s["profileType"] == "CCsegments":
-        dD_s["segments_setvec"][0] = 0.
-    tPrev = 0.
-    for segIndx in range(numsegs):
-        tNext = tPrev + dD_s["tramp"]
-        dD_s["segments_tvec"][2*segIndx+1] = tNext
-        tPrev = tNext
-        # Factor of 60 here to convert to s
-        tNext = tPrev + (segs[segIndx][1] * 60 - dD_s["tramp"])
-        dD_s["segments_tvec"][2*segIndx+2] = tNext
-        tPrev = tNext
-        setNext = segs[segIndx][0]
-        dD_s["segments_setvec"][2*segIndx+1] = setNext
-        dD_s["segments_setvec"][2*segIndx+2] = setNext
-    ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
-    if ndD_s["profileType"] == "CCsegments":
-        ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
-    elif ndD_s["profileType"] == "CVsegments":
-        ndD_s["segments_setvec"] = -(
-            (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
-    if "segments" in ndD_s["profileType"]:
-        dD_s["tend"] = dD_s["segments_tvec"][-1]
-        # Pad the last segment so no extrapolation occurs
-        dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
+    dD_s["segments_tvec"] = np.zeros(2*numsegs)
+    dD_s["segments_setvec"] = np.zeros(2*numsegs)
+    #initial_element = 0
+    #if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle": 
+    #    if ndD_s["profileType"] == "CVsegments":
+    #        initial_element = -(k*T_ref/e)*ndDVref
+    #    elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVcycle":
+    #        #we assume we always start from a charging cycle. change if necessary
+    #        initial_element = 0.
+    #    tPrev = 0.
+    #    for segIndx in range(numsegs):
+    #        tNext = tPrev + dD_s["tramp"]
+    #        dD_s["segments_tvec"][2*segIndx] = tNext
+    #        tPrev = tNext
+    #        # Factor of 60 here to convert to s
+    #        time_seg = segs[segIndx][1]
+    #        #if CCCVcycle, then we need the fourth term as time cutoff
+    #        #it also isn't from start time, so kinda useless
+    #        if ndD_s["profileType"] == "CCCVcycle":
+    #            time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
+    #        tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
+    #        dD_s["segments_tvec"][2*segIndx+1] = tNext
+    #        tPrev = tNext
+    #        setNext = segs[segIndx][0]
+    #        dD_s["segments_setvec"][2*segIndx] = setNext
+    #        dD_s["segments_setvec"][2*segIndx+1] = setNext
+    ## does n times for number of cycles
+    #    dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["totalCycle"])
+    #    np.insert(dD_s["segments_setvec"], 0, initial_element)
+    #    dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["totalCycle"])
+    #    np.insert(dD_s["segments_tvec"], 0, 0)
+
+
+    #ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
+    #if ndD_s["profileType"] == "CCsegments":
+    #    ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
+    #elif ndD_s["profileType"] == "CVsegments":
+    #    ndD_s["segments_setvec"] = -(
+    #        (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
+#DZ #02/11/20
+    #elif ndD_s["profileType"] == "CCCVcycle":
+    #    initial_element = 0
+    #    #we assume we always start from a charging cycle. change if necessary
+ 
+    #    ndD_s["segments_setvec"] = np.zeros(2*numsegs)
+    #    for segIndx in range(numsegs):
+    #        setNext = segs[segIndx][0]
+    #        if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
+    #            ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
+    #            ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
+    #        elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
+    #            ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
+    #            ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
+    #    ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["totalCycle"])
+    #    np.insert(ndD_s["segments_setvec"], 0, initial_element)
+    #if "segments" in ndD_s["profileType"]:
+    #    dD_s["tend"] = dD_s["segments_tvec"][-1]
+    #    # Pad the last segment so no extrapolation occurs
+    #    dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
-    if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
-        ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
+    if "t" not in str(ndD_s["currset"]):
+        if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
+            ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
+
+    #nondimensionalize waveforms and repeat if we have cycles
+    if dD_s["totalCycle"] != 1 or isinstance(dD_s["period"], (list, tuple, np.ndarray)):
+        ndD_s["period"] = np.tile(np.array(dD_s["period"])*60/t_ref, dD_s["totalCycle"])
+    else:
+        ndD_s["period"] = dD_s["period"]*60/t_ref
 
     return dD_s, ndD_s, dD_e, ndD_e
 
@@ -539,7 +623,7 @@ def test_system_input(dD, ndD):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
+    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-5:] == ".json")):
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
 
