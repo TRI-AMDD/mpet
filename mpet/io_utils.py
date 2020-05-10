@@ -194,6 +194,7 @@ def get_dicts_from_configs(P_s, P_e):
         ######################################################## SD added 05/07/2020 ############################
         # Degradation 
         ndD["SEI"] = P.getboolean('Degradation','SEI')
+        ndD["muRdeg"] = P.get('Degradation', 'muRdeg')
         dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI',fallback=None)
         dD["k_inner"] = P.getfloat('Degradation','k_inner',fallback=None)
         dD["k_outer"] = P.getfloat('Degradation', 'k_outer',fallback=None)

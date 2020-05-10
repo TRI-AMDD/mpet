@@ -452,7 +452,7 @@ class Mod1var(dae.daeModel):
             Rxn_deg = self.calc_rxn_rate_SEI(
             eta_deg, self.cbar(), self.cbar(), ndD["k0"], T, ndD["alpha"])
             eq = self.CreateEquation("Rxn_deg")
-            eq.Residual = self.Rxn_deg() - Rxn_deg[0]
+            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if time dependent
         else:
             eq = self.CreateEquation("Rxn_deg")
             eq.Residual = self.Rxn_deg() - 0
@@ -527,7 +527,7 @@ class Mod1var(dae.daeModel):
             eta_deg, c_surf, c_surf, ndD["k0"], T, ndD["alpha"]) # it is c_surf instead of cbar
             #because c_surf influences degradation in CHR and not cbar
             eq = self.CreateEquation("Rxn_deg")
-            eq.Residual = self.Rxn_deg() - Rxn_deg[0]
+            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if time dependent
         else:
             eq = self.CreateEquation("Rxn_deg")
             eq.Residual = self.Rxn_deg() - 0
