@@ -64,7 +64,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = 0))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     #if it is a Crate, then no units. if A, then units
-    dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area')
+    dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area', fallback = 1)
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
@@ -485,7 +485,10 @@ def get_dicts_from_configs(P_s, P_e):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     #nondimensionalize waveforms and repeat if we have cycles
-    ndD_s["period"] = np.tile(np.array(dD_s["period"]).astype(float)*60/t_ref, dD_s["totalCycle"])
+    if dD_s["totalCycle"] != 1 or isinstance(dD_s["period"], (list, tuple, np.ndarray)):
+        ndD_s["period"] = np.tile(np.array(dD_s["period"])*60/t_ref, dD_s["totalCycle"])
+    else:
+        ndD_s["period"] = dD_s["period"]*60/t_ref
 
     return dD_s, ndD_s, dD_e, ndD_e
 
