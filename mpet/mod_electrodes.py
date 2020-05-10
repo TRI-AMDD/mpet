@@ -310,28 +310,28 @@ class Mod1var(dae.daeModel):
                 "Rate of SEI growth on particle volume basis")
 
         ######################### SD added 05/07/2020 ###########################################################################
-        if ndD["SEI"]: # SEI growth is active
+        #if ndD["SEI"]: # SEI growth is active
             #self.cSEI = dae.daeVariable("c_sei", mole_frac_t, self,
             #    "Concentration of degradation product")
             #self.cSEIbar = dae.daeVariable(
             #    "cbar", mole_frac_t, self,
             #    "Average concentration of degradation product")
-            self.L_film = dae.daeVariable("L_film", dae.no_t, self,
-                "Film thickness")
-            self.Rxn_SEI_inner = dae.daeVariable("Rxn_SEI_inner", dae.no_t, self,
-                "Rate of inner (solvent) SEI reaction")
-            self.Rxn_SEI_outer = dae.daeVariable("Rxn_SEI_outer", dae.no_t, self,
-                "Rate of outer (lithium ion) SEI reaction")
-            self.phi_SEI_inner = dae.daeVariable("phi_SEI_inner", dae.no_t, self,
-                "Electrostatic potential at electrode/SEI interface")
-            self.phi_SEI_outer = dae.daeVariable("phi_SEI_outer", dae.no_t, self,
-                "Electrostatic potential at SEI/electrolyte interface")  
+            #self.L_film = dae.daeVariable("L_film", dae.no_t, self,
+            #    "Film thickness")
+            #self.Rxn_SEI_inner = dae.daeVariable("Rxn_SEI_inner", dae.no_t, self,
+            #    "Rate of inner (solvent) SEI reaction")
+            #self.Rxn_SEI_outer = dae.daeVariable("Rxn_SEI_outer", dae.no_t, self,
+            #    "Rate of outer (lithium ion) SEI reaction")
+            #self.phi_SEI_inner = dae.daeVariable("phi_SEI_inner", dae.no_t, self,
+            #    "Electrostatic potential at electrode/SEI interface")
+            #self.phi_SEI_outer = dae.daeVariable("phi_SEI_outer", dae.no_t, self,
+            #    "Electrostatic potential at SEI/electrolyte interface")  
             # self.c_Li = dae.daeVariable("c_Li", dae.no_t, self,
             # "Concentration of Lithium ions in the SEI layer")
-            self.c_Li_log10 = dae.daeVariable("c_Li_log10", dae.no_t, self,
-                "Concentration of Lithium ions in the SEI layer (log base 10)")
-            self.cond_e = dae.daeVariable("cond_e", dae.no_t, self,
-                "Electronic conductivity within SEI")
+            #self.c_Li_log10 = dae.daeVariable("c_Li_log10", dae.no_t, self,
+            #    "Concentration of Lithium ions in the SEI layer (log base 10)")
+            #self.cond_e = dae.daeVariable("cond_e", dae.no_t, self,
+            #    "Electronic conductivity within SEI")
             # self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
             #     "Rate of SEI growth on particle volume basis")
             # self.delta_film = dae.daeVariable(
@@ -452,7 +452,7 @@ class Mod1var(dae.daeModel):
             Rxn_deg = self.calc_rxn_rate_SEI(
             eta_deg, self.cbar(), self.cbar(), ndD["k0"], T, ndD["alpha"])
             eq = self.CreateEquation("Rxn_deg")
-            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if time dependent
+            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if space dependent
         else:
             eq = self.CreateEquation("Rxn_deg")
             eq.Residual = self.Rxn_deg() - 0
