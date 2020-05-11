@@ -57,6 +57,33 @@ def LiClO4_PC():
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
+def Doyle96_EC_DMC_1_2():
+    """ Set of parameters from Doyle, Newman, et al. 1996.
+    """
+    def tp0(c):
+        return 0.363
+
+    def D(c):
+        return 7.5e-11  # m^2/s
+
+    def therm_fac(c):
+        return 1.
+
+    def sigma(c):
+        k0 = 1.0793e-4 + 6.7461e-3*c - 5.2245e-3*c**2 + 1.3605e-3*c**3 - 1.1724e-4*c**4 #S/cm
+        return(100*k0)
+    
+    Dref = D(cref)
+
+    def D_ndim(c):
+        return D(c) / Dref
+
+    def sigma_ndim(c):
+        return sigma(c) * (
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+
 def valoen_reimers():
     """ Set of parameters from Valoen and Reimers 2005 """
     def tp0(c):
