@@ -4,7 +4,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-import mpet.plot_data as pd
+import mpet.plot.plot_data as pd
 
 
 def vt(testDir, dirDict):

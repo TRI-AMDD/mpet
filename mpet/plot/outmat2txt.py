@@ -4,7 +4,7 @@ import os
 import numpy as np
 import scipy.io as sio
 
-import mpet.plot_data as plot_data
+import mpet.plot.plot_data as plot_data
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
