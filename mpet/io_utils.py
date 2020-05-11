@@ -401,7 +401,7 @@ def get_dicts_from_configs(P_s, P_e):
         for j in range(dD_s["totalCycle"]):
             for i in range(len(dD_s["segments"])):
                 #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
-                hard_cut = 0.99 if dD_s["segments"][i][5] <= 2 else 0.01
+                hard_cut = ndD_s["capFrac"] if dD_s["segments"][i][5] <= 2 else 1-ndD_s["capFrac"]
                 #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
                 volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][1])+ndDVref)
                 #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
