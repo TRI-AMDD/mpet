@@ -178,6 +178,12 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, dPrev[partStr + "c"][-1,k])
+                            #Initialize degradation variables
+                            part.Rxn_deg.SetInitialGuess(
+                                dPrev[partStr + "Rxn_deg"][0,-1])
+                            part.dcSEIbardt.SetInitialGuess(
+                                dPrev[partStr + "dcSEIbardt"][0,-1])
+ 
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
                                 dPrev[partStr + "c1bar"][0,-1])
