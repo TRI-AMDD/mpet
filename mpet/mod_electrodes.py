@@ -233,8 +233,8 @@ class Mod2var(dae.daeModel):
         if ndD["type"] in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux1_bc = -0.5 * self.Rxn1()
-            Flux2_bc = -0.5 * self.Rxn2()
+            Flux1_bc = -0.5 * self.Rxn1() # SD:  This will change when degradation is added
+            Flux2_bc = -0.5 * self.Rxn2() # SD:  This will change when degradation is added
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn2":
                 pass
@@ -267,7 +267,7 @@ class Mod2var(dae.daeModel):
         noise1, noise2 = noises
         for k in range(N):
             eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
-            eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
+            eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k)) #SD: dcSEIbardt updation will be done here
             eq1.Residual = LHS1_vec[k] - RHS1[k]
             eq2.Residual = LHS2_vec[k] - RHS2[k]
             if ndD["noise"]:
@@ -539,7 +539,7 @@ class Mod1var(dae.daeModel):
         elif ndD["type"] in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux_bc = -(self.Rxn() - self.Rxn_deg()) #BC is only the intercalation current, excluding degradationl; SD 05/07/2020 #####
+            Flux_bc = -(self.Rxn() - self.Rxn_deg()) #BC is only the intercalation current, excluding degradation; SD 05/07/2020 #####
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
                 Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
@@ -549,7 +549,7 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = -np.diff(Flux_vec * area_vec)
+            RHS = -np.diff(Flux_vec * area_vec) #This is how electron transfer processes depend on area in the code
 
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]

@@ -351,9 +351,9 @@ def get_dicts_from_configs(P_s, P_e):
                 ndD_tmp = ndD_e[trode]["indvPart"][i,j]
                 # This specific particle dimensions
                 ndD_tmp["N"] = ndD_s["psd_num"][trode][i,j]
-                plen = dD_s["psd_len"][trode][i,j]
-                parea = dD_s["psd_area"][trode][i,j]
-                pvol = dD_s["psd_vol"][trode][i,j]
+                plen = dD_s["psd_len"][trode][i,j] #particle length
+                parea = dD_s["psd_area"][trode][i,j] #particle area
+                pvol = dD_s["psd_vol"][trode][i,j] #particle volume
                 # Define a few reference scales
                 cs_ref_part = N_A*dD_e[trode]['cs_ref']  # part/m^3
                 F_s_ref = plen*cs_ref_part/t_ref  # part/(m^2 s)
