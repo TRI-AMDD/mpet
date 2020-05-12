@@ -207,7 +207,7 @@ class SimMPET(dae.daeSimulation):
 
         self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
-        self.m.stnCCCV.ActiveState = "state_0" #sets active state to be state 0
+        self.m.stnCCCV.ActiveState = "state_start" #sets active state to be state 0
    
 
     def Run(self):
