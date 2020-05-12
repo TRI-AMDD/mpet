@@ -76,6 +76,12 @@ RowStrHdr2 = "Second, third and fourth columns respond to gravimetric capacity o
 cyclerHdr = ("Cycling Data\n" + RowStrHdr1 + RowStrHdr2)
 fnameCycleBase = "cycleData.txt"
 
+RowStrHdr1 = "Each i column represents the discharge voltages for the ith cycle in V as V(t).\n"
+vCyclerHdr = ("Voltage Cycling Data\n" + RowStrHdr1)
+
+RowStrHdr1 = "Each i column represents the discharge capacity for the ith cycle in Ah/m^2 as Q(t).\n"
+capCyclerHdr = ("Capacity Cycling Data\n" + RowStrHdr1)
+
 
 def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
@@ -258,6 +264,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
                    delimiter=dlm, header=bulkpHdr)
 
     if totalCycle > 1:
+        #save general cycle data
         cycNum, cycleCapacity = plot_data.show_data(
             indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
             data_only=True)
@@ -274,5 +281,19 @@ def main(indir, genData=True, discData=True, elyteData=True,
         genMat[:,3] = cycleEfficiency
         np.savetxt(os.path.join(indir, fnameCycleBase), genMat, delimiter=dlm,
               header=cyclerHdr)
+
+        #save QV and dQdV data
+        voltCycle, capCycle = plot_data.show_data(                                            indir, plot_type="cycle_Q_V", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "voltageCycle"
+        np.save(os.path.join(indir, fname), voltCycle)
+
+        fname = "capacityCycle"
+        np.save(os.path.join(indir, fname), capCycle)
+
+        voltCycle, dQdVCycle = plot_data.show_data(                                            indir, plot_type="cycle_dQ_dV", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "dQdVCycle"
+        np.save(os.path.join(indir, fname), dQdVCycle)
 
     return

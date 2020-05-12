@@ -6,12 +6,14 @@ import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
+import scipy.integrate as integrate
 
 import mpet.geometry as geom
 import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
 import mpet.props_am as props_am
 import mpet.utils as utils
+
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18
@@ -316,10 +318,44 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         density = utils.get_density(material_type) #kg/m^3
         #get the discharge currents (are multiplied by 0 if it is not the segment we want)
         discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
+        #get charge and discharge capacities
+        charge_currents = cap * np.multiply(pos_charge_seg, current)
+        charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
         ##we wang tot_cycle * timesteps array, A/m^2 * s
-        discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
-        #use trapezoid rule to integrate Q = int(i dt), convert to mAh/m^2 from As/m^2
+        #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
+        #cutoff the discharge_currents where it is zero so we don't continue appending
+        discharge_voltages = np.multiply(neg_discharge_seg, voltage) #in V
+        #find the last value where the discharge_current is not zero for each j segment
+        ind_end = discharge_currents.shape[1] - np.argmax(np.fliplr(discharge_currents) != 0, axis = 1)
+        #Q(t) array for the ith cycle for discharge_cap_func[i]
+        discharge_cap_func = [0] * discharge_currents.shape[0]
+        #V(t) array for the ith cycle for discharge_volt[i]
+        discharge_volt = [0] * discharge_currents.shape[0]
+        #total discharge capacity
+        discharge_capacities = np.zeros(discharge_currents.shape[0])
+        #only save discharge_cap_func and discharge_volt up to those values
+        for j in range(discharge_currents.shape[0]):
+            discharge_cap_func[j] = integrate.cumtrapz(discharge_currents[j,:ind_end[j]], times[:ind_end[j]]*td, initial=0)/3600
+            #integrate Q = int(I)dt, units in A hr/m^2
+            discharge_cap_func[j] = np.insert(np.trim_zeros(discharge_cap_func[j], 'f'), 0, 0) #Ahr. pad w zero because the first number is always 0
+            discharge_volt[j] = np.trim_zeros(discharge_voltages[j,:])
+            discharge_capacities[j] = discharge_cap_func[j][-1] * 1000#mAh/m^2
+        #units will be in Ahr/m^2*m^2 = Ah
+        #discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
+        #both of these arrays
         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
+        #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+ 
+        #for QV or dQdV plots:
+        #plot all cycles if less than six cycles, otherwise use equal spacing and plot six
+        plot_indexes = 0
+        if neg_discharge_seg.shape[0] > 7:
+            plot_indexes = (np.arange(0, 7)*(neg_discharge_seg.shape[0]-1)/6).astype(int)
+        else:
+            plot_indexes = np.arange(0, neg_discharge_seg.shape[0])
+
+
         if plot_type == "cycle_capacity": #plots discharge capacity
             if len(gravimetric_caps) != len(cycle_numbers):
                 #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
@@ -336,8 +372,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         elif plot_type == "cycle_efficiency":
             #do we need to change this q because molweight changed? should be okay because Nm still same
-            charge_currents = cap * np.multiply(pos_charge_seg, current)
-            charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
             #efficiency = discharge_cap/charge_cap
             efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
             if len(efficiencies) != len(cycle_numbers):
@@ -371,7 +405,45 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if save_flag:
                 fig.savefig("mpet_cycle_cap_frac.png", bbox_inches="tight")
             return fig, ax
+        elif plot_type == "cycle_Q_V":
+   
+            if data_only:
+                return discharge_volt, discharge_cap_func
+ 
+            fig, ax = plt.subplots(figsize=figsize)
+            for i in plot_indexes:
+                ax.plot(discharge_cap_func[i], discharge_volt[i])
+            ax.legend(plot_indexes+1)
+            ax.set_xlabel('Capacity (A hr/m^2)')
+            ax.set_ylabel("Voltage (V)")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_Q_V.png", bbox_inches="tight")
+            return fig, ax
             
+        elif plot_type == "cycle_dQ_dV":
+            #calculates dQdV along each curve
+            dQ_dV = [0] * discharge_currents.shape[0]
+            #nondimensionalize dQ and dV by initial discharge cap
+            max_cap = discharge_capacities[0]/1000 # in Ahr/m^2
+            max_volt = max(voltage)
+            for k in range(discharge_currents.shape[0]):
+                dQ_dV[k] = np.gradient(discharge_cap_func[k]/max_cap, discharge_volt[k]/max_volt)
+
+            if data_only:
+                return discharge_volt, dQ_dV
+ 
+            fig, ax = plt.subplots(figsize=figsize)
+            for i in plot_indexes:
+                ax.plot(discharge_volt[i], dQ_dV[i])
+            ax.legend(plot_indexes+1)
+            ax.set_xlabel("Voltage (V)")
+            ax.set_ylabel('dQ/dV (A hr/(m^2 V))')
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_dQ_dV.png", bbox_inches="tight")
+            return fig, ax
+        
 
 
     # Plot electrolyte concentration or potential
