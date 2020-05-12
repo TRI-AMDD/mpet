@@ -70,7 +70,12 @@ def Doyle96_EC_DMC_1_2():
         return 1.
 
     def sigma(c):
-        k0 = 1.0793e-4 + 6.7461e-3*c - 5.2245e-3*c**2 + 1.3605e-3*c**3 - 1.1724e-4*c**4 #S/cm
+        r1=1.0793e-4
+        r2=6.7461e-4 #This value in dualfoil differs from the paper
+        r3=5.2245e-4 #This value in dualfoil differs from the paper
+        r4=1.3605e-3
+        r5=1.1724e-4
+        k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4 #S/cm
         return(100*k0)
     
     Dref = D(cref)
