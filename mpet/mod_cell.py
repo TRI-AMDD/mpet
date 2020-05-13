@@ -416,14 +416,14 @@ class ModCell(dae.daeModel):
 #start state transition network
             self.stnCCCV=self.STN("CCCV")
 
-             #start at a 0C state -1 for better initializing
+            #start at a 0C state -1 for better initializing
             self.STATE("state_start")
             eq = self.CreateEquation("Constraint_start")
             eq.Residual = self.current()
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             #add new variable to assign +1 -1 for charge/discharge
             eq.Residual = self.charge_discharge() - 1
-            self.ON_CONDITION(dae.Time() > dae.Constant(0*s),
+            self.ON_CONDITION(dae.Time() > dae.Constant(0.001*s),
                       switchToStates = [('CCCV', 'state_0')],
                       setVariableValues = [(self.time_counter, dae.Time())],
                       triggerEvents = [],
