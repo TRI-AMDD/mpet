@@ -19,6 +19,8 @@ plotTypes=OrderedDict([
     ('cycle_capacity', 'capacity of discharge cycle vs cycle number (only for battery cycling)'),
     ('cycle_cap_frac', 'capacity fraction of discharge cycle/original discharge cycle vs cycle number (only for battery cycling)'),
     ('cycle_efficiency', 'cycle efficiency vs cycle number (only for battery cycling)'),
+    ('cycle_Q_V', 'plots V-Q plots of battery cycling from first to last cycle'),
+    ('cycle_dQ_dV', 'plots V-dQdV plots of battery cycling from first to last cycle'),
     ('elytec','electrolyte concentration (movie)'),
     ('elytecf','electrolyte concentration final snapshot'),
     ('elytep','electrolyte potential (movie)'),
