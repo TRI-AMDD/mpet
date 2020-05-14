@@ -659,6 +659,7 @@ class ModCell(dae.daeModel):
                 eq.Residual = self.current()
                 self.END_IF()
 
+            #automatically sets charge_discharge to 1 when not in cycling
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
 

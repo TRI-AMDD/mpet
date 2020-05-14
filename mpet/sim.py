@@ -230,9 +230,13 @@ class SimMPET(dae.daeSimulation):
                     t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
             time = self.IntegrateUntilTime(
                 nextTime, dae.eDoNotStopAtDiscontinuity, True)
+            #for cycling, we need to set to not stop at model discontinuity to
+            #be false so it doens't break when a discontinuity is hit
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
             #Break when a volage limit condition is reached
             #if self.LastSatisfiedCondition:
             #    break
+            #commment out so model doesn't break if discontinuity is hit
+            #(cycler or segments)
