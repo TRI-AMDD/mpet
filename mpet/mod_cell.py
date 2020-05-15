@@ -60,6 +60,7 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        #adds reaction rate for reaction without degradation
         self.R_no_deg_Vp = {}
         self.ffrac = {}
         self.charge_discharge = {}
@@ -199,8 +200,10 @@ class ModCell(dae.daeModel):
         # Define dimensionless R_Vp for each electrode volume
         for trode in trodes:
             for vInd in range(Nvol[trode]):
+                #eq1 is for total reaction (degradation + normal reaction)
                 eq1 = self.CreateEquation(
                     "R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                #eq2 is for normal reaction, does not contain degradation
                 eq2 = self.CreateEquation(
                     "R_no_deg_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
@@ -217,6 +220,7 @@ class ModCell(dae.daeModel):
                              * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
                     #SD insert for SEI 05/07/2020 #################################################################################
                     if ndD_e[trode]["SEI"]:
+                       #only sums SEI if there SEI happening
                        RHS1 += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt() ) # this imposes the current constraint 
                     ###############################################################################################################           
@@ -376,6 +380,7 @@ class ModCell(dae.daeModel):
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
         # C-rates.
+        # eq 1 is current with degradation, eq2 is current without degradation current
         eq1 = self.CreateEquation("Total_Current")
         eq2 = self.CreateEquation("Total_Current_No_Deg")
         eq1.Residual = self.current()
@@ -384,6 +389,7 @@ class ModCell(dae.daeModel):
         dx = 1./Nvol[limtrode]
         rxn_scl = ndD["beta"][limtrode] * (1-ndD["poros"][limtrode]) * ndD["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
+            #eq 1 only sums total reaction, while eq2 only sums rxn without degradation
             if limtrode == "a":
                 eq1.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
                 eq2.Residual -= dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl

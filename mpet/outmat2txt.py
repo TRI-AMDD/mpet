@@ -12,7 +12,7 @@ CCStr = "Columns correspond to cell center positions (see discData.txt)."
 FCStr = "Columns correspond to face positions (see discData.txt)."
 genDataHdr = ("Time [s], Filling fraction of anode, "
               + "Filling fraction of cathode, "
-              + "Voltage [V], Current [C-rate], Current [A/m^2]"
+              + "Voltage [V], Current [C-rate], Current [A/m^2], "
               + "Current without Degradation [C-rate], Current without Degradation [A/m^2]")
 
 zeroStr = "Zero is at the anode current collector."
