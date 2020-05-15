@@ -303,10 +303,28 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
+    # Plot current profile with no degradation
+    if plot_type == "curr_no_deg":
+        current = data[pfx + "current_no_deg"][0] * 3600/td
+        ffvec = data[pfx + 'ffrac_c'][0]
+        if data_only:
+            return times*td, current
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, current)
+        xmin = np.min(ffvec)
+        xmax = np.max(ffvec)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Current [C-rate]")
+        if save_flag:
+            fig.savefig("mpet_current_no_deg.png", bbox_inches="tight")
+        return fig, ax
+
+
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current"][0] /td #gives us C-rates in /s
-     #   np.set_printoptions(threshold=sys.maxsize)
+        #gets total current
+        current = data[pfx + "current_no_deg"][0] /td #gives us C-rates in /s
+        #calculates current without degradation
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge

@@ -12,7 +12,8 @@ CCStr = "Columns correspond to cell center positions (see discData.txt)."
 FCStr = "Columns correspond to face positions (see discData.txt)."
 genDataHdr = ("Time [s], Filling fraction of anode, "
               + "Filling fraction of cathode, "
-              + "Voltage [V], Current [C-rate], Current [A/m^2]")
+              + "Voltage [V], Current [C-rate], Current [A/m^2]"
+              + "Current without Degradation [C-rate], Current without Degradation [A/m^2]")
 
 zeroStr = "Zero is at the anode current collector."
 dccpStr = "discretization cell center positions [m]. "
@@ -119,13 +120,18 @@ def main(indir, genData=True, discData=True, elyteData=True,
         currVec = plot_data.show_data(
             indir, plot_type="curr", print_flag=False,
             save_flag=False, data_only=True)[1]
-        genMat = np.zeros((ntimes, 6))
+        currNoDegVec = plot_data.show_data(
+            indir, plot_type="curr_no_deg", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        genMat = np.zeros((ntimes, 8))
         genMat[:,0] = tVec
         genMat[:,1] = ffVec_a
         genMat[:,2] = ffVec_c
         genMat[:,3] = vVec
         genMat[:,4] = currVec
         genMat[:,5] = currVec * CrateCurr
+        genMat[:,6] = currNoDegVec
+        genMat[:,7] = currNoDegVec * CrateCurr
         np.savetxt(os.path.join(indir, "generalData.txt"),
                    genMat, delimiter=dlm, header=genDataHdr)
 

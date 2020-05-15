@@ -60,6 +60,7 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        self.R_no_deg_Vp = {}
         self.ffrac = {}
         self.charge_discharge = {}
         self.time_counter = {}
@@ -84,6 +85,10 @@ class ModCell(dae.daeModel):
             self.R_Vp[trode] = dae.daeVariable(
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
+                [self.DmnCell[trode]])
+            self.R_no_deg_Vp[trode] = dae.daeVariable(
+                "R_no_deg_Vp_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of reaction with no degradation of positives per electrode volume",
                 [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
@@ -117,6 +122,8 @@ class ModCell(dae.daeModel):
             "Voltage between electrodes (phi_applied less series resistance)")
         self.current = dae.daeVariable(
             "current", dae.no_t, self, "Total current of the cell")
+        self.current_no_deg = dae.daeVariable(
+            "current_no_deg", dae.no_t, self, "Total current of the cell without degradation")
         # DZ: added two vars to aid counting of current. +1 for charge, -1 for discharge
         self.charge_discharge = dae.daeVariable(
             "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
@@ -192,23 +199,29 @@ class ModCell(dae.daeModel):
         # Define dimensionless R_Vp for each electrode volume
         for trode in trodes:
             for vInd in range(Nvol[trode]):
-                eq = self.CreateEquation(
+                eq1 = self.CreateEquation(
                     "R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq2 = self.CreateEquation(
+                    "R_no_deg_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
-                RHS = 0
+                RHS1 = 0
+                RHS2 = 0
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
+                    RHS1 += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
+                             * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
+                    RHS2 += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
                     #SD insert for SEI 05/07/2020 #################################################################################
                     if ndD_e[trode]["SEI"]:
-                       RHS += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                       RHS1 += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt() ) # this imposes the current constraint 
                     ###############################################################################################################           
-                eq.Residual = self.R_Vp[trode](vInd) - RHS
+                eq1.Residual = self.R_Vp[trode](vInd) - RHS1
+                eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS2
 
         # Define output port variables
         for trode in trodes:
@@ -363,16 +376,20 @@ class ModCell(dae.daeModel):
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
         # C-rates.
-        eq = self.CreateEquation("Total_Current")
-        eq.Residual = self.current()
+        eq1 = self.CreateEquation("Total_Current")
+        eq2 = self.CreateEquation("Total_Current_No_Deg")
+        eq1.Residual = self.current()
+        eq2.Residual = self.current_no_deg()
         limtrode = ("c" if ndD["z"] < 1 else "a")
         dx = 1./Nvol[limtrode]
         rxn_scl = ndD["beta"][limtrode] * (1-ndD["poros"][limtrode]) * ndD["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
             if limtrode == "a":
-                eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq1.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq2.Residual -= dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
             else:
-                eq.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq1.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq2.Residual += dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R

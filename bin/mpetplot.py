@@ -16,6 +16,7 @@ plotTypes=OrderedDict([
     ('v','voltage vs filling fraction'),
     ('vt','voltage vs time'),
     ('curr','current vs time'),
+    ('curr_no_deg','current with no degradation vs time'),
     ('cycle_capacity', 'capacity of discharge cycle vs cycle number (only for battery cycling)'),
     ('cycle_cap_frac', 'capacity fraction of discharge cycle/original discharge cycle vs cycle number (only for battery cycling)'),
     ('cycle_efficiency', 'cycle efficiency vs cycle number (only for battery cycling)'),

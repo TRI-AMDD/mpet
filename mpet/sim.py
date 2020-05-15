@@ -67,6 +67,7 @@ class SimMPET(dae.daeSimulation):
                 for i in range(Nvol[l]):
                     # Guess initial volumetric reaction rates
                     self.m.R_Vp[l].SetInitialGuess(i, 0.0)
+                    self.m.R_no_deg_Vp[l].SetInitialGuess(i, 0.0)
                     # Guess initial value for the potential of the
                     # electrodes
                     if l == "a":  # anode
