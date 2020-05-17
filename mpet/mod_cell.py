@@ -215,7 +215,7 @@ class ModCell(dae.daeModel):
                              * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
                 
                 eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS2
-                #SD insert for SEI 05/07/2020 #################################################################################
+                #SD insert for nSEI 05/07/2020 #################################################################################
                 #only sums SEI if there SEI happening or current not zero
                 self.IF(self.current() < 0 & ndD_e[trode]["SEI"])
                 #we only add SEI if there is rurent in the system
@@ -419,15 +419,15 @@ class ModCell(dae.daeModel):
             else:
                 eq1.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
                 eq2.Residual += dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
-
-        #if ndD_e["c"]["SEI"] and limtrode == "a":
-        #    #if the non limiting electrode also has degradation, need to sum and add to current
-        #    for vInd in range(Nvol["c"]):
-        #        eq1.Residual -= dx * (self.R_Vp["c"](vInd)-self.R_no_deg_Vp["c"](vInd))/rxn_scl
-        #elif ndD_e["a"]["SEI"] and limtrode == "c":
-        #    for vInd in range(Nvol["a"]):
-        #        eq1.Residual += dx * (self.R_Vp["a"](vInd)-self.R_no_deg_Vp["a"](vInd))/rxn_scl                   
-           
+ 
+        if ndD_e["c"]["SEI"] and limtrode == "a":
+            #if the non limiting electrode also has degradation, need to sum and add to current
+            #degradation will be negative relative to the reaction direction
+            for vInd in range(Nvol["c"]):
+                eq1.Residual += dx * (self.R_Vp["c"](vInd)-self.R_no_deg_Vp["c"](vInd))/rxn_scl
+        elif ndD_e["a"]["SEI"] and limtrode == "c":
+            for vInd in range(Nvol["a"]):
+                eq1.Residual -= dx * (self.R_Vp["a"](vInd)-self.R_no_deg_Vp["a"](vInd))/rxn_scl                   
 
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
