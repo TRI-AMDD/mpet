@@ -230,7 +230,6 @@ class ModCell(dae.daeModel):
                              * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) # this imposes the current constraint
                     #total rxn = SEI + normal reaction
                     eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
-                    #self.ELSE_IF(((self.current() > 0) & (trode == "c")) | ((self.current() < 0) & (trode == "a")) & ndD_e[trode]["SEI"])
                     self.ELSE_IF(self.current() > 0)
                     #we only add SEI if there is rurent in the system
                     eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
@@ -261,7 +260,6 @@ class ModCell(dae.daeModel):
                              * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) # this imposes the current constraint
                     #total rxn = SEI + normal reaction
                     eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
-                    #self.ELSE_IF(((self.current() > 0) & (trode == "c")) | ((self.current() < 0) & (trode == "a")) & ndD_e[trode]["SEI"])
                     self.ELSE_IF(self.current() < 0)
                     #we only add SEI if there is rurent in the system
                     eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
