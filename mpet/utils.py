@@ -240,7 +240,7 @@ def process_ends(ends, curr_step_process, area, charge_type = 1):
         elif end['EndType'] == "StepTime":
             #process timecutoff
             end_str = end['Value'].split(':')
-            duration = 60*60*float(end_str[0]) + 60*float(end_str[1]) + float(end_str[2]) # [seconds]
+            duration = 60*float(end_str[0]) + float(end_str[1]) + float(end_str[2])/60 # [minutes]
             change_index += 1
             curr_step_process, dum = replace_cutoff(4, curr_step_process, end, duration, "<")
             next_step_index = dum if change_index == 1 else next_step_index
