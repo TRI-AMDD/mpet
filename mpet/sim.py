@@ -173,7 +173,9 @@ class SimMPET(dae.daeSimulation):
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
-        self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
+
+        #The simulation runs when the endCondition is 0
+        self.m.endCondition.AssignValue(0)
 
     def Run(self):
         """
@@ -191,6 +193,8 @@ class SimMPET(dae.daeSimulation):
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
-            #Break when a volage limit condition is reached
-            if self.LastSatisfiedCondition:
+            #Break when an end condition has been met
+            if self.m.endCondition.npyValues:
+                description=mod_cell.endConditions[int(self.m.endCondition.npyValues)]
+                self.Log.Message("Ending condition: " + description, 0)
                 break
