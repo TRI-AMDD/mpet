@@ -152,9 +152,11 @@ def main(paramfile, keepArchive=True):
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
-
     P_s.set('Electrodes', 'cathode', 'input_params_c.cfg')
     P_s.set('Electrodes', 'anode', 'input_params_a.cfg')
+
+    #Disable printStats
+    cfg.SetString('daetools.activity.printStats','false')
 
     #save our input files and runs simulations
     if ndD_s["profileType"][-5:] != ".json":
