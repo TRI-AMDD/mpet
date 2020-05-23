@@ -391,11 +391,12 @@ class ModCell(dae.daeModel):
         for vInd in range(Nvol[limtrode]):
             #eq 1 only sums total reaction, while eq2 only sums rxn without degradation
             if limtrode == "a":
-                eq1.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq1.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl #SD: this only sums the degradation for limiting electrode
                 eq2.Residual -= dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
             else:
-                eq1.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                eq1.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl #SD: this only sums the degradation for limiting electrode
                 eq2.Residual += dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
+        
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
