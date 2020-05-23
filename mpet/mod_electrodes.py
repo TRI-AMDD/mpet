@@ -450,7 +450,7 @@ class Mod1var(dae.daeModel):
         if ndD["SEI"]:
             eta_deg = calc_eta(muR_deg, muO)
             Rxn_deg = self.calc_rxn_rate_SEI(
-            eta_deg, self.cbar(), self.cbar(), ndD["k0"], T, ndD["alpha"])
+            eta_deg, self.cbar(), self.cbar(), ndD["k_SEI"], T, ndD["alpha"]) #currently feeding in cbar in place of c_Li+
             eq = self.CreateEquation("Rxn_deg")
             eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if space dependent
         else:
@@ -467,6 +467,8 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("dcSEIbardt")
         eq.Residual = self.dcSEIbardt()
         eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #check units
+        if ndD["noise"]:
+            eq.Residual += noise[0]()
         ###################################################################################
 
 
@@ -549,7 +551,7 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = -np.diff(Flux_vec * area_vec) #This is how electron transfer processes depend on area in the code
+            RHS = -np.diff(Flux_vec * area_vec) #SD: This is how electron transfer processes depend on area in the code
 
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
@@ -563,7 +565,7 @@ class Mod1var(dae.daeModel):
         ############# Added by SD 05/07/2020 ##############################################
         eq = self.CreateEquation("dcSEIbardt")
         eq.Residual = self.dcSEIbardt()
-        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #check units, may need to initialize csei 
+        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #SD: need to fix, should have area dependence. Add noise
         ###################################################################################
 
 
