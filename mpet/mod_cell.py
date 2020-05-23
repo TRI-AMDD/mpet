@@ -201,31 +201,87 @@ class ModCell(dae.daeModel):
         for trode in trodes:
             for vInd in range(Nvol[trode]):
                 #eq1 is for total reaction (degradation + normal reaction)
-                eq1 = self.CreateEquation(
-                    "R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 #eq2 is for normal reaction, does not contain degradation
                 eq2 = self.CreateEquation(
                     "R_no_deg_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
-                RHS1 = 0
                 RHS2 = 0
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    RHS1 += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
-                             * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
                     RHS2 += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt()) #Equation 96 in paper
-                    #SD insert for SEI 05/07/2020 #################################################################################
-                    if ndD_e[trode]["SEI"]:
-                       #only sums SEI if there SEI happening
-                       RHS1 += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
-                            * Vj * self.particles[trode][vInd,pInd].dcSEIbardt() ) # this imposes the current constraint 
-                    ###############################################################################################################           
-                eq1.Residual = self.R_Vp[trode](vInd) - RHS1
+                
                 eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS2
+                #SD insert for nSEI 05/07/2020 #################################################################################
+                #only sums SEI if there SEI happening or current not zero
+                if ndD_e[trode]["SEI"] and trode == "a":
+                    self.IF(self.current() < 0)
+                    #we only add SEI if there is rurent in the system
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    RHS1 = 0
+                    for pInd in range(Npart[trode]):
+                        Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                        #calculates SEI growth at each volume element
+                        #SEI is always positive to current direction, thus why we * sign(current)
+                        RHS1 += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) # this imposes the current constraint
+                    #total rxn = SEI + normal reaction
+                    eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
+                    self.ELSE_IF(self.current() > 0)
+                    #we only add SEI if there is rurent in the system
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    RHS1 = 0
+                    for pInd in range(Npart[trode]):
+                        Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                        #calculates SEI growth at each volume element
+                        #SEI is always positive to current direction, thus why we * sign(current)
+                        RHS1 += ( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) #* self.current() / dae.Abs(self.current()) # this imposes the current constraint
+                    #total rxn = SEI + normal reaction
+                    eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
+                    self.ELSE()
+                    #no degradation if current is zero
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    eq1.Residual = self.R_Vp[trode](vInd) - self.R_no_deg_Vp[trode](vInd)
+                    self.END_IF()
+                elif ndD_e[trode]["SEI"] and trode == "c":
+                    self.IF(self.current() > 0)
+                    #we only add SEI if there is rurent in the system
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    RHS1 = 0
+                    for pInd in range(Npart[trode]):
+                        Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                        #calculates SEI growth at each volume element
+                        #SEI is always positive to current direction, thus why we * sign(current)
+                        RHS1 += -( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) # this imposes the current constraint
+                    #total rxn = SEI + normal reaction
+                    eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
+                    self.ELSE_IF(self.current() < 0)
+                    #we only add SEI if there is rurent in the system
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    RHS1 = 0
+                    for pInd in range(Npart[trode]):
+                        Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                        #calculates SEI growth at each volume element
+                        #SEI is always positive to current direction, thus why we * sign(current)
+                        RHS1 += ( ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                             * Vj * self.particles[trode][vInd,pInd].dcSEIbardt()) #* self.current() / dae.Abs(self.current()) # this imposes the current constraint
+                    #total rxn = SEI + normal reaction
+                    eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
+                    self.ELSE()
+                    #no degradation if current is zero
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    eq1.Residual = self.R_Vp[trode](vInd) - self.R_no_deg_Vp[trode](vInd)
+                    self.END_IF()
+                else:
+                    eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    eq1.Residual = self.R_Vp[trode](vInd) - self.R_no_deg_Vp[trode](vInd)
+ 
+                ###############################################################################################################           
 
         # Define output port variables
         for trode in trodes:
