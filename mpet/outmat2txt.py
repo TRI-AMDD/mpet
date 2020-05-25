@@ -76,11 +76,11 @@ RowStrHdr2 = "Second, third and fourth columns respond to gravimetric capacity o
 cyclerHdr = ("Cycling Data\n" + RowStrHdr1 + RowStrHdr2)
 fnameCycleBase = "cycleData.txt"
 
-RowStrHdr1 = "Each i column represents the discharge voltages for the ith cycle in V as V(t).\n"
-vCyclerHdr = ("Voltage Cycling Data\n" + RowStrHdr1)
+RowStrHdr1Q = "Each i column represents the discharge voltages for the ith cycle in V as V(t).\n"
+vCyclerHdr = ("Voltage Cycling Data\n" + RowStrHdr1Q)
 
-RowStrHdr1 = "Each i column represents the discharge capacity for the ith cycle in Ah/m^2 as Q(t).\n"
-capCyclerHdr = ("Capacity Cycling Data\n" + RowStrHdr1)
+RowStrHdr1Q = "Each i column represents the discharge capacity for the ith cycle in Ah/m^2 as Q(t).\n"
+capCyclerHdr = ("Capacity Cycling Data\n" + RowStrHdr1Q)
 
 
 def main(indir, genData=True, discData=True, elyteData=True,

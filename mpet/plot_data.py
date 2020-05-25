@@ -428,7 +428,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             max_cap = discharge_capacities[0]/1000 # in Ahr/m^2
             max_volt = max(voltage)
             for k in range(discharge_currents.shape[0]):
-                dQ_dV[k] = np.gradient(discharge_cap_func[k]/max_cap, discharge_volt[k]/max_volt)
+                dQ_dV[k] = np.gradient(discharge_cap_func[k]/max_cap, discharge_volt[k])
 
             if data_only:
                 return discharge_volt, dQ_dV
@@ -438,7 +438,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 ax.plot(discharge_volt[i], dQ_dV[i])
             ax.legend(plot_indexes+1)
             ax.set_xlabel("Voltage (V)")
-            ax.set_ylabel('dQ/dV (A hr/(m^2 V))')
+            ax.set_ylabel('d%Q/dV (%/V))')
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_dQ_dV.png", bbox_inches="tight")
