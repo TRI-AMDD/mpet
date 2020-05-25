@@ -203,7 +203,6 @@ class SimMPET(dae.daeSimulation):
             #self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
             #self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
 
-        self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
         #self.m.stnCCCV.ActiveState = "state_start" #sets active state to be state 0
 
