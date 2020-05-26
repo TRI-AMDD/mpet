@@ -323,7 +323,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
         #gets total current
-        current = data[pfx + "current_no_deg"][0] /td #gives us C-rates in /s
+        current = data[pfx + "current"][0] /td #gives us C-rates in /s
+        current_no_deg = data[pfx + "current_no_deg"][0] /td
         #calculates current without degradation
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
@@ -336,9 +337,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         density = utils.get_density(material_type) #kg/m^3
         #get the discharge currents (are multiplied by 0 if it is not the segment we want)
         discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
+        discharge_currents_no_deg = cap * np.multiply(neg_discharge_seg, current_no_deg)
         #get charge and discharge capacities
         charge_currents = cap * np.multiply(pos_charge_seg, current)
-        charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
+        charge_currents_no_deg = cap * np.multiply(pos_charge_seg, current_no_deg)
+        charge_capacities_tot = np.trapz(charge_currents, times*td) * 1000/3600
+        discharge_capacities_tot = np.trapz(discharge_currents, times*td) * 1000/3600
+        SEI_charge_capacities = np.trapz(charge_currents-charge_currents_no_deg, times*td) * 1000/3600
+        SEI_discharge_capacities = np.trapz(discharge_currents-discharge_currents_no_deg, times*td) * 1000/3600
+        charge_capacities = charge_capacities_tot - np.cumsum(SEI_charge_capacities)
+        discharge_capacities = discharge_capacities_tot - np.cumsum(SEI_discharge_capacities)
         ##we wang tot_cycle * timesteps array, A/m^2 * s
         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
         voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
@@ -351,14 +359,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         #V(t) array for the ith cycle for discharge_volt[i]
         discharge_volt = [0] * discharge_currents.shape[0]
         #total discharge capacity
-        discharge_capacities = np.zeros(discharge_currents.shape[0])
+        #discharge_capacities = np.zeros(discharge_currents.shape[0])
         #only save discharge_cap_func and discharge_volt up to those values
         for j in range(discharge_currents.shape[0]):
             discharge_cap_func[j] = integrate.cumtrapz(discharge_currents[j,:ind_end[j]], times[:ind_end[j]]*td, initial=0)/3600
             #integrate Q = int(I)dt, units in A hr/m^2
             discharge_cap_func[j] = np.insert(np.trim_zeros(discharge_cap_func[j], 'f'), 0, 0) #Ahr. pad w zero because the first number is always 0
             discharge_volt[j] = np.trim_zeros(discharge_voltages[j,:])
-            discharge_capacities[j] = discharge_cap_func[j][-1] * 1000#mAh/m^2
+            #discharge_capacities[j] = discharge_cap_func[j][-1] * 1000#mAh/m^2
+
+        #temporarily we do
+
         #units will be in Ahr/m^2*m^2 = Ah
         #discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
         #both of these arrays
@@ -384,6 +395,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             ax.plot(cycle_numbers, np.round(gravimetric_caps, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
             ax.set_ylabel("Capacity [mAh/g]")
+            ax.set_ylim(0, 155)
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")
@@ -391,7 +403,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type == "cycle_efficiency":
             #do we need to change this q because molweight changed? should be okay because Nm still same
             #efficiency = discharge_cap/charge_cap
-            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            efficiencies = np.abs(np.divide(charge_capacities, discharge_capacities))
             if len(efficiencies) != len(cycle_numbers):
                 #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
                 cycle_numbers = cycle_numbers[:len(efficiencies)]
@@ -408,6 +420,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            efficiencies = np.abs(np.divide(charge_capacities, discharge_capacities))
             if len(discharge_cap_fracs) != len(cycle_numbers):
                 #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
                 cycle_numbers = cycle_numbers[:len(discharge_cap_fracs)]
@@ -416,8 +429,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             #normalize by the first discharge capacity
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals = 2), 'o')
+            ax.plot(cycle_numbers, np.round(efficiencies, decimals = 2), 'o')
             ax.set_xlabel("Cycle Number")
-            ax.set_ylabel("State of Health")
+            ax.set_ylabel("Fraction")
+            ax.legend(["State of Health", "Efficiency"])
             ax.set_ylim(0, 1.1)
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
