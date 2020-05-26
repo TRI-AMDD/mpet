@@ -341,12 +341,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         #get charge and discharge capacities
         charge_currents = cap * np.multiply(pos_charge_seg, current)
         charge_currents_no_deg = cap * np.multiply(pos_charge_seg, current_no_deg)
-        charge_capacities_tot = np.trapz(charge_currents, times*td) * 1000/3600
+        charge_capacities_tot = np.abs(np.trapz(charge_currents, times*td) * 1000/3600)
         discharge_capacities_tot = np.trapz(discharge_currents, times*td) * 1000/3600
-        SEI_charge_capacities = np.trapz(charge_currents-charge_currents_no_deg, times*td) * 1000/3600
+        SEI_charge_capacities = np.abs(np.trapz(charge_currents-charge_currents_no_deg, times*td) * 1000/3600)
         SEI_discharge_capacities = np.trapz(discharge_currents-discharge_currents_no_deg, times*td) * 1000/3600
-        charge_capacities = charge_capacities_tot - np.cumsum(SEI_charge_capacities)
-        discharge_capacities = discharge_capacities_tot - np.cumsum(SEI_discharge_capacities)
+        #charge happens before discharge, so we don't add the discharge capacities of the current cycle to charge
+        charge_capacities = charge_capacities_tot - (np.cumsum(SEI_charge_capacities) + np.cumsum(np.insert(np.delete(SEI_discharge_capacities,-1), 0, 0)))
+        #discharge happens after charge, so we add the charge capacity to the current cycle
+        discharge_capacities = discharge_capacities_tot - (np.cumsum(SEI_discharge_capacities) + np.cumsum(SEI_charge_capacities))
         ##we wang tot_cycle * timesteps array, A/m^2 * s
         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
         voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
@@ -403,7 +405,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type == "cycle_efficiency":
             #do we need to change this q because molweight changed? should be okay because Nm still same
             #efficiency = discharge_cap/charge_cap
-            efficiencies = np.abs(np.divide(charge_capacities, discharge_capacities))
+            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
             if len(efficiencies) != len(cycle_numbers):
                 #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
                 cycle_numbers = cycle_numbers[:len(efficiencies)]
@@ -420,7 +422,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         elif plot_type == "cycle_cap_frac":	     
             discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
-            efficiencies = np.abs(np.divide(charge_capacities, discharge_capacities))
+            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
             if len(discharge_cap_fracs) != len(cycle_numbers):
                 #if we weren't able to complete the simulation, we only plot up to the cycle we were able to calculate
                 cycle_numbers = cycle_numbers[:len(discharge_cap_fracs)]
