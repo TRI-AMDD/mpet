@@ -305,7 +305,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current"][0] /td #gives us C-rates in /s
+        current = data[pfx + "current_no_deg"][0] /td #gives us C-rates in /s
      #   np.set_printoptions(threshold=sys.maxsize)
         charge_discharge = data[pfx + "charge_discharge"]
         neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
