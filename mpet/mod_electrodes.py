@@ -65,8 +65,8 @@ class Mod2var(dae.daeModel):
         self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
 
         ################################# SD added 05/07/2020 ##########################################
-        if ndD["SEI"]:
-            self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
+        #if ndD["SEI"]:
+        #    self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
         ################################################################################################
         # SD: Actual eqns for SEI are only defined in the Mod1var class for now (05/07/2020)
         
@@ -431,7 +431,7 @@ class Mod1var(dae.daeModel):
         T = self.ndD_s["T"]
         c_surf = c
 
-        if ndD["SEI"]: ###### modified by SD 05/07/2020 ###############################
+        if ndD["SEI"]: ###### modified by SD 05/07/2020 #######################################
             muR_surf, actR_surf, muR_deg, actR_deg = calc_muR(
                 c_surf, self.cbar(), T, ndD, ISfuncs)
         else:
@@ -446,9 +446,9 @@ class Mod1var(dae.daeModel):
         eq.Residual = self.Rxn() - Rxn[0]
 
         ############# SD added 05/07/2020 ###################################################
-        # Define degradation reaction initial condition
+        # Define degradation reaction
         if ndD["SEI"]:
-            eta_deg = calc_eta(muR_deg, muO)
+            eta_deg = calc_eta(muR_deg, muO) #SD: muO needs to change to muO_SEI 05/25/2020
             Rxn_deg = self.calc_rxn_rate_SEI(
             eta_deg, self.cbar(), self.cbar(), ndD["k_SEI"], T, ndD["alpha"]) #currently feeding in cbar in place of c_Li+
             eq = self.CreateEquation("Rxn_deg")
@@ -462,11 +462,11 @@ class Mod1var(dae.daeModel):
         eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn() - self.Rxn_deg()) # modified by SD 05/07/2020 ######
         if ndD["noise"]:
             eq.Residual += noise[0]()
+            self.dcSEIbardt - ndD["delta_L"]*(self.Rxn() - self.Rxn_deg())
 
         ############# Added by SD 05/07/2020 ##############################################
         eq = self.CreateEquation("dcSEIbardt")
-        eq.Residual = self.dcSEIbardt()
-        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #check units
+        eq.Residual = self.dcSEIbardt() - (ndD["delta_L"]*self.Rxn_deg()) #check units
         if ndD["noise"]:
             eq.Residual += noise[0]()
         ###################################################################################
@@ -522,14 +522,14 @@ class Mod1var(dae.daeModel):
             eq.Residual = self.Rxn() - Rxn
 
         ################# Added by SD 05/07/2020 ####################################
-        # Define degradation reaction initial condition
+        # Define degradation reaction
         if ndD["SEI"]:
-            eta_deg = calc_eta(muR_deg, muO)
+            eta_deg = calc_eta(muR_deg, muO) # SD: define muO_SEI carefully 05/25/2020
             Rxn_deg = self.calc_rxn_rate_SEI(
-            eta_deg, c_surf, c_surf, ndD["k0"], T, ndD["alpha"]) # it is c_surf instead of cbar
+            eta_deg, c_surf, c_surf, ndD["k_SEI"], T, ndD["alpha"]) # it is c_surf instead of cbar
             #because c_surf influences degradation in CHR and not cbar
             eq = self.CreateEquation("Rxn_deg")
-            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if time dependent
+            eq.Residual = self.Rxn_deg() - Rxn_deg #convert to Rxn_deg[0] if space dependent
         else:
             eq = self.CreateEquation("Rxn_deg")
             eq.Residual = self.Rxn_deg() - 0
@@ -564,8 +564,7 @@ class Mod1var(dae.daeModel):
 
         ############# Added by SD 05/07/2020 ##############################################
         eq = self.CreateEquation("dcSEIbardt")
-        eq.Residual = self.dcSEIbardt()
-        eq.Residual -= ndD["delta_L"]*self.Rxn_deg() #SD: need to fix, should have area dependence. Add noise
+        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_deg() #SD: need to fix, should have area dependence. Add noise
         ###################################################################################
 
 

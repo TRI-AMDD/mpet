@@ -203,8 +203,7 @@ def get_dicts_from_configs(P_s, P_e):
         ndD["SEI"] = P.getboolean('Degradation','SEI')
         ndD["muRdeg"] = P.get('Degradation', 'muRdeg')
         dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI',fallback=None)
-        dD["k_inner"] = P.getfloat('Degradation','k_inner',fallback=None)
-        dD["k_outer"] = P.getfloat('Degradation', 'k_outer',fallback=None)
+        dD["k_SEI"] = P.getfloat('Degradation','k_SEI',fallback=None)
         ndD["alpha_SEI"] = P.getfloat('Degradation','alpha_SEI',fallback=None)
         dD["h_s"] = P.getfloat('Degradation','h_s',fallback=None)
         ndD["beta_cond"] = P.getfloat('Degradation','beta_cond',fallback=None)
@@ -390,6 +389,8 @@ def get_dicts_from_configs(P_s, P_e):
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
+                if dD_e[trode]["k_SEI"] is not None:
+                    ndD_tmp["k_SEI"] = dD_e[trode]['k_SEI']/(e*F_s_ref) #SD added 05/25/2020
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
                 # If we're using the model that varies Omg_a with particle size,
@@ -647,8 +648,7 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if solidType == "homog_sdn" and not T298:
         raise NotImplementedError("homog_snd req. Tabs=298")
 
-#SD insert 05/04/2020
-#test
+
 def write_config_file(P, filename="input_params.cfg"):
     with open(filename, "w") as fo:
         P.write(fo)

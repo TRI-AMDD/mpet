@@ -219,7 +219,7 @@ class ModCell(dae.daeModel):
                 #only sums SEI if there SEI happening or current not zero
                 if ndD_e[trode]["SEI"] and trode == "a":
                     self.IF(self.current() < 0)
-                    #we only add SEI if there is rurent in the system
+                    #we only add SEI if there is current in the system
                     eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                     RHS1 = 0
                     for pInd in range(Npart[trode]):
