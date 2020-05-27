@@ -37,6 +37,8 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                         mat_dat[dkeybase] = mat_dat[dkeybase].T
                         mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
                     #data output does weird arrays where its (n, 2) but (1, n) if only one row
+                    if mdict[dkeybase].ndim == 1:
+                        mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
                     mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase], axis = 0)
                     mdict[dkeybase + '_times'] = np.append(mat_dat[dkeybase + '_times'],  mdict[dkeybase + '_times'])
 

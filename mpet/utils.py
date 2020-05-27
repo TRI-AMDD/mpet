@@ -208,45 +208,59 @@ def process_ends(ends, curr_step_process, area, charge_type = 1):
     #in each sequence of CC/CCCV
     change_index = 0
     next_step_index = 0 #voltage is default but is always overwritten by current/time
+
     for end in ends['EndEntry']:
-        if end['EndType'] == "Voltage":
-            #process voltage cutoff
-            if charge_type == 1:
-                #if it is a charge step, we need a voltage upper lim only
-                if end['Oper'] == ">=" or end['Oper'] == "=":
-                    #only updates values if it is greater than prev value or currently no cutoff
-                    Vset = float(end['Value'])
-                    change_index += 1
-                    curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, "<")
-                    next_step_index = dum if change_index == 1 else next_step_index
-            #process voltage cutoff
-            else:
-                #if it is a discharge step, we need a voltage lower lim only
-                if end['Oper'] == "<=" or end['Oper'] == "=":
-                    #only updates values if it is smaller than prev value or currently no cutoff
-                    Vset = float(end['Value'])
-                    change_index += 1
-                    curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, ">")
-                    next_step_index = dum if change_index == 1 else next_step_index
-        elif end['EndType'] == "Current":
-            #process voltage cutoff
-            #if it is a charge step, we need a current lower lim only
-            if end['Oper'] == "<=" or end['Oper'] == "=":
-                #only updates values if it is smaller than prev value or currently no cutoff
-                curr_value = process_current(end['Value'], charge_type, area)
-                change_index += 1
-                curr_step_process, dum = replace_cutoff(3, curr_step_process, end, curr_value, ">")
-                next_step_index = dum if change_index == 1 else next_step_index
-        elif end['EndType'] == "StepTime":
-            #process timecutoff
-            end_str = end['Value'].split(':')
-            duration = 60*float(end_str[0]) + float(end_str[1]) + float(end_str[2])/60 # [minutes]
-            change_index += 1
-            curr_step_process, dum = replace_cutoff(4, curr_step_process, end, duration, "<")
-            next_step_index = dum if change_index == 1 else next_step_index
-            #only updates value if it is smaller than previous value or currently there is no ctoff
+        if end == "EndType": #it only has one step!
+            curr_step_process, next_step_index, change_index = end_type_logic(ends['EndEntry'], curr_step_process, next_step_index, change_index, charge_type)
+            break
+        else:
+            curr_step_process, next_step_index, change_index = end_type_logic(end, curr_step_process, next_step_index, change_index, charge_type)
     #XXXneed to fix how we find next step index
     return curr_step_process, next_step_index
+
+
+def end_type_logic(end, curr_step_process, next_step_index, change_index, charge_type):        
+    """Finds the ending logic for the end step. Takes in curr_step_process,
+    updates it for the current end step condition (endStep), and returns it
+    and the next step index. Change_index defines which cutoff defines the next
+    step. charge_type = 1 for charge, 0 for discharge"""
+    if end['EndType'] == "Voltage":
+        #process voltage cutoff
+        if charge_type == 1:
+            #if it is a charge step, we need a voltage upper lim only
+            if end['Oper'] == ">=" or end['Oper'] == "=":
+                #only updates values if it is greater than prev value or currently no cutoff
+                Vset = float(end['Value'])
+                change_index += 1
+                curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, "<")
+                next_step_index = dum if change_index == 1 else next_step_index
+        #process voltage cutoff
+        else:
+            #if it is a discharge step, we need a voltage lower lim only
+            if end['Oper'] == "<=" or end['Oper'] == "=":
+                #only updates values if it is smaller than prev value or currently no cutoff
+                Vset = float(end['Value'])
+                change_index += 1
+                curr_step_process, dum = replace_cutoff(1, curr_step_process, end, Vset, ">")
+                next_step_index = dum if change_index == 1 else next_step_index
+    elif end['EndType'] == "Current":
+        #process voltage cutoff
+        #if it is a charge step, we need a current lower lim only
+        if end['Oper'] == "<=" or end['Oper'] == "=":
+            #only updates values if it is smaller than prev value or currently no cutoff
+            curr_value = process_current(end['Value'], charge_type, area)
+            change_index += 1
+            curr_step_process, dum = replace_cutoff(3, curr_step_process, end, curr_value, ">")
+            next_step_index = dum if change_index == 1 else next_step_index
+    elif end['EndType'] == "StepTime":
+        #process timecutoff
+        end_str = end['Value'].split(':')
+        duration = 60*float(end_str[0]) + float(end_str[1]) + float(end_str[2])/60 # [minutes]
+        change_index += 1
+        curr_step_process, dum = replace_cutoff(4, curr_step_process, end, duration, "<")
+        next_step_index = dum if change_index == 1 else next_step_index
+        #only updates value if it is smaller than previous value or currently there is no ctoff
+    return curr_step_process, next_step_index, change_index
 
 
 def process_current(curr_value, chg_dischg, area):
