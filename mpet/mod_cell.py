@@ -27,7 +27,8 @@ from mpet.daeVariableTypes import *
 #Dictionary of end conditions
 endConditions={
     1:"Vmax reached",
-    2:"Vmin reached"}
+    2:"Vmin reached",
+    3:"End condition for CCCVcycle reached"}
 
 class ModCell(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
@@ -453,11 +454,6 @@ class ModCell(dae.daeModel):
                 #if time is past the first cutoff, switch to nextstate
                 time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
 
-                #set phi_guess based on the next step: if CC just set to ndDVref
-                #comment to test out initialize with CC = 0
-                if i <= len(constraints)-2: #break before the last step
-                    if np.mod(equation_type[i+1],2) == 0: #if it's CV
-                        phi_guess = constraints[i+1]
 
                 if equation_type[i] == 1:
 
@@ -478,13 +474,24 @@ class ModCell(dae.daeModel):
                     #capacity fraction depends on cathode/anode. if charging, we cut off at the capfrac
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
-                    #checks if the voltage, capacity fraction, or time segment conditions are broken
-                    self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                              switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
-                              triggerEvents = [],
-                              userDefinedActions = [])
-                    #increases time_counter to increment to the beginning of the next segment
+                    #if end state, then we set endCondition to 3
+                    if i == len(constraints)-1:
+                        #checks if the voltage, capacity fraction, or time segment conditions are broken
+                        self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.endCondition, 3)],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+                        #increases time_counter to increment to the beginning of the next segment
+ 
+                    else:
+                        #checks if the voltage, capacity fraction, or time segment conditions are broken
+                        self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+                        #increases time_counter to increment to the beginning of the next segment
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     #add new variable to assign +1 -1 for charge/discharge
                     eq.Residual = self.charge_discharge() - 1
@@ -511,12 +518,22 @@ class ModCell(dae.daeModel):
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #equation: constraining voltage
                     #if past cap_frac, switch to next state
-                    #checks if crate, cap frac, or time segment conditions are broken
-                    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                              switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
-                              triggerEvents = [],
-                              userDefinedActions = [])
+                    #if end state, then we set endCondition to 3
+                    if i == len(constraints)-1:
+                        #checks if crate, cap frac, or time segment conditions are broken
+                        self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.endCondition, 3)],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+                    else: 
+                       #checks if crate, cap frac, or time segment conditions are broken
+                        self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+ 
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() - 1
 
@@ -539,12 +556,22 @@ class ModCell(dae.daeModel):
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
                     #voltage cutoff
                     v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] == None else (-self.phi_applied() <= -voltage_cutoffs[i])
-                    #if hits capacity fraction or voltage cutoff, switch to next state
-                    self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                              switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
-                              triggerEvents = [],
-                              userDefinedActions = [])
+                    #if end state, then we set endCondition to 3
+                    if i == len(constraints)-1:
+                        #if hits capacity fraction or voltage cutoff, switch to next state
+                        self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.endCondition, 3)],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+                    else:
+                        #if hits capacity fraction or voltage cutoff, switch to next state
+                        self.ON_CONDITION(v_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+ 
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
                 elif equation_type[i] == 4:
@@ -565,12 +592,21 @@ class ModCell(dae.daeModel):
                     #or hits crate limit
                     crate_cond = (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] == None else (self.current() <= crate_cutoffs[i])
                     #if i != len(constraints)-1: 
-                        #if not at end state
-                    self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                              switchToStates = [('CCCV', new_state)],
-                              setVariableValues = [(self.time_counter, dae.Time())],
-                              triggerEvents = [],
-                              userDefinedActions = [])
+                        #
+                    #if end state, then we set endCondition to 3
+                    if i == len(constraints)-1:
+                        self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.endCondition, 3)],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+                    else:
+                        self.ON_CONDITION(crate_cond | cap_cond | time_cond,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+ 
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
 
@@ -712,7 +748,7 @@ class ModCell(dae.daeModel):
             eq.CheckUnitsConsistency = False
 
         #Ending conditions for the simulation
-        if self.profileType in ["CC", "CCsegments"]:
+        if self.profileType in ["CC", "CCsegments", "CVsegments", "CCCVcyle"]:
             #Vmax reached
             self.ON_CONDITION((self.phi_applied() <= ndD["phimin"])
                             & (self.endCondition() < 1),
