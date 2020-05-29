@@ -206,6 +206,9 @@ class SimMPET(dae.daeSimulation):
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
         #self.m.stnCCCV.ActiveState = "state_start" #sets active state to be state 0
 
+        #tracks the number of cycles
+        self.m.cycle_number.AssignValue(1)
+
         #The simulation runs when the endCondition is 0
         self.m.endCondition.AssignValue(0)
 

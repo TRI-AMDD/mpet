@@ -69,7 +69,7 @@ def get_dicts_from_configs(P_s, P_e):
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
 #DZ 02/11/20 cycle counter
-    dD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
+    dD_s["totalCycle"] = ndD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
@@ -398,25 +398,24 @@ def get_dicts_from_configs(P_s, P_e):
             ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), dD_s["segments"][i][1]*60/t_ref))
 #DZ 02/12/20 battery cycling
     elif ndD_s["profileType"] == "CCCVcycle":
-        for j in range(dD_s["totalCycle"]):
-            for i in range(len(dD_s["segments"])):
-                #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
-                hard_cut = ndD_s["capFrac"] if dD_s["segments"][i][5] <= 2 else 1-ndD_s["capFrac"]
-                #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
-                volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][1])+ndDVref)
-                #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
-                #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
-                capfrac_cut = hard_cut if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
-                crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], CrateCurr)/curr_ref
-                time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
-                if not (volt_cut or capfrac_cut or crate_cut or time_cut):
-                    print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
-                if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
-                    #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
-                   ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
-                elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
-                    #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
-                    ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
+        for i in range(len(dD_s["segments"])):
+            #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
+            hard_cut = ndD_s["capFrac"] if dD_s["segments"][i][5] <= 2 else 1-ndD_s["capFrac"]
+            #if input is None, stores as None for cutoffs only. otherwise nondimensionalizes cutoffs & setpoints
+            volt_cut = None if dD_s["segments"][i][1] == None else -((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][1])+ndDVref)
+            #we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
+            #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+            capfrac_cut = hard_cut if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+            crate_cut = None if dD_s["segments"][i][3] == None else utils.get_crate(dD_s["segments"][i][3], CrateCurr)/curr_ref
+            time_cut = None if dD_s["segments"][i][4] == None else dD_s["segments"][i][4]*60/t_ref
+            if not (volt_cut or capfrac_cut or crate_cut or time_cut):
+                print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
+            if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 3:
+                #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
+               ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
+            elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 4:
+                #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
+                ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
                
 
     # Current or voltage segments profiles
@@ -485,8 +484,8 @@ def get_dicts_from_configs(P_s, P_e):
             ndD_s["tend"] = np.abs(ndD_s["capFrac"] / ndD_s["currset"])
 
     #nondimensionalize waveforms and repeat if we have cycles
-    if dD_s["totalCycle"] != 1 or isinstance(dD_s["period"], (list, tuple, np.ndarray)):
-        ndD_s["period"] = np.tile(np.array(dD_s["period"])*60/t_ref, dD_s["totalCycle"])
+    if isinstance(dD_s["period"], (list, tuple, np.ndarray)):
+        ndD_s["period"] = np.array(dD_s["period"])*60/t_ref
     else:
         ndD_s["period"] = dD_s["period"]*60/t_ref
 

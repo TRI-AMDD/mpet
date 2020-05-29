@@ -128,6 +128,8 @@ class ModCell(dae.daeModel):
         # DZ: added time counter to keep track of when new section starts
         self.time_counter = dae.daeVariable(
             "time_counter", time_t, self, "restarts counter every time a new section is hit")
+        self.cycle_number = dae.daeVariable(
+            "cycle_number", dae.no_t, self, "keeps track of which cycle number we are on")
         self.endCondition = dae.daeVariable(
             "endCondition", dae.no_t, self, "A nonzero value halts the simulation")
 
@@ -177,6 +179,7 @@ class ModCell(dae.daeModel):
         ndD = self.ndD
         Nvol = ndD["Nvol"]
         Npart = ndD["Npart"]
+        totalCycle = ndD["totalCycle"]
         Nlyte = np.sum(list(Nvol.values()))
 
         # Define the overall filling fraction in the electrodes
@@ -438,6 +441,7 @@ class ModCell(dae.daeModel):
 
 #loops through segments 1...N with indices 0...N-1
 #selects the correct charge/discharge type: 1 CCcharge, 2 CVcharge, 3 CCdisch, 4 CVdisch
+            #if constraints is length of cycles, i is still the number in the nth cycle
             for i in range(0, len(constraints)):
 #creates new state
                 self.STATE("state_" + str(i))
@@ -454,7 +458,13 @@ class ModCell(dae.daeModel):
                 #if time is past the first cutoff, switch to nextstate
                 time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
 
-
+                #if has reached more than total number of cycles needed
+                self.ON_CONDITION(self.cycle_number() >= totalCycle + 1,
+                                  switchToStates = [('CCCV', new_state)],
+                                  setVariableValues = [(self.endCondition, 3)],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+ 
                 if equation_type[i] == 1:
 
                     if "t" not in str(constraints[i]):
@@ -474,12 +484,13 @@ class ModCell(dae.daeModel):
                     #capacity fraction depends on cathode/anode. if charging, we cut off at the capfrac
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() <= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() >= capfrac_cutoffs[i]))
                     #for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
-                    #if end state, then we set endCondition to 3
+                    #if end state, then we send back to state 0 and also add one to cycle_number
                     if i == len(constraints)-1:
                         #checks if the voltage, capacity fraction, or time segment conditions are broken
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.endCondition, 3)],
+                                  switchToStates = [('CCCV', 'state_0')],
+                                  setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
+                                                       (self.time_counter, dae.Time())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                         #increases time_counter to increment to the beginning of the next segment
@@ -522,8 +533,9 @@ class ModCell(dae.daeModel):
                     if i == len(constraints)-1:
                         #checks if crate, cap frac, or time segment conditions are broken
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.endCondition, 3)],
+                                  switchToStates = [('CCCV', 'state_0')],
+                                  setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
+                                                       (self.time_counter, dae.Time())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else: 
@@ -560,8 +572,9 @@ class ModCell(dae.daeModel):
                     if i == len(constraints)-1:
                         #if hits capacity fraction or voltage cutoff, switch to next state
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.endCondition, 3)],
+                                  switchToStates = [('CCCV', 'state_0')],
+                                  setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
+                                                       (self.time_counter, dae.Time())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else:
@@ -596,8 +609,9 @@ class ModCell(dae.daeModel):
                     #if end state, then we set endCondition to 3
                     if i == len(constraints)-1:
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.endCondition, 3)],
+                                  switchToStates = [('CCCV', 'state_0')],
+                                  setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
+                                                       (self.time_counter, dae.Time())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else:
