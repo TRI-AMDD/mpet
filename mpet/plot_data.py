@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 import scipy.integrate as integrate
+import fnmatch
 
 import mpet.geometry as geom
 import mpet.io_utils as IO
@@ -46,9 +47,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
-    dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
-    tot_cycle = dD_s["totalCycle"]
-#    psd_vol = dD_s["psd_vol"]
+    #if single simulation cycle, we just read input_dict_system
+    dD_s = 0
+    ndD_s = 0
+    tot_cycle = 0
+    #if not maccor cycle system, just read the one file 
+    #if maccor system of cycles, then we read all the files so we can get 
+    #the total number of cycles, but then save the data from the last one
+    for filename in os.listdir(indir):
+            #removes the file extension from the name of the file
+            if fnmatch.fnmatch(filename, 'input_dict_system*_dD.p'):
+                dD_s, ndD_s = IO.read_dicts(os.path.join(indir, filename[:-5]))
+                tot_cycle = tot_cycle + dD_s["totalCycle"]
+
+
     limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
