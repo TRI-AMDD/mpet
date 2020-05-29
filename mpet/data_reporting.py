@@ -40,6 +40,9 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     if mdict[dkeybase].ndim == 1:
                         mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
                     mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase], axis = 0)
+                    #flip axes to be consistent with plotting if shape is not (x,1)
+                    if mdict[dkeybase].shape[1] == 1:
+                        mdict[dkeybase] = np.squeeze(mdict[dkeybase])
                     mdict[dkeybase + '_times'] = np.append(mat_dat[dkeybase + '_times'],  mdict[dkeybase + '_times'])
 
         sio.savemat(self.ConnectionString + ".mat",
