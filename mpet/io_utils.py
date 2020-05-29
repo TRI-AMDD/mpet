@@ -85,7 +85,7 @@ def get_dicts_from_configs(P_s, P_e):
         # simulation.
         np.random.seed(ndD_s["seed"])
     dD_s["Vset"] = P_s.get('Sim Params', 'Vset')
-    ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac')
+    ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac',fallback=1)
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
