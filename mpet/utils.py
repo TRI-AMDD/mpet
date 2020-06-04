@@ -211,15 +211,15 @@ def process_ends(ends, curr_step_process, area, charge_type = 1):
 
     for end in ends['EndEntry']:
         if end == "EndType": #it only has one step!
-            curr_step_process, next_step_index, change_index = end_type_logic(ends['EndEntry'], curr_step_process, next_step_index, change_index, charge_type)
+            curr_step_process, next_step_index, change_index = end_type_logic(ends['EndEntry'], area, curr_step_process, next_step_index, change_index, charge_type)
             break
         else:
-            curr_step_process, next_step_index, change_index = end_type_logic(end, curr_step_process, next_step_index, change_index, charge_type)
+            curr_step_process, next_step_index, change_index = end_type_logic(end, area, curr_step_process, next_step_index, change_index, charge_type)
     #XXXneed to fix how we find next step index
     return curr_step_process, next_step_index
 
 
-def end_type_logic(end, curr_step_process, next_step_index, change_index, charge_type):        
+def end_type_logic(end, area, curr_step_process, next_step_index, change_index, charge_type):        
     """Finds the ending logic for the end step. Takes in curr_step_process,
     updates it for the current end step condition (endStep), and returns it
     and the next step index. Change_index defines which cutoff defines the next
