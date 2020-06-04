@@ -159,7 +159,7 @@ def main(paramfile, keepArchive=True):
     cfg.SetString('daetools.activity.printStats','false')
 
     #save our input files and runs simulations
-    if ndD_s["profileType"][-5:] != ".json":
+    if ndD_s["profileType"][-4:] != ".000":
         #if it is not a maccor cycling procedure file
         paramFileName = "input_params_system.cfg"
         paramFile = os.path.join(outdir, paramFileName)

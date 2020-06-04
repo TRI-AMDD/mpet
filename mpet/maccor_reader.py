@@ -7,9 +7,9 @@ Created on Sat Mar 28 14:52:36 2020
 
 #%% import as needed
 import numpy as np
-import json
 import sys
 import configparser
+import xmltodict
 
 import mpet.io_utils as IO
 import mpet.step_type_logic_functions as st
@@ -156,8 +156,10 @@ def get_cycling_dict(ndD_s, dD_s):
     
     #%% Load the data and save variable of the TestSteps
     with open(maccor_file) as f:
-        data = json.load(f)
+         data = xmltodict.parse(f.read(), process_namespaces=False, strip_whitespace=True)
     
+    f.close()
+
     Maccor = 'MaccorTestProcedure'
     proc = 'ProcSteps'
     test = 'TestStep'

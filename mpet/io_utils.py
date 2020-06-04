@@ -606,7 +606,7 @@ def test_system_input(dD, ndD):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-5:] == ".json")):
+    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-4:] == ".000")):
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
 
