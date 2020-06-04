@@ -69,7 +69,7 @@ class SimMPET(dae.daeSimulation):
                     # Guess initial value for the potential of the
                     # electrodes
                     if l == "a":  # anode
-                        self.m.phi_bulk[l].SetInitialGuess(i, 0.0)
+                        self.m.phi_bulk[l].SetInitialGuess(i, self.ndD_s["phiRef"]["a"])
                     else:  # cathode
                         self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
                     for j in range(Npart[l]):
@@ -97,7 +97,6 @@ class SimMPET(dae.daeSimulation):
                                 part.c2.SetInitialCondition(k, cs0+rnd2[k])
             
             #Cell potential initialization
-            ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
@@ -105,8 +104,9 @@ class SimMPET(dae.daeSimulation):
             elif ndD_s['profileType']=='CVsegments':
                 phi_guess = self.ndD_s['segments'][0][0]
             else:
-                phi_guess = ndDVref
+                phi_guess = 0
             self.m.phi_applied.SetInitialGuess(phi_guess)
+            self.m.phi_cell.SetInitialGuess(phi_guess)
 
             #Initialize the ghost points used for boundary conditions
             if not self.m.SVsim:
@@ -116,14 +116,13 @@ class SimMPET(dae.daeSimulation):
             #Separator electrolyte initialization
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(i, ndD_s['c0'])
-                self.m.phi_lyte["s"].SetInitialGuess(i, .5*(self.ndD_s["phiRef"]["c"]
-                                                           +self.ndD_s["phiRef"]["a"]))
+                self.m.phi_lyte["s"].SetInitialGuess(i, 0)
             
             #Anode and cathode electrolyte initialization
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(i, ndD_s['c0'])
-                    self.m.phi_lyte[l].SetInitialGuess(i, self.ndD_s["phiRef"][l])
+                    self.m.phi_lyte[l].SetInitialGuess(i, 0)
 
         else:
             dPrev = self.dataPrev
