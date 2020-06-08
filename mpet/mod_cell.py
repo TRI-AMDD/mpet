@@ -369,13 +369,32 @@ class ModCell(dae.daeModel):
 
         if self.profileType == "CC":
             # Total Current Constraint Equation
-            eq = self.CreateEquation("Total_Current_Constraint")
             if ndD["tramp"] > 0:
                 eq.Residual = self.current() - (
                     ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
             else:
+
+                self.stnCCCV=self.STN("CCCV")
+
+                self.STATE("CC")
+                eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - ndD["currset"]
+
+                self.ON_CONDITION(-self.phi_applied()>=-ndD["Vset"],
+                                  switchToStates = [('CCCV','CV')],
+                                  setVariableValues = [(self.phi_cell,ndD["Vset"])],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+
+
+                self.STATE("CV")
+                eq = self.CreateEquation("applied_potential")
+                eq.Residual = self.phi_applied() - ndD["Vset"]
+
+                self.END_STN()
+
+
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
