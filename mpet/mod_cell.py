@@ -377,6 +377,16 @@ class ModCell(dae.daeModel):
 
                 self.stnCCCV=self.STN("CCCV")
 
+                self.STATE("Rest")
+                eq = self.CreateEquation("Total_Current_Constraint")
+                eq.Residual = self.current()
+
+                self.ON_CONDITION(dae.Time()>dae.Constant(0*s),
+                                  switchToStates = [('CCCV','CC')],
+                                  setVariableValues = [],
+                                  triggerEvents = [],
+                                  userDefinedActions = [])
+
                 self.STATE("CC")
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - ndD["currset"]
@@ -386,7 +396,6 @@ class ModCell(dae.daeModel):
                                   setVariableValues = [(self.phi_cell,ndD["Vset"])],
                                   triggerEvents = [],
                                   userDefinedActions = [])
-
 
                 self.STATE("CV")
                 eq = self.CreateEquation("applied_potential")
