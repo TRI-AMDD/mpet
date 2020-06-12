@@ -234,7 +234,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
                     cbarMat[:,partInd] = cbarDict[l][:,i,j]
                     partInd += 1
             np.savetxt(os.path.join(indir, fname), cbarMat,
-                       delimiter=dlm, header=cbarHdr)
+                       delimiter=dlm, header=cbarHdr.rstrip(','))
 
     if bulkpData:
         if "a" in trodes:

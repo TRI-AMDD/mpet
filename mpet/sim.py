@@ -124,6 +124,10 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte[l].SetInitialCondition(i, ndD_s['c0'])
                     self.m.phi_lyte[l].SetInitialGuess(i, 0)
 
+                    #Set electrolyte concentration in each particle
+                    for j in range(Npart[l]):
+                        self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
+                        
         else:
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
