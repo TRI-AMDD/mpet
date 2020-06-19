@@ -456,9 +456,13 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
             psd_area[trode] = (4*np.pi)*psd_len[trode]**2
             psd_vol[trode] = (4./3)*np.pi*psd_len[trode]**3
         elif solidShape == "C3":
-            psd_area[trode] = 2 * 1.2263 * psd_len[trode]**2
+            #psd_area[trode] = 2 * 1.2263 * psd_len[trode]**2
             psd_vol[trode] = (1.2263 * psd_len[trode]**2
                               * dD_e[trode]['thickness'])
+            if trode == "c":
+                psd_area[trode] = 885000*psd_vol[trode]
+            else:
+                psd_area[trode] = 723600*psd_vol[trode]
         elif solidShape == "cylinder":
             psd_area[trode] = (2 * np.pi * psd_len[trode]
                                * dD_e[trode]['thickness'])
