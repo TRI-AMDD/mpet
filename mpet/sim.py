@@ -70,7 +70,7 @@ class SimMPET(dae.daeSimulation):
                     # Guess initial value for the potential of the
                     # electrodes
                     if l == "a":  # anode
-                        self.m.phi_bulk[l].SetInitialGuess(i, 0.0)
+                        self.m.phi_bulk[l].SetInitialGuess(i, self.ndD_s["phiRef"]["a"])
                     else:  # cathode
                         self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
                     for j in range(Npart[l]):
@@ -96,9 +96,9 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(k, cs0+rnd1[k])
                                 part.c2.SetInitialCondition(k, cs0+rnd2[k])
-            
-            #Cell potential initialization
+
             phi_guess = 0
+            #Cell potential initialization
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
@@ -110,29 +110,10 @@ class SimMPET(dae.daeSimulation):
                     #lambdifies waveform so that we can run with numpy functions
                     f = sym.lambdify(t, self.ndD_s['Vset'], modules = "numpy") 
                     phi_guess = f(0)
-            elif ndD_s['profileType']=='CVsegments':
-                if "t" not in str(ndD_s['segments'][0][0]):
-                #if a float value, we just set initial guess
-                    phi_guess = self.ndD_s['segments'][0][0]
-                else:
-                    t = sym.Symbol("t")
-                    #lambdifies waveform so that we can run with numpy functions
-                    f = sym.lambdify(t, self.ndD_s['segments'][0][0], modules = "numpy") 
-                    phi_guess = f(0) 
-            #elif ndD_s['profileType']=='CCCVcycle':
-            #    #if the first step is a CV step
-            #    if np.mod(ndD_s['segments'][0][5], 2) == 0:
-            #        if "t" not in str(ndD_s['segments'][0][0]):
-            #            #if a float value, we just set initial guess
-            #            phi_guess = self.ndD_s['segments'][0][0]
-            #        else:
-            #            t = sym.Symbol("t")
-            #            #lambdifies waveform so that we can run with numpy functions
-            #            f = sym.lambdify(t, self.ndD_s['segments'][0][0], modules = "numpy") 
-            #            phi_guess = f(0)
             else:
                 phi_guess = 0
             self.m.phi_applied.SetInitialGuess(phi_guess)
+            self.m.phi_cell.SetInitialGuess(phi_guess)
 
 
             #Initialize the ghost points used for boundary conditions
@@ -151,6 +132,10 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte[l].SetInitialCondition(i, ndD_s['c0'])
                     self.m.phi_lyte[l].SetInitialGuess(i, 0)
 
+                    #Set electrolyte concentration in each particle
+                    for j in range(Npart[l]):
+                        self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
+                        
         else:
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
@@ -198,13 +183,13 @@ class SimMPET(dae.daeSimulation):
                         i, dPrev["phi_lyte_" + l][-1,i])
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(dPrev["phi_applied"][0,-1])
+            self.m.phi_cell.SetInitialGuess(dPrev["phi_cell"][0,-1])
 
             ##Initialize the ghost points used for boundary conditions
-            #self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
-            #self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
+            self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
+            self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
 
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
-        #self.m.stnCCCV.ActiveState = "state_start" #sets active state to be state 0
 
         #tracks the number of cycles
         self.m.cycle_number.AssignValue(1)

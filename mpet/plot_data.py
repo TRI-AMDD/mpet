@@ -493,13 +493,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         xmin = 0
         xmax = Ltot
         if plot_type in ["elytec", "elytecf"]:
-            ymin = 0
-            ymax = 2.2
             ylbl = 'Concentration of electrolyte [M]'
             datay = datay_c * dD_s["cref"] / 1000.
         elif plot_type in ["elytep", "elytepf"]:
-            ymin = -50
-            ymax = 50
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
@@ -527,7 +523,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return datax, datay, L_a, L_s
         dataMin, dataMax = np.min(datay), np.max(datay)
         dataRange = dataMax - dataMin
-        ymin = max(0, dataMin - 0.05*dataRange)
+        ymin = dataMin - 0.05*dataRange
         ymax = dataMax + 0.05*dataRange
         fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Battery Position [{unit}]'.format(unit=Lunit))
