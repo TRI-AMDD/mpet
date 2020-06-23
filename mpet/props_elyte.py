@@ -159,7 +159,7 @@ def LIONSIMBA():
         return 0.364
 
     def sigma(c):
-        c_dim = c*1000
+        c_dim = c*1000 #dimensionalized c
         r1 = -10.5
         r2 = 0.668e-3
         r3 = 0.494e-6
@@ -168,7 +168,7 @@ def LIONSIMBA():
         r6 = -8.86e-10
         r7 = -6.96e-5
         r8 = 2.8e-8
-        sig_out = 1e-4 * c_dim * (r1 + r2*c + r3*c**2 + T*(r4 + r5*c_dim + r6*c_dim**2) + T**2 *(r7 + r8*c_dim))**2
+        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + T*(r4 + r5*c_dim + r6*c_dim**2) + T**2 *(r7 + r8*c_dim))**2
         return sig_out  # m^2/s
 
     def D(c):
