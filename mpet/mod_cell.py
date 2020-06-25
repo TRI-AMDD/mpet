@@ -442,7 +442,7 @@ class ModCell(dae.daeModel):
                              triggerEvents = [],
                              userDefinedActions = [])
 
-            self.ON_CONDITION(dae.Time() > dae.Constant(0.0001*s) + self.time_counter(),
+            self.ON_CONDITION(dae.Time() > dae.Constant(0.001*s) + self.time_counter(),
                              switchToStates = [('CCCV', 'state_0')],
                              setVariableValues = [(self.time_counter, dae.Time())],
                              triggerEvents = [],
