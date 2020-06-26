@@ -61,7 +61,7 @@ def get_dicts_from_configs(P_s, P_e):
 
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
-    dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = 0))
+    dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = "0"))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     #if it is a Crate, then no units. if A, then units
     dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area', fallback = 1)
