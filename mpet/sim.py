@@ -135,7 +135,11 @@ class SimMPET(dae.daeSimulation):
                     #Set electrolyte concentration in each particle
                     for j in range(Npart[l]):
                         self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
-                        
+         
+            #set last values
+            self.m.last_current.AssignValue(0)
+            self.m.last_phi_applied.AssignValue(phi_guess)
+               
         else:
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
@@ -154,9 +158,12 @@ class SimMPET(dae.daeSimulation):
                             l=l, i=i, j=j)
                         
                         #Set the inlet port variables for each particle
+                        #part.c_lyte.SetInitialGuess(dPrev["c_lyte_" + l][-1,i])
+                        #part.phi_lyte.SetInitialGuess(dPrev["phi_lyte_" + l][-1,i])
                         part.c_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_c_lyte"][-1,i])
                         part.phi_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_phi_lyte"][-1,i])
                         part.phi_m.SetInitialGuess(dPrev[partStr+"portInBulk_phi_m"][-1,i])
+
 
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
@@ -197,12 +204,12 @@ class SimMPET(dae.daeSimulation):
             self.m.phi_applied.SetInitialGuess(dPrev["phi_applied"][0,-1])
             self.m.phi_cell.SetInitialGuess(dPrev["phi_cell"][0,-1])
 
-            ##Initialize the ghost points used for boundary conditions
-            self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0, -1])
-            self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0, -1])
+            #set last values
+            self.m.last_current.AssignValue(dPrev["current"][0,-1])
+            self.m.last_phi_applied.AssignValue(dPrev["phi_applied"][0,-1])
+
 
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
-
         #tracks the number of cycles
         self.m.cycle_number.AssignValue(1)
 

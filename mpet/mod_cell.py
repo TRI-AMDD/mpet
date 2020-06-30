@@ -128,6 +128,10 @@ class ModCell(dae.daeModel):
         # DZ: added time counter to keep track of when new section starts
         self.time_counter = dae.daeVariable(
             "time_counter", time_t, self, "restarts counter every time a new section is hit")
+        self.last_current = dae.daeVariable(
+            "last_current", dae.no_t, self, "tracks the current at the last step before a step is taken, used for ramp")
+        self.last_phi_applied = dae.daeVariable(
+            "last_phi_applied", elec_pot_t, self, "tracks the current at the last step before a step is taken, used for ramp")
         self.cycle_number = dae.daeVariable(
             "cycle_number", dae.no_t, self, "keeps track of which cycle number we are on")
         self.endCondition = dae.daeVariable(
@@ -398,8 +402,6 @@ class ModCell(dae.daeModel):
                     #check to see if it's a waveform type
                     eq.Residual = self.current() - ndD["currset"]
                 else: #if it is waveform, use periodic time to find the value of function
-                    #finds time in period [0, period]
-                    #lambdifies waveform so that we can run with numpy functions 
                     f = sym.lambdify(t, ndD["currset"], modules = "numpy")
                     #periodic time = mod(time, period) / nondimenionalized period
                     eq.Residual =  f(dae.Time()/ndD["period"] - dae.Floor(dae.Time()/ndD["period"])) - self.current()
@@ -418,12 +420,8 @@ class ModCell(dae.daeModel):
             crate_cutoffs = seg_array[:,3]
             time_cutoffs = seg_array[:,4]
             equation_type = seg_array[:,5]
-
-            #calculates new initialization values for CCCV
-            ndDVref = ndD["phiRef"]["c"]-ndD["phiRef"]["a"]
-            phi_guess = ndDVref
-
-#start state transition network
+            
+            #start state transition network
             self.stnCCCV=self.STN("CCCV")
 
             #start at a 0C state -1 for better initializing
@@ -433,21 +431,32 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             #add new variable to assign +1 -1 for charge/discharge
             eq.Residual = self.charge_discharge() - 1
-            self.ON_CONDITION(dae.Time() > dae.Constant(0.001*s),
-                      switchToStates = [('CCCV', 'state_0')],
-                      setVariableValues = [(self.time_counter, dae.Time())],
-                      triggerEvents = [],
-                      userDefinedActions = [])
+ 
+            #if has reached more than total number of cycles needed
 
-#loops through segments 1...N with indices 0...N-1
-#selects the correct charge/discharge type: 1 CCcharge, 2 CVcharge, 3 CCdisch, 4 CVdisch
+            self.ON_CONDITION(self.cycle_number() >= totalCycle + 1,
+                             switchToStates = [('CCCV', 'state_' + str(len(constraints)))],
+                             setVariableValues = [(self.endCondition, 3)],
+                             triggerEvents = [],
+                             userDefinedActions = [])
+
+            #set a 0.001 C = 0 state to transition
+            self.ON_CONDITION(dae.Time() > dae.Constant(0.001*s) + self.time_counter(),
+                             switchToStates = [('CCCV', 'state_0')],
+                             setVariableValues = [(self.time_counter, dae.Time()),
+                                                  (self.last_current, self.current()),
+                                                  (self.last_phi_applied, self.phi_applied())],
+                             triggerEvents = [],
+                             userDefinedActions = [])
+
+            #loops through segments 1...N with indices 0...N-1
+            #selects the correct charge/discharge type: 1 CCcharge, 2 CVcharge, 3 CCdisch, 4 CVdisch
             #if constraints is length of cycles, i is still the number in the nth cycle
             for i in range(0, len(constraints)):
 #creates new state
                 self.STATE("state_" + str(i))
-                eq = self.CreateEquation("Constraint_" + str(i))
                 new_state = "state_" + str(i+1)
-#if is CC charge, we set up equation and voltage cutoff      
+                #if is CC charge, we set up equation and voltage cutoff      
                 #calculates time condition--if difference between current and prev start time is larger than time cutoff
                 #switch to next section
                 #for our conditions for switching transition states, because we have multiple different conditions
@@ -458,7 +467,6 @@ class ModCell(dae.daeModel):
                 #if time is past the first cutoff, switch to nextstate
                 time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] == None else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
 
-                #if has reached more than total number of cycles needed
                 self.ON_CONDITION(self.cycle_number() >= totalCycle + 1,
                                   switchToStates = [('CCCV', new_state)],
                                   setVariableValues = [(self.endCondition, 3)],
@@ -469,13 +477,23 @@ class ModCell(dae.daeModel):
 
                     if "t" not in str(constraints[i]):
                         #if not waveform input, set to constant value
-                        eq.Residual = self.current() - constraints[i]
+                        if ndD["tramp"] > 0:
+                            self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - ((constraints[i] - self.last_current())/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current())
+                            self.ELSE()
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - constraints[i]
+                            self.END_IF()
+                        else:
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - constraints[i]
                     else:
-                        #use periodic time units of mod(Time, period), but need to multiply by period
                         #to recover units in dimless time
                         per = ndD["period"][i]
                         f = sym.lambdify(t, constraints[i], modules = "numpy")
                         #lambdifies waveform so that we can run with numpy functions   
+                        eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
 
                     # if hits voltage cutoff, switch to next state
@@ -488,9 +506,11 @@ class ModCell(dae.daeModel):
                     if i == len(constraints)-1:
                         #checks if the voltage, capacity fraction, or time segment conditions are broken
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', 'state_0')],
+                                  switchToStates = [('CCCV', 'state_start')],
                                   setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
-                                                       (self.time_counter, dae.Time())],
+                                                       (self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                         #increases time_counter to increment to the beginning of the next segment
@@ -499,7 +519,9 @@ class ModCell(dae.daeModel):
                         #checks if the voltage, capacity fraction, or time segment conditions are broken
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                   switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  setVariableValues = [(self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                         #increases time_counter to increment to the beginning of the next segment
@@ -511,14 +533,26 @@ class ModCell(dae.daeModel):
                 elif equation_type[i] == 2:
  
                     if "t" not in str(constraints[i]):
+                        if ndD["tramp"] > 0:
+                        #if tramp, we use a ramp step to hit the value for better numerical stability
                         #if not waveform input, set to constant value
-                        eq.Residual = self.phi_applied() - constraints[i]
+                            self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - ((constraints[i] - self.last_phi_applied())/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_phi_applied())
+                            self.ELSE()
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i]
+                            self.END_IF()
+                        else:
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i] 
                     else:
                         #use periodic time units of mod(Time, period), but need to multiply by period
                         #to recover units in dimless time
                         per = ndD["period"][i]
                         f = sym.lambdify(t, constraints[i], modules = "numpy")
                         #lambdifies waveform so that we can run with numpy functions   
+                        eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
 
                    #capacity fraction in battery is found by the filling fraction of the limiting electrode
@@ -533,16 +567,20 @@ class ModCell(dae.daeModel):
                     if i == len(constraints)-1:
                         #checks if crate, cap frac, or time segment conditions are broken
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', 'state_0')],
+                                  switchToStates = [('CCCV', 'state_start')],
                                   setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
-                                                       (self.time_counter, dae.Time())],
+                                                       (self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())], 
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else: 
                        #checks if crate, cap frac, or time segment conditions are broken
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                   switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  setVariableValues = [(self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
  
@@ -553,13 +591,25 @@ class ModCell(dae.daeModel):
 
                     if "t" not in str(constraints[i]):
                         #if not waveform input, set to constant value
-                        eq.Residual = self.current() - constraints[i]
+                        if ndD["tramp"] > 0:
+                            self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - ((constraints[i] - self.last_current())/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current())
+                            self.ELSE()
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - constraints[i]
+                            self.END_IF()
+                        else:
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.current() - constraints[i]
+                            # if not waveform input, set to constant value
                     else:
                         #use periodic time units of mod(Time, period), but need to multiply by period
                         #to recover units in dimless time
                         per = ndD["period"][i]
                         f = sym.lambdify(t, constraints[i], modules = "numpy")
                         #lambdifies waveform so that we can run with numpy functions   
+                        eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
 
                     #if CC discharge, we set up capacity cutoff and voltage cutoff
@@ -572,16 +622,20 @@ class ModCell(dae.daeModel):
                     if i == len(constraints)-1:
                         #if hits capacity fraction or voltage cutoff, switch to next state
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', 'state_0')],
+                                  switchToStates = [('CCCV', 'state_start')],
                                   setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
-                                                       (self.time_counter, dae.Time())],
+                                                       (self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())], 
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else:
                         #if hits capacity fraction or voltage cutoff, switch to next state
                         self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                   switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  setVariableValues = [(self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
  
@@ -590,14 +644,26 @@ class ModCell(dae.daeModel):
                 elif equation_type[i] == 4:
                     #if CV discharge, we set up
                     if "t" not in str(constraints[i]):
+                        if ndD["tramp"] > 0:
+                        #if tramp, we use a ramp step to hit the value for better numerical stability
                         #if not waveform input, set to constant value
-                        eq.Residual = self.phi_applied() - constraints[i]
+                            self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - ((constraints[i] - self.last_phi_applied())/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_phi_applied())
+                            self.ELSE()
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i]
+                            self.END_IF()
+                        else:
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i] 
                     else:
                         #use periodic time units of mod(Time, period), but need to multiply by period
                         #to recover units in dimless time
                         per = ndD["period"][i]
                         f = sym.lambdify(t, constraints[i], modules = "numpy")
                         #lambdifies waveform so that we can run with numpy functions   
+                        eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
 
                     #conditions for cutting off: hits capacity fraction cutoff 
@@ -609,15 +675,19 @@ class ModCell(dae.daeModel):
                     #if end state, then we set endCondition to 3
                     if i == len(constraints)-1:
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
-                                  switchToStates = [('CCCV', 'state_0')],
+                                  switchToStates = [('CCCV', 'state_start')],
                                   setVariableValues = [(self.cycle_number, self.cycle_number() + 1),
-                                                       (self.time_counter, dae.Time())],
+                                                       (self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
                     else:
                         self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                   switchToStates = [('CCCV', new_state)],
-                                  setVariableValues = [(self.time_counter, dae.Time())],
+                                  setVariableValues = [(self.time_counter, dae.Time()),
+                                                       (self.last_current, self.current()),
+                                                       (self.last_phi_applied, self.phi_applied())],
                                   triggerEvents = [],
                                   userDefinedActions = [])
  
