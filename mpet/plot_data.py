@@ -426,7 +426,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             for i in plot_indexes:
                 ax.plot(discharge_cap_func[i], discharge_volt[i])
             ax.legend(plot_indexes+1)
-            ax.set_xlabel('Capacity (A hr/m^2)')
+            ax.set_xlabel(r'Capacity (A hr/m$^2$)')
             ax.set_ylabel("Voltage (V)")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
