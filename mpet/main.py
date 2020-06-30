@@ -57,6 +57,8 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Solve at time=0 (initialization)
     simulation.SolveInitial()
 
+    out = True #returns true if run was successful
+
     # Run
     try:
         simulation.Run()
@@ -65,12 +67,15 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
         simulation.ReportData(simulation.CurrentTime)
         #raise, commented out so that the system prints output even when
         #it errors out
+        out = False
     except KeyboardInterrupt:
         print("\nphi_applied at ctrl-C:",
               simulation.m.phi_applied.GetValue(), "\n")
         simulation.ReportData(simulation.CurrentTime)
+        out = False
     simulation.Finalize()
 
+    return out
 
 def main(paramfile, keepArchive=True):
     timeStart = time.time()
@@ -204,7 +209,9 @@ def main(paramfile, keepArchive=True):
             dictFile = os.path.join(outdir, "input_dict_system_" + str(i))
             IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
             #carries out simulation
-            run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
+            out = run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
+            if out == False:
+                break
 
     # Final output for user
     print("\n\nUsed parameter file ""{fname}""\n\n".format(fname=paramfile))
