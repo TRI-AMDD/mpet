@@ -815,7 +815,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(datay3)
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        datay = data[cstr[pInd,vInd]][tind]
+                        datay = data[cstr[pInd,vInd]][:,tind]
                         if plot_type[:-2] in ["musld"]:
                             cbar = data[cbarstr[pInd,vInd]][0][tind]
                             muRfunc = props_am.muRfuncs(
