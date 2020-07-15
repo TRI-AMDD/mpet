@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import shutil
 import pickle
 from scipy import integrate
 from scipy import interpolate
@@ -12,6 +13,7 @@ import sys
 
 import mpet.outmat2txt as outmat2txt
 import mpet.main as main
+import mpet.io_utils as IO
 
 ############Argument Parser & Docstrings#######################
 
@@ -41,17 +43,27 @@ def f(inputs, expt_QV, A, params_sys, params_cathode, params_anode, params_list,
        replaces them, and runs
        an MPET simulation. Outputs the residual between experimental data and MPET simulation
        by calling function plot_area_difference"""
+    #if sim_output already exists, remove
+    if os.path.exists("sim_output") and os.path.isdir("sim_output"):
+        shutil.rmtree("sim_output")
     #sed the parameters that we are trying to sub pythonically
     modify_mpet_params(params_sys, params_cathode, params_anode, params_list, np.multiply(inputs, x_0))
     main.main(params_sys) #runs simulation after subbing new parameters
     #run simulation, call plotter to get text file
-    outmat2txt.main("sim_output")  #generates data
-    general_data = np.loadtxt("sim_output/generalData.txt", delimiter = ",")
-    #now saves data in general_data.txt
-    mpet_Q, mpet_V = calculate_VQ(general_data, A) #generates MPET Q, V data
-    residual = area_difference(mpet_Q, mpet_V, expt_QV[0,:], expt_QV[1,:]) #find residual of plot area
-    output_string = "Iteration: " + str(inputs) + "  residual:  " + str(residual) + '\n'
-    f_handle.write(output_string)
+    #if output_data.mat doesn't exist, then we set residual to large number because simulation failed
+    residual = 0
+    if os.path.isfile("sim_output/output_data.mat") and os.stat("sim_output/output_data.mat").st_size == 0:
+        outmat2txt.main("sim_output")  #generates data
+        general_data = np.loadtxt("sim_output/generalData.txt", delimiter = ",")
+        #now saves data in general_data.txt
+        mpet_Q, mpet_V = calculate_VQ(general_data, A) #generates MPET Q, V data
+        residual = area_difference(mpet_Q, mpet_V, expt_QV[0,:], expt_QV[1,:]) #find residual of plot area
+        output_string = "Iteration: " + str(inputs) + "  residual:  " + str(residual) + '\n'
+        f_handle.write(output_string)
+    else:
+        residual = 1e8
+        f_handle.write("Simulation failed with inputs:" + str(inputs) + '\n')
+    print(residual)
     return residual
 
 
@@ -159,9 +171,9 @@ b2 = np.array([np.inf, np.inf, 1/x0[2], 1/x0[3], np.inf, np.inf])
 A = np.eye(len(x0))
 
 cons = [{"type": "ineq", "fun": lambda x: A@x - b1}, {"type": "ineq", "fun": lambda x: -A@x + b2}]
-result = optimize.minimize(f, x0_prime, args = tuple(arg_list), constraints = cons, method = 'COBYLA', options = {'rhobeg': 1})
+result = optimize.minimize(f, x0_prime, args = (arg_list,), constraints = cons, method = 'COBYLA', options = {'rhobeg': 1})
 print(result.success) # check if solver was successful
 
-print("Final Optimal Parameters", np.multiply(result.inputs*x0))
+print("Final Optimal Parameters", np.multiply(result.x, x0))
 
-plot_functions(np.multiply(result.inputs*x0), expt_QV_dat, area)
+plot_functions(np.multiply(result.x, x0), expt_QV_dat, area)
