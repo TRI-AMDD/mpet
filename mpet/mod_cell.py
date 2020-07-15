@@ -409,6 +409,16 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
 
+
+        elif self.profileType == "CP":
+            #constant power constraint
+            ndDVref = ndD["phiRef"]["c"] - ndD["phiRef"]["a"]
+            eq = self.CreateEquation("Total_Power_Constraint")
+            # adding Vref since P = V*I
+            eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ndD["power"]
+            eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
+            eq.Residual = self.charge_discharge() - 1
+
 #       
 ##DZ 02/12/20
         elif self.profileType == "CCCVcycle":

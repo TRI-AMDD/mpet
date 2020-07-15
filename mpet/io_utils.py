@@ -63,6 +63,7 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = "0"))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
+    dD_s["power"] = P_s.getfloat('Sim Params', 'power', fallback = "0")
     #if it is a Crate, then no units. if A, then units
     dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area', fallback = 1)
     segs = dD_s["segments"] = ast.literal_eval(
@@ -388,6 +389,9 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
     ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
+    #nondimensionalizing power from W/m^2
+    ndD_s["power"] = -(e/(k*T_ref*curr_ref*CrateCurr))*dD_s["power"]
+
     #Nondimensionalize current and voltage segments
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
@@ -606,7 +610,7 @@ def test_system_input(dD, ndD):
         raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
-    if not ((ndD["profileType"] in ["CC", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-4:] == ".000")):
+    if not ((ndD["profileType"] in ["CC", "CP", "CV", "CCsegments", "CVsegments", "CCCVcycle"]) or (ndD["profileType"][-4:] == ".000")):
         raise NotImplementedError("profileType {pt} unknown".format(
             pt=ndD["profileType"]))
 

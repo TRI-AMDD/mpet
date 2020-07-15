@@ -315,6 +315,22 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
+    if plot_type == "power":
+        current = data[pfx + "current"][0] * (3600/td) * (cap/3600) #in A/m^2
+        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
+        power = np.multiply(current, voltage)
+        if data_only:
+            return times*td, power
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, power)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Power [W/m^2]")
+        if save_flag:
+            fig.savefig("mpet_power.png", bbox_inches="tight")
+        return fig, ax
+
+   
+
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
         current = data[pfx + "current_no_deg"][0] /td #gives us C-rates in /s
