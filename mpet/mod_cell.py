@@ -436,8 +436,19 @@ class ModCell(dae.daeModel):
 
             #start at a 0C state -1 for better initializing
             self.STATE("state_start")
-            eq = self.CreateEquation("Constraint_start")
-            eq.Residual = self.current()
+            # if there is a ramp, add a ramp between this state and the last state
+            if ndD["tramp"] > 0:
+                self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                eq = self.CreateEquation("Constraint_start")
+                eq.Residual = self.current() + self.last_current()/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) - self.last_current()
+                self.ELSE()
+                eq = self.CreateEquation("Constraint_start")
+                eq.Residual = self.current()
+                self.END_IF()
+            else:
+                eq = self.CreateEquation("Constraint_start")
+                eq.Residual = self.current()
+
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             #add new variable to assign +1 -1 for charge/discharge
             eq.Residual = self.charge_discharge() - 1
