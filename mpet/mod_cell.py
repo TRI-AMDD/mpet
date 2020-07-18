@@ -431,6 +431,8 @@ class ModCell(dae.daeModel):
             time_cutoffs = seg_array[:,4]
             equation_type = seg_array[:,5]
             
+            ndDVref = ndD["phiRef"]["c"] - ndD["phiRef"]["a"]
+
             #start state transition network
             self.stnCCCV=self.STN("CCCV")
 
@@ -609,7 +611,6 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.charge_discharge() - 1
 
                 elif equation_type[i] == 3:
-                    ndDVref = ndD["phiRef"]["c"] - ndD["phiRef"]["a"]
                     #constant power charge
                     if ndD["tramp"] > 0:
                         self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))

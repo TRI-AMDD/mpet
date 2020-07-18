@@ -367,6 +367,39 @@ def get_vset(vset):
     return out
 
 
+def process_waveform_segment(data):
+    """Processes waveform segment from a MFW file.
+    Takes in data, which is a numpy array processed from a MFW file,
+    and turns it into a list of step_processes, which it then outputs"""
+    curr_step_process = np.tile(np.array([0, None, None, None, None, 0]), (data.shape[0], 1))
+    for i in range(data.shape[0]):
+        #selecting control mode
+        if data[i][1].decode("utf-8") == "I":
+            if data[i][0].decode("utf-8") == "D":
+                #is discharge current step
+                curr_step_process[i][5] = 4
+            elif data[i][0].decode("utf-8") == "C":
+                #is discharge current step
+                curr_step_process[i][5] = 1
+        #if power control
+        if data[i][1].decode("utf-8") == "P":
+            if data[i][0].decode("utf-8") == "D":
+                #is discharge step
+                curr_step_process[i][5] = 6
+            elif data[i][0].decode("utf-8") == "C":
+                #is charge step
+                curr_step_process[i][5] = 3
+        #selecting control value
+        if data[i][0].decode("utf-8") == "D":
+            #control mode must be negative
+            curr_step_process[i][0] = data[i][2]
+        elif data[i][0].decode("utf-8") == "C":
+            curr_step_process[i][0] = -data[i][2]
+        #end time step:
+        curr_step_process[i][4] = data[i][3]/60 #charge time in minutes
+    return curr_step_process
+
+
 #
 #def get_mol_weight(material_type):
 #    """Gets active material weight from input material type"""

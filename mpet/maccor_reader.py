@@ -107,7 +107,7 @@ def finish_loop_process(step, loop_index, loop_counter):
     return cycle_number, loop_index, loop_counter, next_step_index
 
 
-def process_basic_step(step, step_list, area):
+def process_basic_step(step, step_list, area, stepIndex):
     """Processes each step of the JSON file. Selects through step types
     and creates a state for each step.
     Inputs: step is current step, step_list is list of steps that need to be run.
@@ -117,7 +117,7 @@ def process_basic_step(step, step_list, area):
     [CC/CV set point, Vmin/Vmax, capfracmin/max, Cmin/Cmax, timemax, CC/CV type]
     CC/CV type: 1 is CC charge, 2 is CCdisch, 3 is CV charge, 4 is CV discharge
     """
-    curr_step_properties, next_step_index = st.StepTypeLogic(step, area)(step, area)
+    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex)(step, area, stepIndex)
     step_list.append(curr_step_properties)
     return step_list, next_step_index
 
@@ -134,8 +134,8 @@ def run_simulation(step_list, index_number, cycling_dict, cycle_number = 1):
             if step_list[i].shape[0] == 1:
                 proc_step_list.append(step_list[i].flatten().tolist())
             else:
-                proc_step_list.append(step_list[i][0].flatten().tolist())
-                proc_step_list.append(step_list[i][1].flatten().tolist())
+                for j in range(len(step_list[i])):
+                    proc_step_list.append(step_list[i][j].flatten().tolist())
         #runs simulation
         cycling_dict["step_" + str(index_number)] = {"segments": proc_step_list, "totalCycle": int(cycle_number)}
         #increments which set of simulations we are in
@@ -206,5 +206,5 @@ def get_cycling_dict(ndD_s, dD_s):
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal
-            step_list, step_index = process_basic_step(curr_step, step_list, area)
+            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index)
     return cycling_dict
