@@ -152,7 +152,7 @@ def main(paramfile, keepArchive=True):
     cfg = dae.daeGetConfig()
     noise=ndD_e['c']['noise']
     logPad=ndD_e['c']['logPad']
-    segments = ndD_s["profileType"] in ["CCsegments","CVsegments","CCCVcycle"]
+    segments = ndD_s["profileType"] in ["CCsegments","CVsegments","CCCVCPcycle"]
     if (noise or logPad or (segments and ndD_s["tramp"]>0)) and cfg.has_key('daetools.core.equations.evaluationMode'):
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
@@ -199,7 +199,7 @@ def main(paramfile, keepArchive=True):
             #sets the segments and total cycle numbers for each set we are going to run
             P_s.set('Sim Params', 'segments', str(cycling_dicts["step_" + str(i)].get("segments")))
             P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
-            P_s.set('Sim Params', 'profileType', 'CCCVcycle')
+            P_s.set('Sim Params', 'profileType', 'CCCVCPcycle')
             #fills in period for waveofmr
             dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
             #reset everything in dictionaries too

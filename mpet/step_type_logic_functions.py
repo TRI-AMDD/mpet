@@ -126,7 +126,7 @@ def case_Dischrge(step, area): # need to add in duration,EndType cases
 
     if StepMode == 'Current':
         #CC step
-        curr_step_process[0][5] = 3 #specify CC discharge
+        curr_step_process[0][5] = 4 #specify CC discharge
         curr_step_process[0][0] = process_current(StepValue, 0, area) #set CC
         if step['Limits'] != None:
             if 'Voltage' in step['Limits'].keys():
@@ -134,13 +134,13 @@ def case_Dischrge(step, area): # need to add in duration,EndType cases
                 curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
                 #if first step CC, cutoff is Vlim
                 curr_step_process[0][1] = float(step['Limits']['Voltage'])
-                curr_step_process[1][5] = 4 #CV discharge
+                curr_step_process[1][5] = 5 #CV discharge
                 curr_step_process[1][0] = curr_step_process[0][1] #set Vset
             else:
                 print("CC + CC step functionality not handled")
     elif StepMode == 'Voltage':
         #CV step
-        curr_step_process[0][5] = 4 #specify CV charge
+        curr_step_process[0][5] = 5 #specify CV charge
         curr_step_process[0][0] = float(StepValue) #set CV
         if step['Limits'] != None:
             if 'Current' in step['Limits'].keys():
@@ -148,7 +148,7 @@ def case_Dischrge(step, area): # need to add in duration,EndType cases
                 curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
                 #if first step CV, cutofff is CC, negative because of charge
                 curr_step_process[0][3] = process_current(step['Limits']['Current'], 0, area)
-                curr_step_process[1][5] = 3 #CC charge
+                curr_step_process[1][5] = 4 #CC charge
                 curr_step_process[1][0] = curr_step_process[0][3] #set Cset
             else:
                 print("CV + CV step functionality not handled")
