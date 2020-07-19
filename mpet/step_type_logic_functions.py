@@ -170,7 +170,7 @@ def case_Waveform(step, area, stepIndex): # need to add in duration,EndType case
         'end_value', 'X', 'Y', 'Z'), 'formats': ('S1', 'S1', 'f4', 'f4', 'S1',\
         'S2', 'f4', 'S1', 'f4', 'S1')})
     #get waveform simulation process
-    curr_step_process = process_waveform_segment(data)
+    curr_step_process = process_waveform_segment(data, area)
     next_step_index = stepIndex + 1
     #next step index is incrememented from current step
     return curr_step_process, next_step_index

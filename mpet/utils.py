@@ -367,7 +367,8 @@ def get_vset(vset):
     return out
 
 
-def process_waveform_segment(data):
+
+def process_waveform_segment(data, area):
     """Processes waveform segment from a MFW file.
     Takes in data, which is a numpy array processed from a MFW file,
     and turns it into a list of step_processes, which it then outputs"""
@@ -392,9 +393,10 @@ def process_waveform_segment(data):
         #selecting control value
         if data[i][0].decode("utf-8") == "D":
             #control mode must be negative
-            curr_step_process[i][0] = data[i][2]
+            #so power will be in units of W/m^2
+            curr_step_process[i][0] = data[i][2]/area
         elif data[i][0].decode("utf-8") == "C":
-            curr_step_process[i][0] = -data[i][2]
+            curr_step_process[i][0] = -data[i][2]/area
         #end time step:
         curr_step_process[i][4] = data[i][3]/60 #charge time in minutes
     return curr_step_process
