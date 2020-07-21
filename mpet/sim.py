@@ -160,9 +160,9 @@ class SimMPET(dae.daeSimulation):
                         #Set the inlet port variables for each particle
                         #part.c_lyte.SetInitialGuess(dPrev["c_lyte_" + l][-1,i])
                         #part.phi_lyte.SetInitialGuess(dPrev["phi_lyte_" + l][-1,i])
-                        part.c_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_c_lyte"][-1,i])
-                        part.phi_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_phi_lyte"][-1,i])
-                        part.phi_m.SetInitialGuess(dPrev[partStr+"portInBulk_phi_m"][-1,i])
+                        part.c_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_c_lyte"][0,-1])
+                        part.phi_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_phi_lyte"][0,-1])
+                        part.phi_m.SetInitialGuess(dPrev[partStr+"portInBulk_phi_m"][0,-1])
 
 
                         if solidType in ndD_s["1varTypes"]:
