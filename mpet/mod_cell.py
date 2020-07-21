@@ -612,8 +612,22 @@ class ModCell(dae.daeModel):
 
                 elif equation_type[i] == 3:
                     #constant power charge
-                    eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
+                    if ndD["tramp"] > 0:
+                    #if tramp, we use a ramp step to hit the value for better numerical stability
+                    #if not waveform input, set to constant value
+                        self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                        eq = self.CreateEquation("Constraint_" + str(i))
+                        eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ((constraints[i] - self.last_current()*(self.last_phi_applied() + ndDVref))/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current()*(self.last_phi_applied() + ndDVref))
+                        self.ELSE()
+                        eq = self.CreateEquation("Constraint_" + str(i))
+                        eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
+                        self.END_IF()
+                    else:
+                        eq = self.CreateEquation("Constraint_" + str(i))
+                        eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
+ 
+                    #eq = self.CreateEquation("Constraint_" + str(i))
+                    #eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
                     #if CC discharge, we set up capacity cutoff and voltage cutoff
                     #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
                     #since discharging is delithiating anode and charging is lithiating anode       
@@ -733,11 +747,13 @@ class ModCell(dae.daeModel):
                     eq.Residual = self.charge_discharge() + 1
 
                 elif equation_type[i] == 6:
-                    #constant power charge
+
                     if ndD["tramp"] > 0:
+                    #if tramp, we use a ramp step to hit the value for better numerical stability
+                    #if not waveform input, set to constant value
                         self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
                         eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ((constraints[i] - self.last_current()*(self.last_phi_applied() + ndDVref))/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.current()*(self.phi_applied() + ndDVref))
+                        eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ((constraints[i] - self.last_current()*(self.last_phi_applied() + ndDVref))/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current()*(self.last_phi_applied() + ndDVref))
                         self.ELSE()
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
@@ -745,6 +761,7 @@ class ModCell(dae.daeModel):
                     else:
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
+
                     #if CC discharge, we set up capacity cutoff and voltage cutoff
                     #needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
                     #conditions for cutting off: hits capacity fraction cutoff 

@@ -324,7 +324,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         fig, ax = plt.subplots(figsize=figsize)
         ax.plot(times*td, power)
         ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Power [W/m^2]")
+        ax.set_ylabel(r"Power [W/m$^2$]")
         if save_flag:
             fig.savefig("mpet_power.png", bbox_inches="tight")
         return fig, ax
