@@ -184,6 +184,7 @@ class Mod2var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
+        fudge_factor = ndD["fudge_factor"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -241,8 +242,8 @@ class Mod2var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS1 = -np.diff(Flux1_vec * area_vec)
-            RHS2 = -np.diff(Flux2_vec * area_vec)
+            RHS1 = -np.diff(Flux1_vec * area_vec * fudge_factor)
+            RHS2 = -np.diff(Flux2_vec * area_vec * fudge_factor)
 #            kinterlayer = 1e-3
 #            interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
 #            RxnTerm1 = -interLayerRxn
@@ -389,6 +390,7 @@ class Mod1var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
+        fudge_factor = ndD["fudge_factor"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -439,7 +441,7 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = -np.diff(Flux_vec * area_vec)
+            RHS = -np.diff(Flux_vec * area_vec * fudge_factor)
 
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
