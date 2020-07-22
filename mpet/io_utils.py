@@ -200,7 +200,7 @@ def get_dicts_from_configs(P_s, P_e):
     test_system_input(dD_s, ndD_s)
     for trode in ndD_s["trodes"]:
         test_electrode_input(dD_e[trode], ndD_e[trode], dD_s, ndD_s)
-    psd_raw, psd_num, psd_len, psd_area, psd_vol, fudge_factor = distr_part(
+    psd_raw, psd_num, psd_len, psd_area, psd_vol, effective_area_ratio = distr_part(
         dD_s, ndD_s, dD_e, ndD_e)
     G = distr_G(dD_s, ndD_s)
 
@@ -259,7 +259,7 @@ def get_dicts_from_configs(P_s, P_e):
     dD_s["G"] = {}
     ndD_s["G"] = {}
     ndD_s["psd_vol_FracVol"] = {}
-    ndD_e[trode]["fudge_factor"] = {}
+    ndD_e[trode]["effective_area_ratio"] = {}
     ndD_s["L"] = {}
     ndD_s["L"]["s"] = dD_s["L"]["s"] / L_ref
     ndD_s["beta"] = {}
@@ -292,7 +292,7 @@ def get_dicts_from_configs(P_s, P_e):
         # volume_
         ndD_s["psd_vol_FracVol"][trode] = (
             dD_s["psd_vol"][trode] / Vuvec[:, np.newaxis])
-        ndD_e[trode]["fudge_factor"] = fudge_factor[trode]
+        ndD_e[trode]["effective_area_ratio"] = effective_area_ratio[trode]
         ndD_s["L"][trode] = dD_s["L"][trode]/L_ref
         ndD_s["beta"][trode] = dD_e[trode]["csmax"]/c_ref
         ndD_s["sigma_s"][trode] = dD_s['sigma_s'][trode] / dD_s["sigma_s_ref"]
@@ -419,7 +419,7 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
     psd_area = {}
     psd_vol = {}
     psd_area_vol_ratio = 0
-    fudge_factor = {} #fudge factor for area/volume ratio
+    effective_area_ratio = {} #effective area ratio for area/volume ratio
     for trode in ndD_s["trodes"]:
         Nv = ndD_s["Nvol"][trode]
         Np = ndD_s["Npart"][trode]
@@ -475,18 +475,18 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
                               * dD_e[trode]['thickness'])
             psd_area_vol_ratio = 2*np.mean(np.divide(1, psd_len[trode]))
         # here we see that sum of psd_area/sum of psd_vol for a certain volume
-        # * fudge factor (ff) = area_volume_ratio input from MPET
+        # * effective area ratio (ff) = area_volume_ratio input from MPET
         if dD_e[trode]["area_volume_ratio"] == "false":
-            fudge_factor[trode] = 1
-            #if we are not using the fudge factor term, we assume it is 1
+            effective_area_ratio[trode] = 1
+            #if we are not using the effective area ratio term, we assume it is 1
             #and just use the area volume ratios
         else:
-            fudge_factor[trode] = float(dD_e[trode]["area_volume_ratio"]) \
+            effective_area_ratio[trode] = float(dD_e[trode]["area_volume_ratio"]) \
                                   /psd_area_vol_ratio
-            if fudge_factor[trode] > 1:
+            if effective_area_ratio[trode] > 1:
                 print("Area/volume ratio requested is larger than the one defined by the particle size, defaulting to area/volume ratio defined by particle size")
-                fudge_factor[trode] = 1
-    return psd_raw, psd_num, psd_len, psd_area, psd_vol, fudge_factor
+                effective_area_ratio[trode] = 1
+    return psd_raw, psd_num, psd_len, psd_area, psd_vol, effective_area_ratio
 
 
 def distr_G(dD, ndD):
