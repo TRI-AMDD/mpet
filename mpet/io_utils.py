@@ -164,7 +164,7 @@ def get_dicts_from_configs(P_s, P_e):
         dD["disc"] = P.getfloat('Particles', 'discretization')
         ndD["shape"] = P.get('Particles', 'shape')
         dD["thickness"] = P.getfloat('Particles', 'thickness')
-        dD["area_volume_ratio"] = P.get('Particles', 'area_volume_ratio', fallback = 1)
+        dD["area_volume_ratio"] = P.get('Particles', 'area_volume_ratio', fallback = "false")
 
         # Material
         # both 1var and 2var parameters
@@ -481,11 +481,8 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
             #if we are not using the effective area ratio term, we assume it is 1
             #and just use the area volume ratios
         else:
-            effective_area_ratio[trode] = float(dD_e[trode]["area_volume_ratio"]) \
-                                  /psd_area_vol_ratio
-            if effective_area_ratio[trode] > 1:
-                print("Area/volume ratio requested is larger than the one defined by the particle size, defaulting to area/volume ratio defined by particle size")
-                effective_area_ratio[trode] = 1
+            #else, we scale with active material volume fraction
+            effective_area_ratio[trode] = (1-ndD_s["poros"][trode])*ndD_s["P_L"][trode]
     return psd_raw, psd_num, psd_len, psd_area, psd_vol, effective_area_ratio
 
 
