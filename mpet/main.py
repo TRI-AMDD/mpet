@@ -155,6 +155,8 @@ def main(paramfile, keepArchive=True):
     segments = ndD_s["profileType"] in ["CCsegments","CVsegments","CCCVCPcycle"]
     if (noise or logPad or (segments and ndD_s["tramp"]>0)) and cfg.has_key('daetools.core.equations.evaluationMode'):
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+    
+    cfg.SetInteger('daetools.IDAS.numberOfSTNRebuildsDuringInitialization', 10000)
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
