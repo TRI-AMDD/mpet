@@ -165,13 +165,13 @@ except IndexError:
 f_handle = open('iteration_file', 'w')
 
 #generates function arguments and variable bounds for parameters
-arg_list = [expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle, x0]
+arg_list = (expt_QV_dat, area, mpet_params_sys, mpet_params_cathode, mpet_params_anode, params_list, f_handle, x0)
 b1 = np.zeros(len(x0))
 b2 = np.array([np.inf, np.inf, 1/x0[2], 1/x0[3], np.inf, np.inf])
 A = np.eye(len(x0))
 
 cons = [{"type": "ineq", "fun": lambda x: A@x - b1}, {"type": "ineq", "fun": lambda x: -A@x + b2}]
-result = optimize.minimize(f, x0_prime, args = (arg_list,), constraints = cons, method = 'COBYLA', options = {'rhobeg': 1})
+result = optimize.minimize(f, x0_prime, args = arg_list, constraints = cons, method = 'COBYLA', options = {'rhobeg': 1})
 print(result.success) # check if solver was successful
 
 print("Final Optimal Parameters", np.multiply(result.x, x0))
