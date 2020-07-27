@@ -149,7 +149,7 @@ params_list = ['k0_cathode', 'k0_anode', 'alpha_cathode', 'alpha_anode', 'D_cath
 x0 = [1.6e-1, 3.0e+1, 0.5, 0.5, 5.3e-19, 1.25e-12]
 
 #we feed in x0prime = all ones after rescaled
-x0_prime = np.ones(6)
+x0_prime = np.ones(len(x0))
 
 #process and extract experimental data
 expt_QV_dat = process_experimental_data(pickle_name)
