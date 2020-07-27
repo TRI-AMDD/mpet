@@ -162,6 +162,9 @@ def main(paramfile, keepArchive=True):
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
+    #Disable printStats
+    cfg.SetString('daetools.activity.printStats','false')
+
     # Carry out the simulation
     run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
 
