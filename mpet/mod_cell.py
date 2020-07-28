@@ -20,6 +20,11 @@ import mpet.props_elyte as props_elyte
 import mpet.utils as utils
 from mpet.daeVariableTypes import *
 
+#Dictionary of end conditions
+endConditions={
+    1:"Vmax reached",
+    2:"Vmin reached"}
+
 class ModCell(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
                  ndD_e=None):
@@ -110,7 +115,8 @@ class ModCell(dae.daeModel):
             "Voltage between electrodes (phi_applied less series resistance)")
         self.current = dae.daeVariable(
             "current", dae.no_t, self, "Total current of the cell")
-        self.dummyVar = dae.daeVariable("dummyVar", dae.no_t, self, "dummyVar")
+        self.endCondition = dae.daeVariable(
+            "endCondition", dae.no_t, self, "A nonzero value halts the simulation")
 
         # Create models for representative particles within electrode
         # volumes and ports with which to talk to them.
@@ -443,15 +449,17 @@ class ModCell(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
+        #Ending conditions for the simulation
         if self.profileType in ["CC", "CCsegments"]:
-            # Set the condition to terminate the simulation upon reaching
-            # a cutoff voltage.
-            self.stopCondition = (
-                ((self.phi_applied() <= ndD["phimin"])
-                    | (self.phi_applied() >= ndD["phimax"]))
-                & (self.dummyVar() < 1))
-            self.ON_CONDITION(self.stopCondition,
-                              setVariableValues=[(self.dummyVar, 2)])
+            #Vmax reached
+            self.ON_CONDITION((self.phi_applied() <= ndD["phimin"])
+                            & (self.endCondition() < 1),
+                              setVariableValues=[(self.endCondition, 1)])
+            
+            #Vmin reached
+            self.ON_CONDITION((self.phi_applied() >= ndD["phimax"])
+                            & (self.endCondition() < 1),
+                              setVariableValues=[(self.endCondition, 2)])
 
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):

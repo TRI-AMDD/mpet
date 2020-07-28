@@ -69,7 +69,7 @@ class SimMPET(dae.daeSimulation):
                     # Guess initial value for the potential of the
                     # electrodes
                     if l == "a":  # anode
-                        self.m.phi_bulk[l].SetInitialGuess(i, 0.0)
+                        self.m.phi_bulk[l].SetInitialGuess(i, self.ndD_s["phiRef"]["a"])
                     else:  # cathode
                         self.m.phi_bulk[l].SetInitialGuess(i, phi_cathode)
                     for j in range(Npart[l]):
@@ -97,7 +97,6 @@ class SimMPET(dae.daeSimulation):
                                 part.c2.SetInitialCondition(k, cs0+rnd2[k])
             
             #Cell potential initialization
-            ndDVref=self.ndD_s["phiRef"]["c"]-self.ndD_s["phiRef"]["a"]
             if ndD_s['tramp']>0:
                 phi_guess=0
             elif ndD_s['profileType']=='CV':
@@ -105,8 +104,9 @@ class SimMPET(dae.daeSimulation):
             elif ndD_s['profileType']=='CVsegments':
                 phi_guess = self.ndD_s['segments'][0][0]
             else:
-                phi_guess = ndDVref
+                phi_guess = 0
             self.m.phi_applied.SetInitialGuess(phi_guess)
+            self.m.phi_cell.SetInitialGuess(phi_guess)
 
             #Initialize the ghost points used for boundary conditions
             if not self.m.SVsim:
@@ -116,15 +116,18 @@ class SimMPET(dae.daeSimulation):
             #Separator electrolyte initialization
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(i, ndD_s['c0'])
-                self.m.phi_lyte["s"].SetInitialGuess(i, .5*(self.ndD_s["phiRef"]["c"]
-                                                           +self.ndD_s["phiRef"]["a"]))
+                self.m.phi_lyte["s"].SetInitialGuess(i, 0)
             
             #Anode and cathode electrolyte initialization
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(i, ndD_s['c0'])
-                    self.m.phi_lyte[l].SetInitialGuess(i, self.ndD_s["phiRef"][l])
+                    self.m.phi_lyte[l].SetInitialGuess(i, 0)
 
+                    #Set electrolyte concentration in each particle
+                    for j in range(Npart[l]):
+                        self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
+                        
         else:
             dPrev = self.dataPrev
             for l in ndD_s["trodes"]:
@@ -141,6 +144,12 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
                             l=l, i=i, j=j)
+                        
+                        #Set the inlet port variables for each particle
+                        part.c_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_c_lyte"][0,-1])
+                        part.phi_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_phi_lyte"][0,-1])
+                        part.phi_m.SetInitialGuess(dPrev[partStr+"portInBulk_phi_m"][0,-1])
+
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
                                 dPrev[partStr + "cbar"][0,-1])
@@ -170,10 +179,18 @@ class SimMPET(dae.daeSimulation):
                         i, dPrev["c_lyte_" + l][-1,i])
                     self.m.phi_lyte[l].SetInitialGuess(
                         i, dPrev["phi_lyte_" + l][-1,i])
+            
+            #Read in the ghost point values
+            if not self.m.SVsim:
+                self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0,-1])
+                self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0,-1])
+            
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
-        self.m.dummyVar.AssignValue(0)  # used for V cutoff condition
+
+        #The simulation runs when the endCondition is 0
+        self.m.endCondition.AssignValue(0)
 
     def Run(self):
         """
@@ -191,6 +208,8 @@ class SimMPET(dae.daeSimulation):
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
 
-            #Break when a volage limit condition is reached
-            if self.LastSatisfiedCondition:
+            #Break when an end condition has been met
+            if self.m.endCondition.npyValues:
+                description=mod_cell.endConditions[int(self.m.endCondition.npyValues)]
+                self.Log.Message("Ending condition: " + description, 0)
                 break
