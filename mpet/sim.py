@@ -144,6 +144,12 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.ndD_e[l]["indvPart"][i, j]["type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
                             l=l, i=i, j=j)
+                        
+                        #Set the inlet port variables for each particle
+                        part.c_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_c_lyte"][0,-1])
+                        part.phi_lyte.SetInitialGuess(dPrev[partStr+"portInLyte_phi_lyte"][0,-1])
+                        part.phi_m.SetInitialGuess(dPrev[partStr+"portInBulk_phi_m"][0,-1])
+
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
                                 dPrev[partStr + "cbar"][0,-1])
@@ -173,6 +179,12 @@ class SimMPET(dae.daeSimulation):
                         i, dPrev["c_lyte_" + l][-1,i])
                     self.m.phi_lyte[l].SetInitialGuess(
                         i, dPrev["phi_lyte_" + l][-1,i])
+            
+            #Read in the ghost point values
+            if not self.m.SVsim:
+                self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0,-1])
+                self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0,-1])
+            
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(
                 dPrev["phi_applied"][0,-1])
