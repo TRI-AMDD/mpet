@@ -330,7 +330,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datay = datay_c * dD_s["cref"] / 1000.
         elif plot_type in ["elytep", "elytepf"]:
             ylbl = 'Potential of electrolyte [V]'
-            datay = datay_p*(k*Tref/e) - Vstd
+            #plots data relative to reference Li electrode
+            datay = datay_p*(k*Tref/e) - Etheta['c']
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
             cGP_L, pGP_L = data["c_lyteGP_L"], data["phi_lyteGP_L"]
             cmat = np.hstack((cGP_L.T, datay_c, datay_c[:, -1].reshape((numtimes, 1))))
