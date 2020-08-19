@@ -33,6 +33,22 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
 
+    #Turn off reporting of some variables
+    simulation.m.endCondition.ReportingOn=False
+    
+    #Turn off reporting of particle ports
+    for trode in simulation.m.trodes:
+        for particle in simulation.m.particles[trode]:
+            pModel = particle[0]
+            for port in pModel.Ports:
+                for var in port.Variables:
+                    var.ReportingOn = False
+    
+    #Turn off reporting of cell ports
+    for port in simulation.m.Ports:
+        for var in port.Variables:
+            var.ReportingOn = False
+
     # Set relative tolerances
     daesolver.RelativeTolerance = ndD_s["relTol"]
 
