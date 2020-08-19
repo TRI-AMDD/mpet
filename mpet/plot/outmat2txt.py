@@ -2,9 +2,9 @@
 import os
 
 import numpy as np
-import scipy.io as sio
+import h5py
 
-import mpet.plot_data as plot_data
+import mpet.plot.plot_data as plot_data
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
@@ -201,9 +201,9 @@ def main(indir, genData=True, discData=True, elyteData=True,
                        elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
-        dataFileName = "output_data.mat"
+        dataFileName = "output_data.hdf5"
         dataFile = os.path.join(indir, dataFileName)
-        data = sio.loadmat(dataFile)
+        data = h5py.File(dataFile, 'r')
         for l in trodes:
             Trode = get_trode_str(l)
             type2c = False

@@ -8,8 +8,8 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 
 from mpet.version import __version__
-import mpet.outmat2txt as outmat2txt
-import mpet.plot_data as plot_data
+import mpet.plot.outmat2txt as outmat2txt
+import mpet.plot.plot_data as plot_data
 
 #Ordered dictionary of plot types
 plotTypes=OrderedDict([

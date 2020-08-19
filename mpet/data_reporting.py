@@ -3,52 +3,39 @@ import numpy as np
 import os
 import sys
 import time
+import h5py
 
 import daetools.pyDAE as dae
 from daetools.pyDAE.data_reporters import daeMatlabMATFileDataReporter
-import scipy.io as sio
 
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """See source code for pyDataReporting.daeMatlabMATFileDataReporter"""
     def WriteDataToFile(self):
         mdict = {}
-        for var in self.Process.Variables:
-            # Remove the model name part of the output key for
-            # brevity.
-            dkeybase = var.Name[var.Name.index(".")+1:]
-            # Remove dots from variable keys. This enables the mat
-            # file to be read by, e.g., MATLAB.
-            dkeybase = dkeybase.replace(".", "_")
-            mdict[dkeybase] = var.Values 
-            #if we are not in a continuation directory
-            mdict[dkeybase + '_times'] = var.TimeValues
+        #0 if single simulaiton, 1 if continued simulation
+        continued_sim = 0
+        #if we are in a directory that has continued simulations (maccor reader)
+        if os.path.isfile(self.ConnectionString + ".hdf5"):
+            if os.stat(self.ConnectionString + ".hdf5").st_size != 0:
+                continued_sim = 1
+                #remains 0 if not continued sim
+        with h5py.File(self.ConnectionString + ".hdf5", 'a') as mat_dat:
+            for var in self.Process.Variables:
+                # Remove the model name part of the output key for
+                # brevity.
+                dkeybase = var.Name[var.Name.index(".")+1:]
+                # Remove dots from variable keys. This enables the mat
+                # file to be read by, e.g., MATLAB.
+                dkeybase = dkeybase.replace(".", "_")
+                mdict[dkeybase] = var.Values
+                #if we are not in a continuation directory
+                if dkeybase == 'phi_applied' and continued_sim == 0:
+                    #only save times for voltage
+                    mdict['times'] = var.TimeValues
+                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'])
 
-            #if we are in a directory that has continued simulations (maccor reader)
-            if os.path.isfile(self.ConnectionString + ".mat"):
-                if os.stat(self.ConnectionString + ".mat").st_size != 0:
-                    mat_dat = sio.loadmat(self.ConnectionString + ".mat")
-                    #increment time by the previous end time of the last simulation
-                    tend = mat_dat[dkeybase + '_times'][0, -1]
-                    #get previous values from old output_mat
-                    mdict[dkeybase + '_times'] = (var.TimeValues + tend).T
-                    #may flatten array, so we specify axis
-                    if mat_dat[dkeybase].shape[0] == 1:
-                        mat_dat[dkeybase] = mat_dat[dkeybase].T
-                        mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
-                    #data output does weird arrays where its (n, 2) but (1, n) if only one row
-                    if mdict[dkeybase].ndim == 1:
-                        mdict[dkeybase] = mdict[dkeybase].reshape(-1, 1)
-                    mdict[dkeybase] = np.append(mat_dat[dkeybase], mdict[dkeybase], axis = 0)
-                    #flip axes to be consistent with plotting if shape is not (x,1)
-                    if mdict[dkeybase].shape[1] == 1:
-                        mdict[dkeybase] = np.squeeze(mdict[dkeybase])
-                    mdict[dkeybase + '_times'] = np.append(mat_dat[dkeybase + '_times'],  mdict[dkeybase + '_times'])
-
-        sio.savemat(self.ConnectionString + ".mat",
-                    mdict, appendmat=False, format='5',
-                    long_field_names=False, do_compression=False,
-                    oned_as='row')
+                mat_dat.create_dataset(dkeybase, data = mdict[dkeybase])
 
 
 def setup_data_reporters(simulation, outdir):

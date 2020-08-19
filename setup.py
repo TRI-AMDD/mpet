@@ -10,7 +10,7 @@ setuptools.setup(
     author_email='cogswell@mit.edu',
     license='MIT',
     url='https://bitbucket.org/bazantgroup/mpet',
-    packages=['mpet','mpet.electrode'],
+    packages=['mpet','mpet.plot','mpet.electrode'],
     install_requires=["numpy","scipy","matplotlib","pyQt5"],
     python_requires='>=3.5,<3.8',
     scripts=['bin/mpetrun.py','bin/mpetplot.py'],
