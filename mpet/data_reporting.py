@@ -35,6 +35,24 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     mdict['times'] = var.TimeValues
                     mat_dat.create_dataset('phi_applied_times', data = mdict['times'])
 
+                #if we are in a directory that has continued simulations (maccor reader)
+                if continued_sim == 1:
+                    #increment time by the previous end time of the last simulation
+                    tend = mat_dat['phi_applied_times'][-1]
+                    #get previous values from old output_mat
+                    mdict[dkeybase] = np.append(mat_dat[dkeybase][:], mdict[dkeybase], axis = 0)
+                    #only print variable times if it is voltage
+                    #delete old dataset so we can replace
+                    del mat_dat[dkeybase]
+
+                    if dkeybase == 'phi_applied':
+                        mdict['times'] = var.TimeValues + tend
+                        mdict['times'] = np.append(mat_dat['phi_applied_times'][:],  mdict['times'])
+                        #delete old dataset so we can replace
+                        del mat_dat['phi_applied_times']
+                        mat_dat.create_dataset('phi_applied_times', data = mdict['times'])
+
+
                 mat_dat.create_dataset(dkeybase, data = mdict[dkeybase])
 
 
