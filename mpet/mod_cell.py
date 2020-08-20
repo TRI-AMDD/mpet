@@ -714,9 +714,30 @@ class ModCell(dae.daeModel):
                     eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                     eq.Residual = self.charge_discharge() + 1
                 elif equation_type[i] == 5:
+
                     #if CV discharge, we set up
-                    eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = self.phi_applied() - constraints[i] 
+                    if "t" not in str(constraints[i]):
+                        if ndD["tramp"] > 0:
+                        #if tramp, we use a ramp step to hit the value for better numerical stability
+                        #if not waveform input, set to constant value
+                            self.IF(dae.Time() < self.time_counter() + dae.Constant(ndD["tramp"]*s))
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - ((constraints[i] - self.last_phi_applied())/ndD["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_phi_applied())
+                            self.ELSE()
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i]
+                            self.END_IF()
+                        else:
+                            eq = self.CreateEquation("Constraint_" + str(i))
+                            eq.Residual = self.phi_applied() - constraints[i] 
+                    else:
+                        #use periodic time units of mod(Time, period), but need to multiply by period
+                        #to recover units in dimless time
+                        per = ndD["period"][i]
+                        f = sym.lambdify(t, constraints[i], modules = "numpy")
+                        #lambdifies waveform so that we can run with numpy functions   
+                        eq = self.CreateEquation("Constraint_" + str(i))
+                        eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
 
                     #conditions for cutting off: hits capacity fraction cutoff 
                     cap_cond = (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] == None else ((self.ffrac[limtrode]() >= 1-capfrac_cutoffs[i]) if limtrode == "c" else (self.ffrac[limtrode]() <= capfrac_cutoffs[i]))
