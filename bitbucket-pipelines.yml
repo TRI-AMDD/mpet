@@ -8,5 +8,7 @@ image: vikko00/daetools:1.9.0
 pipelines:
   default:
     - step:
-        script: # Modify the commands below to build your repository.
+        script:
           - pip install .
+          - cd bin
+          - ./mpettest.sh
