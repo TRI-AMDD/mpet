@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: daetools:1.9.0
+image: vikko00/daetools:1.9.0
 
 pipelines:
   default:
