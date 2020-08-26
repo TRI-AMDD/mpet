@@ -4,8 +4,6 @@ pipelines:
   default:
     - step:
         script:
-          - cd bin
-          - ./mpetruntest.sh
-          - cd workdir/tests
-          - pytest --baseDir ref_outputs           --modDir ../bin/workdir/modified compare_tests.py
-          - pytest --baseDir ../bin/workdir/stable --modDir ../bin/workdir/modified compare_tests.py
+          - cd bin && ./mpetruntest.sh
+          - cd tests && pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+          - cd tests && pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
