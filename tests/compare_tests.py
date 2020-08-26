@@ -3,6 +3,8 @@ import scipy.io as sio
 import numpy as np
 import mpet.io_utils as IO
 import tests.test_defs as defs
+import errno
+import h5py
 
 def get_sim_time(simDir):
   with open(osp.join(simDir, "run_info.txt")) as fi:
@@ -14,19 +16,36 @@ def test_compare(Dirs, tol):
   testFailed = False
   newDir = osp.join(testDir, "sim_output")
   refDir = osp.join(refDir, "sim_output")
+  newDatah5 = False
+  refDatah5 = False
   newDataFile = osp.join(newDir, "output_data.mat")
+  if not osp.exists(newDataFile):
+    newDataFile = osp.join(newDir, "output_data.hdf5")
+    newDatah5 = True
+  assert osp.exists(newDataFile), "neither output_data.{mat,hdf5} present"
   refDataFile = osp.join(refDir, "output_data.mat")
+  if not osp.exists(refDataFile):
+    refDataFile = osp.join(refDir, "output_data.hdf5")
+    refDatah5 = True
+  assert osp.exists(refDataFile), "neither output_data.{mat,hdf5} present"
+
   time_new = get_sim_time(newDir)
   time_ref = get_sim_time(refDir)
   try:
-    newData = sio.loadmat(newDataFile)
+    if newDatah5:
+      newData = h5py.File(newDataFile,'r')
+    else:
+      newData = sio.loadmat(newDataFile)
   except IOError as exception:
     # If it's an error _other than_ the file not being there
     assert exception.errno == errno.ENOENT, "IO error on opening file"
-    print("No simulation data for " + testStr)
+    assert False, "File %s does not exist"%(newDataFile)
     return
         
-  refData = sio.loadmat(refDataFile)
+  if refDatah5:
+    refData = h5py.File(refDataFile,'r')
+  else:
+    refData = sio.loadmat(refDataFile)
   for varKey in (set(refData.keys()) & set(newData.keys())):
     # TODO -- Consider keeping a list of the variables that fail
 
@@ -59,18 +78,27 @@ def test_sphdifn(testDir, tol):
 
 def _test_analytic(testDir, tol, info):
   newDir = osp.join(testDir, "sim_output")
+  newDatah5 = False
   newDataFile = osp.join(newDir, "output_data.mat")
+  if not osp.exists(newDataFile):
+    newDataFile = osp.join(newDir, "output_data.hdf5")
+    newDatah5 = True
+  assert osp.exists(newDataFile), "neither output_data.{mat,hdf5} present"
+
   dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
   tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
   dD_e = {}
   ndD_e = {}
   dD_e["c"], ndD_e["c"] = tmp
   try:
+    if newDatah5:
+      newData = h5py.File(newDataFile,'r')
+    else:
       newData = sio.loadmat(newDataFile)
   except IOError as exception:
     # If it's an error _other than_ the file not being there
     assert exception.errno == errno.ENOENT, "IO error on opening file"
-    print("No simulation data for " + testStr)
+    assert False, "File %s does not exist"%(newDataFile)
     return
   t_ref = dD_s["t_ref"]
   L_part = dD_s["psd_len"]["c"][0,0]
@@ -79,7 +107,10 @@ def _test_analytic(testDir, tol, info):
   # Skip first time point: analytical solution fails at t=0.
   t0ind = 2
   r0ind = 1
-  tvecA = newData["phi_applied_times"][0][t0ind:] * (t_ref/t_refPart)
+  if newDatah5:
+    tvecA = newData["phi_applied_times"][t0ind:] * (t_ref/t_refPart)
+  else:
+    tvecA = newData["phi_applied_times"][0][t0ind:] * (t_ref/t_refPart)
   cmat = newData["partTrodecvol0part0_c"]
   cmin, cmax = np.min(cmat), np.max(cmat)
   delC = cmax - cmin
