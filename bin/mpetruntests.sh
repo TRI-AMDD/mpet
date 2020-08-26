@@ -15,7 +15,7 @@ python run_tests.py ../../bin/workdir/modified > /dev/null
 #run tests for stable branch
 git clone ../../ stable_branch/
 cd stable_branch/
-git checkout stable
+git checkout $1
 cd ../
 ln -sf stable_branch/mpet .
 python run_tests.py ../../bin/workdir/stable > /dev/null

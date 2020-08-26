@@ -1,11 +1,21 @@
 image: vikko00/mpet-deps:latest
 
 pipelines:
-  default:
-    - step:
-        script:
-          - cd bin
-          - ./mpetruntests.sh
-          - cd ../tests
-          - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
-          - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+  pull-requests:
+    'master':
+      - step:
+          script:
+            - cd bin
+            - ./mpetruntests.sh master
+            - cd ../tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+  branches:
+    'master':
+      - step:
+          script:
+            - cd bin
+            - ./mpetruntests.sh stable
+            - cd ../tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
