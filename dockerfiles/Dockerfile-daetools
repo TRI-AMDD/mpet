@@ -1,0 +1,13 @@
+FROM python:3.7.8-stretch
+
+#Install necessary packages for daetools
+
+RUN apt-get update
+
+RUN apt-get install --yes libgl1-mesa-glx libgfortran3
+
+#Download and install daetools 1.9.0
+RUN wget https://sourceforge.net/projects/daetools/files/daetools/1.9.0/daetools-1.9.0-gnu_linux-x86_64.tar.gz && \ 
+    tar -xf daetools-1.9.0-gnu_linux-x86_64.tar.gz && \
+    pip install ./daetools-1.9.0-gnu_linux && \
+    rm -r ./daetools-1.9.0-gnu_linux

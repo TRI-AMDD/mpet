@@ -11,7 +11,7 @@ setuptools.setup(
     license='MIT',
     url='https://bitbucket.org/bazantgroup/mpet',
     packages=['mpet','mpet.plot','mpet.electrode'],
-    install_requires=["numpy","scipy","matplotlib","pyQt5"],
+    install_requires=["numpy","scipy","matplotlib","pyQt5","pytest"],
     python_requires='>=3.5,<3.8',
     scripts=['bin/mpetrun.py','bin/mpetplot.py'],
     classifiers=[
