@@ -2,7 +2,7 @@ image: vikko00/mpet-deps:latest
 
 pipelines:
   pull-requests:
-    **:
+    '**':
       - step:
           script:
             - cd bin
