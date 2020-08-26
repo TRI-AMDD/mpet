@@ -134,6 +134,8 @@ class ModCell(dae.daeModel):
             "last_phi_applied", elec_pot_t, self, "tracks the current at the last step before a step is taken, used for ramp")
         self.cycle_number = dae.daeVariable(
             "cycle_number", dae.no_t, self, "keeps track of which cycle number we are on")
+        self.maccor_step_number = dae.daeVariable(
+            "maccor_step_number", dae.no_t, self, "keeps track of which maccor step number we are on")
         self.endCondition = dae.daeVariable(
             "endCondition", dae.no_t, self, "A nonzero value halts the simulation")
 

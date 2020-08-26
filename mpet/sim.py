@@ -140,6 +140,9 @@ class SimMPET(dae.daeSimulation):
             #set last values
             self.m.last_current.AssignValue(0)
             self.m.last_phi_applied.AssignValue(phi_guess)
+
+            #tracks which maccor step we're on
+            self.m.maccor_step_number.AssignValue(1)
                
         else:
             dPrev = self.dataPrev
@@ -208,7 +211,9 @@ class SimMPET(dae.daeSimulation):
                 self.m.last_current.AssignValue(np.asscalar(hf["current"][-1]))
                 self.m.last_phi_applied.AssignValue(np.asscalar(hf["phi_applied"][-1]))
 
-
+                #tracks which maccor step we're on, increments from old step
+                self.m.maccor_step_number.AssignValue(np.asscalar(hf["maccor_step_number"][-1])+1)
+ 
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
         #tracks the number of cycles
         self.m.cycle_number.AssignValue(1)
