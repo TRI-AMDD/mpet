@@ -2,11 +2,11 @@ image: vikko00/mpet-deps:latest
 
 pipelines:
   pull-requests:
-    'master':
+    **:
       - step:
           script:
             - cd bin
-            - ./mpetruntests.sh master
+            - ./mpetruntests.sh $BITBUCKET_BRANCH
             - cd ../tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
