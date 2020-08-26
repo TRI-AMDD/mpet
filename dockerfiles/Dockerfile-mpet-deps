@@ -2,4 +2,4 @@ FROM vikko00/daetools:1.9.0
 
 #Install mpet dependencies
 
-RUN pip install numpy scipy matplotlib pyQt5 pytest
+RUN pip install numpy scipy matplotlib pyQt5 pytest h5py
