@@ -10,7 +10,7 @@ ln -s ../../mpet .
 ln -s ../../tests .
 
 #run tests for current commit
-python run_tests.py ../../bin/workdir/modified
+python run_tests.py ../../bin/workdir/modified > /dev/null
 
 #run tests for stable branch
 git clone ../../ stable_branch/
@@ -18,5 +18,5 @@ cd stable_branch/
 git checkout stable
 cd ../
 ln -sf stable_branch/mpet .
-python run_tests.py ../../bin/workdir/stable
+python run_tests.py ../../bin/workdir/stable > /dev/null
 
