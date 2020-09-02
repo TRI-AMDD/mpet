@@ -10,7 +10,7 @@ ln -s ../../mpet .
 ln -s ../../tests .
 
 #run tests for current commit
-coverage run --source=../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
+coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
 COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN coveralls || true #Dont fret if if fails
 
 #run tests for stable branch
