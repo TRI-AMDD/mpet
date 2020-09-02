@@ -6,6 +6,7 @@ pipelines:
       - step:
           script:
             - cd bin
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh development
             - cd ../tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
