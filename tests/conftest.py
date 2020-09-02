@@ -1,3 +1,6 @@
+import pytest
+from .test_defs import getNumberOfTests
+
 def pytest_addoption(parser):
   parser.addoption(
       "--modDir",
@@ -17,10 +20,15 @@ def pytest_addoption(parser):
       default=1e-4,
       help="tolerance for test cases"
   )
+  parser.addoption(
+      "--slowdown_tolerance",
+      action="store",
+      default=2,
+      help="tolerance for slowdown of test cases"
+  )
 
-
-ntests=19
 def pytest_generate_tests(metafunc):
+  ntests = getNumberOfTests()
   if "Dirs" in metafunc.fixturenames:
     dir_t = metafunc.config.getoption("modDir")
     dir_b = metafunc.config.getoption("baseDir")
@@ -31,3 +39,4 @@ def pytest_generate_tests(metafunc):
   if "testDir" in metafunc.fixturenames:
     dir_t = metafunc.config.getoption("modDir")
     metafunc.parametrize("testDir", [dir_t])
+  pytest.slowdown_tolerance = float(metafunc.config.getoption("slowdown_tolerance"))

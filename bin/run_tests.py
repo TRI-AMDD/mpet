@@ -17,7 +17,7 @@ def run(dirName):
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
-    n_tests = 19
+    n_tests = defs.getNumberOfTests()
     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
                for i in range(1, n_tests+1)}
     runInfoAnalyt = {

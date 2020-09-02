@@ -5,6 +5,7 @@ import mpet.io_utils as IO
 import tests.test_defs as defs
 import errno
 import h5py
+import pytest
 
 def get_sim_time(simDir):
   with open(osp.join(simDir, "run_info.txt")) as fi:
@@ -31,7 +32,7 @@ def test_compare(Dirs, tol):
 
   time_new = get_sim_time(newDir)
   time_ref = get_sim_time(refDir)
-  assert time_new < time_ref * 10, "The new code is more than 10x slower than the old code"
+  assert time_new < time_ref * pytest.slowdown_tolerance, "more than 2x slowdown with reference"
   try:
     if newDatah5:
       newData = h5py.File(newDataFile,'r')
