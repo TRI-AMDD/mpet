@@ -141,9 +141,11 @@ class SimMPET(dae.daeSimulation):
             self.m.last_current.AssignValue(0)
             self.m.last_phi_applied.AssignValue(phi_guess)
 
-            #tracks which maccor step we're on
-            self.m.maccor_step_number.AssignValue(1)
-               
+            #tracks which cycle counter we're on by maccor increments
+            self.m.maccor_cycle_counter.AssignValue(1)
+            #track the maccor step number we're on
+            self.m.maccor_step_number.SetInitialGuess(1)
+
         else:
             dPrev = self.dataPrev
             with h5py.File(dPrev, 'r') as hf:
@@ -211,11 +213,15 @@ class SimMPET(dae.daeSimulation):
                 self.m.last_current.AssignValue(np.asscalar(hf["current"][-1]))
                 self.m.last_phi_applied.AssignValue(np.asscalar(hf["phi_applied"][-1]))
 
-                #tracks which maccor step we're on, increments from old step
-                self.m.maccor_step_number.AssignValue(np.asscalar(hf["maccor_step_number"][-1])+1)
- 
+                #tracks which cycle number we're on, using the cycle numbers tracked by maccor files
+                self.m.maccor_cycle_counter.AssignValue(np.asscalar(hf["maccor_cycle_counter"][-1]))
+                #track the maccor step number we're on
+                self.m.maccor_step_number.SetInitialGuess(np.asscalar(hf["maccor_step_number"][-1]))
+
+
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
-        #tracks the number of cycles
+
+        #used to determine if the mpet simulation has finished
         self.m.cycle_number.AssignValue(1)
 
         #The simulation runs when the endCondition is 0

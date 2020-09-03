@@ -410,6 +410,7 @@ def get_dicts_from_configs(P_s, P_e):
             ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), dD_s["segments"][i][1]*60/t_ref))
 #DZ 02/12/20 battery cycling
     elif ndD_s["profileType"] == "CCCVCPcycle":
+        #if the size of each array is 1X8, we know we have the maccor cycling step number and cycle increments in the information too
         for i in range(len(dD_s["segments"])):
             #find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
             hard_cut = ndD_s["capFrac"] if dD_s["segments"][i][5] <= 2 else 1-ndD_s["capFrac"]
@@ -424,13 +425,13 @@ def get_dicts_from_configs(P_s, P_e):
                 print("Warning: in segment " + str(i) + " of the cycle no cutoff is specified.")
             if dD_s["segments"][i][5] == 1 or  dD_s["segments"][i][5] == 4:
                 #stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time cutoff, type
-               ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5]))
+               ndD_s["segments"].append((utils.get_crate(dD_s["segments"][i][0], CrateCurr)/curr_ref, volt_cut, capfrac_cut, None, time_cut, dD_s["segments"][i][5], dD_s["segments"][i][6], dD_s["segments"][i][7]))
             elif dD_s["segments"][i][5] == 2 or dD_s["segments"][i][5] == 5:
                 #stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff, time cutoff, type
-                ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
+                ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), None, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5],  dD_s["segments"][i][6], dD_s["segments"][i][7]))
             #elif CP segments
             elif dD_s["segments"][i][5] == 3 or dD_s["segments"][i][5] == 6: 
-                ndD_s["segments"].append((-(e/(k*T_ref*curr_ref*CrateCurr))*dD_s["segments"][i][0], volt_cut, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5]))
+                ndD_s["segments"].append((-(e/(k*T_ref*curr_ref*CrateCurr))*dD_s["segments"][i][0], volt_cut, capfrac_cut, crate_cut, time_cut, dD_s["segments"][i][5],  dD_s["segments"][i][6], dD_s["segments"][i][7]))
 
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs)

@@ -129,14 +129,17 @@ def run_simulation(step_list, index_number, cycling_dict, cycle_number = 1):
     Currently MPET and LionSimba are supported. Cycle_number is the total number of cycles to be run,
     default is 1. returns empty step_list to restart"""
     if step_list != []:
-        proc_step_list = []
+        proc_step_list = [] #list of step segments
+        
         #process step_list to make it readable by MPET
         for i in range(len(step_list)):
             if step_list[i].shape[0] == 1:
                 proc_step_list.append(step_list[i].flatten().tolist())
+                
             else:
                 for j in range(len(step_list[i])):
                     proc_step_list.append(step_list[i][j].flatten().tolist())
+
         #runs simulation
         cycling_dict["step_" + str(index_number)] = {"segments": proc_step_list, "totalCycle": int(cycle_number)}
         #increments which set of simulations we are in
@@ -157,7 +160,6 @@ def get_cycling_dict(ndD_s, dD_s):
     
     #%% Load the data and save variable of the TestSteps
     file_name = maccor_file
-    print(file_name)
     if not os.path.isfile(maccor_file):
         file_name = ndD_s["paramfile_header"] + "/" + maccor_file
     
@@ -196,19 +198,16 @@ def get_cycling_dict(ndD_s, dD_s):
         #get the current step that we're on
         if curr_step["StepType"][:2] == "Do":
             #if we start tracking the loop, then we know that we need to run the previous process
-            #print('DO', step_list)
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict) #mpet, lionsimba, or whatever
             #starts processing do loop
             loop_level, loop_counter, step_index = start_loop_process(curr_step, loop_level, loop_counter, step_index)
         elif curr_step["StepType"][:4] == "Loop": #finish tracking loop
             cycle_num, loop_level, loop_counter, step_index = finish_loop_process(curr_step, loop_level, loop_counter)
-            #print('END LOOP', step_list, cycle_num, index_number, cycling_dict)
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict, cycle_number = cycle_num)#mpet, lionsimba, or whatever
         elif curr_step["StepType"] == "AdvCycle":
             total_cycle_counter += 1 #increments a step in total cycle counter
             step_index += 1
         elif curr_step["StepType"] == "End":
-            #print("End", step_list)
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal

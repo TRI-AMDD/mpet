@@ -35,6 +35,8 @@ def StepTypeLogic(step, area, stepIndex):
             'FastWave': case_Waveform
             }
     func = switcher.get(StepType, lambda: "invalid StepType")
+    #return curr_step_process, which is #segments for the first 6 arrays, 7th array is maccor step number, 8th array
+    #is plus for cycling index
     return func
 
 
@@ -42,7 +44,8 @@ def case_Rest(step, area, stepIndex):
     """Processes rest steps as CC = 0 steps. Inputs and outputs same as
     SwitchTypeLogic."""
     #gets end entry time
-    curr_step_process = np.reshape(np.array([0, None, None, None, None, 1]), (1, 6))
+    #+1 to stepIndex because it is started at 0
+    curr_step_process = np.reshape(np.array([0, None, None, None, None, 1, stepIndex+1, 0]), (1, 8))
     #assign CC = 0 as set value and CC charge
     curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, area, charge_type = 1) 
     return curr_step_process, next_step_index
@@ -52,7 +55,7 @@ def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltag
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #negative C rates because charge
-    curr_step_process = np.reshape(np.array([0, None, None, None, None, 0]), (1, 6))
+    curr_step_process = np.reshape(np.array([0, None, None, None, None, 0, stepIndex+1, 0]), (1, 8))
     #initialize guess
     if StepMode == 'Current':
        curr_step_process[0][5] = 1 #specify CC charge
@@ -60,7 +63,7 @@ def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltag
        if step['Limits'] != None:
            if 'Voltage' in step['Limits'].keys():
                 #CCCV step
-                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
+                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0, stepIndex+1, 0])))
                 #if first step CC, cutoff is Vlim
                 curr_step_process[0][1] = float(step['Limits']['Voltage'])
                 curr_step_process[1][5] = 2 #CV charge
@@ -74,7 +77,7 @@ def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltag
         if step['Limits'] != None: 
             if 'Current' in step['Limits'].keys():
                 #CVCC step
-                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
+                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0, stepIndex+1, 0])))
                 #if first step CV, cutofff is CC, negative because of charge
                 curr_step_process[0][3] = process_current(step['Limits']['Current'], 1, area)
                 curr_step_process[1][5] = 1 #CC charge
@@ -112,7 +115,7 @@ def case_ChgFunc(step, area, stepIndex):
     else:
         chg_dichg = -1
     #assign CC = 0 as set value and CC charge
-    curr_step_process = np.reshape(np.array([str(f), None, None, None, None, chg_dichg]), (1, 6))
+    curr_step_process = np.reshape(np.array([str(f), None, None, None, None, chg_dichg, stepIndex+1, 0]), (1, 6))
     #assign CC = 0 as set value and CC charge
     curr_step_process, next_step_index = process_ends(step["Ends"], curr_step_process, area, charge_type = 1) 
     return curr_step_process, next_step_index
@@ -123,7 +126,7 @@ def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType case
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #we assume only the first end entry value has meaning
-    curr_step_process = np.reshape(np.array([0, None, None, None, None, 0]), (1, 6))
+    curr_step_process = np.reshape(np.array([0, None, None, None, None, 0, stepIndex+1, 0]), (1, 8))
 
     if StepMode == 'Current':
         #CC step
@@ -132,7 +135,7 @@ def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType case
         if step['Limits'] != None:
             if 'Voltage' in step['Limits'].keys():
                 #CCCV step
-                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
+                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0, stepIndex+1, 0])))
                 #if first step CC, cutoff is Vlim
                 curr_step_process[0][1] = float(step['Limits']['Voltage'])
                 curr_step_process[1][5] = 5 #CV discharge
@@ -146,7 +149,7 @@ def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType case
         if step['Limits'] != None:
             if 'Current' in step['Limits'].keys():
                 #CVCCstep
-                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0])))
+                curr_step_process = np.vstack((curr_step_process, np.array([0, None, None, None, None, 0, stepIndex+1, 0])))
                 #if first step CV, cutofff is CC, negative because of charge
                 curr_step_process[0][3] = process_current(step['Limits']['Current'], 0, area)
                 curr_step_process[1][5] = 4 #CC charge
