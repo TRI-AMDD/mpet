@@ -7,6 +7,7 @@ Created on Sat Mar 28 14:52:36 2020
 
 #%% import as needed
 import numpy as np
+import os
 import sys
 import configparser
 import xmltodict
@@ -155,9 +156,14 @@ def get_cycling_dict(ndD_s, dD_s):
     area = dD_s["active_area"]
     
     #%% Load the data and save variable of the TestSteps
-    with open(maccor_file) as f:
-         data = xmltodict.parse(f.read(), process_namespaces=False, strip_whitespace=True)
+    file_name = maccor_file
+    print(file_name)
+    if not os.path.isfile(maccor_file):
+        file_name = ndD_s["paramfile_header"] + "/" + maccor_file
     
+    with open(file_name) as f:
+          data = xmltodict.parse(f.read(), process_namespaces=False, strip_whitespace=True)   
+
     f.close()
 
     Maccor = 'MaccorTestProcedure'

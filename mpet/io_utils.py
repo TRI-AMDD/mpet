@@ -44,6 +44,10 @@ def get_configs(paramfile="params.cfg"):
         if not os.path.isfile(paramfile_a):
             raise Exception("Anode param file doesn't exist!")
         P_e["a"] = get_config(paramfile_a)
+
+    #save the header of the param file
+    P_s.set("Sim Params", "paramfile_header", os.path.split(paramfile)[0])
+
     return P_s, P_e
 
 
@@ -60,6 +64,7 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["1varTypes"] = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
 
     # Simulation parameters
+    ndD_s["paramfile_header"] = P_s.get('Sim Params', 'paramfile_header')
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = "0"))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
