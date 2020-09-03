@@ -142,7 +142,7 @@ class SimMPET(dae.daeSimulation):
             self.m.last_phi_applied.AssignValue(phi_guess)
 
             #tracks which cycle counter we're on by maccor increments
-            self.m.maccor_cycle_counter.AssignValue(1)
+            self.m.maccor_cycle_counter.SetInitialGuess(1)
             #track the maccor step number we're on
             self.m.maccor_step_number.SetInitialGuess(1)
 
@@ -214,7 +214,7 @@ class SimMPET(dae.daeSimulation):
                 self.m.last_phi_applied.AssignValue(np.asscalar(hf["phi_applied"][-1]))
 
                 #tracks which cycle number we're on, using the cycle numbers tracked by maccor files
-                self.m.maccor_cycle_counter.AssignValue(np.asscalar(hf["maccor_cycle_counter"][-1]))
+                self.m.maccor_cycle_counter.SetInitialGuess(np.asscalar(hf["maccor_cycle_counter"][-1]))
                 #track the maccor step number we're on
                 self.m.maccor_step_number.SetInitialGuess(np.asscalar(hf["maccor_step_number"][-1]))
 

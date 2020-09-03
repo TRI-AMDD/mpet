@@ -417,6 +417,10 @@ class ModCell(dae.daeModel):
             #add new variable to assign maccor step number in equation
             eq.Residual = self.maccor_step_number() - 1
 
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
+
 
         elif self.profileType == "CP":
             #constant power constraint
@@ -426,10 +430,14 @@ class ModCell(dae.daeModel):
             eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ndD["power"]
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
+
             eq = self.CreateEquation("Maccor_Step_Number_Equation")
             #add new variable to assign maccor step number in equation
             eq.Residual = self.maccor_step_number() - 1
 
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
 
 #       
 ##DZ 02/12/20
@@ -444,11 +452,11 @@ class ModCell(dae.daeModel):
             time_cutoffs = seg_array[:,4]
             equation_type = seg_array[:,5]
             maccor_step_number = np.ones(seg_array.shape[0])
-            maccor_cycle_increment = np.zeros(seg_array.shape[0])
+            maccor_cycle_counter = np.zeros(seg_array.shape[0])
             if seg_array.shape[1] == 8:
                 #if we also contain maccor step segments
                 maccor_step_number = seg_array[:,6]
-                maccor_cycle_increment = seg_array[:,7]
+                maccor_cycle_counter = seg_array[:,7]
             
             ndDVref = ndD["phiRef"]["c"] - ndD["phiRef"]["a"]
 
@@ -477,6 +485,11 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Maccor_Step_Number_Equation")
             #add new variable to assign maccor step number in equation
             eq.Residual = self.maccor_step_number() - 1
+
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
+
 
             #if has reached more than total number of cycles needed
 
@@ -523,6 +536,10 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("Maccor_Step_Number_Equation")
                 #add new variable to assign maccor step number in equation
                 eq.Residual = self.maccor_step_number() - maccor_step_number[i]
+
+                eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+                #add new variable to assign maccor step number in equation
+                eq.Residual = self.maccor_cycle_counter() - maccor_cycle_counter[i]
 
 
                 if equation_type[i] == 1:
@@ -851,9 +868,15 @@ class ModCell(dae.daeModel):
             eq.Residual = self.current()
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
+
             eq = self.CreateEquation("Maccor_Step_Number_Equation")
             #add new variable to assign maccor step number in equation
             eq.Residual = self.maccor_step_number() - maccor_step_number[-1]
+
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - maccor_cycle_counter[-1]
+
 
             self.END_STN()
 
@@ -884,6 +907,10 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Maccor_Step_Number_Equation")
             #add new variable to assign maccor step number in equation
             eq.Residual = self.maccor_step_number() - 1
+
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
 
 
 
@@ -939,6 +966,15 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
 
+            eq = self.CreateEquation("Maccor_Step_Number_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_step_number() - 1
+
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
+
+
 
         elif self.profileType == "CVsegments":
             if ndD["tramp"]>0:
@@ -985,7 +1021,16 @@ class ModCell(dae.daeModel):
 
             eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
             eq.Residual = self.charge_discharge() - 1
-#
+
+            eq = self.CreateEquation("Maccor_Step_Number_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_step_number() - 1
+
+            eq = self.CreateEquation("Maccor_Cycle_Counter_Equation")
+            #add new variable to assign maccor step number in equation
+            eq.Residual = self.maccor_cycle_counter() - 1
+
+
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
