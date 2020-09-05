@@ -24,7 +24,7 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()
     simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
-    datareporter = data_reporting.setup_data_reporters(simulation, outdir)
+    datareporter = data_reporting.setup_data_reporters(simulation, ndD_s, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
