@@ -108,7 +108,7 @@ def finish_loop_process(step, loop_index, loop_counter):
     return cycle_number, loop_index, loop_counter, next_step_index
 
 
-def process_basic_step(step, step_list, area, stepIndex, totalCycleCounter):
+def process_basic_step(step, step_list, area, stepIndex):
     """Processes each step of the JSON file. Selects through step types
     and creates a state for each step.
     Inputs: step is current step, step_list is list of steps that need to be run.
@@ -117,9 +117,8 @@ def process_basic_step(step, step_list, area, stepIndex, totalCycleCounter):
     min/max are depending on charge/discharge
     [CC/CV set point, Vmin/Vmax, capfracmin/max, Cmin/Cmax, timemax, CC/CV type]
     CC/CV type: 1 is CC charge, 2 is CCdisch, 3 is CV charge, 4 is CV discharge
-    totalCycleCounter is the total number of cycles in the maccor cycler tracking
     """
-    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex, totalCycleCounter)(step, area, stepIndex, totalCycleCounter)
+    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex)(step, area, stepIndex)
     step_list.append(curr_step_properties)
     return step_list, next_step_index
 
@@ -150,6 +149,17 @@ def run_simulation(step_list, index_number, cycling_dict, cycle_number = 1):
     return step_list, index_number, cycling_dict
 
  
+
+def process_advance_cycle(step_list, step_index):
+    """Adds an empty step that incremenets cycle counter to cycle dict
+    Takes in step_list, appends a step and returns.
+    Increments step_index too."""
+    step_list.append(np.reshape(np.array([0, None, None, None, None, 0, 0]), (1, 7)))
+    step_index += 1
+    return step_list, step_index
+
+
+
 def get_cycling_dict(ndD_s, dD_s):
     """Inputs: ndD_s (uses the maccor file and processes it to return cycling_dict)
     which is a dictionary of steps to take in the cycler. Each step is a dictionary
@@ -176,8 +186,6 @@ def get_cycling_dict(ndD_s, dD_s):
     total_step_list = data[Maccor][proc][test]
     
     ##########
-    
-    total_cycle_counter = 0 #decided by placement of cycle counter in maccor cycler
     
     #initializes step index
     step_index = 0 #what step index we are in in loop counter (first col of loop_counter)
@@ -206,11 +214,10 @@ def get_cycling_dict(ndD_s, dD_s):
             cycle_num, loop_level, loop_counter, step_index = finish_loop_process(curr_step, loop_level, loop_counter)
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict, cycle_number = cycle_num)#mpet, lionsimba, or whatever
         elif curr_step["StepType"] == "AdvCycle":
-            total_cycle_counter += 1 #increments a step in total cycle counter
-            step_index += 1
+            step_list, step_index = process_advance_cycle(step_list, step_index)
         elif curr_step["StepType"] == "End":
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal
-            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index, total_cycle_counter)
+            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index)
     return cycling_dict

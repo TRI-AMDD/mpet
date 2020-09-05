@@ -368,11 +368,11 @@ def get_vset(vset):
 
 
 
-def process_waveform_segment(data, area, totalCycleCounter):
+def process_waveform_segment(data, area):
     """Processes waveform segment from a MFW file.
     Takes in data, which is a numpy array processed from a MFW file,
     and turns it into a list of step_processes, which it then outputs"""
-    curr_step_process = np.tile(np.array([0, None, None, None, None, 0, stepIndex+1, totalCycleCounter]), (data.shape[0], 1))
+    curr_step_process = np.tile(np.array([0, None, None, None, None, 0, stepIndex+1]), (data.shape[0], 1))
     for i in range(data.shape[0]):
         #selecting control mode
         if data[i][1].decode("utf-8") == "I":
