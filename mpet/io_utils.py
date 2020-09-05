@@ -66,13 +66,13 @@ def get_dicts_from_configs(P_s, P_e):
     # Simulation parameters
     ndD_s["paramfile_header"] = P_s.get('Sim Params', 'paramfile_header')
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
-    dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = "0"))
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     dD_s["power"] = P_s.getfloat('Sim Params', 'power', fallback = 0)
     #if it is a Crate, then no units. if A, then units
     dD_s["active_area"] = P_s.getfloat('Sim Params', 'active_area', fallback = 1)
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
+    dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = str([0]*len(segs))))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
 #DZ 02/11/20 cycle counter
     dD_s["totalCycle"] = ndD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
