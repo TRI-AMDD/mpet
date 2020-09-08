@@ -85,8 +85,14 @@ RowStrHdr1Q = "Each i column represents the discharge capacity for the ith cycle
 capCyclerHdr = ("Capacity Cycling Data\n" + RowStrHdr1Q)
 
 
+maccorHdr1 = ("Maccor Cycling Output File.\n")
+maccorHdr2= ("Prints maccor cycle number; maccor step number; time(s); voltage(V); current(A); temperature(K)")
+maccorHdr = maccorHdr1 + maccorHdr2
+maccorHdrBase = "maccorCyclingData.txt"
+
+
 def main(indir, genData=True, discData=True, elyteData=True,
-         csldData=True, cbarData=True, bulkpData=True):
+         csldData=True, cbarData=True, bulkpData=True, maccorData=True):
     ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
         data_only=True)
@@ -293,7 +299,8 @@ def main(indir, genData=True, discData=True, elyteData=True,
               header=cyclerHdr)
 
         #save QV and dQdV data
-        voltCycle, capCycle = plot_data.show_data(                                            indir, plot_type="cycle_Q_V", print_flag=False, save_flag=False,
+        voltCycle, capCycle = plot_data.show_data(
+            indir, plot_type="cycle_Q_V", print_flag=False, save_flag=False,
             data_only=True)
         fname = "voltageCycle"
         np.save(os.path.join(indir, fname), voltCycle)
@@ -301,9 +308,33 @@ def main(indir, genData=True, discData=True, elyteData=True,
         fname = "capacityCycle"
         np.save(os.path.join(indir, fname), capCycle)
 
-        voltCycle, dQdVCycle = plot_data.show_data(                                            indir, plot_type="cycle_dQ_dV", print_flag=False, save_flag=False,
+        voltCycle, dQdVCycle = plot_data.show_data(
+            indir, plot_type="cycle_dQ_dV", print_flag=False, save_flag=False,
             data_only=True)
         fname = "dQdVCycle"
         np.save(os.path.join(indir, fname), dQdVCycle)
 
+    if maccorData:
+        dataFileName = "output_data"
+        dataFile = os.path.join(indir, dataFileName)
+        data, f_type = utils.open_data_file(dataFile) 
+        currVec = plot_data.show_data(
+            indir, plot_type="curr", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        maccorCycleData = np.zeros((ntimes, 6))
+        maccorCycleData[:,0] = data["maccor_cycle_counter"]
+        maccorCycleData[:,1] = data["maccor_step_number"]
+        maccorCycleData[:,2] = tVec
+        maccorCycleData[:,3] = vVec
+        maccorCycleData[:,4] = currVec
+        maccorCycleData[:,5] = np.ones(ntimes)*298
+      
+        np.savetxt(os.path.join(indir, maccorHdrBase), maccorCycleData,
+                   delimiter=dlm, header=maccorHdr)
+
+        if f_type == "h5py":
+            #close file
+            data.close()
+
     return
+

@@ -37,7 +37,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Read in the simulation results and calcuations data
     dataFileName = "output_data"
     dataFile = os.path.join(indir, dataFileName)
-    data, f_type = utils.open_data_file(dataFileName)
+    data, f_type = utils.open_data_file(dataFile)
     try:
         data[pfx + 'current'][:]
     except KeyError:
