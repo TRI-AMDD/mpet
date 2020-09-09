@@ -1,4 +1,5 @@
 import os.path as osp
+import pytest
 
 def get_sim_time(simDir):
   with open(osp.join(simDir, "run_info.txt")) as fi:
