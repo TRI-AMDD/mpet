@@ -8,7 +8,7 @@ pipelines:
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh development
-           artifacts:
+          artifacts:
             - bin/workdir/**
       - step:
           script:
@@ -26,7 +26,7 @@ pipelines:
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh master
-           artifacts:
+          artifacts:
             - bin/workdir/**
       - step:
           script:
@@ -45,7 +45,7 @@ pipelines:
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh stable
-           artifacts:
+          artifacts:
             - bin/workdir/**
       - step:
           script:
