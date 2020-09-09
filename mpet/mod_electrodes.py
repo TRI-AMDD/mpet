@@ -515,6 +515,12 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     if elyteModelType == "SM":
         mu_lyte = phi_lyte
         act_lyte = c_lyte
+    elif elyteModelType == "Colclasure_SM":
+        a0 = 0.8118
+        a1 = 0.2158
+        a2 = 1.6206
+        act_lyte = c_lyte*(np.exp(-0.5*a0*(1-1/c_lyte**2) + a1 * (c_lyte-1) + 0.5*a2*(c_lyte**2-1)))
+        mu_lyte = T*np.log(act_lyte) + phi_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
