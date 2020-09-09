@@ -434,6 +434,26 @@ def get_final_value(data, string, f_type):
         final_value = data[string][-1].item()
     return final_value
 
+
+def get_maccor_step_time(maccor_step_number, times):
+    """Gets the step times, which restart on each step that maccor file changes, of the simulation.
+    takes in maccor_step_number(times) and times, and returns the maccor_step_time(times).
+    starts at zero for each new step switch"""
+    #get difference with previous value and find where index switches
+    #switch_index = np.array(np.where(np.diff(maccor_step_number) == 1)) + 1
+    switch_index = np.array(np.where(np.logical_and(np.diff(maccor_step_number) == 1, maccor_step_number[:len(maccor_step_number)-1] != 1))) + 1
+    #which index we start/end with in each of our maccor time steps
+    indexes = np.append(np.insert(switch_index, 0, 0), len(maccor_step_number))
+    #initialize maccor_step_times
+    maccor_step_times = np.zeros(len(maccor_step_number))
+    for i in range(len(indexes)-1):
+        #we recenter values at 
+        maccor_step_times[indexes[i]:indexes[i+1]] = \
+            times[indexes[i]:indexes[i+1]] \
+            -np.ones(indexes[i+1]-indexes[i])*times[indexes[i]]
+    return maccor_step_times
+
+
 #
 #def get_mol_weight(material_type):
 #    """Gets active material weight from input material type"""

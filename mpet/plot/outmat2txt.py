@@ -86,8 +86,9 @@ capCyclerHdr = ("Capacity Cycling Data\n" + RowStrHdr1Q)
 
 
 maccorHdr1 = ("Maccor Cycling Output File.\n")
-maccorHdr2= ("Prints maccor cycle number; maccor step number; time(s); voltage(V); current(A); temperature(K)")
-maccorHdr = maccorHdr1 + maccorHdr2
+maccorHdr2 = ("Used for maccor cycling and beep output for general information.\n")
+maccorHdr3= ("Prints (by column) data point; test_time; datetime (default empty); step_time; step_index; cycle_index; current(A); voltage(V); charge_capacity(mAh); discharge_capacity(mAh); charge_energy(mAh*V); discharge_energy(mAh*V)")
+maccorHdr = maccorHdr1 + maccorHdr2 + maccorHdr3
 maccorHdrBase = "maccorCyclingData.txt"
 
 
@@ -321,20 +322,29 @@ def main(indir, genData=True, discData=True, elyteData=True,
         currVec = plot_data.show_data(
             indir, plot_type="curr", print_flag=False,
             save_flag=False, data_only=True)[1]
-        maccorCycleData = np.zeros((ntimes, 6))
-        maccorCycleData[:,0] = data["maccor_cycle_counter"]
-        maccorCycleData[:,1] = data["maccor_step_number"]
-        maccorCycleData[:,2] = tVec
-        maccorCycleData[:,3] = vVec
-        maccorCycleData[:,4] = currVec
-        maccorCycleData[:,5] = np.ones(ntimes)*298
-      
+        discharge_capacities, charge_capacities, discharge_energies, charge_energies = plot_data.show_data(
+            indir, plot_type="cycle_data", print_flag=False,
+            save_flag=False, data_only=True)
+        maccorCycleData = np.zeros((ntimes, 12))
+        maccorCycleData[:,0] = np.arange(1,ntimes+1) #data point
+        maccorCycleData[:,1] = tVec #test time
+        maccorCycleData[:,2] = np.zeros(ntimes) #datetime (empty)
+        maccorCycleData[:,3] = utils.get_maccor_step_time(data["maccor_step_number"], tVec) #(steptime)
+        maccorCycleData[:,4] = data["maccor_step_number"] #step index
+        maccorCycleData[:,5] = data["maccor_cycle_counter"] #cycle index
+        maccorCycleData[:,6] = currVec #current
+        maccorCycleData[:,7] = vVec #voltage
+        maccorCycleData[:,8] = charge_capacities #charge capacity
+        maccorCycleData[:,9] = discharge_capacities #discharge capacity
+        maccorCycleData[:,10] = charge_energies #charge energy
+        maccorCycleData[:,11] = discharge_energies #discharge energy
+
         np.savetxt(os.path.join(indir, maccorHdrBase), maccorCycleData,
                    delimiter=dlm, header=maccorHdr)
 
         if f_type == "h5py":
             #close file
             data.close()
-
+ 
     return
 
