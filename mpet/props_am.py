@@ -19,6 +19,7 @@ class Dfuncs():
         Dopts = {}
         Dopts['lattice'] = self.lattice
         Dopts['constant'] = self.constant
+        Dopts['NMC532_Colclasure20'] = self.NMC532_Colclasure20
         self.Dfunc = Dopts[Dfunc]
 
     def constant(self, y):
