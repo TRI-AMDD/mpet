@@ -5,8 +5,12 @@ rm -rf workdir
 mkdir workdir
 cd workdir
 
-git fetch --all --tags --verbose || : #get stable branch before cloning
-git clone ../../ stable_branch/ --branch=$1
+mkdir stable_branch
+cp -r ../../.git stable_branch/
+cd stable_branch
+git branch --all
+git reset $1 --hard
+cd ../
 
 cp ../run_tests.py .
 ln -s ../../mpet .
