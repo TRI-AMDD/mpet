@@ -14,7 +14,7 @@ coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev
 COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN coveralls || true #Dont fret if if fails
 
 #run tests for stable branch
-git fetch origin $1:$1 #get stable branch before cloning
+git fetch --all --tags #get stable branch before cloning
 git clone ../../ stable_branch/
 cd stable_branch/
 git checkout $1
