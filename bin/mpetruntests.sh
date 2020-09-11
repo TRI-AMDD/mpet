@@ -5,6 +5,8 @@ rm -rf workdir
 mkdir workdir
 cd workdir
 
+git fetch --unshallow || true
+
 cp ../run_tests.py .
 ln -s ../../mpet .
 ln -s ../../tests .
