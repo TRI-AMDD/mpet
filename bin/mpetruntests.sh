@@ -9,7 +9,7 @@ mkdir stable_branch
 cp -r ../../.git stable_branch/
 cd stable_branch
 git branch --all
-git reset $1 --hard
+git reset remotes/origin/$1 --hard
 cd ../
 
 cp ../run_tests.py .
