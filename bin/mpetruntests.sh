@@ -5,7 +5,7 @@ rm -rf workdir
 mkdir workdir
 cd workdir
 
-git fetch --unshallow || true
+git fetch --all --tags --verbose #get stable branch before cloning
 
 cp ../run_tests.py .
 ln -s ../../mpet .
@@ -16,7 +16,6 @@ coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev
 COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN coveralls || true #Dont fret if if fails
 
 #run tests for stable branch
-git fetch --all --tags #get stable branch before cloning
 git clone ../../ stable_branch/
 cd stable_branch/
 git checkout $1
