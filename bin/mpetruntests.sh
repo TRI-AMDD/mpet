@@ -6,11 +6,7 @@ mkdir workdir
 cd workdir
 
 mkdir stable_branch
-cp -r ../../.git stable_branch/
-cd stable_branch
-git branch --all
-git reset remotes/origin/$1 --hard
-cd ../
+git --work-tree=stable_branch/ checkout remotes/origin/$1 -- mpet
 
 cp ../run_tests.py .
 ln -s ../../mpet .
