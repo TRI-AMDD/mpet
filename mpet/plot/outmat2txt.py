@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 
 import mpet.plot.plot_data as plot_data
+import mpet.utils as utils
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
@@ -201,9 +202,9 @@ def main(indir, genData=True, discData=True, elyteData=True,
                        elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
-        dataFileName = "output_data.hdf5"
+        dataFileName = "output_data"
         dataFile = os.path.join(indir, dataFileName)
-        data = h5py.File(dataFile, 'r')
+        data, f_type = utils.open_data_file(dataFile)
         for l in trodes:
             Trode = get_trode_str(l)
             type2c = False
@@ -232,6 +233,10 @@ def main(indir, genData=True, discData=True, elyteData=True,
                         filename = fnameSolBase.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
                                    delimiter=dlm, header=solHdr)
+
+        if f_type == "h5py":
+            #close file if it is a h5py file
+            data.close()
 
     if cbarData:
         cbarDict = plot_data.show_data(

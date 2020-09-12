@@ -35,9 +35,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
-    dataFileName = "output_data.hdf5"
+    dataFileName = "output_data"
     dataFile = os.path.join(indir, dataFileName)
-    data = h5py.File(dataFile, 'r')
+    data, f_type = utils.open_data_file(dataFileName)
     try:
         data[pfx + 'current'][:]
     except KeyError:
@@ -1027,6 +1027,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if save_flag:
         fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
+
+    if f_type == "h5py":
+        #close file if it is a h5py file
+        data.close()
 
     return fig, ax, ani
 

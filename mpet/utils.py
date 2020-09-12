@@ -1,9 +1,12 @@
 import subprocess as subp
 import ast
 import re
+import os
 import sys
 import sympy as sym
 import numpy as np
+import h5py
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 
@@ -401,6 +404,35 @@ def process_waveform_segment(data, area):
         curr_step_process[i][4] = data[i][3]/60 #charge time in minutes
     return curr_step_process
 
+
+def open_data_file(dataFile):
+    """Load hdf5/mat file output.
+    Always defaults to .mat file, else opens .hdf5 file.
+    Takes in dataFile (path of file without .mat or .hdf5), returns data (output of array)"""
+    data = []
+    f_type = 0
+    if os.path.isfile(dataFile + ".mat"):
+        data = sio.loadmat(dataFile + ".mat")
+        f_type = "mat"
+    elif os.path.isfile(dataFile + ".hdf5"):
+        data = h5py.File(dataFile + ".hdf5", 'r')
+        f_type = "hdf5"
+    else:
+        raise Exception("Data output file not found for either mat or hdf5 in " + dataFile)
+    return data, f_type
+
+
+def get_final_value(data, string, f_type):
+    """Gets the final value in a 1D array, which is formatted slightly differently
+    depending on whether it is a h5py file or a mat file
+    Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5
+    and returns the final value."""
+    final_value = 0
+    if f_type == "mat":
+        final_value = data[string][0,-1]
+    elif f_type == "hdf5":
+        final_value = data[string][-1].item()
+    return final_value
 
 #
 #def get_mol_weight(material_type):
