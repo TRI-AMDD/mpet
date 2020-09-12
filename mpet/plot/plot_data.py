@@ -39,11 +39,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     dataFile = os.path.join(indir, dataFileName)
     data, f_type = utils.open_data_file(dataFile)
     try:
-        data[pfx + 'current'][:]
+        utils.get_dict_key(data, pfx + 'current', f_type)
     except KeyError:
         pfx = ''
     try:
-        data[pfx + "partTrodecvol0part0" + sStr + "cbar"][:]
+        utils.get_dict_key(data, pfx + "partTrodecvol0part0" + sStr + "cbar", f_type)
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
@@ -118,7 +118,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     cellsvec *= dD_s["Lref"] * Lfac
     facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * dD_s["Lref"] * Lfac
     # Extract the reported simulation times
-    times = data[pfx + 'phi_applied_times'][:]
+    times = utils.get_dict_key(data, pfx + 'phi_applied_times', f_type)
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
@@ -207,8 +207,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
         voltage = (Vstd -
-                   (k*Tref/e)*data[pfx + 'phi_applied'][:])
-        ffvec = data[pfx + 'ffrac_c'][:]
+                   (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied_times', f_type))
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c', f_type)
         fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
             if data_only:
@@ -256,7 +256,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot SoC profile
     if plot_type[:-2] in ["soc"]:
         trode = plot_type[-1]
-        ffvec = data[pfx + 'ffrac_{trode}'.format(trode=trode)][:]
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_{trode}'.format(trode=trode), f_type)
         if data_only:
             return times*td, ffvec
         fig, ax = plt.subplots(figsize=figsize)
@@ -282,26 +282,26 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         anode = pfx + 'c_lyte_a'
         cath = pfx + 'c_lyte_c'
         ax.set_xlabel('Time [s]')
-        cvec = data[cath][:]
+        cvec = utils.get_dict_key(data, cath, f_type)
         if Nvol["s"]:
-            cvec_s = data[sep][:]
+            cvec_s = utils.get_dict_key(data, sep, f_type)
             cvec = np.hstack((cvec_s, cvec))
         if "a" in trodes:
-            cvec_a = data[anode][:]
+            cvec_a = utils.get_dict_key(data, anode, f_type)
             cvec = np.hstack((cvec_a, cvec))
         cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
         if data_only:
             plt.close(fig)
             return times*td, cavg
         np.set_printoptions(precision=8)
-        print(cavg)
         ax.plot(times*td, cavg)
         return fig, ax
 
     # Plot current profile
     if plot_type == "curr":
-        current = data[pfx + "current"][:] * 3600/td
-        ffvec = data[pfx + 'ffrac_c'][:]
+          
+        current = utils.get_dict_key(data, pfx + 'current', f_type) * 3600/td
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c', f_type)
         if data_only:
             return times*td, current
         fig, ax = plt.subplots(figsize=figsize)
@@ -315,8 +315,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         return fig, ax
 
     if plot_type == "power":
-        current = data[pfx + "current"][:] * (3600/td) * (cap/3600) #in A/m^2
-        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][:]) #in V
+        current = utils.get_dict_key(data, pfx + 'current', f_type) * (3600/td) * (cap/3600) #in A/m^2
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied', f_type)) #in V
         power = np.multiply(current, voltage)
         if data_only:
             return times*td, power
@@ -332,13 +332,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current"][:] /td #gives us C-rates in /s
+        current = utils.get_dict_key(data, pfx + 'current', f_type) /td #gives us C-rates in /s
         #if degradation, we use current_no_deg
         if "current_no_deg" in list(data.keys()):
-            current = data[pfx + "current_no_deg"][:] /td #gives us C-rates in /s
+            current = utils.get_dict_key(data, pfx + 'current_no_deg', f_type) /td #gives us C-rates in /s
         
      #   np.set_printoptions(threshold=sys.maxsize)
-        charge_discharge = data[pfx + "charge_discharge"]
+        charge_discharge = utils.get_dict_key(data, pfx + "charge_discharge", f_type)
         neg_discharge_seg, pos_charge_seg= utils.get_negative_sign_change_arrays(charge_discharge)
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
         #in the y axis
@@ -353,7 +353,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
        # charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
         ##we wang tot_cycle * timesteps array, A/m^2 * s
         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
-        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied', f_type)) #in V
         #cutoff the discharge_currents where it is zero so we don't continue appending
         discharge_voltages = np.multiply(neg_discharge_seg, voltage) #in V
         charge_voltages = np.multiply(pos_charge_seg, voltage) #in V
@@ -516,13 +516,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
-        datay_c = data[c_cath][:]
-        datay_p = data[p_cath][:]
+        datay_c = data[c_cath]
+        datay_p = data[p_cath]
         L_c = dD_s['L']["c"] * Lfac
         Ltot = L_c
         if Nvol["s"]:
-            datay_s_c = data[c_sep][:]
-            datay_s_p = data[p_sep][:]
+            datay_s_c = data[c_sep]
+            datay_s_p = data[p_sep]
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
             L_s = dD_s['L']["s"] * Lfac
@@ -530,8 +530,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         else:
             L_s = 0
         if "a" in trodes:
-            datay_a_c = data[c_anode][:]
-            datay_a_p = data[p_anode][:]
+            datay_a_c = data[c_anode]
+            datay_a_p = data[p_anode]
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
             L_a = dD_s['L']["a"] * Lfac
@@ -548,7 +548,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             #plots data relative to reference Li electrode
             datay = datay_p*(k*Tref/e) - Etheta['c']
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
-            cGP_L, pGP_L = data["c_lyteGP_L"][:], data["phi_lyteGP_L"][:]
+            cGP_L, pGP_L = utils.get_dict_key(data, "c_lyteGP_L", f_type), utils.get_dict_key(data, "phi_lyteGP_L", f_type)
             cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
             pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
             disc = geom.get_elyte_disc(
@@ -636,12 +636,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if type2c:
                 sol1_str = str1_base.format(pInd=pOut, vInd=vOut)
                 sol2_str = str2_base.format(pInd=pOut, vInd=vOut)
-                datay1 = data[sol1_str][:]
-                datay2 = data[sol2_str][:]
+                datay1 = utils.get_dict_key(data, sol1_str, f_type)
+                datay2 = utils.get_dict_key(data, sol2_str, f_type)
                 datay = (datay1, datay2)
             else:
                 sol_str = str_base.format(pInd=pOut, vInd=vOut)
-                datay = data[sol_str][:]
+                datay = utils.get_dict_key(data, sol_str, f_type)
             return datax, datay
         xLblNCutoff = 4
         xLbl = "Time [s]"
@@ -657,8 +657,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay1 = data[sol1_str][:]
-                    datay2 = data[sol2_str][:]
+                    datay1 = utils.get_dict_key(data, sol1_str, f_type)
+                    datay2 = utils.get_dict_key(data, sol2_str, f_type)
                     line1, = ax[pInd,vInd].plot(times, datay1)
                     line2, = ax[pInd,vInd].plot(times, datay2)
                 else:
@@ -669,7 +669,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay = data[sol_str][:]
+                    datay = utils.get_dict_key(data, sol_str, f_type)
                     line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
@@ -899,7 +899,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                 t=trode, vInd=vInd, pInd=pInd)
                             + sStr + "cbar")
                         dataCbar[trode][tInd,vInd,pInd] = (
-                            data[dataStr][tInd])
+                            np.squeeze(data[dataStr])[tInd])
         if data_only:
             return dataCbar
         # Set up colors.
@@ -1027,7 +1027,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                       transform=ax.transAxes, verticalalignment="center",
                       horizontalalignment="center")
         bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
-        datay = data[bulkp][:]
+        datay = data[bulkp]
         ymin = np.min(datay) - 0.2
         ymax = np.max(datay) + 0.2
         if trode == "a":

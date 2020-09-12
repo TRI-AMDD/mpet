@@ -31,8 +31,8 @@ class SimMPET(dae.daeSimulation):
             #self.dataPrev = h5py.File(osp.join(ndD_s["prevDir"], "output_data.hdf5"), 'r')
             self.dataPrev = osp.join(ndD_s["prevDir"], "output_data")
             data, f_type = utils.open_data_file(self.dataPrev)
-            ndD_s["currPrev"] = utils.get_final_value(data, "current", f_type)
-            ndD_s["phiPrev"] = utils.get_final_value(data, "phi_applied", f_type)
+            ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type)
+            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", f_type)
             if f_type == "h5py":
                 #close file if it is a h5py file
                 data.close()
@@ -152,10 +152,10 @@ class SimMPET(dae.daeSimulation):
 
         else:
             dPrev = self.dataPrev
-            data, f_type = utils.open_data_file(dataPrev)
+            data, f_type = utils.open_data_file(self.dataPrev)
             for l in ndD_s["trodes"]:
                 self.m.ffrac[l].SetInitialGuess(
-                    utils.get_final_value(data, "ffrac_" + l, f_type))
+                    utils.get_dict_key(data, "ffrac_" + l, f_type, final = True))
                 for i in range(Nvol[l]):
                     self.m.R_Vp[l].SetInitialGuess(
                         i, np.asscalar(data["R_Vp_" + l][-1,i]))
@@ -169,24 +169,24 @@ class SimMPET(dae.daeSimulation):
                             l=l, i=i, j=j)
                         
                         #Set the inlet port variables for each particle
-                        part.c_lyte.SetInitialGuess(utils.get_final_value(data, partStr+"portInLyte_c_lyte", f_type))
-                        part.phi_lyte.SetInitialGuess(utils.get_final_value(data, partStr+"portInLyte_phi_lyte", f_type))
-                        part.phi_m.SetInitialGuess(utils.get_final_value(data, partStr+"portInBulk_phi_m", f_type))
+                        part.c_lyte.SetInitialGuess(utils.get_dict_key(data, partStr+"portInLyte_c_lyte", f_type, final = True))
+                        part.phi_lyte.SetInitialGuess(utils.get_dict_key(data, partStr+"portInLyte_phi_lyte", f_type, final = True))
+                        part.phi_m.SetInitialGuess(utils.get_dict_key(data, partStr+"portInBulk_phi_m", f_type, final = True))
 
 
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
-                                utils.get_final_value(data, partStr + "cbar", f_type))
+                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, np.asscalar(data[partStr + "c"][-1,k]))
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
-                                utils.get_final_value(data, partStr + "c1bar", f_type))
+                                utils.get_dict_key(data, partStr + "c1bar", f_type, final = True))
                             part.c2bar.SetInitialGuess(
-                                utils.get_final_value(data, partStr + "c2bar", f_type))
+                                utils.get_dict_key(data, partStr + "c2bar", f_type, final = True))
                             part.cbar.SetInitialGuess(
-                                utils.get_final_value(data, partStr + "cbar", f_type))
+                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(
                                     k, np.asscalar(data[partStr + "c1"][-1,k]))
@@ -206,21 +206,21 @@ class SimMPET(dae.daeSimulation):
             
             #Read in the ghost point values
             if not self.m.SVsim:
-                self.m.c_lyteGP_L.SetInitialGuess(utils.get_final_value(data, "c_lyteGP_L", f_type))
-                self.m.phi_lyteGP_L.SetInitialGuess(utils.get_final_value(data, "phi_lyteGP_L", f_type))
+                self.m.c_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "c_lyteGP_L", f_type, final = True))
+                self.m.phi_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "phi_lyteGP_L", f_type, final = True))
             
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(utils.get_final_value(data, "phi_applied", f_type))
-            self.m.phi_cell.SetInitialGuess(utils.get_final_value(data, "phi_cell", f_type))
+            self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", f_type, final = True))
+            self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", f_type, final = True))
 
             #set last values
-            self.m.last_current.AssignValue(utils.get_final_value(data, "current", f_type))
-            self.m.last_phi_applied.AssignValue(utils.get_final_value(data, "phi_applied", f_type))
+            self.m.last_current.AssignValue(utils.get_dict_key(data, "current", f_type, final = True))
+            self.m.last_phi_applied.AssignValue(utils.get_dict_key(data, "phi_applied", f_type, final = True))
 
             #tracks which cycle number we're on, using the cycle numbers tracked by maccor files
-            self.m.maccor_cycle_counter.AssignValue(utils.get_final_value(data, "maccor_cycle_counter", f_type))
+            self.m.maccor_cycle_counter.AssignValue(utils.get_dict_key(data, "maccor_cycle_counter", f_type, final = True))
             #track the maccor step number we're on
-            self.m.maccor_step_number.SetInitialGuess(utils.get_final_value(data,"maccor_step_number", f_type))
+            self.m.maccor_step_number.SetInitialGuess(utils.get_dict_key(data,"maccor_step_number", f_type))
 
             if f_type == "h5py":
                 #close file if it is a h5py file

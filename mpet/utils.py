@@ -422,17 +422,24 @@ def open_data_file(dataFile):
     return data, f_type
 
 
-def get_final_value(data, string, f_type):
-    """Gets the final value in a 1D array, which is formatted slightly differently
+def get_dict_key(data, string, f_type, final = False):
+    """Gets the values in a 1D array, which is formatted slightly differently
     depending on whether it is a h5py file or a mat file
-    Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5
-    and returns the final value."""
+    Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5,
+    and final, a boolean that determines whether or not it only returns the final value of the array.
+    If final is true, then it only returns the last value, otherwise it returns the entire array"""
+    array = []
     final_value = 0
-    if f_type == "mat":
-        final_value = data[string][0,-1]
-    elif f_type == "hdf5":
-        final_value = data[string][-1].item()
-    return final_value
+    if f_type == "mat": #mat file
+        array = data[string][0]
+        final_value = array[-1]
+    elif f_type == "hdf5": #hdf5 file
+        array = data[string][:]
+        final_value = array[-1]
+    if final == True: #only returns last value
+        return final_value
+    else: #returns entire array
+        return array
 
 
 def get_maccor_step_time(maccor_step_number, times):
@@ -441,7 +448,8 @@ def get_maccor_step_time(maccor_step_number, times):
     starts at zero for each new step switch"""
     #get difference with previous value and find where index switches
     #switch_index = np.array(np.where(np.diff(maccor_step_number) == 1)) + 1
-    switch_index = np.array(np.where(np.logical_and(np.diff(maccor_step_number) == 1, maccor_step_number[:len(maccor_step_number)-1] != 1))) + 1
+    maccor_step_number = np.squeeze(maccor_step_number)
+    switch_index = np.array(np.where(np.logical_and(np.diff(maccor_step_number) == 1, maccor_step_number[:(len(maccor_step_number)-1)] != 1))) + 1
     #which index we start/end with in each of our maccor time steps
     indexes = np.append(np.insert(switch_index, 0, 0), len(maccor_step_number))
     #initialize maccor_step_times
