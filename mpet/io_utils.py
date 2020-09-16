@@ -98,6 +98,7 @@ def get_dicts_from_configs(P_s, P_e):
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
     ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback = 'mat')
+    ndD_s["saveAllData"] = P_s.getboolean('Sim Params', 'saveAllData', fallback = True)
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
                      "c": P_s.getint('Sim Params', 'Nvol_c'),
                      "s": P_s.getint('Sim Params', 'Nvol_s')}
