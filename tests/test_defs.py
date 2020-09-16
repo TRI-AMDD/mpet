@@ -7,6 +7,7 @@ import scipy.special as spcl
 import tests.compare_plots as cmpr
 import mpet.main as main
 import mpet.io_utils as IO
+import re
 
 
 def corePlots(testDir, dirDict):
@@ -26,6 +27,12 @@ def electrodePlots(testDir, dirDict, trode):
     cmpr.soc(testDir, dirDict, "c")
     cmpr.cbarLine(testDir, dirDict, "c")
 
+def getNumberOfTests():
+  n = 0
+  for key in globals().keys():
+    if re.match(r'test[0-9][0-9][0-9]$',key):
+      n = n + 1
+  return n
 
 def test001(testDir, dirDict, pflag):
     """ LFP ACR C3 """

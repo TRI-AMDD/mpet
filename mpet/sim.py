@@ -165,9 +165,9 @@ class SimMPET(dae.daeSimulation):
                                 l=l, i=i, j=j)
                             
                             #Set the inlet port variables for each particle
-                            part.c_lyte.SetInitialGuess(np.asscalar(hf[partStr+"portInLyte_c_lyte"][-1]))
-                            part.phi_lyte.SetInitialGuess(np.asscalar(hf[partStr+"portInLyte_phi_lyte"][-1]))
-                            part.phi_m.SetInitialGuess(np.asscalar(hf[partStr+"portInBulk_phi_m"][-1]))
+                            part.c_lyte.SetInitialGuess(np.asscalar(hf["c_lyte_" + l][-1,i]))
+                            part.phi_lyte.SetInitialGuess(np.asscalar(hf["phi_lyte_" + l][-1,i]))
+                            part.phi_m.SetInitialGuess(np.asscalar(hf["phi_bulk_" + l][-1,i]))
 
 
                             if solidType in ndD_s["1varTypes"]:
@@ -220,10 +220,8 @@ class SimMPET(dae.daeSimulation):
 
 
         self.m.time_counter.AssignValue(0) #used to determine new time cutoffs at each section
-
         #used to determine if the mpet simulation has finished
         self.m.cycle_number.AssignValue(1)
-
         #The simulation runs when the endCondition is 0
         self.m.endCondition.AssignValue(0)
 

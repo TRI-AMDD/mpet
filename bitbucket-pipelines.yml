@@ -1,0 +1,59 @@
+image: vikko00/mpet-deps:latest
+
+pipelines:
+  pull-requests:
+    'development':
+      - step:
+          script:
+            - cd bin
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
+            - ./mpetruntests.sh development
+          artifacts:
+            - bin/workdir/**
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
+    'master':
+      - step:
+          script:
+            - cd bin
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
+            - ./mpetruntests.sh master
+          artifacts:
+            - bin/workdir/**
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
+  branches:
+    'master':
+      - step:
+          script:
+            - cd bin
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
+            - ./mpetruntests.sh stable
+          artifacts:
+            - bin/workdir/**
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+
+      - step:
+          script:
+            - cd tests
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
