@@ -1,9 +1,12 @@
 import subprocess as subp
 import ast
 import re
+import os
 import sys
 import sympy as sym
 import numpy as np
+import h5py
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 
@@ -400,6 +403,63 @@ def process_waveform_segment(data, area):
         #end time step:
         curr_step_process[i][4] = data[i][3]/60 #charge time in minutes
     return curr_step_process
+
+
+def open_data_file(dataFile):
+    """Load hdf5/mat file output.
+    Always defaults to .mat file, else opens .hdf5 file.
+    Takes in dataFile (path of file without .mat or .hdf5), returns data (output of array)"""
+    data = []
+    f_type = 0
+    if os.path.isfile(dataFile + ".mat"):
+        data = sio.loadmat(dataFile + ".mat")
+        f_type = "mat"
+    elif os.path.isfile(dataFile + ".hdf5"):
+        data = h5py.File(dataFile + ".hdf5", 'r')
+        f_type = "hdf5"
+    else:
+        raise Exception("Data output file not found for either mat or hdf5 in " + dataFile)
+    return data, f_type
+
+
+def get_dict_key(data, string, f_type, final = False):
+    """Gets the values in a 1D array, which is formatted slightly differently
+    depending on whether it is a h5py file or a mat file
+    Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5,
+    and final, a boolean that determines whether or not it only returns the final value of the array.
+    If final is true, then it only returns the last value, otherwise it returns the entire array"""
+    array = []
+    final_value = 0
+    if f_type == "mat": #mat file
+        array = data[string][0]
+        final_value = array[-1]
+    elif f_type == "hdf5": #hdf5 file
+        array = data[string][:]
+        final_value = array[-1]
+    if final == True: #only returns last value
+        return final_value
+    else: #returns entire array
+        return array
+
+
+def get_maccor_step_time(maccor_step_number, times):
+    """Gets the step times, which restart on each step that maccor file changes, of the simulation.
+    takes in maccor_step_number(times) and times, and returns the maccor_step_time(times).
+    starts at zero for each new step switch"""
+    #get difference with previous value and find where index switches
+    #switch_index = np.array(np.where(np.diff(maccor_step_number) == 1)) + 1
+    maccor_step_number = np.squeeze(maccor_step_number)
+    switch_index = np.array(np.where(np.logical_and(np.diff(maccor_step_number) == 1, maccor_step_number[:(len(maccor_step_number)-1)] != 1))) + 1
+    #which index we start/end with in each of our maccor time steps
+    indexes = np.append(np.insert(switch_index, 0, 0), len(maccor_step_number))
+    #initialize maccor_step_times
+    maccor_step_times = np.zeros(len(maccor_step_number))
+    for i in range(len(indexes)-1):
+        #we recenter values at 
+        maccor_step_times[indexes[i]:indexes[i+1]] = \
+            times[indexes[i]:indexes[i+1]] \
+            -np.ones(indexes[i+1]-indexes[i])*times[indexes[i]]
+    return maccor_step_times
 
 
 #

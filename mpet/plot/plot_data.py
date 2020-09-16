@@ -35,15 +35,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
-    dataFileName = "output_data.hdf5"
+    dataFileName = "output_data"
     dataFile = os.path.join(indir, dataFileName)
-    data = h5py.File(dataFile, 'r')
+    data, f_type = utils.open_data_file(dataFile)
     try:
-        data[pfx + 'current'][:]
+        utils.get_dict_key(data, pfx + 'current', f_type)
     except KeyError:
         pfx = ''
     try:
-        data[pfx + "partTrodecvol0part0" + sStr + "cbar"][:]
+        utils.get_dict_key(data, pfx + "partTrodecvol0part0" + sStr + "cbar", f_type)
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
@@ -118,7 +118,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     cellsvec *= dD_s["Lref"] * Lfac
     facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * dD_s["Lref"] * Lfac
     # Extract the reported simulation times
-    times = data[pfx + 'phi_applied_times'][:]
+    times = utils.get_dict_key(data, pfx + 'phi_applied_times', f_type)
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
@@ -207,8 +207,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
         voltage = (Vstd -
-                   (k*Tref/e)*data[pfx + 'phi_applied'][:])
-        ffvec = data[pfx + 'ffrac_c'][:]
+                   (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied_times', f_type))
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c', f_type)
         fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
             if data_only:
@@ -256,7 +256,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot SoC profile
     if plot_type[:-2] in ["soc"]:
         trode = plot_type[-1]
-        ffvec = data[pfx + 'ffrac_{trode}'.format(trode=trode)][:]
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_{trode}'.format(trode=trode), f_type)
         if data_only:
             return times*td, ffvec
         fig, ax = plt.subplots(figsize=figsize)
@@ -282,26 +282,26 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         anode = pfx + 'c_lyte_a'
         cath = pfx + 'c_lyte_c'
         ax.set_xlabel('Time [s]')
-        cvec = data[cath][:]
+        cvec = utils.get_dict_key(data, cath, f_type)
         if Nvol["s"]:
-            cvec_s = data[sep][:]
+            cvec_s = utils.get_dict_key(data, sep, f_type)
             cvec = np.hstack((cvec_s, cvec))
         if "a" in trodes:
-            cvec_a = data[anode][:]
+            cvec_a = utils.get_dict_key(data, anode, f_type)
             cvec = np.hstack((cvec_a, cvec))
         cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
         if data_only:
             plt.close(fig)
             return times*td, cavg
         np.set_printoptions(precision=8)
-        print(cavg)
         ax.plot(times*td, cavg)
         return fig, ax
 
     # Plot current profile
     if plot_type == "curr":
-        current = data[pfx + "current"][:] * 3600/td
-        ffvec = data[pfx + 'ffrac_c'][:]
+          
+        current = utils.get_dict_key(data, pfx + 'current', f_type) * 3600/td
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c', f_type)
         if data_only:
             return times*td, current
         fig, ax = plt.subplots(figsize=figsize)
@@ -315,8 +315,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         return fig, ax
 
     if plot_type == "power":
-        current = data[pfx + "current"][0] * (3600/td) * (cap/3600) #in A/m^2
-        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
+        current = utils.get_dict_key(data, pfx + 'current', f_type) * (3600/td) * (cap/3600) #in A/m^2
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied', f_type)) #in V
         power = np.multiply(current, voltage)
         if data_only:
             return times*td, power
@@ -332,48 +332,74 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     #DZ 02/18/20
     if plot_type[0:5] == "cycle":
-        current = data[pfx + "current_no_deg"][0] /td #gives us C-rates in /s
+        current = utils.get_dict_key(data, pfx + 'current', f_type) /td #gives us C-rates in /s
+        #if degradation, we use current_no_deg
+        if "current_no_deg" in list(data.keys()):
+            current = utils.get_dict_key(data, pfx + 'current_no_deg', f_type) /td #gives us C-rates in /s
+        
      #   np.set_printoptions(threshold=sys.maxsize)
-        charge_discharge = data[pfx + "charge_discharge"]
-        neg_discharge_seg, pos_charge_seg = utils.get_negative_sign_change_arrays(charge_discharge.flatten())
+        charge_discharge = utils.get_dict_key(data, pfx + "charge_discharge", f_type)
+        neg_discharge_seg, pos_charge_seg= utils.get_negative_sign_change_arrays(charge_discharge)
         #get segments that indicate 1s for the charge/discharge segments, one for each charge/discharge
         #in the y axis
         cycle_numbers = np.arange(1, tot_cycle + 1) #get cycle numbers on x axis
         # first figure out the number of cycles
         #find mass of limiting electrode
-     #   total_vol = np.sum(psd_vol[limtrode]) #m^3
         density = utils.get_density(material_type) #kg/m^3
         #get the discharge currents (are multiplied by 0 if it is not the segment we want)
         discharge_currents = cap * np.multiply(neg_discharge_seg, current) # A/m^2
         #get charge and discharge capacities
         charge_currents = cap * np.multiply(pos_charge_seg, current)
-        charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
+       # charge_capacities = np.trapz(charge_currents, times*td) * 1000/3600
         ##we wang tot_cycle * timesteps array, A/m^2 * s
         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
-        voltage = (Vstd - (k*Tref/e)*data[pfx + 'phi_applied'][0]) #in V
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied', f_type)) #in V
         #cutoff the discharge_currents where it is zero so we don't continue appending
         discharge_voltages = np.multiply(neg_discharge_seg, voltage) #in V
-        #find the last value where the discharge_current is not zero for each j segment
-        ind_end = discharge_currents.shape[1] - np.argmax(np.fliplr(discharge_currents) != 0, axis = 1)
+        charge_voltages = np.multiply(pos_charge_seg, voltage) #in V
+        #find the last value where the discharge_current/charge current is not zero for each j segment
+        ind_end_disch = discharge_currents.shape[1] - np.argmax(np.fliplr(discharge_currents) != 0, axis = 1)
+        ind_end_charge = charge_currents.shape[1] - np.argmax(np.fliplr(charge_currents) != 0, axis = 1)
         #Q(t) array for the ith cycle for discharge_cap_func[i]
         discharge_cap_func = [0] * discharge_currents.shape[0]
+        charge_cap_func = [0] * charge_currents.shape[0]
         #V(t) array for the ith cycle for discharge_volt[i]
         discharge_volt = [0] * discharge_currents.shape[0]
+        charge_volt = [0] * charge_currents.shape[0]
         #total discharge capacity
         discharge_capacities = np.zeros(discharge_currents.shape[0])
+        charge_capacities = np.zeros(charge_currents.shape[0])
+        discharge_total_cap = np.zeros((discharge_currents.shape[0], len(times)))
+        charge_total_cap = np.zeros((charge_currents.shape[0], len(times)))
         #only save discharge_cap_func and discharge_volt up to those values
         for j in range(discharge_currents.shape[0]):
-            discharge_cap_func[j] = integrate.cumtrapz(discharge_currents[j,:ind_end[j]], times[:ind_end[j]]*td, initial=0)/3600
+            discharge_cap_func[j] = integrate.cumtrapz(discharge_currents[j,:ind_end_disch[j]], times[:ind_end_disch[j]]*td, initial=0)/3600
+            #get the total one padded with zeros so we can sum
+            discharge_total_cap[j,:] = np.append(discharge_cap_func[j], np.zeros(discharge_currents.shape[1]-ind_end_disch[j]))
             #integrate Q = int(I)dt, units in A hr/m^2
             discharge_cap_func[j] = np.insert(np.trim_zeros(discharge_cap_func[j], 'f'), 0, 0) #Ahr. pad w zero because the first number is always 0
             discharge_volt[j] = np.trim_zeros(discharge_voltages[j,:])
             discharge_capacities[j] = discharge_cap_func[j][-1] * 1000#mAh/m^2
+
+        for j in range(charge_currents.shape[0]):
+            charge_cap_func[j] = integrate.cumtrapz(charge_currents[j,:ind_end_charge[j]], times[:ind_end_charge[j]]*td, initial=0)/3600
+            #get the total one padded with zeros so we can sum
+            charge_total_cap[j,:] = np.append(charge_cap_func[j], np.zeros(charge_currents.shape[1]-ind_end_charge[j]))
+            #integrate Q = int(I)dt, units in A hr/m^2
+            charge_cap_func[j] = np.insert(np.trim_zeros(charge_cap_func[j], 'f'), 0, 0) #Ahr. pad w zero because the first number is always 0
+            charge_volt[j] = np.trim_zeros(charge_voltages[j,:])                                                 
+            charge_capacities[j] = charge_cap_func[j][-1] * 1000#mAh/m^2
+
         #units will be in Ahr/m^2*m^2 = Ah
         #discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
         #both of these arrays
         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
- 
+
+        #get the total capacites that we output in the data file with padded zeros 
+        discharge_total_capacities = np.sum(discharge_total_cap, axis = 0)
+        charge_total_capacities = np.sum(charge_total_cap, axis = 0)
+
         #for QV or dQdV plots:
         #plot all cycles if less than six cycles, otherwise use equal spacing and plot six
         plot_indexes = 0
@@ -472,6 +498,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return fig, ax
         
 
+        elif plot_type == "cycle_data":
+           discharge_energies = discharge_total_capacities*voltage
+           charge_energies = charge_total_capacities*voltage
+           if data_only:
+               return discharge_total_capacities, charge_total_capacities, discharge_energies, charge_energies
+           return 
+
 
     # Plot electrolyte concentration or potential
     elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
@@ -483,13 +516,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
-        datay_c = data[c_cath][:]
-        datay_p = data[p_cath][:]
+        datay_c = data[c_cath]
+        datay_p = data[p_cath]
         L_c = dD_s['L']["c"] * Lfac
         Ltot = L_c
         if Nvol["s"]:
-            datay_s_c = data[c_sep][:]
-            datay_s_p = data[p_sep][:]
+            datay_s_c = data[c_sep]
+            datay_s_p = data[p_sep]
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
             L_s = dD_s['L']["s"] * Lfac
@@ -497,8 +530,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         else:
             L_s = 0
         if "a" in trodes:
-            datay_a_c = data[c_anode][:]
-            datay_a_p = data[p_anode][:]
+            datay_a_c = data[c_anode]
+            datay_a_p = data[p_anode]
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
             L_a = dD_s['L']["a"] * Lfac
@@ -515,7 +548,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             #plots data relative to reference Li electrode
             datay = datay_p*(k*Tref/e) - Etheta['c']
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
-            cGP_L, pGP_L = data["c_lyteGP_L"][:], data["phi_lyteGP_L"][:]
+            cGP_L, pGP_L = utils.get_dict_key(data, "c_lyteGP_L", f_type), utils.get_dict_key(data, "phi_lyteGP_L", f_type)
             cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
             pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
             disc = geom.get_elyte_disc(
@@ -603,12 +636,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if type2c:
                 sol1_str = str1_base.format(pInd=pOut, vInd=vOut)
                 sol2_str = str2_base.format(pInd=pOut, vInd=vOut)
-                datay1 = data[sol1_str][:]
-                datay2 = data[sol2_str][:]
+                datay1 = utils.get_dict_key(data, sol1_str, f_type)
+                datay2 = utils.get_dict_key(data, sol2_str, f_type)
                 datay = (datay1, datay2)
             else:
                 sol_str = str_base.format(pInd=pOut, vInd=vOut)
-                datay = data[sol_str][:]
+                datay = utils.get_dict_key(data, sol_str, f_type)
             return datax, datay
         xLblNCutoff = 4
         xLbl = "Time [s]"
@@ -624,8 +657,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay1 = data[sol1_str][:]
-                    datay2 = data[sol2_str][:]
+                    datay1 = utils.get_dict_key(data, sol1_str, f_type)
+                    datay2 = utils.get_dict_key(data, sol2_str, f_type)
                     line1, = ax[pInd,vInd].plot(times, datay1)
                     line2, = ax[pInd,vInd].plot(times, datay2)
                 else:
@@ -636,7 +669,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay = data[sol_str][:]
+                    datay = utils.get_dict_key(data, sol_str, f_type)
                     line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
@@ -866,7 +899,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                 t=trode, vInd=vInd, pInd=pInd)
                             + sStr + "cbar")
                         dataCbar[trode][tInd,vInd,pInd] = (
-                            data[dataStr][tInd])
+                            np.squeeze(data[dataStr])[tInd])
         if data_only:
             return dataCbar
         # Set up colors.
@@ -994,7 +1027,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                       transform=ax.transAxes, verticalalignment="center",
                       horizontalalignment="center")
         bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
-        datay = data[bulkp][:]
+        datay = data[bulkp]
         ymin = np.min(datay) - 0.2
         ymax = np.max(datay) + 0.2
         if trode == "a":
@@ -1027,6 +1060,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if save_flag:
         fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
+
+    if f_type == "h5py":
+        #close file if it is a h5py file
+        data.close()
 
     return fig, ax, ani
 

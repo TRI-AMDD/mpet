@@ -48,14 +48,14 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     failList = []
     for testStr in sorted(runInfo.keys()):
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
-        newDataFile = osp.join(newDir, "output_data.mat")
+        newDataFile = osp.join(newDir, "output_data")
         dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
         tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
         dD_e = {}
         ndD_e = {}
         dD_e["c"], ndD_e["c"] = tmp
         try:
-            newData = sio.loadmat(newDataFile)
+            newData, f_type = open_data_file(newDataFile)
         except IOError as exception:
             # If it's an error _other than_ the file not being there
             if exception.errno != errno.ENOENT:
@@ -101,12 +101,12 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
         testFailed = False
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
         refDir = osp.join(dirDict["refs"], testStr, "sim_output")
-        newDataFile = osp.join(newDir, "output_data.mat")
-        refDataFile = osp.join(refDir, "output_data.mat")
+        newDataFile = osp.join(newDir, "output_data")
+        refDataFile = osp.join(refDir, "output_data")
         timeList_new.append(get_sim_time(newDir))
         timeList_ref.append(get_sim_time(refDir))
         try:
-            newData = sio.loadmat(newDataFile)
+            newData, f_type = open_data_file(newDataFile)
         except IOError as exception:
             # If it's an error _other than_ the file not being there
             if exception.errno != errno.ENOENT:
@@ -114,7 +114,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             print("No simulation data for " + testStr)
             continue
         
-        refData = sio.loadmat(refDataFile)
+        refData, f_type = open_data_file(refDataFile)
         for varKey in (set(refData.keys()) & set(newData.keys())):
             # TODO -- Consider keeping a list of the variables that fail
 
