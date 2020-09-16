@@ -220,7 +220,7 @@ class SimMPET(dae.daeSimulation):
             #tracks which cycle number we're on, using the cycle numbers tracked by maccor files
             self.m.maccor_cycle_counter.AssignValue(utils.get_dict_key(data, "maccor_cycle_counter", f_type, final = True))
             #track the maccor step number we're on
-            self.m.maccor_step_number.SetInitialGuess(utils.get_dict_key(data,"maccor_step_number", f_type))
+            self.m.maccor_step_number.SetInitialGuess(utils.get_dict_key(data,"maccor_step_number", f_type, final = True))
 
             if f_type == "h5py":
                 #close file if it is a h5py file
