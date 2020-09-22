@@ -1,4 +1,6 @@
 image: vikko00/mpet-deps:latest
+options:
+ docker: true
 
 pipelines:
   pull-requests:
