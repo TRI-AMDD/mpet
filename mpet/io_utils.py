@@ -469,68 +469,37 @@ def get_dicts_from_configs(P_s, P_e):
                 elif dD_s["segments"][i][5] == 0:
                     ndD_s["segments"].append((0, None, None, None, None, 0))
 
-
-
     # Current or voltage segments profiles
-    dD_s["segments_tvec"] = np.zeros(2*numsegs)
-    dD_s["segments_setvec"] = np.zeros(2*numsegs)
-    #initial_element = 0
-    #if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVCPcycle": 
-    #    if ndD_s["profileType"] == "CVsegments":
-    #        initial_element = -(k*T_ref/e)*ndDVref
-    #    elif ndD_s["profileType"] == "CCsegments" or ndD_s["profileType"] == "CCCVCPcycle":
-    #        #we assume we always start from a charging cycle. change if necessary
-    #        initial_element = 0.
-    #    tPrev = 0.
-    #    for segIndx in range(numsegs):
-    #        tNext = tPrev + dD_s["tramp"]
-    #        dD_s["segments_tvec"][2*segIndx] = tNext
-    #        tPrev = tNext
-    #        # Factor of 60 here to convert to s
-    #        time_seg = segs[segIndx][1]
-    #        #if CCCVCPcycle, then we need the fourth term as time cutoff
-    #        #it also isn't from start time, so kinda useless
-    #        if ndD_s["profileType"] == "CCCVCPcycle":
-    #            time_seg = 0 if segs[segIndx][4] == None else segs[segIndx][4] 
-    #        tNext = tPrev + (time_seg * 60 - dD_s["tramp"])
-    #        dD_s["segments_tvec"][2*segIndx+1] = tNext
-    #        tPrev = tNext
-    #        setNext = segs[segIndx][0]
-    #        dD_s["segments_setvec"][2*segIndx] = setNext
-    #        dD_s["segments_setvec"][2*segIndx+1] = setNext
-    ## does n times for number of cycles
-    #    dD_s["segments_setvec"] = np.tile(dD_s["segments_setvec"], dD_s["totalCycle"])
-    #    np.insert(dD_s["segments_setvec"], 0, initial_element)
-    #    dD_s["segments_tvec"] = np.tile(dD_s["segments_tvec"], dD_s["totalCycle"])
-    #    np.insert(dD_s["segments_tvec"], 0, 0)
-
-
-    #ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
-    #if ndD_s["profileType"] == "CCsegments":
-    #    ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
-    #elif ndD_s["profileType"] == "CVsegments":
-    #    ndD_s["segments_setvec"] = -(
-    #        (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
-#DZ #02/11/20
-    #elif ndD_s["profileType"] == "CCCVCPcycle":
-    #    initial_element = 0
-    #    #we assume we always start from a charging cycle. change if necessary
- 
-    #    ndD_s["segments_setvec"] = np.zeros(2*numsegs)
-    #    for segIndx in range(numsegs):
-    #        setNext = segs[segIndx][0]
-    #        if segs[segIndx][3] == 1 or segs[segIndx][3] == 3: #if CCcharge or discharge
-    #            ndD_s["segments_setvec"][2*segIndx] = setNext / curr_ref
-    #            ndD_s["segments_setvec"][2*segIndx+1] = setNext / curr_ref
-    #        elif segs[segIndx][3] == 2 or segs[segIndx][3] == 4: #if voltage
-    #            ndD_s["segments_setvec"][2*segIndx] = -((e/(k*T_ref))*setNext + ndDVref)
-    #            ndD_s["segments_setvec"][2*segIndx+1] = -((e/(k*T_ref))*setNext + ndDVref)
-    #    ndD_s["segments_setvec"] = np.tile(ndD_s["segments_setvec"], dD_s["totalCycle"])
-    #    np.insert(ndD_s["segments_setvec"], 0, initial_element)
-    #if "segments" in ndD_s["profileType"]:
-    #    dD_s["tend"] = dD_s["segments_tvec"][-1]
-    #    # Pad the last segment so no extrapolation occurs
-    #    dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
+    dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
+    dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
+    # current or voltage time profiles only used for ramps for CC/CV
+    if ndD_s["profileType"] == "CVsegments" or ndD_s["profileType"] == "CCsegments":
+        if ndD_s["profileType"] == "CVsegments":
+            dD_s["segments_setvec"][0] = -(k*T_ref/e)*ndDVref
+        elif ndD_s["profileType"] == "CCsegments":
+            dD_s["segments_setvec"][0] = 0.
+        tPrev = 0.
+        for segIndx in range(numsegs):
+            tNext = tPrev + dD_s["tramp"]
+            dD_s["segments_tvec"][2*segIndx+1] = tNext
+            tPrev = tNext
+            # Factor of 60 here to convert to s
+            tNext = tPrev + (segs[segIndx][1] * 60 - dD_s["tramp"])
+            dD_s["segments_tvec"][2*segIndx+2] = tNext
+            tPrev = tNext
+            setNext = segs[segIndx][0]
+            dD_s["segments_setvec"][2*segIndx+1] = setNext
+            dD_s["segments_setvec"][2*segIndx+2] = setNext
+        ndD_s["segments_tvec"] = dD_s["segments_tvec"] / t_ref
+        if ndD_s["profileType"] == "CCsegments":
+            ndD_s["segments_setvec"] = dD_s["segments_setvec"] / curr_ref
+        elif ndD_s["profileType"] == "CVsegments":
+            ndD_s["segments_setvec"] = -(
+                (e/(k*T_ref))*dD_s["segments_setvec"] + ndDVref)
+        if "segments" in ndD_s["profileType"]:
+            dD_s["tend"] = dD_s["segments_tvec"][-1]
+            # Pad the last segment so no extrapolation occurs
+            dD_s["segments_tvec"][-1] = dD_s["tend"]*1.01
     ndD_s["tend"] = dD_s["tend"] / t_ref
     if "t" not in str(ndD_s["currset"]):
         if ndD_s["profileType"] == "CC" and not are_close(ndD_s["currset"], 0.):
