@@ -371,7 +371,7 @@ def get_vset(vset):
 
 
 
-def process_waveform_segment(data, area):
+def process_waveform_segment(data, area, stepIndex):
     """Processes waveform segment from a MFW file.
     Takes in data, which is a numpy array processed from a MFW file,
     and turns it into a list of step_processes, which it then outputs"""
