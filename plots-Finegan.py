@@ -79,3 +79,30 @@ ax.set_ylim(0,1)
 
 ax.legend()
 plt.show()
+
+#Plot #3, localized C-rate vs time and position
+###############################################################################
+fig,ax = plt.subplots(1)
+
+#Transpose and flip the array
+Z=np.array(anode.tolist())
+Z=np.transpose(Z)
+Z=np.flip(Z,axis=0)
+
+#time and space discretizations
+x = dx*np.mgrid[0:Nvol_a]
+t=mpet['Time_[s]']
+
+#Compute differences
+dc=np.diff(Z,axis=1)
+dt=np.kron(np.ones([Nvol_a,1]),np.diff(t))/3600 #dt in units of hours
+
+#Plot
+c=ax.pcolormesh(t, x, 
+    np.divide(dc[0:Nvol_a-1,0:np.shape(dt)[1]], dt[0:Nvol_a-1,0:np.shape(dt)[1]]),
+    cmap="hot")
+ax.set_xlabel("Time (s)")
+ax.set_ylabel("Depth (um)")
+fig.tight_layout()
+fig.colorbar(c, ax=ax, label='$\Delta$X/hr')
+plt.show()
