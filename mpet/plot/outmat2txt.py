@@ -93,7 +93,7 @@ maccorHdrBase = "maccorCyclingData.txt"
 
 
 def main(indir, genData=True, discData=True, elyteData=True,
-         csldData=True, cbarData=True, bulkpData=True, maccorData=True):
+         csldData=True, cbarData=True, bulkpData=True):
     ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
         data_only=True)
@@ -315,7 +315,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         fname = "dQdVCycle"
         np.save(os.path.join(indir, fname), dQdVCycle)
 
-    if maccorData:
+    if totalCycle > 1:
         dataFileName = "output_data"
         dataFile = os.path.join(indir, dataFileName)
         data, f_type = utils.open_data_file(dataFile) 
