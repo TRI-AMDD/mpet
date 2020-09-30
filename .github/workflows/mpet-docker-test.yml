@@ -38,12 +38,15 @@ jobs:
         coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
 
     - name: upload Coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        export COVERALLS_REPO_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN coveralls || : #Dont fret if if fails
+        cd mpet/bin/workdir
+        coveralls || : #Dont fret if if fails
 
     - name: run tests for base branch
       run: |
+        cd mpet/bin/workdir
         ln -sf ../../../base-mpet/mpet .
         python run_tests.py ../../bin/workdir/stable > /dev/null
 
