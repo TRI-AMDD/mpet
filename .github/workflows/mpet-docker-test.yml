@@ -14,18 +14,45 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        fetch-depth: 1
         path: mpet
-    - name: Get test results and Coveralls
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: base-mpet
+        ref: ${{ github.base_ref }}
+    - name: Set up test for modified branch
       run: |
         cd mpet/bin
+        rm -rf workdir
+        mkdir workdir
+        cd workdir
+
+        cp ../run_tests.py .
+        ln -s ../../mpet .
+        ln -s ../../tests .
+
+    - name: run tests for modified branch and get coverage
+      run: |
+        cd mpet/bin/workdir
+        coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
+
+    - name: upload Coveralls
+      run: |
         export COVERALLS_REPO_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        ./mpetruntests.sh ${{ github.base_ref }}
+        COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN coveralls || : #Dont fret if if fails
+
+    - name: run tests for base branch
+      run: |
+        ln -sf ../../../base-mpet/mpet .
+        python run_tests.py ../../bin/workdir/stable > /dev/null
+
     - name: Checks test results
       run: |
         cd mpet/tests
         pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
         pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+
     - name: Check Timings
       run: |
         cd mpet/tests
