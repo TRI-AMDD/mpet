@@ -1,0 +1,31 @@
+name: MPET docker CI
+
+on:
+  pull_request:
+    branches: [ master,development ]
+
+jobs:
+  test:
+    
+    runs-on: ubuntu-latest
+    container:
+      image: vikko00/mpet-deps:latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Get test results and Coveralls
+      run: |
+        cd bin
+        export COVERALLS_REPO_TOKEN=${{ secrets.GITHUB_TOKEN }}
+        ./mpetruntests.sh ${{ github.base_ref }}
+    - name: Checks test results
+      run: |
+        cd tests
+        pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+    - name: Check Timings
+      run: |
+        cd tests
+        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
