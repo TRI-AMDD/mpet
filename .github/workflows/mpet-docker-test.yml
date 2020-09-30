@@ -15,17 +15,18 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+        path: mpet
     - name: Get test results and Coveralls
       run: |
-        cd bin
+        cd mpet/bin
         export COVERALLS_REPO_TOKEN=${{ secrets.GITHUB_TOKEN }}
         ./mpetruntests.sh ${{ github.base_ref }}
     - name: Checks test results
       run: |
-        cd tests
+        cd mpet/tests
         pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
         pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
     - name: Check Timings
       run: |
-        cd tests
+        cd mpet/tests
         pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
