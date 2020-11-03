@@ -6,7 +6,11 @@ mkdir workdir
 cd workdir
 
 mkdir stable_branch
-git --work-tree=stable_branch/ checkout remotes/origin/$1 -- mpet
+if [ "$1" = "stable" ]; then
+  git --work-tree=stable_branch/ checkout $1 -- mpet
+else
+  git --work-tree=stable_branch/ checkout remotes/origin/$1 -- mpet
+fi
 
 cp ../run_tests.py .
 ln -s ../../mpet .
