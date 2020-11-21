@@ -48,21 +48,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         sStr = "."
     # Read in the parameters used to define the simulation
     #if single simulation cycle, we just read input_dict_system
-    dD_s = 0
-    ndD_s = 0
+    dD_s = []
+    ndD_s = []
     tot_cycle = 0
     #if not maccor cycle system, just read the one file 
     #if maccor system of cycles, then we read all the files so we can get 
     #the total number of cycles, but then save the data from the last one
     for filename in os.listdir(indir):
-            #removes the file extension from the name of the file
-            if fnmatch.fnmatch(filename, 'input_dict_system*_dD.p'):
-                dD_s, ndD_s = IO.read_dicts(os.path.join(indir, filename[:-5]))
+        #removes the file extension from the name of the file
+        if fnmatch.fnmatch(filename, 'input_dict_system*_dD.p'):
+            dD_s, ndD_s = IO.read_dicts(os.path.join(indir, filename[:-5]))
+            if "totalCycle" in dD_s:
+                #check if totalCycle exists otherwise incrememnt by 1
                 tot_cycle = tot_cycle + dD_s["totalCycle"]
-
+            else:
+                tot_cycle = tot_cycle + 1
 
     limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
+
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
     dD_e = {}
