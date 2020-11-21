@@ -31,8 +31,8 @@ class SimMPET(dae.daeSimulation):
             #self.dataPrev = h5py.File(osp.join(ndD_s["prevDir"], "output_data.hdf5"), 'r')
             self.dataPrev = osp.join(ndD_s["prevDir"], "output_data")
             data, f_type = utils.open_data_file(self.dataPrev)
-            ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type)
-            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", f_type)
+            ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type, final = True)
+            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", f_type, final = True)
             if f_type == "h5py":
                 #close file if it is a h5py file
                 data.close()
