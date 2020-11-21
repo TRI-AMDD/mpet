@@ -11,6 +11,8 @@ import scipy.io as sio
 import mpet.io_utils as IO
 import tests.test_defs as defs
 
+from mpet.utils import *
+
 
 def run_test_sims(runInfo, dirDict, pflag=True):
     for testStr in sorted(runInfo.keys()):
@@ -124,8 +126,8 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
 
             #Compute the difference between the solution and the reference
             try:
-                varDataNew = newData[varKey]
-                varDataRef = refData[varKey]
+                varDataNew = np.array(newData[varKey])
+                varDataRef = np.array(refData[varKey])
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
                 print(testStr, "Fail from ValueError")
@@ -177,7 +179,7 @@ def main(compareDir):
     # Dictionary containing info about the tests to run
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
-    n_tests = 19
+    n_tests = 22
     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
                for i in range(1, n_tests+1)}
     runInfoAnalyt = {
