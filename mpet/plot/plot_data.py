@@ -211,7 +211,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
         voltage = (Vstd -
-                   (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied_times', f_type))
+                   (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied', f_type))
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c', f_type)
         fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
