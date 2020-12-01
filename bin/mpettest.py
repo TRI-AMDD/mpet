@@ -16,3 +16,9 @@ tst.main(compareDir)
 timeEnd = time.time()
 tTot = timeEnd - timeStart
 print("Total test time:", tTot, "s")
+
+#remove files if they exist
+os.remove("LA4_8rep.MWF")
+os.remove("Short_PreDiag_000173.000")
+os.remove("test_mwf_LA4.000")
+

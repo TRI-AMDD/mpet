@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 import shutil
 
@@ -557,6 +558,97 @@ def test019(testDir, dirDict, pflag):
     P.set("Particles", "type", "homog")
     P.set("Material", "muRfunc", "LiFePO4")
     P.set("Material", "material_type", "LFP")
+    IO.write_config_file(P, ptrode)
+    main.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+
+
+def test020(testDir, dirDict, pflag):
+    """ Functional waveform test with effective area ratio turned on """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.get_config(psys)
+    P_s.set("Sim Params", "Crate", "sin(2*pi*t)")
+    P_s.set("Sim Params", "period", "10")
+    P_s.set("Sim Params", "tramp", "0")
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Nvol_s", "3")
+    P_s.set("Geometry", "L_c", "120e-6")
+    P_s.set("Geometry", "L_s", "90e-6")
+    P_s.set("Electrolyte", "elyteModelType", "dilute")
+    IO.write_config_file(P_s, psys)
+    P = IO.get_config(ptrode)
+    P.set("Particles", "type", "homog")
+    P.set("Particles", "area_volume_ratio", "True")
+    P.set("Material", "muRfunc", "LiFePO4")
+    IO.write_config_file(P, ptrode)
+    main.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+
+
+def test021(testDir, dirDict, pflag):
+    """ Effective waveform tests with a maccor file, using the hdf5 long file output """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "LA4_8rep.MWF"), os.getcwd())
+    shutil.copy(osp.join(dirDict["baseConfig"], "test_mwf_LA4.000"), os.getcwd())
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.get_config(psys)
+    P_s.set("Sim Params", "profileType", "test_mwf_LA4.000")
+    P_s.set("Sim Params", "tramp", "0")
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Nvol_s", "3")
+    P_s.set("Sim Params", "dataReporter", "hdf5")
+    P_s.set("Sim Params", "saveAllData", "True")
+    P_s.set("Geometry", "L_c", "120e-6")
+    P_s.set("Geometry", "L_s", "90e-6")
+    P_s.set("Electrolyte", "elyteModelType", "dilute")
+    IO.write_config_file(P_s, psys)
+    P = IO.get_config(ptrode)
+    P.set("Particles", "type", "homog")
+    P.set("Material", "muRfunc", "LiFePO4")
+    IO.write_config_file(P, ptrode)
+    main.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    if pflag:
+        corePlots(testDir, dirDict)
+        elytePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+
+
+def test022(testDir, dirDict, pflag):
+    """ Maccor short cycler update, using the hdf5 short file output """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"],"Short_PreDiag_000173.000"), os.getcwd())
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.get_config(psys)
+    P_s.set("Sim Params", "profileType", "Short_PreDiag_000173.000")
+    P_s.set("Sim Params", "tramp", "1e-3")
+    P_s.set("Sim Params", "Nvol_c", "3")
+    P_s.set("Sim Params", "Nvol_s", "3")
+    P_s.set("Sim Params", "dataReporter", "hdf5")
+    P_s.set("Sim Params", "saveAllData", "False")
+    P_s.set("Geometry", "L_c", "120e-6")
+    P_s.set("Geometry", "L_s", "90e-6")
+    P_s.set("Electrolyte", "elyteModelType", "dilute")
+    IO.write_config_file(P_s, psys)
+    P = IO.get_config(ptrode)
+    P.set("Particles", "type", "homog")
+    P.set("Material", "muRfunc", "NCA_ss2")
+    P.set("Material", "material_type", "NCA")
     IO.write_config_file(P, ptrode)
     main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)

@@ -433,12 +433,11 @@ def get_dict_key(data, string, f_type, squeeze = True, final = False):
     final_value = 0
     if f_type == "mat": #mat file
         array = data[string]
-        final_value = array[-1]
     elif f_type == "hdf5": #hdf5 file
         array = data[string][:]
-        final_value = array[-1]
     if squeeze: #squeezes
         array = np.squeeze(array)
+        final_value = array[-1]
     if final: #only returns last value
         return final_value
     else: #returns entire array
