@@ -71,8 +71,8 @@ def Doyle96_EC_DMC_2_1():
 
     def sigma(c):
         r1=4.1253e-4
-        r2=5.007e-4 #This value in dualfoil differs from the paper
-        r3=4.7212e-4 #This value in dualfoil differs from the paper
+        r2=5.007e-3
+        r3=4.7212e-3
         r4=1.5094e-3
         r5=1.6018e-4
         k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4 #S/cm
@@ -102,8 +102,8 @@ def Doyle96_EC_DMC_1_2():
 
     def sigma(c):
         r1=1.0793e-4
-        r2=6.7461e-4 #This value in dualfoil differs from the paper
-        r3=5.2245e-4 #This value in dualfoil differs from the paper
+        r2=6.7461e-3
+        r3=5.2245e-3
         r4=1.3605e-3
         r5=1.1724e-4
         k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4 #S/cm
