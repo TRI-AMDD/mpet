@@ -422,21 +422,24 @@ def open_data_file(dataFile):
     return data, f_type
 
 
-def get_dict_key(data, string, f_type, final = False):
+def get_dict_key(data, string, f_type, squeeze = True, final = False):
     """Gets the values in a 1D array, which is formatted slightly differently
     depending on whether it is a h5py file or a mat file
     Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5,
     and final, a boolean that determines whether or not it only returns the final value of the array.
-    If final is true, then it only returns the last value, otherwise it returns the entire array"""
+    If final is true, then it only returns the last value, otherwise it returns the entire array.
+    Squeeze squeezes into 1D array if is true, toherwise false"""
     array = []
     final_value = 0
     if f_type == "mat": #mat file
-        array = np.squeeze(data[string][:])
+        array = data[string]
         final_value = array[-1]
     elif f_type == "hdf5": #hdf5 file
-        array = np.squeeze(data[string][:])
+        array = data[string][:]
         final_value = array[-1]
-    if final == True: #only returns last value
+    if squeeze: #squeezes
+        array = np.squeeze(array)
+    if final: #only returns last value
         return final_value
     else: #returns entire array
         return array
@@ -460,6 +463,7 @@ def get_maccor_step_time(maccor_step_number, times):
             times[indexes[i]:indexes[i+1]] \
             -np.ones(indexes[i+1]-indexes[i])*times[indexes[i]]
     return maccor_step_times
+
 
 
 #
