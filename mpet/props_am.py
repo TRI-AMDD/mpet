@@ -418,6 +418,7 @@ class muRfuncs():
         return muR, actR
 
     def LIONSIMBA_pos(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
         r1 = 4.656
         r2 = 88.669
         r3 = 401.119
@@ -437,6 +438,7 @@ class muRfuncs():
 
 
     def LIONSIMBA_neg(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
         r1 = 0.7222
         r2 = 0.1387
         r3 = 0.029
