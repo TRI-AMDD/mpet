@@ -1,46 +1,38 @@
 image: vikko00/mpet-deps:latest
+options:
+ docker: true
 
 pipelines:
   pull-requests:
-    'development':
+    '**':
       - step:
+          caches:
+            - docker
           script:
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
-            - ./mpetruntests.sh development
+            - ./mpetruntests.sh $BITBUCKET_PR_DESTINATION_BRANCH
           artifacts:
             - bin/workdir/**
       - step:
+          caches:
+            - docker
           script:
             - cd tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
 
       - step:
-          script:
-            - cd tests
-            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
-    'master':
-      - step:
-          script:
-            - cd bin
-            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
-            - ./mpetruntests.sh master
-          artifacts:
-            - bin/workdir/**
-      - step:
-          script:
-            - cd tests
-            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
-            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
-
-      - step:
+          caches:
+            - docker
           script:
             - cd tests
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
   branches:
     'master':
       - step:
+          caches:
+            - docker
           script:
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
@@ -48,12 +40,16 @@ pipelines:
           artifacts:
             - bin/workdir/**
       - step:
+          caches:
+            - docker
           script:
             - cd tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
 
       - step:
+          caches:
+            - docker
           script:
             - cd tests
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
