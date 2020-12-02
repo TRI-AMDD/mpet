@@ -108,7 +108,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
         timeList_new.append(get_sim_time(newDir))
         timeList_ref.append(get_sim_time(refDir))
         try:
-            newData, f_type = open_data_file(newDataFile)
+            newData, fnew_type = open_data_file(newDataFile)
         except IOError as exception:
             # If it's an error _other than_ the file not being there
             if exception.errno != errno.ENOENT:
@@ -116,7 +116,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             print("No simulation data for " + testStr)
             continue
         
-        refData, f_type = open_data_file(refDataFile)
+        refData, fref_type = open_data_file(refDataFile)
         for varKey in (set(refData.keys()) & set(newData.keys())):
             # TODO -- Consider keeping a list of the variables that fail
 
@@ -126,8 +126,8 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
 
             #Compute the difference between the solution and the reference
             try:
-                varDataNew = np.array(newData[varKey])
-                varDataRef = np.array(refData[varKey])
+                varDataNew = get_dict_key(newData, varKey, fnew_type)
+                varDataRef = get_dict_key(refData, varKey, fref_type)
                 diffMat = np.abs(varDataNew - varDataRef)
             except ValueError:
                 print(testStr, "Fail from ValueError")
