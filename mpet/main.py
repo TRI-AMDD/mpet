@@ -218,7 +218,7 @@ def main(paramfile, keepArchive=True):
             P_s.set('Sim Params', 'segments', str(cycling_dicts["step_" + str(i)].get("segments")))
             P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
             P_s.set('Sim Params', 'profileType', 'CCCVCPcycle')
-            #fills in period for waveofmr
+            #fills in period for waveform
             dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
             #reset everything in dictionaries too
             paramFileName = "input_params_system_{j}.cfg".format(j=str(i))

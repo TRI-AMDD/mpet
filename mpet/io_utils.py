@@ -74,7 +74,6 @@ def get_dicts_from_configs(P_s, P_e):
         P_s.get('Sim Params', 'segments'))
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = str([0]*len(segs))))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
-#DZ 02/11/20 cycle counter
     dD_s["totalCycle"] = ndD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
@@ -410,7 +409,6 @@ def get_dicts_from_configs(P_s, P_e):
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
             ndD_s["segments"].append((-((e/(k*T_ref))*utils.get_vset(dD_s["segments"][i][0])+ndDVref), dD_s["segments"][i][1]*60/t_ref))
-#DZ 02/12/20 battery cycling
     elif ndD_s["profileType"] == "CCCVCPcycle":
         #if the size of each array is 1X8, we know we have the maccor cycling step number and cycle increments in the information too
         if len(dD_s["segments"][0]) == 7:

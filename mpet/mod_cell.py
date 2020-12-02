@@ -122,10 +122,10 @@ class ModCell(dae.daeModel):
             "Voltage between electrodes (phi_applied less series resistance)")
         self.current = dae.daeVariable(
             "current", dae.no_t, self, "Total current of the cell")
-        # DZ: added two vars to aid counting of current. +1 for charge, -1 for discharge
+        # added two vars to aid counting of current. +1 for charge, -1 for discharge
         self.charge_discharge = dae.daeVariable(
             "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
-        # DZ: added time counter to keep track of when new section starts
+        # added time counter to keep track of when new section starts
         self.time_counter = dae.daeVariable(
             "time_counter", time_t, self, "restarts counter every time a new section is hit")
         self.last_current = dae.daeVariable(
@@ -431,7 +431,6 @@ class ModCell(dae.daeModel):
             eq.Residual = self.maccor_step_number() - 1
 
 #       
-##DZ 02/12/20
         elif self.profileType == "CCCVCPcycle":
 #assume tramp = 0
             #if we are not a maccor cycling file, we assume all step #s and cycle increments are 0
