@@ -58,6 +58,11 @@ def bulkpf(testDir, dirDict, trode):
           "phi of bulk electrode " + trode + " compare", "bulkp_" + trode)
 
 
+def cycleCap(testDir, dirDict):
+    xyCmp(testDir, dirDict, "cycle_capacity", "Time", "Capacity",
+        "capacity compare", "cycle_capacity")
+
+
 def xyCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     testName = osp.basename(testDir)
     newSimOutDir = osp.join(testDir, "sim_output")

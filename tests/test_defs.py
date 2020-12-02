@@ -28,6 +28,11 @@ def electrodePlots(testDir, dirDict, trode):
     cmpr.soc(testDir, dirDict, "c")
     cmpr.cbarLine(testDir, dirDict, "c")
 
+
+def cyclingPlots(testDir, dirDict):
+    cmpr.cycleCap(testDir, dirDict)    
+
+
 def getNumberOfTests():
   n = 0
   for key in globals().keys():
@@ -656,6 +661,7 @@ def test022(testDir, dirDict, pflag):
         corePlots(testDir, dirDict)
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
+        cyclingPlots(testDir, dirDict)
 
 
 def testAnalytSphDifn(testDir, dirDict):
