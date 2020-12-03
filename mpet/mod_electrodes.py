@@ -151,7 +151,6 @@ class Mod2var(dae.daeModel):
     def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         T = self.ndD_s["T"]
-        effective_area_ratio = ndD["effective_area_ratio"]
         c1_surf = c1
         c2_surf = c2
         (mu1R_surf, mu2R_surf), (act1R_surf, act2R_surf) = (calc_muR(
@@ -174,9 +173,8 @@ class Mod2var(dae.daeModel):
         noise1, noise2 = noises
         eq1 = self.CreateEquation("dc1sdt")
         eq2 = self.CreateEquation("dc2sdt")
-        #in homog reaction, scale with effective area ratio
-        eq1.Residual = self.c1.dt(0) - ndD["delta_L"]*effective_area_ratio*Rxn1[0]
-        eq2.Residual = self.c2.dt(0) - ndD["delta_L"]*effective_area_ratio*Rxn2[0]
+        eq1.Residual = self.c1.dt(0) - ndD["delta_L"]*Rxn1[0]
+        eq2.Residual = self.c2.dt(0) - ndD["delta_L"]*Rxn2[0]
         if ndD["noise"]:
             eq1.Residual += noise1[0]()
             eq2.Residual += noise2[0]()
@@ -185,7 +183,6 @@ class Mod2var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        effective_area_ratio = ndD["effective_area_ratio"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -225,15 +222,11 @@ class Mod2var(dae.daeModel):
             eq1.Residual = self.Rxn1() - Rxn1
             eq2.Residual = self.Rxn2() - Rxn2
 
-        #modify the outside area of the particle to be scaled by the effective area ratio
-        scalings = np.ones(N+1)
-        scalings[-1] = effective_area_ratio
- 
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["ACR2"]:
             #since ACR2 has N equations, use the last N vars and drop the first 
-            RHS1 = np.array([ndD["delta_L"]*scalings[i+1]*self.Rxn1(i) for i in range(N)])
-            RHS2 = np.array([ndD["delta_L"]*scalings[i+1]*self.Rxn2(i) for i in range(N)])
+            RHS1 = np.array([ndD["delta_L"]*self.Rxn1(i) for i in range(N)])
+            RHS2 = np.array([ndD["delta_L"]*self.Rxn2(i) for i in range(N)])
         elif ndD["type"] in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
@@ -251,7 +244,6 @@ class Mod2var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            area_vec = np.multiply(area_vec, scalings)
             RHS1 = -np.diff(Flux1_vec * area_vec)
             RHS2 = -np.diff(Flux2_vec * area_vec)
 #            kinterlayer = 1e-3
@@ -381,7 +373,6 @@ class Mod1var(dae.daeModel):
     def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         T = self.ndD_s["T"]
-        effective_area_ratio = ndD["effective_area_ratio"]
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
@@ -393,8 +384,7 @@ class Mod1var(dae.daeModel):
         eq.Residual = self.Rxn() - Rxn[0]
 
         eq = self.CreateEquation("dcsdt")
-        #scale by effective area ratio
-        eq.Residual = self.c.dt(0) - ndD["delta_L"]*effective_area_ratio*self.Rxn()
+        eq.Residual = self.c.dt(0) - ndD["delta_L"]*self.Rxn()
         if ndD["noise"]:
             eq.Residual += noise[0]()
 
@@ -402,7 +392,6 @@ class Mod1var(dae.daeModel):
         ndD = self.ndD
         N = ndD["N"]
         T = self.ndD_s["T"]
-        effective_area_ratio = ndD["effective_area_ratio"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -437,15 +426,10 @@ class Mod1var(dae.daeModel):
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
 
-        #modify the outside area of the particle to be scaled by the effective area ratio
-        scalings = np.ones(N+1)
-        #keeps the inner discretizations at their area ratio
-        scalings[-1] = effective_area_ratio
- 
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["ACR"]:
             #since ACR has N equations, use the last N variables
-            RHS = np.array([ndD["delta_L"]*scalings[i+1]*self.Rxn(i) for i in range(N)])
+            RHS = np.array([ndD["delta_L"]*self.Rxn(i) for i in range(N)])
         elif ndD["type"] in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
@@ -459,7 +443,6 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            area_vec = np.multiply(area_vec, scalings) 
             #find the rate
             RHS = -np.diff(Flux_vec * area_vec)
 
