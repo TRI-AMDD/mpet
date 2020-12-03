@@ -573,7 +573,7 @@ def test019(testDir, dirDict, pflag):
 
 
 def test020(testDir, dirDict, pflag):
-    """ Functional waveform test with effective area ratio turned on """
+    """ Functional waveform test """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
@@ -590,7 +590,6 @@ def test020(testDir, dirDict, pflag):
     IO.write_config_file(P_s, psys)
     P = IO.get_config(ptrode)
     P.set("Particles", "type", "homog")
-    P.set("Particles", "area_volume_ratio", "True")
     P.set("Material", "muRfunc", "LiFePO4")
     IO.write_config_file(P, ptrode)
     main.main(psys, keepArchive=False)
@@ -662,6 +661,29 @@ def test022(testDir, dirDict, pflag):
         elytePlots(testDir, dirDict)
         electrodePlots(testDir, dirDict, "c")
         cyclingPlots(testDir, dirDict)
+
+
+def test023(testDir, dirDict, pflag):
+    """ LFP ACR test for current with A instead of C-rate """
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+    psys = osp.join(testDir, "params_system.cfg")
+    ptrode = osp.join(testDir, "params_c.cfg")
+    P_s = IO.get_config(psys)
+    P_s.set("Sim Params", "Crate", "0.15A")
+    IO.write_config_file(P_s, psys)
+    P = IO.get_config(ptrode)
+    P.set("Particles", "type", "ACR")
+    P.set("Material", "muRfunc", "LiFePO4")
+    P.set("Material", "material_type", "LFP")
+    IO.write_config_file(P, ptrode)
+    main.main(psys, keepArchive=False)
+    shutil.move(dirDict["simOut"], testDir)
+    if pflag:
+        corePlots(testDir, dirDict)
+        electrodePlots(testDir, dirDict, "c")
+
+
 
 
 def testAnalytSphDifn(testDir, dirDict):

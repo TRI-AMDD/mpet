@@ -1,0 +1,96 @@
+diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
+index 2099d71..fefb1b5 100644
+--- a/mpet/plot/plot_data.py
++++ b/mpet/plot/plot_data.py
+@@ -64,7 +64,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+             else:
+                 tot_cycle = tot_cycle + 1
+ 
+-    limtrode = dD_s["limtrode"]
++    #limtrode = dD_s["limtrode"]
++    limtrode = 'c'
+     # simulated (porous) electrodes
+ 
+     Nvol = ndD_s["Nvol"]
+@@ -81,7 +82,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+     F = dD_s['F']                      # C/mol
+     td = dD_s["td"]
+     Etheta = {"a": 0.}
+-    material_type = dD_e[limtrode]["material_type"]
++    #material_type = dD_e[limtrode]["material_type"]
++    material_type = "LFP"
+ # get information from limiting electrodes
+     L = dD_s["L"][limtrode]
+     P_L = ndD_s["P_L"][limtrode]
+@@ -397,6 +399,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+         #units will be in Ahr/m^2*m^2 = Ah
+         #discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
+         #both of these arrays
++        print(P_L, poros, L, density)
+         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
+         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+ 
+diff --git a/tests/test_defs.py b/tests/test_defs.py
+index 901a579..ddc5b17 100644
+--- a/tests/test_defs.py
++++ b/tests/test_defs.py
+@@ -573,7 +573,7 @@ def test019(testDir, dirDict, pflag):
+ 
+ 
+ def test020(testDir, dirDict, pflag):
+-    """ Functional waveform test with effective area ratio turned on """
++    """ Functional waveform test """
+     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
+     psys = osp.join(testDir, "params_system.cfg")
+@@ -590,7 +590,6 @@ def test020(testDir, dirDict, pflag):
+     IO.write_config_file(P_s, psys)
+     P = IO.get_config(ptrode)
+     P.set("Particles", "type", "homog")
+-    P.set("Particles", "area_volume_ratio", "True")
+     P.set("Material", "muRfunc", "LiFePO4")
+     IO.write_config_file(P, ptrode)
+     main.main(psys, keepArchive=False)
+@@ -664,6 +663,29 @@ def test022(testDir, dirDict, pflag):
+         cyclingPlots(testDir, dirDict)
+ 
+ 
++def test023(testDir, dirDict, pflag):
++    """ LFP ACR test for current with A instead of C-rate """
++    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
++    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
++    psys = osp.join(testDir, "params_system.cfg")
++    ptrode = osp.join(testDir, "params_c.cfg")
++    P_s = IO.get_config(psys)
++    P_s.set("Sim Params", "Crate", "0.15A")
++    IO.write_config_file(P_s, psys)
++    P = IO.get_config(ptrode)
++    P.set("Particles", "type", "ACR")
++    P.set("Material", "muRfunc", "LiFePO4")
++    P.set("Material", "material_type", "LFP")
++    IO.write_config_file(P, ptrode)
++    main.main(psys, keepArchive=False)
++    shutil.move(dirDict["simOut"], testDir)
++    if pflag:
++        corePlots(testDir, dirDict)
++        electrodePlots(testDir, dirDict, "c")
++
++
++
++
+ def testAnalytSphDifn(testDir, dirDict):
+     """ Analytical test for diffusion in a sphere """
+     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
+diff --git a/tests/test_suite.py b/tests/test_suite.py
+index 0e945a5..56b0367 100644
+--- a/tests/test_suite.py
++++ b/tests/test_suite.py
+@@ -182,6 +182,7 @@ def main(compareDir):
+     n_tests = 22
+     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
+                for i in range(1, n_tests+1)}
++    #           for i in range(22, n_tests+1)}
+     runInfoAnalyt = {
+         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+         "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+
