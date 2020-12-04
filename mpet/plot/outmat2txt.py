@@ -226,8 +226,8 @@ def main(indir, genData=True, discData=True, elyteData=True,
                     if type2c:
                         sol1 = str1_base.format(l=l, i=i, j=j)
                         sol2 = str2_base.format(l=l, i=i, j=j)
-                        datay1 = data[sol1]
-                        datay2 = data[sol2]
+                        datay1 = utils.get_dict_key(data, sol1, f_type)
+                        datay2 = utils.get_dict_key(data, sol2, f_type)
                         filename1 = fnameSol1Base.format(l=Trode, i=i, j=j)
                         filename2 = fnameSol2Base.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename1), datay1,
@@ -236,7 +236,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
                                    delimiter=dlm, header=sol2Hdr)
                     else:
                         sol = str_base.format(l=l, i=i, j=j)
-                        datay = data[sol]
+                        datay = utils.get_dict_key(data, sol, f_type)
                         filename = fnameSolBase.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
                                    delimiter=dlm, header=solHdr)
@@ -329,9 +329,9 @@ def main(indir, genData=True, discData=True, elyteData=True,
         maccorCycleData[:,0] = np.arange(1,ntimes+1) #data point
         maccorCycleData[:,1] = tVec #test time
         maccorCycleData[:,2] = np.zeros(ntimes) #datetime (empty)
-        maccorCycleData[:,3] = utils.get_maccor_step_time(data["maccor_step_number"], tVec) #(steptime)
-        maccorCycleData[:,4] = data["maccor_step_number"] #step index
-        maccorCycleData[:,5] = data["maccor_cycle_counter"] #cycle index
+        maccorCycleData[:,3] = utils.get_maccor_step_time(utils.get_dict_key(data, "maccor_step_number", f_type), tVec) #(steptime)
+        maccorCycleData[:,4] = utils.get_dict_key(data, "maccor_step_number", f_type) #step index
+        maccorCycleData[:,5] = utils.get_dict_key(data, "maccor_cycle_counter", f_type) #cycle index
         maccorCycleData[:,6] = currVec #current
         maccorCycleData[:,7] = vVec #voltage
         maccorCycleData[:,8] = charge_capacities #charge capacity

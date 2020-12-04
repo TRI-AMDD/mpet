@@ -129,7 +129,7 @@ def get_negative_sign_change_arrays(input_array):
     #if we have no outputs with sign change, then end
     if np.all(sign_mults == 0):
         print("ERROR: Did not complete a single cycle, cannot plot cycling plots")
-        sys.exit()
+        raise
     #the odd sign changes indicate the beginning of the discharge cycle
     indices = np.array(np.nonzero(sign_mults)).flatten() #get indices of nonzero elements
     neg_indices_start = indices[::2] + 1

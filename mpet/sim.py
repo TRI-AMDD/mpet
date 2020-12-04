@@ -28,7 +28,6 @@ class SimMPET(dae.daeSimulation):
         ndD_s["phiPrev"] = 0.
         if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
-            #self.dataPrev = h5py.File(osp.join(ndD_s["prevDir"], "output_data.hdf5"), 'r')
             self.dataPrev = osp.join(ndD_s["prevDir"], "output_data")
             data, f_type = utils.open_data_file(self.dataPrev)
             ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type, final = True)
