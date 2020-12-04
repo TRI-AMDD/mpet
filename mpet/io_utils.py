@@ -515,7 +515,6 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
     psd_len = {}
     psd_area = {}
     psd_vol = {}
-    psd_area_vol_ratio = 0
     for trode in ndD_s["trodes"]:
         Nv = ndD_s["Nvol"][trode]
         Np = ndD_s["Npart"][trode]

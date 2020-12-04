@@ -16,7 +16,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
     Input is dataReporter"""
     def WriteDataToFile(self):
         mdict = {}
-        #0 if single simulaiton, 1 if continued simulation
+        #0 if single simulation, 1 if continued simulation
         continued_sim = 0
         #if we are in a directory that has continued simulations (maccor reader)
         if os.path.isfile(self.ConnectionString + ".hdf5"):
