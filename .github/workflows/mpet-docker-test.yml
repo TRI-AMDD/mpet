@@ -9,9 +9,18 @@ jobs:
     
     runs-on: ubuntu-latest
     container:
-      image: vikko00/mpet-deps:latest
+      image: vikko00/daetools:1.9.0
 
     steps:
+    - name: update container
+      run: |
+        apt-get update
+        apt-get upgrade -y
+
+    - name: Install mpet additional dependencies
+      run: |
+        pip install numpy scipy matplotlib pyQt5 h5py coverage coveralls pytest sympy
+
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
