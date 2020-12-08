@@ -47,7 +47,7 @@ jobs:
     - name: run tests for modified branch and get coverage
       run: |
         cd mpet/bin/workdir
-        coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
+        coverage run --source=../../mpet/ run_tests.py --output_dir ../../bin/workdir/modified > /dev/null
 
     - name: upload Coveralls
       env:
@@ -60,7 +60,7 @@ jobs:
       run: |
         cd mpet/bin/workdir
         ln -sf ../../../base-mpet/mpet .
-        python run_tests.py ../../bin/workdir/stable > /dev/null
+        python run_tests.py --output_dir ../../bin/workdir/stable > /dev/null
 
     - name: Checks test results
       run: |
