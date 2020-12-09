@@ -46,7 +46,7 @@ def BV_mod02(eta, c_sld, c_lyte, k0, T, act_R=None,
     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
 
-def BV_mod03(eta, c_sld, c_lyte, k0, T, act_R=None,
+def BV_Colclasure20(eta, c_sld, c_lyte, k0, T, act_R=None,
                   act_lyte=None, lmbda=None, alpha=None):
     """Implemented for the Finegan 2020/Colclasure 2020 model comparison
     for the NMC electrode"""
