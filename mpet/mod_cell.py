@@ -477,7 +477,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
-    elif ndD["elyteModelType"] == "SM" or ndD["elyteModelType"] == "Colclasure_SM":
+    elif ndD["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
         # modify the free solution transport properties for porous media
 

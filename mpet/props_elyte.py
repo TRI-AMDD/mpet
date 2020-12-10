@@ -174,7 +174,8 @@ def Colclasure20():
                             (T_g0 + T_g1 * Ce)))*Ce + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
 
     def therm_fac(c):
-        return(1)
+        T = 298
+        return 1 + 0.341*np.exp(261/T)-0.00225*np.exp(1360/T)*c + 0.54*np.exp(329/T)*c**2
 
     def sigma(Ce):
         T=298
