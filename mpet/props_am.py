@@ -16,11 +16,9 @@ class Dfuncs():
     solution (_ss) and materials based on simpler thermodynamic models.
     """
     def __init__(self, Dfunc):
-        Dopts = {}
-        Dopts['lattice'] = self.lattice
-        Dopts['constant'] = self.constant
-        Dopts['NMC532_Colclasure20'] = self.NMC532_Colclasure20
-        self.Dfunc = Dopts[Dfunc]
+        
+        #Convert Dfunc to a callable function
+        self.Dfunc = getattr(self,Dfunc)
 
     def constant(self, y):
         return 1.
