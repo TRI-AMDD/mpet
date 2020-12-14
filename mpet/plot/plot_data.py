@@ -348,7 +348,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             elif plot_type in ["elytedivi", "elytedivif"]:
                 ylbl = r'Divergence of electrolyte current density [A/m$^3$]'
                 datax = cellsvec
-                datay = np.diff(i_edges, axis=1) / disc["dxd2"]
+                datay = np.diff(i_edges, axis=1) / disc["dxvec"]
                 datay *= (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"]**2)
         if fplot:
             datay = datay[t0ind]

@@ -80,11 +80,12 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
 
 def get_elyte_disc(Nvol, L, poros, BruggExp):
     out = {}
-    # Discretization
+    # Width of each cell
     out["dxvec"] = utils.get_dxvec(L, Nvol)
+
+    #Distance between cell centers
     dxtmp = np.hstack((out["dxvec"][0], out["dxvec"], out["dxvec"][-1]))
     out["dxd1"] = utils.mean_linear(dxtmp)
-    out["dxd2"] = out["dxvec"]
 
     # The porosity vector
     out["porosvec"] = utils.get_asc_vec(poros, Nvol)

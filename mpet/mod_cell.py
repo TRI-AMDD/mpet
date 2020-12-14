@@ -337,8 +337,8 @@ class ModCell(dae.daeModel):
 
             Nm_edges, i_edges = get_lyte_internal_fluxes(
                 ctmp, phitmp, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
-            dvgNm = np.diff(Nm_edges)/disc["dxd2"]
-            dvgi = np.diff(i_edges)/disc["dxd2"]
+            dvgNm = np.diff(Nm_edges)/disc["dxvec"]
+            dvgi = np.diff(i_edges)/disc["dxvec"]
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
