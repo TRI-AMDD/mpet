@@ -305,7 +305,7 @@ class ModCell(dae.daeModel):
             if Nvol["a"] == 0:
                 # Concentration BC from mass flux
                 Nm_foil = get_lyte_internal_fluxes(
-                    ctmp[0:2], phitmp[0:2], disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)[0]
+                    ctmp[0:2], phitmp[0:2], disc, ndD)[0]
                 eqC.Residual = Nm_foil[0]
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
@@ -336,7 +336,7 @@ class ModCell(dae.daeModel):
                 eqP.Residual = phitmp[0] - phitmp[1]
 
             Nm_edges, i_edges = get_lyte_internal_fluxes(
-                ctmp, phitmp, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
+                ctmp, phitmp, disc, ndD)
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
             for vInd in range(Nlyte):
@@ -462,10 +462,12 @@ class ModCell(dae.daeModel):
                               setVariableValues=[(self.endCondition, 2)])
 
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
     T = ndD["T"]
+    dxd1 = disc["dxd1"]
+    eps_o_tau = disc["eps_o_tau_edges"]
     c_edges_int = utils.mean_harmonic(c_lyte)
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]

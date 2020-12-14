@@ -340,7 +340,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-                    cmat[tInd, :], pmat[tInd, :], disc["dxd1"], disc["eps_o_tau_edges"], ndD_s)[1]
+                    cmat[tInd, :], pmat[tInd, :], disc, ndD_s)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
