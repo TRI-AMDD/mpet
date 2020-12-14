@@ -467,8 +467,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     nu = nup + num
     T = ndD["T"]
     dxd1 = disc["dxd1"]
-    eps_o_tau = disc["eps_o_tau_edges"]
-    c_edges_int = utils.mean_harmonic(c_lyte)
+    eps_o_tau = disc["eps_o_tau"]
+
+    #Get concentration at cell edges using weighted mean
+    wt=utils.pad_vec(disc["dxvec"])
+    c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
+
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]
         Dm = eps_o_tau * ndD["Dm"]
@@ -481,20 +485,18 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
-        # modify the free solution transport properties for porous media
 
-        def D(c):
-            return eps_o_tau*D_fs(c)
-
-        def sigma(c):
-            return eps_o_tau*sigma_fs(c)
+        #Get diffusivity and conductivity at cell edges using weighted harmonic mean
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte), wt)
+        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte), wt)
+        
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -sigma(c_edges_int)/T * (
+        i_edges_int = -sigma_edges/T * (
             np.diff(phi_lyte)/dxd1
             + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
             * thermFac(c_edges_int)
             * np.diff(np.log(c_lyte))/dxd1
             )
-        Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
+        Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
     return Nm_edges_int, i_edges_int

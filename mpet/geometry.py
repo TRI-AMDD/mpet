@@ -95,7 +95,6 @@ def get_elyte_disc(Nvol, L, poros, BruggExp):
     Brugg_pad = utils.pad_vec(utils.get_asc_vec(BruggExp, Nvol))
 
     # Vector of posority/tortuosity (assuming Bruggeman)
-    porostortvec_pad = porosvec_pad/porosvec_pad**(Brugg_pad)
-    out["eps_o_tau_edges"] = utils.mean_harmonic(porostortvec_pad)
+    out["eps_o_tau"] = porosvec_pad/porosvec_pad**(Brugg_pad)
 
     return out

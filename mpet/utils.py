@@ -13,12 +13,26 @@ def mean_linear(a, b=None):
         return 0.5*(a + b)
 
 
+def weighted_linear_mean(a, wt):
+    if isinstance(a,float):
+        return(a)
+    else:
+        return (wt[1:]*a[1:] + wt[:-1]*a[:-1])/(wt[1:]+wt[:-1])
+
+
 def mean_harmonic(a, b=None):
     """Calculate the harmonic mean along a vector or between two values."""
     if isinstance(a, np.ndarray):
         return (2 * a[1:] * a[:-1]) / (a[1:] + a[:-1] + 1e-20)
     else:
         return (2 * a * b) / (a + b + 1e-20)
+
+
+def weighted_harmonic_mean(a, wt):
+    if isinstance(a,float):
+        return a
+    else:
+        return((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
 
 
 def get_cell_Ntot(Nvol):
