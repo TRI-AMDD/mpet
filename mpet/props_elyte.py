@@ -83,7 +83,7 @@ def valoen_reimers():
                    + k20*c**2 + k21*c**2*(T*Tref))**2  # mS/cm
         out *= 0.1  # S/m
         return out
-    Dref = D(cref, T)
+    Dref = D(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -110,7 +110,7 @@ def valoen_bernardi():
             0.22002, -0.0001765)
         out = c * (k00 + k01*(T*Tref) + k02*(T*Tref)**2
                    + k10*c + k11*c*(T*Tref) + k12*c*(T*Tref)**2
-                   + k20*c**2 + k21*c**2*(T*Tref)**2  # mS/cm
+                   + k20*c**2 + k21*c**2*(T*Tref))**2  # mS/cm
         out *= 0.1  # S/m
         return out
 
@@ -139,7 +139,7 @@ def test1():
 
     def sigma(c, T):
         return Dm*(1000*c)*N_A*e**2/(k*T*Tref*(1-tp0(c)))  # S/m
-    Dref = D(cref, T)
+    Dref = D(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref

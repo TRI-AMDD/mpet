@@ -488,12 +488,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
             return eps_o_tau*sigma_fs(c, T)
 
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -sigma(c_edges_int)/T * (
+        i_edges_int = -sigma(c_edges_int, T)/T * (
             np.diff(phi_lyte)/dxd1
-            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
-            * thermFac(c_edges_int)
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int, T)/(zp*nup))
+            * thermFac(c_edges_int, T)
             * np.diff(np.log(c_lyte))/dxd1
             )
-        Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+        Nm_edges_int = num*(-D(c_edges_int, T)*np.diff(c_lyte)/dxd1
+                            + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     return Nm_edges_int, i_edges_int
