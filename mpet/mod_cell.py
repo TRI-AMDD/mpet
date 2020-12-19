@@ -481,11 +481,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
         # modify the free solution transport properties for porous media
 
-        def D(c):
-            return eps_o_tau*D_fs(c)
+        def D(c, T):
+            return eps_o_tau*D_fs(c, T)
 
-        def sigma(c):
-            return eps_o_tau*sigma_fs(c)
+        def sigma(c, T):
+            return eps_o_tau*sigma_fs(c, T)
+
         sp, n = ndD["sp"], ndD["n_refTrode"]
         i_edges_int = -sigma(c_edges_int)/T * (
             np.diff(phi_lyte)/dxd1
