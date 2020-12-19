@@ -161,10 +161,10 @@ class Mod2var(dae.daeModel):
         eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
         eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq1 = self.CreateEquation("Rxn1")
         eq2 = self.CreateEquation("Rxn2")
@@ -206,10 +206,10 @@ class Mod2var(dae.daeModel):
             eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
             eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR2"]:
             for i in range(N):
@@ -375,7 +375,7 @@ class Mod1var(dae.daeModel):
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
@@ -413,7 +413,7 @@ class Mod1var(dae.daeModel):
         else:
             eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR"]:
             for i in range(N):
