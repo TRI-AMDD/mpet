@@ -519,8 +519,8 @@ def size2regsln(size):
 
 
 def test_system_input(dD, ndD):
-    if not are_close(dD['Tabs'], 298.):
-        raise Exception("Temperature dependence not implemented")
+    #if not are_close(dD['Tabs'], 298.):
+    #    raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
     if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
@@ -529,9 +529,9 @@ def test_system_input(dD, ndD):
 
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
-    T298 = are_close(dD_s['Tabs'], 298.)
-    if not T298:
-        raise NotImplementedError("Temperature dependence not supported")
+    #T298 = are_close(dD_s['Tabs'], 298.)
+    #if not T298:
+    #    raise NotImplementedError("Temperature dependence not supported")
     solidType = ndD['type']
     solidShape = ndD['shape']
     if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
