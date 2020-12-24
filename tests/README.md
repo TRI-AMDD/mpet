@@ -2,12 +2,10 @@
 
 When adding new features or making changes to the code, it's helpful to run a suite of tests to make sure various things are behaving as expected. This should not be necessary for users who are not changing the code at all, although it could still be nice to verify that the outputs users are seeing match those the developers expect for a few specific cases.
 
-To run the tests, execute ./bin/run\_locally.sh from the repository root. with
-the -h flag you can see which arguments are accepted.  This will run a number of
-simulations and store the results.
+To run the tests, execute `PYTHONPATH=. ./bin/mpettest.py` from the repository root. The `-h` flag shows which arguments are accepted.  This will run a number of
+simulations and test the results.
 
-To compare these outputs you can use pytest.
-
+To compare the output manually you can use pytest:
 ```bash
   pytest --baseDir=tests/ref_outputs/ --modDir=tests/test_outputs/20201208_154137/ tests/compare_tests.py
 ```
