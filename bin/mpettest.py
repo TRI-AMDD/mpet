@@ -11,7 +11,7 @@ args=run_tests.main()
 #Create the list of arguments for pytest
 pytest_args=["--baseDir="+osp.join(args.test_dir,"ref_outputs"),
              "--modDir="+args.output_dir,
-             "tests/compare_tests.py"
+             osp.join(osp.dirname(osp.abspath(__file__)),"../tests/compare_tests.py")
             ]
 
 #Add addtional options if a test list was provided
