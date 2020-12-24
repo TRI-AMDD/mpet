@@ -46,7 +46,7 @@ def main():
           "test_outputs", time.strftime("%Y%m%d_%H%M%S") ),
                       help='where to put the simulations, default is tests/tests_outputs/date')
     parser.add_argument('--test_dir', metavar='t', type=str, 
-        default=osp.join(osp.dirname(osp.abspath(__file__)),"tests"),
+        default=osp.join(osp.dirname(osp.abspath(__file__)),"../tests"),
                       help='where are the tests located?')
     parser.add_argument('tests', nargs='*', default=[], help='which tests do I run?')
     args = parser.parse_args()
