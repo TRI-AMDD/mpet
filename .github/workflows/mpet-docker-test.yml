@@ -17,10 +17,6 @@ jobs:
         apt-get update
         apt-get upgrade -y
 
-    - name: Install mpet additional dependencies
-      run: |
-        pip install numpy scipy matplotlib pyQt5 h5py coverage coveralls pytest sympy
-
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
@@ -33,6 +29,12 @@ jobs:
         fetch-depth: 1
         path: base-mpet
         ref: ${{ github.base_ref }}
+
+    - name: Install additional dependencies using mpet's setup.py
+      run: |
+        cd mpet
+        pip install .[test]
+
     - name: Set up test for modified branch
       run: |
         cd mpet/bin
