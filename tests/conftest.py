@@ -57,7 +57,11 @@ def pytest_generate_tests(metafunc):
       metafunc.parametrize("Dirs", [ (dir_b + '/test{:03}'.format(i),
           dir_t + '/test{:03}'.format(i))for i in range(1, ntests+1)])
     else:
-      metafunc.parametrize("Dirs", [ (dir_b + "/" + test, dir_t + "/" + test) for test in metafunc.config.getoption("tests")])
+      #Sometimes the tests option is a list, other times it is an array with one element (a string of tests).
+      #This handles both.
+      tests_str=" ".join(metafunc.config.getoption("tests"))
+      tests_lst=tests_str.split()
+      metafunc.parametrize("Dirs", [ (dir_b + "/" + test, dir_t + "/" + test) for test in tests_lst])
   if "tol" in metafunc.fixturenames:
     metafunc.parametrize("tol", [float(metafunc.config.getoption("tolerance"))])
   if "testDir" in metafunc.fixturenames:

@@ -39,16 +39,21 @@ def run(test_outputs, testDir, tests=None):
     if not tests:
       run_test_sims_analyt(runInfoAnalyt, dirDict)
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description='Run test suite.')
-  parser.add_argument('--output_dir', metavar='o', type=str,
-      default=osp.join(osp.dirname(osp.abspath(__file__)),"../tests",
-        "test_outputs", time.strftime("%Y%m%d_%H%M%S") ),
-                    help='where to put the simulations, default is tests/tests_outputs/date')
-  parser.add_argument('--test_dir', metavar='t', type=str, 
-      default=osp.join(osp.dirname(osp.abspath(__file__)),"tests"),
-                    help='where are the tests located?')
-  parser.add_argument('tests', nargs='*', default=[], help='which tests do I run?')
-  args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser(description='Run test suite.')
+    parser.add_argument('--output_dir', metavar='o', type=str,
+        default=osp.join(osp.dirname(osp.abspath(__file__)),"../tests",
+          "test_outputs", time.strftime("%Y%m%d_%H%M%S") ),
+                      help='where to put the simulations, default is tests/tests_outputs/date')
+    parser.add_argument('--test_dir', metavar='t', type=str, 
+        default=osp.join(osp.dirname(osp.abspath(__file__)),"../tests"),
+                      help='where are the tests located?')
+    parser.add_argument('tests', nargs='*', default=[], help='which tests do I run?')
+    args = parser.parse_args()
 
-  run(args.output_dir,args.test_dir, args.tests)
+    run(args.output_dir,args.test_dir, args.tests)
+
+    return(args)
+
+if __name__ == "__main__":
+    main()
