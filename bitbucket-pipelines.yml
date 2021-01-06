@@ -1,4 +1,4 @@
-image: vikko00/mpet-deps:latest
+image: vikko00/daetools:1.9.0
 options:
  docker: true
 
@@ -9,24 +9,13 @@ pipelines:
           caches:
             - docker
           script:
+            - pip install .[test]
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh $BITBUCKET_PR_DESTINATION_BRANCH
-          artifacts:
-            - bin/workdir/**
-      - step:
-          caches:
-            - docker
-          script:
-            - cd tests
+            - cd ../tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
-
-      - step:
-          caches:
-            - docker
-          script:
-            - cd tests
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
   branches:
     'master':
@@ -34,22 +23,11 @@ pipelines:
           caches:
             - docker
           script:
+            - pip install .[test]
             - cd bin
             - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
             - ./mpetruntests.sh stable
-          artifacts:
-            - bin/workdir/**
-      - step:
-          caches:
-            - docker
-          script:
-            - cd tests
+            - cd ../tests
             - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
-
-      - step:
-          caches:
-            - docker
-          script:
-            - cd tests
             - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
