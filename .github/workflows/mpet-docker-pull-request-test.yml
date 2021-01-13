@@ -1,4 +1,4 @@
-name: MPET docker CI
+name: MPET pull request
 
 on:
   pull_request:
@@ -67,7 +67,6 @@ jobs:
     - name: Checks test results
       run: |
         cd mpet/tests
-        pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
         pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
 
     - name: Check Timings
