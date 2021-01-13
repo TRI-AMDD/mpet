@@ -49,14 +49,7 @@ jobs:
     - name: run tests for modified branch and get coverage
       run: |
         cd mpet/bin/workdir
-        coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
-
-    - name: upload Coveralls
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        cd mpet/bin/workdir
-        coveralls || : #Dont fret if if fails
+        python run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
 
     - name: run tests for base branch
       run: |

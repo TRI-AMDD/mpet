@@ -41,21 +41,24 @@ jobs:
         rm -rf workdir
         mkdir workdir
         cd workdir
-
-        cp ../run_tests.py .
-        ln -s ../../mpet .
-        ln -s ../../tests .
+        cp -r ../../tests/ref_outputs modified
 
     - name: run tests for modified branch and get coverage
       run: |
-        cd mpet/bin/workdir
-        coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
+        cd mpet/bin/workdir/modified
+        for test in */ ; do
+          echo "running $test"
+          cd $test
+          COVERAGE_FILE=../.$test.cov PYTHONPATH=../../../../ coverage run --source=../../../../mpet ../../../mpetrun.py params_system.cfg
+          cd ../
+        done
 
     - name: upload Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         cd mpet/bin/workdir
+        coverage combine
         coveralls || : #Dont fret if if fails
 
 
