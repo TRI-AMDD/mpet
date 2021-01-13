@@ -66,4 +66,4 @@ jobs:
     - name: Checks test results
       run: |
         cd mpet/tests
-        pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+        pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified --skip-analytic compare_tests.py
