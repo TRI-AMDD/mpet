@@ -58,7 +58,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        cd mpet/bin/workdir
+        cd mpet/bin/workdir/modified
         coverage combine
         coveralls || : #Dont fret if if fails
 
