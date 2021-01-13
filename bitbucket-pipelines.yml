@@ -9,6 +9,10 @@ pipelines:
           caches:
             - docker
           script:
+            # update container
+            - apt-get update
+            - apt-get upgrade -y
+            
             # Install additional dependencies using mpet's setup.py
             - pip install .[test]
             
@@ -48,6 +52,10 @@ pipelines:
           caches:
             - docker
           script:
+            # update container
+            - apt-get update
+            - apt-get upgrade -y
+
             # Install additional dependencies using mpet's setup.py
             - pip install .[test]
             
