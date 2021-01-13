@@ -2,7 +2,7 @@ name: MPET regression test
 
 on:
   push:
-  repository_dispatch: 
+  workflow_dispatch: 
 
 jobs:
   test:
