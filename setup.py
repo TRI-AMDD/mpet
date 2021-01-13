@@ -2,10 +2,15 @@ import setuptools
 
 exec(open('mpet/version.py').read())
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setuptools.setup(
     name='mpet',
     version=__version__,
     description='Multiphase porous electrode theory',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author='Dan Cogswell',
     author_email='cogswell@mit.edu',
     license='MIT',
