@@ -46,7 +46,7 @@ jobs:
         ln -s ../../mpet .
         ln -s ../../tests .
 
-    - name: run tests for modified branch and get coverage
+    - name: run tests for modified branch
       run: |
         cd mpet/bin/workdir
         python run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
