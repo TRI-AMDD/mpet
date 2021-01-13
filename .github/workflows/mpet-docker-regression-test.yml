@@ -50,7 +50,7 @@ jobs:
           echo "running $test"
           cd $test
           rm -rf sim_output
-          COVERAGE_FILE=../.$test.cov PYTHONPATH=../../../../ coverage run --source=../../../../mpet ../../../mpetrun.py params_system.cfg > /dev/null
+          COVERAGE_FILE=../.${test%?}.cov PYTHONPATH=../../../../ coverage run --source=../../../../mpet ../../../mpetrun.py params_system.cfg > /dev/null
           cd ../
         done
 
@@ -59,7 +59,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         cd mpet/bin/workdir/modified
-        coverage combine
+        coverage combine .*.cov
         coveralls || : #Dont fret if if fails
 
 
