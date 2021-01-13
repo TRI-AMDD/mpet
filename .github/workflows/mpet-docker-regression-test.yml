@@ -49,6 +49,7 @@ jobs:
         for test in */ ; do
           echo "running $test"
           cd $test
+          rm -rf sim_output
           COVERAGE_FILE=../.$test.cov PYTHONPATH=../../../../ coverage run --source=../../../../mpet ../../../mpetrun.py params_system.cfg > /dev/null
           cd ../
         done
