@@ -58,6 +58,11 @@ def pytest_generate_tests(metafunc):
     if metafunc.config.getoption("tests") == []: 
       _, directories, _ = next(walk(dir_b))
       directories.sort()
+      try:
+        directories.remove('plots') #Directories to ignore
+      except:
+        pass
+
       metafunc.parametrize("Dirs", [(osp.join(dir_b, dir),
           osp.join(dir_t,dir)) for dir in directories])
     else:
