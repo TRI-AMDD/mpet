@@ -57,6 +57,7 @@ def pytest_generate_tests(metafunc):
     dir_b = metafunc.config.getoption("baseDir")
     if metafunc.config.getoption("tests") == []: 
       _, directories, _ = next(walk(dir_b))
+      directories.sort()
       metafunc.parametrize("Dirs", [(osp.join(dir_b, dir),
           osp.join(dir_t,dir)) for dir in directories])
     else:

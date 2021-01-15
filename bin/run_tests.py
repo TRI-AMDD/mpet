@@ -25,6 +25,7 @@ def run(test_outputs, testDir, tests=None):
       ref_outputs=osp.join(dirDict["suite"],"ref_outputs")
       _, directories, _ = next(walk(osp.join(ref_outputs)))
       tests=directories
+      tests.sort()
 
       runInfoAnalyt = {
           "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
