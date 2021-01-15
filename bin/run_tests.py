@@ -38,7 +38,7 @@ def run(test_outputs, testDir, tests=None):
     dirDict["plots"] = osp.join(dirDict["out"], "plots")
     makedirs(dirDict["plots"])
     run_test_sims(tests, dirDict, pflag)
-    if not tests:
+    if runInfoAnalyt:
       run_test_sims_analyt(runInfoAnalyt, dirDict)
 
 def main():
