@@ -38,8 +38,10 @@ def run(test_outputs, testDir, tests=None):
     dirDict["plots"] = osp.join(dirDict["out"], "plots")
     makedirs(dirDict["plots"])
     run_test_sims(tests, dirDict, pflag)
-    if runInfoAnalyt:
+    try:
       run_test_sims_analyt(runInfoAnalyt, dirDict)
+    except:
+      pass
 
 def main():
     parser = argparse.ArgumentParser(description='Run test suite.')
