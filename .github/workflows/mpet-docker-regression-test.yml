@@ -1,8 +1,6 @@
-name: MPET docker CI
+name: MPET regression test
 
-on:
-  pull_request:
-    branches: [ master,development ]
+on: [push, workflow_dispatch]
 
 jobs:
   test:
@@ -58,19 +56,8 @@ jobs:
         cd mpet/bin/workdir
         coveralls || : #Dont fret if if fails
 
-    - name: run tests for base branch
-      run: |
-        cd mpet/bin/workdir
-        ln -sf ../../../base-mpet/mpet .
-        python run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/stable > /dev/null
 
     - name: Checks test results
       run: |
         cd mpet/tests
-        pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
-        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
-
-    - name: Check Timings
-      run: |
-        cd mpet/tests
-        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
+        pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py
