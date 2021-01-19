@@ -1,6 +1,12 @@
-# Testing
+# Regression Testing
 
 When adding new features or making changes to the code, it's helpful to run a suite of tests to make sure various things are behaving as expected. This should not be necessary for users who are not changing the code at all, although it could still be nice to verify that the outputs users are seeing match those the developers expect for a few specific cases.
+
+## Prerequisites
+
+The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, `coveralls`, `configparser`, and `h5py`.
+
+## Running
 
 To run the tests, execute `PYTHONPATH=. ./bin/mpettest.py` from the repository root. The `-h` flag shows which arguments are accepted.  This will run a number of
 simulations and test the results.
