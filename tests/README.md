@@ -1,6 +1,12 @@
-## Testing
+# Regression Testing
 
 When adding new features or making changes to the code, it's helpful to run a suite of tests to make sure various things are behaving as expected. This should not be necessary for users who are not changing the code at all, although it could still be nice to verify that the outputs users are seeing match those the developers expect for a few specific cases.
+
+## Prerequisites
+
+The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, `coveralls`, `configparser`, and `h5py`.
+
+## Running
 
 To run the tests, execute `PYTHONPATH=. ./bin/mpettest.py` from the repository root. The `-h` flag shows which arguments are accepted.  This will run a number of
 simulations and test the results.
@@ -27,3 +33,26 @@ it is both tested as absolute and relative tolerance.
 ```bash
   pytest --tolerance=0.01 --baseDir=tests/ref_outputs/ --modDir=tests/test_outputs/20201208_154137/ tests/compare_tests.py
 ```
+
+
+# List of tests
+
+ - test001: LFP ACR C3
+ - test002: LFP CHR cylinder
+ - test003: LFP CHR sphere
+ - test004: LFP CHR sphere with noise
+ - test005: LFP homog
+ - test006: LFP homog with logPad, Vmin
+ - test007: LFP homog with logPad, Vmax
+ - test008: LFP homog_sdn
+ - test009: Graphite-2param homog
+ - test010: Graphite-2param CHR cylinder
+ - test011: Graphite-2param CHR sphere
+ - test012: Solid solution, diffn sphere, homog, LiC6_coke_ss2, LiMn2O4_ss2, BV_mod01, BV_mod02, cathode + anode
+ - test013: Solid solution, diffn cylinder, homog, testIS_ss, LiMn2O4_ss2, Marcus, BV_raw, cathode + separator + anode
+ - test014: LFP homog with CCsegments, MHC, Rser
+ - test015: testRS homog with CVsegments, bulkCond, partCond
+ - test016: test CC continuation
+ - test017: test CV continuation
+ - test018: Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil
+ - test019: SM electrolyte with LFP homog, sep + cathode, significant elyte polarization

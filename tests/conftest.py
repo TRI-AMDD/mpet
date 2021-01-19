@@ -1,5 +1,7 @@
 import pytest
 from .test_defs import getNumberOfTests
+import os.path as osp
+from os import walk
 
 def pytest_addoption(parser):
   parser.addoption(
@@ -54,8 +56,15 @@ def pytest_generate_tests(metafunc):
     dir_t = metafunc.config.getoption("modDir")
     dir_b = metafunc.config.getoption("baseDir")
     if metafunc.config.getoption("tests") == []: 
-      metafunc.parametrize("Dirs", [ (dir_b + '/test{:03}'.format(i),
-          dir_t + '/test{:03}'.format(i))for i in range(1, ntests+1)])
+      _, directories, _ = next(walk(dir_b))
+      directories.sort()
+      try:
+        directories.remove('plots') #Directories to ignore
+      except:
+        pass
+
+      metafunc.parametrize("Dirs", [(osp.join(dir_b, dir),
+          osp.join(dir_t,dir)) for dir in directories])
     else:
       #Sometimes the tests option is a list, other times it is an array with one element (a string of tests).
       #This handles both.

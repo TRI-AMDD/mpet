@@ -1,6 +1,6 @@
 import os.path as osp
 import time
-from os import getcwd, makedirs,rmdir
+from os import getcwd, makedirs, rmdir, walk
 from sys import argv
 from tests.test_suite import run_test_sims, run_test_sims_analyt
 import tests.test_defs as defs
@@ -20,11 +20,13 @@ def run(test_outputs, testDir, tests=None):
     # Identifier strings are associated with functions to call and
     # whether to run that particular test.
     n_tests = defs.getNumberOfTests()
-    if tests:
-      runInfo = { test : getattr(defs, test) for test in tests }
-    else:
-      runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
-               for i in range(1, n_tests+1)}
+    if not tests:
+      #Generate a list of tests from the directories in ref_outputs
+      ref_outputs=osp.join(dirDict["suite"],"ref_outputs")
+      _, directories, _ = next(walk(osp.join(ref_outputs)))
+      tests=directories
+      tests.sort()
+
       runInfoAnalyt = {
           "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
           "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
@@ -35,9 +37,11 @@ def run(test_outputs, testDir, tests=None):
     makedirs(dirDict["out"])
     dirDict["plots"] = osp.join(dirDict["out"], "plots")
     makedirs(dirDict["plots"])
-    run_test_sims(runInfo, dirDict, pflag)
-    if not tests:
+    run_test_sims(tests, dirDict, pflag)
+    try:
       run_test_sims_analyt(runInfoAnalyt, dirDict)
+    except:
+      pass
 
 def main():
     parser = argparse.ArgumentParser(description='Run test suite.')
