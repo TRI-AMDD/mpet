@@ -1,0 +1,6 @@
+# Bulk electrode electric potential [V]
+# Rows correspond to time points (see generalData.txt).
+# Columns correspond to this electrode's cell center
+# positions (see discData.txt).
+# 
+0.000000000000000000e+00
