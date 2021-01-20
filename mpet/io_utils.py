@@ -358,7 +358,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
-                ndD_tmp["E_A"] = dD_e[trode]['E_A']/(k*T_ref)
+                ndD_tmp["E_A"] = dD_e[trode]['E_A']/(k*N_A*T_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
                 # If we're using the model that varies Omg_a with particle size,
