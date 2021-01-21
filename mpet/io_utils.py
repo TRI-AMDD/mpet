@@ -51,7 +51,7 @@ def get_configs(paramfile="params.cfg"):
     return P_s, P_e
 
 
-def get_dicts_from_configs(P_s, P_e):
+def get_dicts_from_configs(P_s, P_e, paramfile):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
     dD_e = {}
@@ -93,6 +93,13 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac',fallback=1)
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
+
+    #If prevDir is a relative path, convert to absolute
+    if ndD_s["prevDir"] != "false":
+        if not os.path.isabs(ndD_s["prevDir"]):
+            dir = os.path.dirname(paramfile)
+            ndD_s["prevDir"]=os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
+
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
@@ -192,7 +199,7 @@ def get_dicts_from_configs(P_s, P_e):
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
-        dD["material_type"] = P.get('Material', 'material_type')
+        dD["material_type"] = P.get('Material', 'material_type',fallback='LFP')
         ndD["logPad"] = P.getboolean('Material', 'logPad')
         ndD["noise"] = P.getboolean('Material', 'noise')
         ndD["noise_prefac"] = P.getfloat('Material', 'noise_prefac')

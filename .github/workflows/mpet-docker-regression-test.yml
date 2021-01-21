@@ -1,17 +1,20 @@
-name: MPET docker CI
+name: MPET regression test
 
-on:
-  pull_request:
-    branches: [ master,development ]
+on: [push, workflow_dispatch]
 
 jobs:
   test:
     
     runs-on: ubuntu-latest
     container:
-      image: vikko00/mpet-deps:latest
+      image: vikko00/daetools:1.9.0
 
     steps:
+    - name: update container
+      run: |
+        apt-get update
+        apt-get upgrade -y
+
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
@@ -24,6 +27,12 @@ jobs:
         fetch-depth: 1
         path: base-mpet
         ref: ${{ github.base_ref }}
+
+    - name: Install additional dependencies using mpet's setup.py
+      run: |
+        cd mpet
+        pip install .[test]
+
     - name: Set up test for modified branch
       run: |
         cd mpet/bin
@@ -38,7 +47,7 @@ jobs:
     - name: run tests for modified branch and get coverage
       run: |
         cd mpet/bin/workdir
-        coverage run --source=../../mpet/ run_tests.py ../../bin/workdir/modified > /dev/null
+        coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
 
     - name: upload Coveralls
       env:
@@ -47,19 +56,8 @@ jobs:
         cd mpet/bin/workdir
         coveralls || : #Dont fret if if fails
 
-    - name: run tests for base branch
-      run: |
-        cd mpet/bin/workdir
-        ln -sf ../../../base-mpet/mpet .
-        python run_tests.py ../../bin/workdir/stable > /dev/null
 
     - name: Checks test results
       run: |
         cd mpet/tests
-        pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
-        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
-
-    - name: Check Timings
-      run: |
-        cd mpet/tests
-        pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
+        pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py

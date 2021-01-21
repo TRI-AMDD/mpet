@@ -98,7 +98,7 @@ def main(paramfile, keepArchive=True):
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     P_s, P_e = IO.get_configs(paramfile)
-    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
+    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e, paramfile)
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())

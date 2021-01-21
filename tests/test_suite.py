@@ -1,6 +1,8 @@
 import errno
 import os
 import os.path as osp
+from os import walk
+import shutil
 import time
 
 import matplotlib as mpl
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
+import mpet.main
 import mpet.io_utils as IO
 import tests.test_defs as defs
 
@@ -15,10 +18,23 @@ from mpet.utils import *
 
 
 def run_test_sims(runInfo, dirDict, pflag=True):
-    for testStr in sorted(runInfo.keys()):
+    for testStr in runInfo:
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr](testDir, dirDict, pflag)
+
+        #Copy config files from ref_outputs
+        refDir=osp.join(dirDict["suite"],"ref_outputs",testStr)
+        _, _, filenames = next(walk(osp.join(refDir)))
+        for f in filenames:
+            if ".cfg" in f:
+                shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
+
+        #Run the simulation
+        import mpet.main as main
+        configfile=osp.join(testDir,'params_system.cfg')
+        mpet.main.main(configfile, keepArchive=False)
+        shutil.move(dirDict["simOut"], testDir)
+
     # Remove the history directory that mpet creates.
     try:
         os.rmdir(osp.join(dirDict["suite"], "history"))
