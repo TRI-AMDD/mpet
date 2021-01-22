@@ -1,11 +1,11 @@
 mpet version:
-0.1.4
+0.1.5
 
 branch name:
 feature/battery_cycle
 
 commit hash:
-aecdacb
+321f0e4
 
 to run, from the root repo directory, copy relevant files there,
 edit input_params_system.cfg to point to correct material
@@ -14,4 +14,4 @@ $ git checkout [commit hash]
 $ patch -p1 < commit.diff:
 $ python[3] mpetrun.py input_params_system.cfg
 
-Total run time: 2.5331039428710938 s
+Total run time: 0.6673085689544678 s

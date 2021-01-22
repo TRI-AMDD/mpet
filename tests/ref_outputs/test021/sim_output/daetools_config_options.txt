@@ -8,7 +8,10 @@
             "checkUnitsConsistency": "true",
             "resetLAMatrixAfterDiscontinuity": "true",
             "printInfo": "false",
-            "deepCopyClonedNodes": "true",
+            "nodes": {
+                "useNodeMemoryPools": "false",
+                "deleteNodesThreshold": "1000000"
+            },
             "equations": {
                 "info": [
                     "If simplifyExpressions is true equation expressions will be simplified.",
@@ -53,8 +56,9 @@
             "printInfo": "false"
         },
         "IDAS": {
-            "SolveMode": "normal",
             "relativeTolerance": "1E-5",
+            "integrationMode": "Normal",
+            "reportDataInOneStepMode": "false",
             "nextTimeAfterReinitialization": "1E-7",
             "printInfo": "false",
             "numberOfSTNRebuildsDuringInitialization": "10000",
@@ -63,7 +67,7 @@
             "sensRelativeTolerance": "1E-5",
             "sensAbsoluteTolerance": "1E-5",
             "MaxOrd": "5",
-            "MaxNumSteps": "2000",
+            "MaxNumSteps": "1000",
             "InitStep": "0.0",
             "MaxStep": "0.0",
             "MaxErrTestFails": "10",

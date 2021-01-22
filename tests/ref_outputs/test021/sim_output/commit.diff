@@ -1,75 +1,378 @@
-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
-index 2099d71..fcfdbc7 100644
---- a/mpet/plot/plot_data.py
-+++ b/mpet/plot/plot_data.py
-@@ -64,7 +64,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
-             else:
-                 tot_cycle = tot_cycle + 1
+diff --git a/tests/ref_outputs/test021/sim_output/commit.diff b/tests/ref_outputs/test021/sim_output/commit.diff
+index 1cc5bc8..d82ed98 100644
+--- a/tests/ref_outputs/test021/sim_output/commit.diff
++++ b/tests/ref_outputs/test021/sim_output/commit.diff
+@@ -1,75 +1,223 @@
+-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
+-index 2099d71..fcfdbc7 100644
+---- a/mpet/plot/plot_data.py
+-+++ b/mpet/plot/plot_data.py
+-@@ -64,7 +64,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+-             else:
+-                 tot_cycle = tot_cycle + 1
+- 
+--    limtrode = dD_s["limtrode"]
+-+    #limtrode = dD_s["limtrode"]
+-+    limtrode = 'c'
+-     # simulated (porous) electrodes
+- 
+-     Nvol = ndD_s["Nvol"]
+-@@ -81,7 +82,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+-     F = dD_s['F']                      # C/mol
+-     td = dD_s["td"]
+-     Etheta = {"a": 0.}
+--    material_type = dD_e[limtrode]["material_type"]
+-+    #material_type = dD_e[limtrode]["material_type"]
+-+    material_type = "LMO"
+- # get information from limiting electrodes
+-     L = dD_s["L"][limtrode]
+-     P_L = ndD_s["P_L"][limtrode]
++diff --git a/mpet/io_utils.py b/mpet/io_utils.py
++index 887571a..fc7eac8 100644
++--- a/mpet/io_utils.py
+++++ b/mpet/io_utils.py
++@@ -66,6 +66,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
++     # Simulation parameters
++     ndD_s["paramfile_header"] = P_s.get('Sim Params', 'paramfile_header')
++     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
+++    # if profileType is a maccor file, add file header to profile type
+++    if ndD_s["profileType"][-4:] == ".000":
+++        ndD_s["profileType"] = os.path.join(ndD_s["paramfile_header"], ndD_s["profileType"])
++     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
++     dD_s["power"] = P_s.getfloat('Sim Params', 'power', fallback = 0)
++     #if it is a Crate, then no units. if A, then units
++diff --git a/mpet/maccor_reader.py b/mpet/maccor_reader.py
++index c6c9f00..8127fe3 100755
++--- a/mpet/maccor_reader.py
+++++ b/mpet/maccor_reader.py
++@@ -108,7 +108,7 @@ def finish_loop_process(step, loop_index, loop_counter):
++     return cycle_number, loop_index, loop_counter, next_step_index
++ 
++ 
++-def process_basic_step(step, step_list, area, stepIndex):
+++def process_basic_step(step, step_list, area, stepIndex, paramfile_header):
++     """Processes each step of the JSON file. Selects through step types
++     and creates a state for each step.
++     Inputs: step is current step, step_list is list of steps that need to be run.
++@@ -117,8 +117,9 @@ def process_basic_step(step, step_list, area, stepIndex):
++     min/max are depending on charge/discharge
++     [CC/CV set point, Vmin/Vmax, capfracmin/max, Cmin/Cmax, timemax, CC/CV type]
++     CC/CV type: 1 is CC charge, 2 is CCdisch, 3 is CV charge, 4 is CV discharge
+++    paramfile_header is where the files to run the simulations are stored
++     """
++-    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex)(step, area, stepIndex)
+++    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex, paramfile_header)(step, area, stepIndex, paramfile_header)
++     step_list.append(curr_step_properties)
++     return step_list, next_step_index
++ 
++@@ -172,7 +173,7 @@ def get_cycling_dict(ndD_s, dD_s):
++     #%% Load the data and save variable of the TestSteps
++     file_name = maccor_file
++     if not os.path.isfile(maccor_file):
++-        file_name = ndD_s["paramfile_header"] + "/" + maccor_file
+++        file_name = os.path.join(ndD_s["paramfile_header"], maccor_file)
++     
++     with open(file_name) as f:
++           data = xmltodict.parse(f.read(), process_namespaces=False, strip_whitespace=True)   
++@@ -219,5 +220,5 @@ def get_cycling_dict(ndD_s, dD_s):
++             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
++             step_index = 1e100 #steps should end
++         else: #for a normal step, process as normal
++-            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index)
+++            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index, ndD_s["paramfile_header"])
++     return cycling_dict
++diff --git a/mpet/main.py b/mpet/main.py
++index 7cad147..3089bac 100644
++--- a/mpet/main.py
+++++ b/mpet/main.py
++@@ -219,7 +219,7 @@ def main(paramfile, keepArchive=True):
++             P_s.set('Sim Params', 'totalCycle', cycling_dicts["step_" + str(i)].get("totalCycle"))
++             P_s.set('Sim Params', 'profileType', 'CCCVCPcycle')
++             #fills in period for waveform
++-            dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
+++            dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e, paramfile)
++             #reset everything in dictionaries too
++             paramFileName = "input_params_system_{j}.cfg".format(j=str(i))
++             paramFile = os.path.join(outdir, paramFileName)
++diff --git a/mpet/step_type_logic_functions.py b/mpet/step_type_logic_functions.py
++index 1929cf2..1db722c 100644
++--- a/mpet/step_type_logic_functions.py
+++++ b/mpet/step_type_logic_functions.py
++@@ -7,6 +7,8 @@ Created on Mon Apr  6 18:43:07 2020
++ 
++ import numpy as np
++ import re
+++import errno
+++import os
++ import sympy as sym
++ from sympy.parsing.sympy_parser import parse_expr
++ 
++@@ -19,7 +21,7 @@ from mpet.utils import *
++ #Cases for StepType
++ 
++ 
++-def StepTypeLogic(step, area, stepIndex):
+++def StepTypeLogic(step, area, stepIndex, paramfile_header):
++     """Processes normal step types (rest, charge, discharge and chg_func).
++     Inputs: step-current step we are at. Outputs: curr_step_process-
++     a 1*6 or 2*6 array of the steps to tack onto the step list coming from this
++@@ -41,7 +43,7 @@ def StepTypeLogic(step, area, stepIndex):
++     return func
++ 
++ 
++-def case_Rest(step, area, stepIndex):
+++def case_Rest(step, area, stepIndex, paramfile_header):
++     """Processes rest steps as CC = 0 steps. Inputs and outputs same as
++     SwitchTypeLogic."""
++     #gets end entry time
++@@ -52,7 +54,7 @@ def case_Rest(step, area, stepIndex):
++     return curr_step_process, next_step_index
++ 
++ 
++-def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltage
+++def case_Charge(step, area, stepIndex, paramfile_header): # add Ends and Limits for current/voltage
++     StepMode = step['StepMode']
++     StepValue = step['StepValue']
++     #negative C rates because charge
++@@ -94,7 +96,7 @@ def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltag
++     return curr_step_process, next_step_index
++ 
++ 
++-def case_ChgFunc(step, area, stepIndex):
+++def case_ChgFunc(step, area, stepIndex, paramfile_header):
++     #assigning temporarily
++     StepValue = step['StepValue']
++     y0 = float(StepValue.split('|')[0])
++@@ -123,7 +125,7 @@ def case_ChgFunc(step, area, stepIndex):
++     # Do we intend to use this type of step? I thought we would use waveform instead.
++ 
++ 
++-def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType cases
+++def case_Dischrge(step, area, stepIndex, paramfile_header): # need to add in duration,EndType cases
++     StepMode = step['StepMode']
++     StepValue = step['StepValue']
++     #we assume only the first end entry value has meaning
++@@ -166,13 +168,19 @@ def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType case
++ 
++ 
++ 
++-def case_Waveform(step, area, stepIndex): # need to add in duration,EndType cases
+++def case_Waveform(step, area, stepIndex, paramfile_header): # need to add in duration,EndType cases
++     #read in waveform file
++     wavefile = step['StepValue']
++-    data = np.loadtxt(wavefile + '.MWF', dtype={'names': ('charge_discharge', \
++-        'control_mode', 'control_value', 'time(s)', 'end_type', 'ineq', \
++-        'end_value', 'X', 'Y', 'Z'), 'formats': ('S1', 'S1', 'f4', 'f4', 'S1',\
++-        'S2', 'f4', 'S1', 'f4', 'S1')})
+++    #check if file exists in the same home directory as the params files
+++    fileDir = os.path.join(paramfile_header, wavefile + '.MWF')
+++    if os.path.isfile(fileDir):
+++        data = np.loadtxt(fileDir, dtype={'names': ('charge_discharge', \
+++            'control_mode', 'control_value', 'time(s)', 'end_type', 'ineq', \
+++            'end_value', 'X', 'Y', 'Z'), 'formats': ('S1', 'S1', 'f4', 'f4', 'S1',\
+++            'S2', 'f4', 'S1', 'f4', 'S1')})
+++    else:
+++        raise FileNotFoundError(
+++            errno.ENOENT, os.strerror(errno.ENOENT), fileDir)
++     #get waveform simulation process
++     curr_step_process = process_waveform_segment(data, area, stepIndex)
++     next_step_index = stepIndex + 1
++diff --git a/tests/compare_tests.py b/tests/compare_tests.py
++index 9834e32..99108ba 100644
++--- a/tests/compare_tests.py
+++++ b/tests/compare_tests.py
++@@ -6,40 +6,16 @@ import tests.test_defs as defs
++ import errno
++ import h5py
++ import pytest
+++import mpet.utils as utils
++ 
++ def test_compare(Dirs, tol):
++   refDir, testDir = Dirs
++   testFailed = False
++   newDir = osp.join(testDir, "sim_output")
++   refDir = osp.join(refDir, "sim_output")
++-  newDatah5 = False
++-  refDatah5 = False
++-  newDataFile = osp.join(newDir, "output_data.mat")
++-  if not osp.exists(newDataFile):
++-    newDataFile = osp.join(newDir, "output_data.hdf5")
++-    newDatah5 = True
++-  assert osp.exists(newDataFile), "neither output_data.{mat,hdf5} present"
++-  refDataFile = osp.join(refDir, "output_data.mat")
++-  if not osp.exists(refDataFile):
++-    refDataFile = osp.join(refDir, "output_data.hdf5")
++-    refDatah5 = True
++-  assert osp.exists(refDataFile), "neither output_data.{mat,hdf5} present"
+++  newData, f_type_new = utils.open_data_file(newDir + "/output_data")
+++  refData, f_type_ref = utils.open_data_file(refDir + "/output_data")
++ 
++-  try:
++-    if newDatah5:
++-      newData = h5py.File(newDataFile,'r')
++-    else:
++-      newData = sio.loadmat(newDataFile)
++-  except IOError as exception:
++-    # If it's an error _other than_ the file not being there
++-    assert exception.errno == errno.ENOENT, "IO error on opening file"
++-    assert False, "File %s does not exist"%(newDataFile)
++-    return
++-        
++-  if refDatah5:
++-    refData = h5py.File(refDataFile,'r')
++-  else:
++-    refData = sio.loadmat(refDataFile)
++   for varKey in (set(refData.keys()) & set(newData.keys())):
++     # TODO -- Consider keeping a list of the variables that fail
++ 
++@@ -49,8 +25,8 @@ def test_compare(Dirs, tol):
++ 
++     #Compute the difference between the solution and the reference
++     try:
++-        varDataNew = newData[varKey]
++-        varDataRef = refData[varKey]
+++        varDataNew = utils.get_dict_key(newData, varKey, f_type_new)
+++        varDataRef = utils.get_dict_key(refData, varKey, f_type_ref)
++         diffMat = np.abs(varDataNew - varDataRef)
++     except ValueError:
++         assert False, "Fail from ValueError"
+ diff --git a/tests/test_suite.py b/tests/test_suite.py
+-index 0edcec1..c926d59 100644
++index 0958d92..3221f83 100644
+ --- a/tests/test_suite.py
+ +++ b/tests/test_suite.py
+-@@ -108,7 +108,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+-         timeList_new.append(get_sim_time(newDir))
+-         timeList_ref.append(get_sim_time(refDir))
+-         try:
+--            newData, f_type = open_data_file(newDataFile)
+-+            newData, fnew_type = open_data_file(newDataFile)
+-         except IOError as exception:
+-             # If it's an error _other than_ the file not being there
+-             if exception.errno != errno.ENOENT:
+-@@ -116,7 +116,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+-             print("No simulation data for " + testStr)
+-             continue
+-         
+--        refData, f_type = open_data_file(refDataFile)
+-+        refData, fref_type = open_data_file(refDataFile)
+-         for varKey in (set(refData.keys()) & set(newData.keys())):
+-             # TODO -- Consider keeping a list of the variables that fail
+- 
+-@@ -126,8 +126,10 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+- 
+-             #Compute the difference between the solution and the reference
+-             try:
+--                varDataNew = np.array(newData[varKey])
+--                varDataRef = np.array(refData[varKey])
+-+                varDataNew = get_dict_key(newData, varKey, fnew_type)
+-+                varDataRef = get_dict_key(refData, varKey, fref_type)
+-+                print("varDataNew", varDataNew, type(varDataNew), varDataNew.shape)
+-+                print("varDataRef", varDataRef, type(varDataRef), varDataRef.shape)
+-                 diffMat = np.abs(varDataNew - varDataRef)
+-             except ValueError:
+-                 print(testStr, "Fail from ValueError")
+-@@ -181,10 +183,11 @@ def main(compareDir):
+-     # whether to run that particular test.
+-     n_tests = 22
+-     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
+--               for i in range(1, n_tests+1)}
+-+    #           for i in range(1, n_tests+1)}
+-+               for i in range(21, n_tests+1)}
+-     runInfoAnalyt = {
+--        "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+--        "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+-+    #    "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+-+    #    "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+-         }
+- 
+-     if compareDir is None:
++@@ -26,7 +26,7 @@ def run_test_sims(runInfo, dirDict, pflag=True):
++         refDir=osp.join(dirDict["suite"],"ref_outputs",testStr)
++         _, _, filenames = next(walk(osp.join(refDir)))
++         for f in filenames:
++-            if ".cfg" in f:
+++            if ".cfg" in f or ".000" in f or ".MWF" in f:
++                 shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
++ 
++         #Run the simulation
  
--    limtrode = dD_s["limtrode"]
-+    #limtrode = dD_s["limtrode"]
-+    limtrode = 'c'
-     # simulated (porous) electrodes
+diff --git a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt b/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
+index e39dc4c..b79590f 100644
+--- a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
+@@ -8,7 +8,10 @@
+             "checkUnitsConsistency": "true",
+             "resetLAMatrixAfterDiscontinuity": "true",
+             "printInfo": "false",
+-            "deepCopyClonedNodes": "true",
++            "nodes": {
++                "useNodeMemoryPools": "false",
++                "deleteNodesThreshold": "1000000"
++            },
+             "equations": {
+                 "info": [
+                     "If simplifyExpressions is true equation expressions will be simplified.",
+@@ -53,8 +56,9 @@
+             "printInfo": "false"
+         },
+         "IDAS": {
+-            "SolveMode": "normal",
+             "relativeTolerance": "1E-5",
++            "integrationMode": "Normal",
++            "reportDataInOneStepMode": "false",
+             "nextTimeAfterReinitialization": "1E-7",
+             "printInfo": "false",
+             "numberOfSTNRebuildsDuringInitialization": "10000",
+@@ -63,7 +67,7 @@
+             "sensRelativeTolerance": "1E-5",
+             "sensAbsoluteTolerance": "1E-5",
+             "MaxOrd": "5",
+-            "MaxNumSteps": "2000",
++            "MaxNumSteps": "1000",
+             "InitStep": "0.0",
+             "MaxStep": "0.0",
+             "MaxErrTestFails": "10",
+diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p
+index 95ddf16..af06070 100644
+Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p and b/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p differ
+diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p
+index 0812891..bfdb979 100644
+Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p and b/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p differ
+diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_0_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_0_ndD.p
+index ce53ccc..2822631 100644
+Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_0_ndD.p and b/tests/ref_outputs/test021/sim_output/input_dict_system_0_ndD.p differ
+diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_1_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_1_ndD.p
+index 36b6e42..8749943 100644
+Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_1_ndD.p and b/tests/ref_outputs/test021/sim_output/input_dict_system_1_ndD.p differ
+diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_2_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_2_ndD.p
+index a399fc6..ef16b3d 100644
+Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_2_ndD.p and b/tests/ref_outputs/test021/sim_output/input_dict_system_2_ndD.p differ
+diff --git a/tests/ref_outputs/test021/sim_output/output_data.hdf5 b/tests/ref_outputs/test021/sim_output/output_data.hdf5
+index a7b79eb..bf5a3ea 100644
+Binary files a/tests/ref_outputs/test021/sim_output/output_data.hdf5 and b/tests/ref_outputs/test021/sim_output/output_data.hdf5 differ
+diff --git a/tests/ref_outputs/test021/sim_output/run_info.txt b/tests/ref_outputs/test021/sim_output/run_info.txt
+index 5d21b9e..f3d115f 100644
+--- a/tests/ref_outputs/test021/sim_output/run_info.txt
++++ b/tests/ref_outputs/test021/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.4
++0.1.5
  
-     Nvol = ndD_s["Nvol"]
-@@ -81,7 +82,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
-     F = dD_s['F']                      # C/mol
-     td = dD_s["td"]
-     Etheta = {"a": 0.}
--    material_type = dD_e[limtrode]["material_type"]
-+    #material_type = dD_e[limtrode]["material_type"]
-+    material_type = "LMO"
- # get information from limiting electrodes
-     L = dD_s["L"][limtrode]
-     P_L = ndD_s["P_L"][limtrode]
-diff --git a/tests/test_suite.py b/tests/test_suite.py
-index 0edcec1..c926d59 100644
---- a/tests/test_suite.py
-+++ b/tests/test_suite.py
-@@ -108,7 +108,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
-         timeList_new.append(get_sim_time(newDir))
-         timeList_ref.append(get_sim_time(refDir))
-         try:
--            newData, f_type = open_data_file(newDataFile)
-+            newData, fnew_type = open_data_file(newDataFile)
-         except IOError as exception:
-             # If it's an error _other than_ the file not being there
-             if exception.errno != errno.ENOENT:
-@@ -116,7 +116,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
-             print("No simulation data for " + testStr)
-             continue
-         
--        refData, f_type = open_data_file(refDataFile)
-+        refData, fref_type = open_data_file(refDataFile)
-         for varKey in (set(refData.keys()) & set(newData.keys())):
-             # TODO -- Consider keeping a list of the variables that fail
+ branch name:
+ feature/battery_cycle
  
-@@ -126,8 +126,10 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+ commit hash:
+-aecdacb
++754ec0c
  
-             #Compute the difference between the solution and the reference
-             try:
--                varDataNew = np.array(newData[varKey])
--                varDataRef = np.array(refData[varKey])
-+                varDataNew = get_dict_key(newData, varKey, fnew_type)
-+                varDataRef = get_dict_key(refData, varKey, fref_type)
-+                print("varDataNew", varDataNew, type(varDataNew), varDataNew.shape)
-+                print("varDataRef", varDataRef, type(varDataRef), varDataRef.shape)
-                 diffMat = np.abs(varDataNew - varDataRef)
-             except ValueError:
-                 print(testStr, "Fail from ValueError")
-@@ -181,10 +183,11 @@ def main(compareDir):
-     # whether to run that particular test.
-     n_tests = 22
-     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
--               for i in range(1, n_tests+1)}
-+    #           for i in range(1, n_tests+1)}
-+               for i in range(21, n_tests+1)}
-     runInfoAnalyt = {
--        "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
--        "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
-+    #    "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
-+    #    "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
-         }
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
  
-     if compareDir is None:
+-Total run time: 2.5331039428710938 s
++Total run time: 0.7158558368682861 s
 
