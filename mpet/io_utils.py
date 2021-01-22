@@ -66,6 +66,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     # Simulation parameters
     ndD_s["paramfile_header"] = P_s.get('Sim Params', 'paramfile_header')
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
+    # if profileType is a maccor file, add file header to profile type
+    if ndD_s["profileType"][-4:] == ".000":
+        ndD_s["profileType"] = os.path.join(ndD_s["paramfile_header"], ndD_s["profileType"])
     dD_s["Crate"] = P_s.get('Sim Params', 'Crate')
     dD_s["power"] = P_s.getfloat('Sim Params', 'power', fallback = 0)
     #if it is a Crate, then no units. if A, then units

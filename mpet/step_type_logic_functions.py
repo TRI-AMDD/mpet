@@ -7,6 +7,8 @@ Created on Mon Apr  6 18:43:07 2020
 
 import numpy as np
 import re
+import errno
+import os
 import sympy as sym
 from sympy.parsing.sympy_parser import parse_expr
 
@@ -19,7 +21,7 @@ from mpet.utils import *
 #Cases for StepType
 
 
-def StepTypeLogic(step, area, stepIndex):
+def StepTypeLogic(step, area, stepIndex, paramfile_header):
     """Processes normal step types (rest, charge, discharge and chg_func).
     Inputs: step-current step we are at. Outputs: curr_step_process-
     a 1*6 or 2*6 array of the steps to tack onto the step list coming from this
@@ -41,7 +43,7 @@ def StepTypeLogic(step, area, stepIndex):
     return func
 
 
-def case_Rest(step, area, stepIndex):
+def case_Rest(step, area, stepIndex, paramfile_header):
     """Processes rest steps as CC = 0 steps. Inputs and outputs same as
     SwitchTypeLogic."""
     #gets end entry time
@@ -52,7 +54,7 @@ def case_Rest(step, area, stepIndex):
     return curr_step_process, next_step_index
 
 
-def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltage
+def case_Charge(step, area, stepIndex, paramfile_header): # add Ends and Limits for current/voltage
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #negative C rates because charge
@@ -94,7 +96,7 @@ def case_Charge(step, area, stepIndex): # add Ends and Limits for current/voltag
     return curr_step_process, next_step_index
 
 
-def case_ChgFunc(step, area, stepIndex):
+def case_ChgFunc(step, area, stepIndex, paramfile_header):
     #assigning temporarily
     StepValue = step['StepValue']
     y0 = float(StepValue.split('|')[0])
@@ -123,7 +125,7 @@ def case_ChgFunc(step, area, stepIndex):
     # Do we intend to use this type of step? I thought we would use waveform instead.
 
 
-def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType cases
+def case_Dischrge(step, area, stepIndex, paramfile_header): # need to add in duration,EndType cases
     StepMode = step['StepMode']
     StepValue = step['StepValue']
     #we assume only the first end entry value has meaning
@@ -166,13 +168,19 @@ def case_Dischrge(step, area, stepIndex): # need to add in duration,EndType case
 
 
 
-def case_Waveform(step, area, stepIndex): # need to add in duration,EndType cases
+def case_Waveform(step, area, stepIndex, paramfile_header): # need to add in duration,EndType cases
     #read in waveform file
     wavefile = step['StepValue']
-    data = np.loadtxt(wavefile + '.MWF', dtype={'names': ('charge_discharge', \
-        'control_mode', 'control_value', 'time(s)', 'end_type', 'ineq', \
-        'end_value', 'X', 'Y', 'Z'), 'formats': ('S1', 'S1', 'f4', 'f4', 'S1',\
-        'S2', 'f4', 'S1', 'f4', 'S1')})
+    #check if file exists in the same home directory as the params files
+    fileDir = os.path.join(paramfile_header, wavefile + '.MWF')
+    if os.path.isfile(fileDir):
+        data = np.loadtxt(fileDir, dtype={'names': ('charge_discharge', \
+            'control_mode', 'control_value', 'time(s)', 'end_type', 'ineq', \
+            'end_value', 'X', 'Y', 'Z'), 'formats': ('S1', 'S1', 'f4', 'f4', 'S1',\
+            'S2', 'f4', 'S1', 'f4', 'S1')})
+    else:
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), fileDir)
     #get waveform simulation process
     curr_step_process = process_waveform_segment(data, area, stepIndex)
     next_step_index = stepIndex + 1

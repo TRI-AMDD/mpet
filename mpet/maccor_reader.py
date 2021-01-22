@@ -108,7 +108,7 @@ def finish_loop_process(step, loop_index, loop_counter):
     return cycle_number, loop_index, loop_counter, next_step_index
 
 
-def process_basic_step(step, step_list, area, stepIndex):
+def process_basic_step(step, step_list, area, stepIndex, paramfile_header):
     """Processes each step of the JSON file. Selects through step types
     and creates a state for each step.
     Inputs: step is current step, step_list is list of steps that need to be run.
@@ -117,8 +117,9 @@ def process_basic_step(step, step_list, area, stepIndex):
     min/max are depending on charge/discharge
     [CC/CV set point, Vmin/Vmax, capfracmin/max, Cmin/Cmax, timemax, CC/CV type]
     CC/CV type: 1 is CC charge, 2 is CCdisch, 3 is CV charge, 4 is CV discharge
+    paramfile_header is where the files to run the simulations are stored
     """
-    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex)(step, area, stepIndex)
+    curr_step_properties, next_step_index = st.StepTypeLogic(step, area, stepIndex, paramfile_header)(step, area, stepIndex, paramfile_header)
     step_list.append(curr_step_properties)
     return step_list, next_step_index
 
@@ -172,7 +173,7 @@ def get_cycling_dict(ndD_s, dD_s):
     #%% Load the data and save variable of the TestSteps
     file_name = maccor_file
     if not os.path.isfile(maccor_file):
-        file_name = ndD_s["paramfile_header"] + "/" + maccor_file
+        file_name = os.path.join(ndD_s["paramfile_header"], maccor_file)
     
     with open(file_name) as f:
           data = xmltodict.parse(f.read(), process_namespaces=False, strip_whitespace=True)   
@@ -219,5 +220,5 @@ def get_cycling_dict(ndD_s, dD_s):
             step_list, index_number, cycling_dict = run_simulation(step_list, index_number, cycling_dict)
             step_index = 1e100 #steps should end
         else: #for a normal step, process as normal
-            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index)
+            step_list, step_index = process_basic_step(curr_step, step_list, area, step_index, ndD_s["paramfile_header"])
     return cycling_dict
