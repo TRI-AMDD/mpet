@@ -6,40 +6,16 @@ import tests.test_defs as defs
 import errno
 import h5py
 import pytest
+import mpet.utils as utils
 
 def test_compare(Dirs, tol):
   refDir, testDir = Dirs
   testFailed = False
   newDir = osp.join(testDir, "sim_output")
   refDir = osp.join(refDir, "sim_output")
-  newDatah5 = False
-  refDatah5 = False
-  newDataFile = osp.join(newDir, "output_data.mat")
-  if not osp.exists(newDataFile):
-    newDataFile = osp.join(newDir, "output_data.hdf5")
-    newDatah5 = True
-  assert osp.exists(newDataFile), "neither output_data.{mat,hdf5} present"
-  refDataFile = osp.join(refDir, "output_data.mat")
-  if not osp.exists(refDataFile):
-    refDataFile = osp.join(refDir, "output_data.hdf5")
-    refDatah5 = True
-  assert osp.exists(refDataFile), "neither output_data.{mat,hdf5} present"
+  newData, f_type_new = utils.open_data_file(newDir + "/output_data")
+  refData, f_type_ref = utils.open_data_file(refDir + "/output_data")
 
-  try:
-    if newDatah5:
-      newData = h5py.File(newDataFile,'r')
-    else:
-      newData = sio.loadmat(newDataFile)
-  except IOError as exception:
-    # If it's an error _other than_ the file not being there
-    assert exception.errno == errno.ENOENT, "IO error on opening file"
-    assert False, "File %s does not exist"%(newDataFile)
-    return
-        
-  if refDatah5:
-    refData = h5py.File(refDataFile,'r')
-  else:
-    refData = sio.loadmat(refDataFile)
   for varKey in (set(refData.keys()) & set(newData.keys())):
     # TODO -- Consider keeping a list of the variables that fail
 
@@ -49,8 +25,8 @@ def test_compare(Dirs, tol):
 
     #Compute the difference between the solution and the reference
     try:
-        varDataNew = newData[varKey]
-        varDataRef = refData[varKey]
+        varDataNew = utils.get_dict_key(newData, varKey, f_type_new)
+        varDataRef = utils.get_dict_key(refData, varKey, f_type_ref)
         diffMat = np.abs(varDataNew - varDataRef)
     except ValueError:
         assert False, "Fail from ValueError"

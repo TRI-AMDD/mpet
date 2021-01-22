@@ -26,7 +26,7 @@ def run_test_sims(runInfo, dirDict, pflag=True):
         refDir=osp.join(dirDict["suite"],"ref_outputs",testStr)
         _, _, filenames = next(walk(osp.join(refDir)))
         for f in filenames:
-            if ".cfg" in f:
+            if ".cfg" in f or ".000" in f or ".MWF" in f:
                 shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
 
         #Run the simulation
