@@ -77,9 +77,8 @@ def main(indir, genData=True, discData=True, elyteData=True,
     ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
         data_only=True)
-    limtrode = ("c" if ndD_s["z"] < 1 else "a")
     trodes = ndD_s["trodes"]
-    CrateCurr = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    CrateCurr = dD_s["CrateCurr"]  # A/m^2
     psd_len_c = dD_s["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
