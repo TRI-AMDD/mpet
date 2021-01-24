@@ -46,7 +46,7 @@ def get_configs(paramfile="params.cfg"):
     return P_s, P_e
 
 
-def get_dicts_from_configs(P_s, P_e):
+def get_dicts_from_configs(P_s, P_e, paramfile):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
     dD_e = {}
@@ -61,6 +61,7 @@ def get_dicts_from_configs(P_s, P_e):
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+    dD_s["CrateCurr"] = P_s.getfloat('Sim Params', '1C_current_density',fallback=None)
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
@@ -82,6 +83,13 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac',fallback=1)
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
+
+    #If prevDir is a relative path, convert to absolute
+    if ndD_s["prevDir"] != "false":
+        if not os.path.isabs(ndD_s["prevDir"]):
+            dir = os.path.dirname(paramfile)
+            ndD_s["prevDir"]=os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
+
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
@@ -234,9 +242,14 @@ def get_dicts_from_configs(P_s, P_e):
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
-    CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
-    dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
-    Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
+
+    #If 1C_current_density is not defined, use the theoretical capacity
+    theoretical_1C_current=dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    if not dD_s["CrateCurr"]:
+        dD_s["CrateCurr"] = theoretical_1C_current
+
+    dD_s["currset"] = dD_s["CrateCurr"] * dD_s["Crate"]  # A/m^2
+    Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*dD_s["CrateCurr"])
 
     # Some nondimensional parameters
     ndD_s["T"] = Tabs / T_ref
@@ -245,8 +258,8 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["Dm"] = Dm / D_ref
     ndD_s["c0"] = c0 / c_ref
     ndD_s["phi_cathode"] = 0.
-    ndD_s["currset"] = dD_s["Crate"] / curr_ref
-    ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
+    ndD_s["currset"] = dD_s["currset"] / theoretical_1C_current / curr_ref
+    ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*dD_s["CrateCurr"]))
     ndD_s["Rfilm_foil"] = dD_s["Rfilm_foil"] / Rser_ref
 
     # parameters which depend on the electrode

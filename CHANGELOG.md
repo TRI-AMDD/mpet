@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.1.5] - 2021-01-19
+### Added
+- Improved regression test suite based on pytest.
+- Docker config file for running MPET in a container.
+- Continuous integration implemented for Github and Bitbucket source code repositories.
+
+### Fixed
+- Port variables and redundant time variables are no longer saved as output, reducing file size.
+
+
 ## [0.1.4] - 2020-07-27
 ### Added
 - Adds a separate package for mpet.plot.
