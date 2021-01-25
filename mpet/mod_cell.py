@@ -474,8 +474,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
 
     if ndD["elyteModelType"] == "dilute":
-        Dp = eps_o_tau * ndD["Dp"]
-        Dm = eps_o_tau * ndD["Dm"]
+        #Get porosity at cell edges using weighted harmonic mean
+        eps_o_tau_edges=utils.weighted_linear_mean(eps_o_tau, wt)
+        Dp = eps_o_tau_edges * ndD["Dp"]
+        Dm = eps_o_tau_edges * ndD["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
