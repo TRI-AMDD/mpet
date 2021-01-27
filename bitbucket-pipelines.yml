@@ -1,0 +1,84 @@
+image: vikko00/daetools:1.9.0
+options:
+ docker: true
+
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          caches:
+            - docker
+          script:
+            # update container
+            - apt-get update
+            - apt-get upgrade -y
+            
+            # Install additional dependencies using mpet's setup.py
+            - pip install .[test]
+            
+            # Set up test for modified branch
+            - cd bin
+            - rm -rf workdir
+            - mkdir workdir
+            - cd workdir
+
+            - cp ../run_tests.py .
+            - ln -s ../../mpet .
+            - ln -s ../../tests .
+
+            # run tests for modified branch and get coverage
+            - coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
+
+            # upload Coveralls
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
+            - coveralls || true #Dont fret if if fails
+            
+            # run tests for base branch
+            - mkdir base-mpet
+            - ln -sf base-mpet mpet
+            - git --work-tree=base-mpet/ checkout remotes/origin/$BITBUCKET_PR_DESTINATION_BRANCH -- mpet
+            - python run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/stable > /dev/null
+
+            # Checks test results
+            - cd tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified compare_tests.py
+
+            #Check Timings
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
+  branches:
+    '{master,development}':
+      - step:
+          caches:
+            - docker
+          script:
+            # update container
+            - apt-get update
+            - apt-get upgrade -y
+
+            # Install additional dependencies using mpet's setup.py
+            - pip install .[test]
+            
+            # Set up test for modified branch
+            - cd bin
+            - rm -rf workdir
+            - mkdir workdir
+            - cd workdir
+
+            - cp ../run_tests.py .
+            - ln -s ../../mpet .
+            - ln -s ../../tests .
+
+            # run tests for modified branch and get coverage
+            - coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
+
+            # upload Coveralls
+            - export COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
+            - coveralls || true #Dont fret if if fails
+            
+            # Checks test results
+            - cd tests
+            - pytest --baseDir=ref_outputs           --modDir=../bin/workdir/modified compare_tests.py
+            
+            #Check Timings
+            - pytest --baseDir=../bin/workdir/stable --modDir=../bin/workdir/modified timings_tests.py || true #Ok to fail for now
