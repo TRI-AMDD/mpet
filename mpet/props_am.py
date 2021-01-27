@@ -417,6 +417,40 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
+    def LIONSIMBA_pos(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
+        r1 = 4.656
+        r2 = 88.669
+        r3 = 401.119
+        r4 = 342.909
+        r5 = 462.471
+        r6 = 433.434
+        r7 = 1
+        r8 = 18.933
+        r9 = 79.532
+        r10 = 37.311
+        r11 = 73.083
+        r12 = 95.96
+        OCV = (-r1 + r2*y**2 -r3*y**4 + r4*y**6 - r5*y**8 + r6 * y**10)/(-r7 + r8*y**2 - r9*y**4 + r10*y**6 - r11*y**8 + r12*y**10)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
+
+    def LIONSIMBA_neg(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
+        r1 = 0.7222
+        r2 = 0.1387
+        r3 = 0.029
+        r4 = 0.0172
+        r5 = 0.0019
+        r6 = 0.2808
+        r7 = 0.7984
+        OCV = r1 + r2*y + r3*y**0.5 - r4*y**(-1) + r5*y**(-1.5) + r6*np.exp(0.9-15*y) - r7*np.exp(0.4465*y-0.4108)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
 
 def step_down(x, xc, delta):
     return 0.5*(-np.tanh((x - xc)/delta) + 1)
