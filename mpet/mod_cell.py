@@ -297,6 +297,9 @@ class ModCell(dae.daeModel):
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
+
+            Nm_edges, i_edges = get_lyte_internal_fluxes(ctmp, phitmp, disc, ndD)
+
             # If we don't have a porous anode:
             # 1) the total current flowing into the electrolyte is set
             # 2) assume we have a Li foil with BV kinetics and the specified rate constant
@@ -304,9 +307,7 @@ class ModCell(dae.daeModel):
             eqP = self.CreateEquation("GhostPointP_L")
             if Nvol["a"] == 0:
                 # Concentration BC from mass flux
-                Nm_foil = get_lyte_internal_fluxes(
-                    ctmp[0:2], phitmp[0:2], disc, ndD)[0]
-                eqC.Residual = Nm_foil[0]
+                eqC.Residual = Nm_edges[0]
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
@@ -335,8 +336,6 @@ class ModCell(dae.daeModel):
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
 
-            Nm_edges, i_edges = get_lyte_internal_fluxes(
-                ctmp, phitmp, disc, ndD)
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
             for vInd in range(Nlyte):
