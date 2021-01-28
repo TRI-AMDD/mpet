@@ -19,13 +19,17 @@ class Dfuncs():
         Dopts = {}
         Dopts['lattice'] = self.lattice
         Dopts['constant'] = self.constant
+        Dopts['temperature_dependent'] = self.temperature_dependent
         self.Dfunc = Dopts[Dfunc]
 
-    def constant(self, y):
+    def constant(self, y, T, E_D):
         return 1.
 
-    def lattice(self, y):
+    def lattice(self, y, T, E_D):
         return y*(1-y)
+
+    def temperature_dependent(self, y, T, E_D):
+        return np.exp(-E_D/T + E_D/1)
 
 
 class muRfuncs():

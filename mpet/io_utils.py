@@ -184,6 +184,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
+        dD["E_D"] = P.getfloat('Material', 'E_D', fallback = 0)
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
@@ -363,6 +364,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
+                ndD_tmp["E_D"] = dD_e[trode]['E_D']/(k*N_A*T_ref)
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
                 ndD_tmp["E_A"] = dD_e[trode]['E_A']/(k*N_A*T_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))

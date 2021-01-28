@@ -236,7 +236,7 @@ class Mod2var(dae.daeModel):
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
-                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, Flux1_bc, Flux2_bc, dr, T)
+                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -432,9 +432,9 @@ class Mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -476,27 +476,27 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_harmonic(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(c)/dr
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges, T, E_D) * np.diff(c)/dr
     return Flux_vec
 
 
-def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_harmonic(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges, T, E_D) * np.diff(mu)/dr
     return Flux_vec
 
 
-def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
+def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, T):
     N = len(c1)
     Flux1_vec = np.empty(N+1, dtype=object)
     Flux2_vec = np.empty(N+1, dtype=object)
@@ -506,8 +506,8 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[-1] = Flux2_bc
     c1_edges = utils.mean_harmonic(c1)
     c2_edges = utils.mean_harmonic(c2)
-    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
-    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
+    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges, T, E_D) * np.diff(mu1_R)/dr
+    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges, T, E_D) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
 
 
