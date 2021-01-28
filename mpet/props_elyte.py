@@ -151,15 +151,14 @@ def test1():
 
 
 
-def LIONSIMBA():
+def LIONSIMBA_nonisothermal():
     """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
     """
-    T = 298 #isothermal model
 
-    def tp0(c):
+    def tp0(c, T):
         return 0.364
 
-    def sigma(c):
+    def sigma(c, T):
         c_dim = c*1000 #dimensionalized c
         r1 = -10.5
         r2 = 0.668e-3
@@ -169,31 +168,30 @@ def LIONSIMBA():
         r6 = -8.86e-10
         r7 = -6.96e-5
         r8 = 2.8e-8
-        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + T*(r4 + r5*c_dim + r6*c_dim**2) + T**2 *(r7 + r8*c_dim))**2
+        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + (T*Tref)*(r4 + r5*c_dim + r6*c_dim**2) + (T*Tref)**2 *(r7 + r8*c_dim))**2
         return sig_out  # m^2/s
 
-    def D(c):
+    def D(c, T):
         c_dim = c*1000
-        T = 298
         r1 = 4.43
         r2 = 54
         r3 = 229
         r4 = 5e-3
         r5 = 0.22e-3
-        D_out = 1e-4 * 10**(-r1-r2/(T-r3-r4*c_dim)-r5*c_dim)
+        D_out = 1e-4 * 10**(-r1-r2/(T*Tref-r3-r4*c_dim)-r5*c_dim)
         return D_out
 
-    def therm_fac(c):
+    def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref)
+    Dref = D(cref, 1)
 
-    def D_ndim(c):
-        return D(c) / Dref
+    def D_ndim(c, T):
+        return D(c, T) / Dref
 
-    def sigma_ndim(c):
-        return sigma(c) * (
-            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+    def sigma_ndim(c, T):
+        return sigma(c, T) * (
+            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -202,25 +200,25 @@ def LIONSIMBA_isothermal():
     """
     T = 298 #isothermal model
 
-    def tp0(c):
+    def tp0(c, T):
         return 0.364
 
-    def sigma(c):
+    def sigma(c, T):
         ce = c*1000 #dimensionalized c
         return 4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2 +1.5094e-10*ce**3 -1.6018*1e-14*ce**4 # S/m
 
-    def D(c):
+    def D(c, T):
         return 7.5e-10 # m^2/s
 
-    def therm_fac(c):
+    def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref)
+    Dref = D(cref, 1)
 
-    def D_ndim(c):
-        return D(c) / Dref
+    def D_ndim(c, T):
+        return D(c, T) / Dref
 
-    def sigma_ndim(c):
-        return sigma(c) * (
-            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+    def sigma_ndim(c, T):
+        return sigma(c, T) * (
+            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
