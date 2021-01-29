@@ -311,7 +311,7 @@ class ModCell(dae.daeModel):
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
-                cWall = utils.mean_harmonic(ctmp[0], ctmp[1])
+                cWall = .5*(ctmp[0] + ctmp[1])
                 ecd = ndD["k0_foil"]*cWall**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
@@ -330,7 +330,7 @@ class ModCell(dae.daeModel):
                 if ndD["elyteModelType"] == "dilute":
                     phiWall -= ndD["T"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
-                eqP.Residual = phiWall - utils.mean_linear(phitmp[0], phitmp[1])
+                eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
             # We have a porous anode -- no flux of charge or anions through current collector
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
