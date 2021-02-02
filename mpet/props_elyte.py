@@ -54,7 +54,7 @@ def LiClO4_PC():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -90,7 +90,7 @@ def valoen_reimers():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -116,7 +116,7 @@ def valoen_bernardi():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -146,7 +146,7 @@ def test1():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -191,7 +191,7 @@ def LIONSIMBA_nonisothermal():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -220,5 +220,5 @@ def LIONSIMBA_isothermal():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
