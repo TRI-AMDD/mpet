@@ -47,14 +47,14 @@ def LiClO4_PC():
             * np.exp(b*(c/rho - p_u)**2
                      - (a/p_u)*(c/rho - p_u)))  # S/m
         return out
-    Dref = D(cref, 1)
+    Dref = D(cref, Tref)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -83,14 +83,14 @@ def valoen_reimers():
                    + k20*c**2 + k21*c**2*(T*Tref))**2  # mS/cm
         out *= 0.1  # S/m
         return out
-    Dref = D(cref, 1)
+    Dref = D(cref, Tref)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -116,7 +116,7 @@ def valoen_bernardi():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -139,14 +139,14 @@ def test1():
 
     def sigma(c, T):
         return Dm*(1000*c)*N_A*e**2/(k*T*Tref*(1-tp0(c)))  # S/m
-    Dref = D(cref, 1)
+    Dref = D(cref, Tref)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -184,14 +184,14 @@ def LIONSIMBA_nonisothermal():
     def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref, 1)
+    Dref = D(cref, Tref)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -213,12 +213,12 @@ def LIONSIMBA_isothermal():
     def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref, 1)
+    Dref = D(cref, Tref)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*T*Tref/(e**2*Dref*N_A*(1000*cref)))
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
