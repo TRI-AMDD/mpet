@@ -13,10 +13,13 @@ Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of 
 
 ## Installation
 
-1.  Download the [latest release of MPET](https://bitbucket.org/bazantgroup/mpet/downloads/?tab=tags), or clone a copy of this source code repository.
-2.  Enter the mpet folder, and use the setup.py script to install the mpet Python package.
+1.  Install the prerequisites above.
+2.  Download the [latest release of MPET](https://bitbucket.org/bazantgroup/mpet/downloads/?tab=tags), or clone a copy of this source code repository.
+3.  Enter the mpet folder, and use the setup.py script to install the mpet Python package:
     - We recommend using the pip package manager: `pip install .`
     - The legacy approach also works: `python setup.py install`
+
+MPET is also available on [PyPI](https://pypi.org/project/mpet/), the Python Package Index, and can be installed with `pip install mpet`.
 
 ## Simulation
 
