@@ -226,7 +226,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
     dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
-    dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
     for trode in ndD_s['trodes']:
