@@ -78,7 +78,7 @@ def valoen_reimers():
              -10.5, 0.0740, -6.96e-5,
              0.668, -0.0178, 2.80e-5,
              0.494, -8.86e-4)
-        out = c * (k00 + k01*(T*Tref) + k02*(T*T*ref)**2
+        out = c * (k00 + k01*(T*Tref) + k02*(T*Tref)**2
                    + k10*c + k11*c*(T*Tref) + k12*c*(T*Tref)**2
                    + k20*c**2 + k21*c**2*(T*Tref))**2  # mS/cm
         out *= 0.1  # S/m
