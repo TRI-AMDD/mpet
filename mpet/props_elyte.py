@@ -198,8 +198,6 @@ def LIONSIMBA_nonisothermal():
 def LIONSIMBA_isothermal():
     """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
     """
-    T = 298 #isothermal model
-
     def tp0(c, T):
         return 0.364
 
