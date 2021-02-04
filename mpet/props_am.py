@@ -68,8 +68,9 @@ class muRfuncs():
         k = 1.381e-23
         Tabs = 298
         e = 1.602e-19
-        self.eokT = e/(k*T*Tabs)
-        self.kToe = (k*T*Tabs)/e
+        #eokT and kToe are the reference values for scalings
+        self.eokT = e/(k*Tabs)
+        self.kToe = (k*Tabs)/e
 
         #Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self,ndD["muRfunc"])
