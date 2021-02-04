@@ -63,10 +63,11 @@ def test_compare(Dirs, tol):
         "Fail from tolerance\nVariable failing: %s\nMax error:\
         %f"%(varKey,np.max(diffMat)) 
 
-
+@pytest.mark.analytic
 def test_cyldifn(testDir, tol):
   _test_analytic(testDir + "/testAnalytCylDifn" , tol, (defs.testAnalytCylDifn, defs.analytCylDifn))
 
+@pytest.mark.analytic
 def test_sphdifn(testDir, tol):
   _test_analytic(testDir + "/testAnalytSphDifn" , tol, (defs.testAnalytSphDifn, defs.analytSphDifn))
 
