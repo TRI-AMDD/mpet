@@ -31,7 +31,7 @@
         },
         "activity": {
             "printHeader": "false",
-            "printStats": "true",
+            "printStats": "false",
             "timeHorizon": "100.0",
             "reportingInterval": "1.0",
             "reportTimeDerivatives": "false",

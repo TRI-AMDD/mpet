@@ -1,11 +1,11 @@
 mpet version:
-0.1.2
+0.1.5
 
 branch name:
-development
+fix/finite_volumes
 
 commit hash:
-96c732a
+85d2a26
 
 to run, from the root repo directory, copy relevant files there,
 edit input_params_system.cfg to point to correct material
@@ -14,4 +14,4 @@ $ git checkout [commit hash]
 $ patch -p1 < commit.diff:
 $ python[3] mpetrun.py input_params_system.cfg
 
-Total run time: 0.2591094970703125 s
+Total run time: 0.21903109550476074 s
