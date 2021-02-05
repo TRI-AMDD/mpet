@@ -5,20 +5,22 @@ import numpy as np
 import daetools.pyDAE as dae
 
 
-def mean_linear(a, b=None):
-    """Calculate the linear mean along a vector or between two values."""
-    if isinstance(a, np.ndarray):
-        return 0.5*(a[1:] + a[:-1])
-    else:
-        return 0.5*(a + b)
+def mean_linear(a):
+    """Calculate the linear mean along a vector."""
+    return 0.5*(a[1:] + a[:-1])
 
 
-def mean_harmonic(a, b=None):
-    """Calculate the harmonic mean along a vector or between two values."""
-    if isinstance(a, np.ndarray):
-        return (2 * a[1:] * a[:-1]) / (a[1:] + a[:-1] + 1e-20)
-    else:
-        return (2 * a * b) / (a + b + 1e-20)
+def weighted_linear_mean(a, wt):
+    return (wt[1:]*a[1:] + wt[:-1]*a[:-1])/(wt[1:]+wt[:-1])
+
+
+def mean_harmonic(a):
+    """Calculate the harmonic mean along a vector."""
+    return (2 * a[1:] * a[:-1]) / (a[1:] + a[:-1] + 1e-20)
+
+
+def weighted_harmonic_mean(a, wt):
+    return((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
 
 
 def get_cell_Ntot(Nvol):
