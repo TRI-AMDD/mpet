@@ -422,7 +422,7 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
-    def LIONSIMBA_pos(self, y, ybar, muR_ref, ISfuncs=None):
+    def LiCoO2_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
         """ Torchio et al, 2016. """
         T = self.T
         Tref = 298
@@ -456,7 +456,7 @@ class muRfuncs():
         return muR, actR
 
 
-    def LIONSIMBA_neg(self, y, ybar, muR_ref, ISfuncs=None):
+    def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
         """ Torchio et al, 2016. """
         T = self.T
         Tref = 298
