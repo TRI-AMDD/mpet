@@ -482,7 +482,7 @@ def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T):
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D * Dfunc(c_edges, T, E_D) * np.diff(c)/dr
+    Flux_vec[1:N] = -D * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
     return Flux_vec
 
 
@@ -492,7 +492,7 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T):
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges, T, E_D) * np.diff(mu)/dr
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
     return Flux_vec
 
 
@@ -506,8 +506,8 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
     Flux2_vec[-1] = Flux2_bc
     c1_edges = utils.mean_linear(c1)
     c2_edges = utils.mean_linear(c2)
-    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges, T, E_D) * np.diff(mu1_R)/dr
-    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges, T, E_D) * np.diff(mu2_R)/dr
+    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
+    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) *np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
 
 
