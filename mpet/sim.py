@@ -9,9 +9,11 @@ import os.path as osp
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.io as sio
+import h5py
 
 import mpet.mod_cell as mod_cell
 import mpet.daeVariableTypes
+import mpet.utils as utils
 
 
 class SimMPET(dae.daeSimulation):
@@ -26,10 +28,13 @@ class SimMPET(dae.daeSimulation):
         ndD_s["phiPrev"] = 0.
         if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
-            self.dataPrev = sio.loadmat(
-                osp.join(ndD_s["prevDir"], "output_data.mat"))
-            ndD_s["currPrev"] = self.dataPrev["current"][0,-1]
-            ndD_s["phiPrev"] = self.dataPrev["phi_applied"][0,-1]
+            self.dataPrev = osp.join(ndD_s["prevDir"], "output_data")
+            data, f_type = utils.open_data_file(self.dataPrev)
+            ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type, final = True)
+            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", f_type, final = True)
+            if f_type == "h5py":
+                #close file if it is a h5py file
+                data.close()
 
         #Set absolute tolerances for variableTypes
         mpet.daeVariableTypes.mole_frac_t.AbsoluteTolerance=ndD_s["absTol"]
@@ -130,14 +135,15 @@ class SimMPET(dae.daeSimulation):
                         
         else:
             dPrev = self.dataPrev
+            data, f_type = utils.open_data_file(dPrev)
             for l in ndD_s["trodes"]:
                 self.m.ffrac[l].SetInitialGuess(
-                    dPrev["ffrac_" + l][0,-1])
+                    utils.get_dict_key(data, "ffrac_" + l, f_type, final = True))
                 for i in range(Nvol[l]):
                     self.m.R_Vp[l].SetInitialGuess(
-                        i, dPrev["R_Vp_" + l][-1,i])
+                        i, np.asscalar(data["R_Vp_" + l][-1,i]))
                     self.m.phi_bulk[l].SetInitialGuess(
-                        i, dPrev["phi_bulk_" + l][-1,i])
+                        i, np.asscalar(data["phi_bulk_" + l][-1,i]))
                     for j in range(Npart[l]):
                         Nij = ndD_s["psd_num"][l][i,j]
                         part = self.m.particles[l][i,j]
@@ -146,48 +152,52 @@ class SimMPET(dae.daeSimulation):
                             l=l, i=i, j=j)
                         
                         #Set the inlet port variables for each particle
-                        part.c_lyte.SetInitialGuess(dPrev["c_lyte_" + l][-1,i])
-                        part.phi_lyte.SetInitialGuess(dPrev["phi_lyte_" + l][-1,i])
-                        part.phi_m.SetInitialGuess(dPrev["phi_part_" + l][-1][i,j])
+                        part.c_lyte.SetInitialGuess(np.asscalar(data["c_lyte_" + l][-1,i]))
+                        part.phi_lyte.SetInitialGuess(np.asscalar(data["phi_lyte_" + l][-1,i]))
+                        part.phi_m.SetInitialGuess(np.asscalar(data["phi_bulk_" + l][-1,i]))
 
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
-                                dPrev[partStr + "cbar"][0,-1])
+                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
-                                    k, dPrev[partStr + "c"][-1,k])
+                                    k, np.asscalar(data[partStr + "c"][-1,k]))
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
-                                dPrev[partStr + "c1bar"][0,-1])
+                                utils.get_dict_key(data, partStr + "c1bar", f_type, final = True))
                             part.c2bar.SetInitialGuess(
-                                dPrev[partStr + "c2bar"][0,-1])
+                                utils.get_dict_key(data, partStr + "c2bar", f_type, final = True))
                             part.cbar.SetInitialGuess(
-                                dPrev[partStr + "cbar"][0,-1])
+                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(
-                                    k, dPrev[partStr + "c1"][-1,k])
+                                    k, np.asscalar(data[partStr + "c1"][-1,k]))
                                 part.c2.SetInitialCondition(
-                                    k, dPrev[partStr + "c2"][-1,k])
+                                    k, np.asscalar(data[partStr + "c2"][-1,k]))
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(
-                    i, dPrev["c_lyte_s"][-1,i])
+                    i, np.asscalar(data["c_lyte_s"][-1,i]))
                 self.m.phi_lyte["s"].SetInitialGuess(
-                    i, dPrev["phi_lyte_s"][-1,i])
+                    i, np.asscalar(data["phi_lyte_s"][-1,i]))
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(
-                        i, dPrev["c_lyte_" + l][-1,i])
+                        i, np.asscalar(data["c_lyte_" + l][-1,i]))
                     self.m.phi_lyte[l].SetInitialGuess(
-                        i, dPrev["phi_lyte_" + l][-1,i])
+                        i, np.asscalar(data["phi_lyte_" + l][-1,i]))
             
             #Read in the ghost point values
             if not self.m.SVsim:
-                self.m.c_lyteGP_L.SetInitialGuess(dPrev["c_lyteGP_L"][0,-1])
-                self.m.phi_lyteGP_L.SetInitialGuess(dPrev["phi_lyteGP_L"][0,-1])
+                self.m.c_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "c_lyteGP_L", f_type, final = True))
+                self.m.phi_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "phi_lyteGP_L", f_type, final = True))
             
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(
-                dPrev["phi_applied"][0,-1])
+            self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", f_type, final = True))
+            self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", f_type, final = True))
+
+            if f_type == "h5py":
+                #close file if it is a h5py file
+                data.close()
 
         #The simulation runs when the endCondition is 0
         self.m.endCondition.AssignValue(0)

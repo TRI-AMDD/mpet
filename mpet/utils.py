@@ -1,6 +1,9 @@
 import subprocess as subp
 
+import os
 import numpy as np
+import h5py
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 
@@ -103,3 +106,43 @@ def get_git_info(local_dir, shell=False):
         ['git', '-C', local_dir, 'rev-parse', '--abbrev-ref', 'HEAD'],
         stderr=subp.STDOUT, universal_newlines=True)
     return branch_name, commit_hash, commit_diff
+
+
+def open_data_file(dataFile):
+    """Load hdf5/mat file output.
+    Always defaults to .mat file, else opens .hdf5 file.
+    Takes in dataFile (path of file without .mat or .hdf5), returns data (output of array)"""
+    data = []
+    f_type = 0
+    if os.path.isfile(dataFile + ".mat"):
+        data = sio.loadmat(dataFile + ".mat")
+        f_type = "mat"
+    elif os.path.isfile(dataFile + ".hdf5"):
+        data = h5py.File(dataFile + ".hdf5", 'r')
+        f_type = "hdf5"
+    else:
+        raise Exception("Data output file not found for either mat or hdf5 in " + dataFile)
+    return data, f_type
+
+
+def get_dict_key(data, string, f_type, squeeze = True, final = False):
+    """Gets the values in a 1D array, which is formatted slightly differently
+    depending on whether it is a h5py file or a mat file
+    Takes in data array and the string whose value we want to get, and f_type, which is either mat or hdf5,
+    and final, a boolean that determines whether or not it only returns the final value of the array.
+    If final is true, then it only returns the last value, otherwise it returns the entire array.
+    Squeeze squeezes into 1D array if is true, toherwise false"""
+    array = []
+    final_value = 0
+    if f_type == "mat": #mat file
+        array = data[string]
+    elif f_type == "hdf5": #hdf5 file
+        array = data[string][:]
+    if squeeze: #squeezes
+        array = np.squeeze(array)
+        final_value = array[-1]
+    if final: #only returns last value
+        return final_value
+    else: #returns entire array
+        return array
+
