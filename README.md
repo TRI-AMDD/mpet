@@ -61,4 +61,6 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of `MPlayer`) i
 
 ## Troubleshooting
 
+Tammo added this line
+
 Please use the Issues section of the Bitbucket repository (https://bitbucket.org/bazantgroup/mpet/issues) to file issues and/or bug reports with the software.
