@@ -132,7 +132,14 @@ def get_dicts_from_configs(P_s, P_e):
                          "s": P_s.getfloat('Geometry', 'BruggExp_s')}
 
     # Electrolyte
-    c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
+    c_dep = ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
+    cmax = dD_s["cmax"] = P_s.getfloat('Electrolyte', 'cmax')
+    delta = ndD_s["delta"] = P_s.getfloat('Electrolyte', 'delta')
+    kr = dD_s["kr"] = P_s.getfloat('Electrolyte', 'kr')
+    kd = dD_s["kd"] = kr*cmax*delta**2/(1-delta)
+    #c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
+    c0 = dD_s["c0"] = delta*cmax
+    a_slyte = ndD_s["a_slyte"] = P_s.getfloat('Electrolyte', 'a_slyte') #new for SE
     zp = ndD_s["zp"] = P_s.getfloat('Electrolyte', 'zp')
     zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
     if zm > 0:
@@ -243,7 +250,11 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
-    ndD_s["c0"] = c0 / c_ref
+    #elyte initially in equilibrium:
+    ndD_s["c0"] = delta*cmax/c_ref
+    ndD_s["cmax"] = cmax/c_ref
+    ndD_s["kr"] = kr *t_ref*c_ref#/(L_ref**3) *t_ref/N_A
+    ndD_s["kd"] = kd *t_ref
     ndD_s["phi_cathode"] = 0.
     ndD_s["currset"] = dD_s["Crate"] / curr_ref
     ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))

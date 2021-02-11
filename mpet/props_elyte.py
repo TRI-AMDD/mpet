@@ -20,6 +20,30 @@ N_A = 6.022e23
 k = 1.381e-23
 e = 1.602e-19
 
+def Solid_elyte_func():
+    "Solid Electrolyte version, several sources for different params"
+    def tp0(c): 
+        return 0.9
+    def D(c): 
+        return 1.19e-11 # m^2/s 
+    def kappa(c):
+        return 1.2e-3 # S/m
+    def kappa_valoen_reimers(c):
+        (k00, k01, k02,
+                k10, k11, k12,
+                k20, k21) = (
+                -10.5, 0.0740, -6.96e-5,
+                0.668, -0.0178, 2.80e-5,
+                0.494, -8.86e-4)
+        out = c * (k00 + k01*Tref + k02*Tref**2
+                + k10*c + k11*c*Tref + k12*c*Tref**2
+                + k20*c**2 + k21*c**2*Tref)**2 # mS/cm
+        out *= 0.1 # S/m
+        return out
+    Ign1, sigma_ndim, thermFac, Ign3, Dref = valoen_reimers() 
+    D_ndim = lambda c: D(c)/Dref 
+    kappa_ndim = lambda c: kappa(c)/kappa_valoen_reimers(c)
+    return D_ndim, sigma_ndim, thermFac, tp0, Dref 
 
 def LiClO4_PC():
     """ Set of parameters from Fuller, Doyle, Newman 1994, with

@@ -341,7 +341,7 @@ class Mod1var(dae.daeModel):
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-                                   self.ndD_s["elyteModelType"])
+                                   self.ndD_s["a_slyte"], self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -511,10 +511,13 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     return Flux1_vec, Flux2_vec
 
 
-def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
+def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, a_slyte, elyteModelType):
     if elyteModelType == "SM":
         mu_lyte = phi_lyte
         act_lyte = c_lyte
+    elif elyteModelType == "Solid":
+        act_lyte = c_lyte*np.exp(a_slyte*(1-c_lyte))
+        mu_lyte = T*np.log(act_lyte) + phi_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
