@@ -84,11 +84,11 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
 
-    #If prevDir is a relative path, convert to absolute
+    # If prevDir is a relative path, convert to absolute
     if ndD_s["prevDir"] != "false":
         if not os.path.isabs(ndD_s["prevDir"]):
             dir = os.path.dirname(paramfile)
-            ndD_s["prevDir"]=os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
+            ndD_s["prevDir"] = os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
 
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
@@ -243,8 +243,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         ndD_s['z'] = 0.
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
 
-    #If 1C_current_density is not defined, use the theoretical capacity
-    theoretical_1C_current=dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    # If 1C_current_density is not defined, use the theoretical capacity
+    theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     if not dD_s["CrateCurr"]:
         dD_s["CrateCurr"] = theoretical_1C_current
 
@@ -377,15 +377,17 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
     ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
-    #Nondimensionalize current and voltage segments
+    # Nondimensionalize current and voltage segments
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref,
+                                      dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
-        
+            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref),
+                                      dD_s["segments"][i][1]*60/t_ref))
+
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
     dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
@@ -552,8 +554,8 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if (solidType in ["CHR", "diffn"] and solidShape not in
             ["sphere", "cylinder"]):
         raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-    if ((solidType not in ndD_s["1varTypes"]) and
-            (solidType not in ndD_s["2varTypes"])):
+    if ((solidType not in ndD_s["1varTypes"])
+            and (solidType not in ndD_s["2varTypes"])):
         raise NotImplementedError("Input solidType not defined")
     if solidShape not in ["C3", "sphere", "cylinder"]:
         raise NotImplementedError("Input solidShape not defined")

@@ -14,7 +14,6 @@ materials within a battery electrode.
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
-import scipy.special as spcl
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
@@ -22,7 +21,8 @@ import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
-from mpet.daeVariableTypes import *
+from mpet.daeVariableTypes import mole_frac_t
+
 
 class Mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -61,8 +61,8 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -296,8 +296,8 @@ class Mod1var(dae.daeModel):
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -481,7 +481,6 @@ def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = utils.mean_linear(c)
     Flux_vec[1:N] = -D * np.diff(c)/dr
     return Flux_vec
 

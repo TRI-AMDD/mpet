@@ -23,7 +23,7 @@ import mpet.props_am as props_am
 # mpl.rcParams['lines.linewidth'] = 3
 # mpl.rcParams['lines.markersize'] = 10
 # mpl.rcParams['lines.markeredgewidth'] = 0.1
-#mpl.rcParams['text.usetex'] = True
+# mpl.rcParams['text.usetex'] = True
 
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
@@ -156,18 +156,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             elif rxnType in ["Marcus", "MHC"]:
                 print("lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"])
             if ndD_s['simBulkCond'][trode]:
-                print(trode + " bulk conductivity loss: Yes -- " +
-                      "sigma_s [S/m]: " + str(dD_s['sigma_s'][trode]))
+                print(trode + " bulk conductivity loss: Yes -- "
+                      + "sigma_s [S/m]: " + str(dD_s['sigma_s'][trode]))
             else:
                 print(trode + " bulk conductivity loss: No")
             try:
                 simSurfCond = ndD_e[trode]['simSurfCond']
                 if simSurfCond:
-                    print(trode + " surface conductivity loss: Yes -- " +
-                          "dim_scond [S]: " + str(dD_e[trode]['scond']))
+                    print(trode + " surface conductivity loss: Yes -- "
+                          + "dim_scond [S]: " + str(dD_e[trode]['scond']))
                 else:
                     print(trode + " surface conductivity loss: No")
-            except:
+            except Exception:
                 pass
 #            if ndD['simSurfCond'][l]:
 #                print (l + " surface conductivity loss: Yes -- " +
@@ -182,8 +182,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
-        voltage = (Vstd -
-                   (k*Tref/e)*data[pfx + 'phi_applied'][0])
+        voltage = (Vstd
+                   - (k*Tref/e)*data[pfx + 'phi_applied'][0])
         ffvec = data[pfx + 'ffrac_c'][0]
         fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
