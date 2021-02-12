@@ -340,9 +340,10 @@ class ModCell(dae.daeModel):
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
             for vInd in range(Nlyte):
-                # Mass Conservation (done with the anion, although "c" is neutral salt conc)
+                # Mass Conservation (done with the anion, although "c" is neutral salt conc) solid electrolyte added
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
+                eq.Residual = (disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
+                -ndD["kd"]*(ndD["cmax"]-cvec[vInd])+ndD["kr"]*cvec[vInd]*cvec[vInd])
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
@@ -485,6 +486,29 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
+
+    elif ndD["elyteModelType"] == "Solid":
+        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
+        # modify the free solution transport properties for porous media
+
+        def D(c):
+            return eps_o_tau*D_fs(c)
+
+        def sigma(c):
+            return eps_o_tau*sigma_fs(c)
+        sp, n = ndD["sp"], ndD["n_refTrode"]
+        
+        #D_fs is specified in solid_elyte_func in props_elyte.py
+        Dp = ndD["Dp"]
+        Dm = ndD["Dm"]
+        a_slyte = ndD["a_slyte"]
+        k = 1.381e-23
+ 
+        i_edges_int = (-((nup*zp*D(c_edges_int)*(1/(1-c_edges_int)-a_slyte/(k*T)*2*c_edges_int) + num*zm*Dm)*np.diff(c_lyte)/dxd1)
+                       - (nup*zp**2*D(c_edges_int) + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
+        Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
+                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+
     elif ndD["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
 

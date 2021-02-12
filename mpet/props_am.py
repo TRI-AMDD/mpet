@@ -400,6 +400,16 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
+    def LTO(self, y, ybar, muR_ref, ISfuncs=None):
+        """" Vasileiadis 2017 """
+        muRtheta = -self.eokT*1.55
+        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
+        muR = muRhomog + muRnonHomog
+        actR = np.exp(muR/self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
         muR = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
