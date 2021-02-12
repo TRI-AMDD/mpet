@@ -59,7 +59,7 @@ jobs:
     - name: check code style
       run: |
         cd mpet
-        flake8 || :  # Allow failure while still working on style fixes
+        flake8
 
     - name: Checks test results
       run: |
