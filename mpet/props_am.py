@@ -197,6 +197,18 @@ class muRfuncs():
         actR = None
         return muR, actR
 
+    def LTO(self, y, ybar, muR_ref, ISfuncs=None):
+        """
+        Vasileiadis 2017
+        """
+        muRtheta = -self.eokT * 1.55
+        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
+        muR = muRhomog + muRnonHomog
+        actR = np.exp(muR / self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """Ideal solution material for testing."""
         OCV = -self.kToe*np.log(y/(1-y))
@@ -394,16 +406,6 @@ class muRfuncs():
         ndD = self.ndD
         muRhomog = self.graphite_1param_homog_3(
             y, ndD["Omga"], ndD["Omgb"], ISfuncs)
-        muRnonHomog = self.general_non_homog(y, ybar)
-        muR = muRhomog + muRnonHomog
-        actR = np.exp(muR/self.T)
-        muR += muRtheta + muR_ref
-        return muR, actR
-
-    def LTO(self, y, ybar, muR_ref, ISfuncs=None):
-        """" Vasileiadis 2017 """
-        muRtheta = -self.eokT*1.55
-        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
