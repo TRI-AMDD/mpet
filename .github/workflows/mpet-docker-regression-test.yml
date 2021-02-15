@@ -56,11 +56,6 @@ jobs:
         cd mpet/bin/workdir
         coveralls --service=github || : #Dont fret if if fails
 
-    - name: check code style
-      run: |
-        cd mpet
-        flake8
-
     - name: Checks test results
       run: |
         cd mpet/tests
