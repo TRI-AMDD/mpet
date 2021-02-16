@@ -109,8 +109,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                         "c": P_s.getfloat('Particles', 'mean_c')}
     dD_s["psd_stddev"] = {"a": P_s.getfloat('Particles', 'stddev_a'),
                           "c": P_s.getfloat('Particles', 'stddev_c')}
-    dD_s["specified_psd"] = {"a": P_s.get('Particles', 'specified_psd_c'),
-                             "c": P_s.get('Particles', 'specified_psd_a')}
+    dD_s["specified_psd"] = {"a": P_s.get('Particles', 'specified_psd_c', fallback = "False"),
+                             "c": P_s.get('Particles', 'specified_psd_a', fallback = "False")}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
                     "c": P_s.getfloat('Particles', 'cs0_c')}
 
