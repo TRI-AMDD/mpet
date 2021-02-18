@@ -518,7 +518,7 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType, a_slyte=None):
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
-    elif elyteModelType == "Solid":
+    elif elyteModelType == "solid":
         assert a_slyte is not None, "a_slyte must be specified when using solid elyte model"
         act_lyte = c_lyte * np.exp(a_slyte * (1 - c_lyte))
         mu_lyte = T * np.log(act_lyte) + phi_lyte

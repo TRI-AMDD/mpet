@@ -147,7 +147,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["nup"] = P_s.getfloat('Electrolyte', 'nup')
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
-    if ndD_s["elyteModelType"] == 'Solid':
+    if ndD_s["elyteModelType"] == 'solid':
         # c_dep variable is never used
         # c_dep = ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
         ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
@@ -274,7 +274,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["currset"] = dD_s["currset"] / theoretical_1C_current / curr_ref
     ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*dD_s["CrateCurr"]))
     ndD_s["Rfilm_foil"] = dD_s["Rfilm_foil"] / Rser_ref
-    if ndD_s["elyteModelType"] == 'Solid':
+    if ndD_s["elyteModelType"] == 'solid':
         ndD_s["cmax"] = cmax / c_ref
         ndD_s["kr"] = kr * t_ref * c_ref
         ndD_s["kd"] = kd * t_ref

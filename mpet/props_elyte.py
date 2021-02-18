@@ -119,7 +119,7 @@ def valoen_bernardi():
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
-def Solid_elyte_func():
+def solid_elyte():
     """
     Solid Electrolyte version, several sources for different params
     """

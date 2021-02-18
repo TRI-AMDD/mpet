@@ -343,7 +343,7 @@ class ModCell(dae.daeModel):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
-                if ndD["elyteModelType"] == "Solid":
+                if ndD["elyteModelType"] == "solid":
                     eq.Residual += -ndD["kd"] * (ndD["cmax"] - cvec[vInd]) \
                         + ndD["kr"] * cvec[vInd] ** 2
                 # Charge Conservation
@@ -504,7 +504,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
             )
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
-    elif ndD["elyteModelType"] == "Solid":
+    elif ndD["elyteModelType"] == "solid":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, ndD["SMset"])()[:-1]
 
         # modify the free solution transport properties for porous media
