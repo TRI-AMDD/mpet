@@ -141,9 +141,9 @@ class SimMPET(dae.daeSimulation):
                     utils.get_dict_key(data, "ffrac_" + l, f_type, final = True))
                 for i in range(Nvol[l]):
                     self.m.R_Vp[l].SetInitialGuess(
-                        i, np.asscalar(data["R_Vp_" + l][-1,i]))
+                        i, data["R_Vp_" + l][-1,i])
                     self.m.phi_bulk[l].SetInitialGuess(
-                        i, np.asscalar(data["phi_bulk_" + l][-1,i]))
+                        i, data["phi_bulk_" + l][-1,i])
                     for j in range(Npart[l]):
                         Nij = ndD_s["psd_num"][l][i,j]
                         part = self.m.particles[l][i,j]
@@ -152,16 +152,16 @@ class SimMPET(dae.daeSimulation):
                             l=l, i=i, j=j)
                         
                         #Set the inlet port variables for each particle
-                        part.c_lyte.SetInitialGuess(np.asscalar(data["c_lyte_" + l][-1,i]))
-                        part.phi_lyte.SetInitialGuess(np.asscalar(data["phi_lyte_" + l][-1,i]))
-                        part.phi_m.SetInitialGuess(np.asscalar(data["phi_bulk_" + l][-1,i]))
+                        part.c_lyte.SetInitialGuess(data["c_lyte_" + l][-1,i])
+                        part.phi_lyte.SetInitialGuess(data["phi_lyte_" + l][-1,i])
+                        part.phi_m.SetInitialGuess(data["phi_bulk_" + l][-1,i])
 
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
-                                    k, np.asscalar(data[partStr + "c"][-1,k]))
+                                    k, data[partStr + "c"][-1,k])
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", f_type, final = True))
@@ -171,20 +171,20 @@ class SimMPET(dae.daeSimulation):
                                 utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(
-                                    k, np.asscalar(data[partStr + "c1"][-1,k]))
+                                    k, data[partStr + "c1"][-1,k])
                                 part.c2.SetInitialCondition(
-                                    k, np.asscalar(data[partStr + "c2"][-1,k]))
+                                    k, data[partStr + "c2"][-1,k])
             for i in range(Nvol["s"]):
                 self.m.c_lyte["s"].SetInitialCondition(
-                    i, np.asscalar(data["c_lyte_s"][-1,i]))
+                    i, data["c_lyte_s"][-1,i])
                 self.m.phi_lyte["s"].SetInitialGuess(
-                    i, np.asscalar(data["phi_lyte_s"][-1,i]))
+                    i, data["phi_lyte_s"][-1,i])
             for l in ndD_s["trodes"]:
                 for i in range(Nvol[l]):
                     self.m.c_lyte[l].SetInitialCondition(
-                        i, np.asscalar(data["c_lyte_" + l][-1,i]))
+                        i, data["c_lyte_" + l][-1,i])
                     self.m.phi_lyte[l].SetInitialGuess(
-                        i, np.asscalar(data["phi_lyte_" + l][-1,i]))
+                        i, data["phi_lyte_" + l][-1,i])
             
             #Read in the ghost point values
             if not self.m.SVsim:
