@@ -166,9 +166,9 @@ def setup_data_reporters(simulation, ndD_s, outdir):
     # if default, use mat data reporter
     simulation.dr = MyMATDataReporter()
     # else if specified, we use hdf5 data reporter
-    if ndD_s["dataReporter"] == "hdf5" and ndD_s["saveAllData"]:
+    if ndD_s["dataReporter"] == "hdf5":
         simulation.dr = Myhdf5DataReporter()
-    elif ndD_s["dataReporter"] == "hdf5" and not ndD_s["saveAllData"]:
+    elif ndD_s["dataReporter"] == "hdf5Fast":
         simulation.dr = Myhdf5DataReporterFast()
     elif ndD_s["dataReporter"] != "mat":
         # if the data reporter called hasn't been implemented yet
