@@ -66,6 +66,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
     Vstd = Etheta["c"] - Etheta["a"]
+    dataReporter = ndD_s["dataReporter"]
     Nvol = ndD_s["Nvol"]
     Npart = ndD_s["Npart"]
     psd_len = dD_s["psd_len"]
@@ -211,6 +212,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot surface conc.
     if plot_type[:-2] in ["surf"]:
+        if dataReporter == "hdf5Fast":
+            #hdf5Fast does not print internal particle concentrations
+            raise Exception("hdf5Fast dataReporter does not print internal particle concentrations, rerun simulation with another data reporter")
         trode = plot_type[-1]
         str_base = (pfx
                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
@@ -460,6 +464,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot all solid concentrations or potentials
     elif plot_type[:-2] in ["csld", "musld"]:
+        if dataReporter == "hdf5Fast":
+            #hdf5Fast does not print internal particle concentrations
+            raise Exception("hdf5Fast dataReporter does not print internal particle concentrations, rerun simulation with another data reporter")
+ 
         timettl = False  # Plot the current simulation time as title
         # Plot title in seconds
         ttlscl, ttlunit = 1, "s"
