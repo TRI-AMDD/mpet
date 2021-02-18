@@ -507,25 +507,19 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     elif ndD["elyteModelType"] == "solid":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, ndD["SMset"])()[:-1]
 
-        # modify the free solution transport properties for porous media
-        def D(c):
-            # problem: eps_o_tau is a number in v0.1.4, but an array of
-            # length c_edges_int in v0.1.5
-            # this is one too long because of the diff in i_edges_int below
-            # use mean value as random fix to be able to test whether or not rest of the code runs
-            # return eps_o_tau * D_fs(c)
-            return eps_o_tau.mean() * D_fs(c)
+        # Get diffusivity at cell edges using weighted harmonic mean
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau * D_fs(c_lyte), wt)
 
-        sp, n = ndD["sp"], ndD["n_refTrode"]
+        # sp, n = ndD["sp"], ndD["n_refTrode"]
         # D_fs is specified in solid_elyte_func in props_elyte.py
         Dm = ndD["Dm"]
         a_slyte = ndD["a_slyte"]
         k = 1.381e-23
 
-        i_edges_int = (-((nup*zp*D(c_edges_int)*(1/(1-c_edges_int)-a_slyte/(k*T)*2*c_edges_int)
+        i_edges_int = (-((nup*zp*D_edges*(1/(1-c_edges_int)-a_slyte/(k*T)*2*c_edges_int)
                           + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup * zp ** 2 * D(c_edges_int) + num * zm ** 2 * Dm) / T
+                       - (nup * zp ** 2 * D_edges + num * zm ** 2 * Dm) / T
                        * c_edges_int * np.diff(phi_lyte) / dxd1)
-        Nm_edges_int = num * (-D(c_edges_int) * np.diff(c_lyte) / dxd1
+        Nm_edges_int = num * (-D_edges * np.diff(c_lyte) / dxd1
                               + (1. / (num * zm) * (1 - tp0(c_edges_int)) * i_edges_int))
     return Nm_edges_int, i_edges_int
