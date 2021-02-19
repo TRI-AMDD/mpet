@@ -492,6 +492,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
         sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T), wt)
         
         sp, n = ndD["sp"], ndD["n_refTrode"]
+        #there is an error in the MPET paper, temperature dependence should be
+        #in sigma and not outside of sigma
         i_edges_int = -sigma_edges * (
             np.diff(phi_lyte)/dxd1
             + nu*T*(sp/(n*nup)+tp0(c_edges_int, T)/(zp*nup))
