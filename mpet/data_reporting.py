@@ -32,18 +32,11 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
                 # Remove dots from variable keys. This enables the mat
                 # file to be read by, e.g., MATLAB.
                 dkeybase = dkeybase.replace(".", "_")
-                mdict[dkeybase] = var.Values
-                #if we are not in a continuation directory
-                if dkeybase == 'phi_applied' and continued_sim == 0:
-                    #only save times for voltage
-                    mdict['times'] = var.TimeValues
-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+                mdict[dkeybase] = var.Values #mdict stores the new data
                 #if we are in a directory that has continued simulations (maccor reader)
                 if continued_sim == 1:
                     #increment time by the previous end time of the last simulation
                     tend = mat_dat['phi_applied_times'][-1]
-                    #get previous values from old output_mat
-                    mdict[dkeybase] = mdict[dkeybase]
 
                     #if particle concentrations, remove and overwrite, but not if its cbar
                     if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
@@ -62,11 +55,24 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
                         del mat_dat[dkeybase]
                         mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:,:])
 
-                else:
-                    #create dataset if continued_sim == 0
-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
-                    shape = len(mdict[dkeybase].shape)
-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+                else: #(continued_sim == 1)
+                    #if cwe are not in a continuation directory
+                    #if particle concentrations, remove and overwrite, but not if its cbar
+                    if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
+                        #create dataset if continued_sim == 0
+                        #maxshape is set dpeending on whether its a 2D array or a 1D array
+                        shape = len(mdict[dkeybase].shape)
+                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+
+                        if dkeybase == 'phi_applied':
+                            #only save times for voltage
+                            mdict['times'] = var.TimeValues
+                            mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+
+                    else:
+                        #only save the last two points
+                        shape = len(mdict[dkeybase].shape)
+                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:], maxshape = (None,)*shape)
 
 
 class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
@@ -89,33 +95,30 @@ class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
                 # file to be read by, e.g., MATLAB.
                 dkeybase = dkeybase.replace(".", "_")
                 mdict[dkeybase] = var.Values
-                #if we are not in a continuation directory
-                if dkeybase == 'phi_applied' and continued_sim == 0:
-                    #only save times for voltage
-                    mdict['times'] = var.TimeValues
-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
                 #if we are in a directory that has continued simulations (maccor reader)
                 if continued_sim == 1:
                     #increment time by the previous end time of the last simulation
                     tend = mat_dat['phi_applied_times'][-1]
-                    #get previous values from old output_mat
-                    mdict[dkeybase] = mdict[dkeybase] 
 
-                    #resize and append dkeybase variable 
                     mat_dat[dkeybase].resize((mat_dat[dkeybase].shape[0] + mdict[dkeybase].shape[0]), axis = 0)
                     mat_dat[dkeybase][-mdict[dkeybase].shape[0]:] = mdict[dkeybase]
 
                     if dkeybase == 'phi_applied':
                         mdict['times'] = var.TimeValues + tend
                         #resize and append dkeybase varibale
-                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0) 
+                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0)             
                         mat_dat['phi_applied_times'][-mdict['times'].shape[0]:] = mdict['times']
 
-                else:
-                    #create dataset if continued_sim == 0
-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
-                    shape = len(mdict[dkeybase].shape)
-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+                else: #(continued_sim == 0)
+                     #create dataset if continued_sim == 0
+                     #maxshape is set dpeending on whether its a 2D array or a 1D array
+                     shape = len(mdict[dkeybase].shape)
+                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+
+                     if dkeybase == 'phi_applied':
+                         #only save times for voltage
+                         mdict['times'] = var.TimeValues
+                         mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
 
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
