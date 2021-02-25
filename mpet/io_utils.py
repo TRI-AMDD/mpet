@@ -67,6 +67,7 @@ def get_dicts_from_configs(P_s, P_e):
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+    ndD_s["c0_fac"] = P_s.getfloat('Electrolyte', 'c0_fac')
     # Should have deprecation warnings to encourage users to
     # update their params files to mirror options in
     # configDefaults.
@@ -132,7 +133,6 @@ def get_dicts_from_configs(P_s, P_e):
                          "s": P_s.getfloat('Geometry', 'BruggExp_s')}
 
     # Electrolyte
-    c_dep = ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
     cmax = dD_s["cmax"] = P_s.getfloat('Electrolyte', 'cmax')
     delta = ndD_s["delta"] = P_s.getfloat('Electrolyte', 'delta')
     kr = dD_s["kr"] = P_s.getfloat('Electrolyte', 'kr')
@@ -212,7 +212,7 @@ def get_dicts_from_configs(P_s, P_e):
 
     # Various calculated and defined parameters
     L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
-    c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000.  # mol/m^3 = 1 M
+    c_ref = dD_s["c_ref"] = dD_s["cref"] = ndD_s["c0_fac"]*c0  # mol/m^3 = 1 M
     # Ambipolar diffusivity
     Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
     # Cation transference number
