@@ -29,11 +29,12 @@ class SimMPET(dae.daeSimulation):
         if ndD_s["prevDir"] != "false":
             # Get the data mat file from prevDir
             self.dataPrev = osp.join(ndD_s["prevDir"], "output_data")
-            data, f_type = utils.open_data_file(self.dataPrev)
-            ndD_s["currPrev"] = utils.get_dict_key(data, "current", f_type, final = True)
-            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", f_type, final = True)
-            if f_type == "h5py":
-                #close file if it is a h5py file
+            data = utils.open_data_file(self.dataPrev)
+            ndD_s["currPrev"] = utils.get_dict_key(data, "current", final = True)
+            ndD_s["phiPrev"] = utils.get_dict_key(data, "phi_applied", final = True)
+
+            #close file if it is a h5py file
+            if isinstance(data, h5py._hl.files.File):
                 data.close()
 
         #Set absolute tolerances for variableTypes
@@ -135,10 +136,10 @@ class SimMPET(dae.daeSimulation):
                         
         else:
             dPrev = self.dataPrev
-            data, f_type = utils.open_data_file(dPrev)
+            data = utils.open_data_file(dPrev)
             for l in ndD_s["trodes"]:
                 self.m.ffrac[l].SetInitialGuess(
-                    utils.get_dict_key(data, "ffrac_" + l, f_type, final = True))
+                    utils.get_dict_key(data, "ffrac_" + l, final = True))
                 for i in range(Nvol[l]):
                     self.m.R_Vp[l].SetInitialGuess(
                         i, data["R_Vp_" + l][-1,i])
@@ -158,17 +159,17 @@ class SimMPET(dae.daeSimulation):
 
                         if solidType in ndD_s["1varTypes"]:
                             part.cbar.SetInitialGuess(
-                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
+                                utils.get_dict_key(data, partStr + "cbar", final = True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
-                                utils.get_dict_key(data, partStr + "c1bar", f_type, final = True))
+                                utils.get_dict_key(data, partStr + "c1bar", final = True))
                             part.c2bar.SetInitialGuess(
-                                utils.get_dict_key(data, partStr + "c2bar", f_type, final = True))
+                                utils.get_dict_key(data, partStr + "c2bar", final = True))
                             part.cbar.SetInitialGuess(
-                                utils.get_dict_key(data, partStr + "cbar", f_type, final = True))
+                                utils.get_dict_key(data, partStr + "cbar", final = True))
                             for k in range(Nij):
                                 part.c1.SetInitialCondition(
                                     k, data[partStr + "c1"][-1,k])
@@ -188,15 +189,15 @@ class SimMPET(dae.daeSimulation):
             
             #Read in the ghost point values
             if not self.m.SVsim:
-                self.m.c_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "c_lyteGP_L", f_type, final = True))
-                self.m.phi_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "phi_lyteGP_L", f_type, final = True))
+                self.m.c_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "c_lyteGP_L", final = True))
+                self.m.phi_lyteGP_L.SetInitialGuess(utils.get_dict_key(data, "phi_lyteGP_L", final = True))
             
             # Guess the initial cell voltage
-            self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", f_type, final = True))
-            self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", f_type, final = True))
+            self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", final = True))
+            self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", final = True))
 
-            if f_type == "h5py":
-                #close file if it is a h5py file
+            #close file if it is a h5py file
+            if isinstance(data, h5py._hl.files.File):
                 data.close()
 
         #The simulation runs when the endCondition is 0
