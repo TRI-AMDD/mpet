@@ -23,7 +23,8 @@ from mpet.daeVariableTypes import *
 #Dictionary of end conditions
 endConditions={
     1:"Vmax reached",
-    2:"Vmin reached"}
+    2:"Vmin reached",
+    3:"Negative electrolyte concentration"}
 
 class ModCell(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
@@ -459,6 +460,13 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION((self.phi_applied() >= ndD["phimax"])
                             & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
+
+        #if negative electrolyte concentration, throw error
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
+                self.ON_CONDITION((self.c_lyte[trode](vInd) <= 0)
+                                & (self.endCondition() < 1),
+                                  setVariableValues=[(self.endCondition, 3)])
 
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
