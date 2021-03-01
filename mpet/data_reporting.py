@@ -53,7 +53,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
                     else:
                         #overwrite the old file
                         del mat_dat[dkeybase]
-                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:,:])
+                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:,:], compression = 'lzf')
 
                 else: #(continued_sim == 1)
                     #if cwe are not in a continuation directory
@@ -62,17 +62,17 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
                         #create dataset if continued_sim == 0
                         #maxshape is set dpeending on whether its a 2D array or a 1D array
                         shape = len(mdict[dkeybase].shape)
-                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape, compression = 'lzf')
 
                         if dkeybase == 'phi_applied':
                             #only save times for voltage
                             mdict['times'] = var.TimeValues
-                            mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+                            mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,), compression = 'lzf')
 
                     else:
                         #only save the last two points
                         shape = len(mdict[dkeybase].shape)
-                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:], maxshape = (None,)*shape)
+                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:], maxshape = (None,)*shape, compression = 'lzf')
 
 
 class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
@@ -113,12 +113,12 @@ class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
                      #create dataset if continued_sim == 0
                      #maxshape is set dpeending on whether its a 2D array or a 1D array
                      shape = len(mdict[dkeybase].shape)
-                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape, compression = 'lzf')
 
                      if dkeybase == 'phi_applied':
                          #only save times for voltage
                          mdict['times'] = var.TimeValues
-                         mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+                         mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,), compression = 'lzf')
 
 
 class MyMATDataReporter(daeMatlabMATFileDataReporter):
