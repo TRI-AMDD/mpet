@@ -2,9 +2,10 @@
 import os
 
 import numpy as np
-import scipy.io as sio
+import h5py
 
 import mpet.plot.plot_data as plot_data
+import mpet.utils as utils
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
@@ -183,9 +184,9 @@ def main(indir, genData=True, discData=True, elyteData=True,
                        elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
-        dataFileName = "output_data.mat"
+        dataFileName = "output_data"
         dataFile = os.path.join(indir, dataFileName)
-        data = sio.loadmat(dataFile)
+        data = utils.open_data_file(dataFile)
         for tr in trodes:
             Trode = get_trode_str(tr)
             type2c = False
@@ -200,8 +201,8 @@ def main(indir, genData=True, discData=True, elyteData=True,
                     if type2c:
                         sol1 = str1_base.format(l=tr, i=i, j=j)
                         sol2 = str2_base.format(l=tr, i=i, j=j)
-                        datay1 = data[sol1]
-                        datay2 = data[sol2]
+                        datay1 = utils.get_dict_key(data, sol1)
+                        datay2 = utils.get_dict_key(data, sol2)
                         filename1 = fnameSol1Base.format(l=Trode, i=i, j=j)
                         filename2 = fnameSol2Base.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename1), datay1,
@@ -210,10 +211,14 @@ def main(indir, genData=True, discData=True, elyteData=True,
                                    delimiter=dlm, header=sol2Hdr)
                     else:
                         sol = str_base.format(l=tr, i=i, j=j)
-                        datay = data[sol]
+                        datay = utils.get_dict_key(data, sol)
                         filename = fnameSolBase.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
                                    delimiter=dlm, header=solHdr)
+
+        # close file if it is a h5py file
+        if isinstance(data, h5py._hl.files.File):
+            data.close()
 
     if cbarData:
         cbarDict = plot_data.show_data(
