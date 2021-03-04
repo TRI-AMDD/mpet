@@ -12,6 +12,10 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
     """See source code for pyDataReporting.daeMatlabMATFileDataReporter"""
     def WriteDataToFile(self):
         mdict = {}
+
+        # Get the simulation times from the phi_applied variable
+        mdict['phi_applied_times'] = self.Process.dictVariables['mpet.phi_applied'].TimeValues
+
         for var in self.Process.Variables:
             # Remove the model name part of the output key for
             # brevity.
@@ -20,7 +24,7 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
             # file to be read by, e.g., MATLAB.
             dkeybase = dkeybase.replace(".", "_")
             mdict[dkeybase] = var.Values
-            mdict[dkeybase + '_times'] = var.TimeValues
+
         sio.savemat(self.ConnectionString,
                     mdict, appendmat=False, format='5',
                     long_field_names=False, do_compression=False,

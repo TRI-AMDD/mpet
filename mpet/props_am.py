@@ -67,12 +67,11 @@ class muRfuncs():
         self.eokT = e/(k*Tabs)
         self.kToe = (k*Tabs)/e
 
-        #Convert "muRfunc" to a callable function
+        # Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self,ndD["muRfunc"])
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
-
 
     ######
     # Solid solution functions
@@ -84,10 +83,10 @@ class muRfuncs():
     def LiMn2O4_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Doyle, Newman, 1996 """
         # OCV in V vs Li/Li+
-        OCV = (4.19829 + 0.0565661*np.tanh(-14.5546*y + 8.60942) -
-               0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111) -
-               0.157123*np.exp(-0.04738*y**8) +
-               0.810239*np.exp(-40*(y - 0.133875)))
+        OCV = (4.19829 + 0.0565661*np.tanh(-14.5546*y + 8.60942)
+               - 0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111)
+               - 0.157123*np.exp(-0.04738*y**8)
+               + 0.810239*np.exp(-40*(y - 0.133875)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -95,10 +94,10 @@ class muRfuncs():
     def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Fuller, Doyle, Newman, 1994 """
         # OCV in V vs Li/Li+
-        OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
-               0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994) -
-               0.045*np.exp(-71.69*y**8) +
-               0.01*np.exp(-200*(y - 0.19)))
+        OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268)
+               - 0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994)
+               - 0.045*np.exp(-71.69*y**8)
+               + 0.01*np.exp(-200*(y - 0.19)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -122,11 +121,11 @@ class muRfuncs():
 
     def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Safari, Delacourt 2011 """
-        OCV = (0.6379 + 0.5416*np.exp(-305.5309*y) +
-               0.044*np.tanh(-(y - 0.1958)/0.1088) -
-               0.1978*np.tanh((y - 1.0571)/0.0854) -
-               0.6875*np.tanh((y + 0.0117)/0.0529) -
-               0.0175*np.tanh((y - 0.5692)/0.0875))
+        OCV = (0.6379 + 0.5416*np.exp(-305.5309*y)
+               + 0.044*np.tanh(-(y - 0.1958)/0.1088)
+               - 0.1978*np.tanh((y - 1.0571)/0.0854)
+               - 0.6875*np.tanh((y + 0.0117)/0.0529)
+               - 0.0175*np.tanh((y - 0.5692)/0.0875))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -176,8 +175,8 @@ class muRfuncs():
         This function was obtained from Dan Cogswell's fit of Samsung
         data.
         """
-        OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4 -
-               0.06*np.log(y/(1-y)))
+        OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4
+               - 0.06*np.log(y/(1-y)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -196,6 +195,18 @@ class muRfuncs():
                - 0.20745*y**4)
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
+        return muR, actR
+
+    def LTO(self, y, ybar, muR_ref, ISfuncs=None):
+        """
+        Vasileiadis 2017
+        """
+        muRtheta = -self.eokT * 1.55
+        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
+        muR = muRhomog + muRnonHomog
+        actR = np.exp(muR / self.T)
+        muR += muRtheta + muR_ref
         return muR, actR
 
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
@@ -401,16 +412,6 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
-    def LTO(self, y, ybar, muR_ref, ISfuncs=None):
-        """" Vasileiadis 2017 """
-        muRtheta = -self.eokT*1.55
-        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
-        muRnonHomog = self.general_non_homog(y, ybar)
-        muR = muRhomog + muRnonHomog
-        actR = np.exp(muR/self.T)
-        muR += muRtheta + muR_ref
-        return muR, actR
-
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
         muR = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
@@ -425,6 +426,41 @@ class muRfuncs():
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
+        return muR, actR
+
+    def LiCoO2_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
+        r1 = 4.656
+        r2 = 88.669
+        r3 = 401.119
+        r4 = 342.909
+        r5 = 462.471
+        r6 = 433.434
+        r7 = 1
+        r8 = 18.933
+        r9 = 79.532
+        r10 = 37.311
+        r11 = 73.083
+        r12 = 95.96
+        OCV = (-r1 + r2*y**2 - r3*y**4 + r4*y**6 - r5*y**8 + r6 * y**10) \
+            / (-r7 + r8*y**2 - r9*y**4 + r10*y**6 - r11*y**8 + r12*y**10)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
+    def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
+        r1 = 0.7222
+        r2 = 0.1387
+        r3 = 0.029
+        r4 = 0.0172
+        r5 = 0.0019
+        r6 = 0.2808
+        r7 = 0.7984
+        OCV = r1 + r2*y + r3*y**0.5 - r4*y**(-1) + r5*y**(-1.5) \
+            + r6*np.exp(0.9-15*y) - r7*np.exp(0.4465*y-0.4108)
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
         return muR, actR
 
 

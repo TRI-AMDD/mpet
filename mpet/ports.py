@@ -1,7 +1,8 @@
 """This defines the ports by which mod_cell interacts with mod_electrodes."""
 import daetools.pyDAE as dae
 
-from mpet.daeVariableTypes import *
+from mpet.daeVariableTypes import mole_frac_t, elec_pot_t
+
 
 class portFromElyte(dae.daePort):
     def __init__(self, Name, PortType, Model, Description=""):

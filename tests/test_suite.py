@@ -1,22 +1,36 @@
 import errno
 import os
 import os.path as osp
+from os import walk
+import shutil
 import time
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
+import mpet.main
 import mpet.io_utils as IO
 import tests.test_defs as defs
 
 
 def run_test_sims(runInfo, dirDict, pflag=True):
-    for testStr in sorted(runInfo.keys()):
+    for testStr in runInfo:
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr](testDir, dirDict, pflag)
+
+        # Copy config files from ref_outputs
+        refDir = osp.join(dirDict["suite"],"ref_outputs",testStr)
+        _, _, filenames = next(walk(osp.join(refDir)))
+        for f in filenames:
+            if ".cfg" in f:
+                shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
+
+        # Run the simulation
+        configfile = osp.join(testDir,'params_system.cfg')
+        mpet.main.main(configfile, keepArchive=False)
+        shutil.move(dirDict["simOut"], testDir)
+
     # Remove the history directory that mpet creates.
     try:
         os.rmdir(osp.join(dirDict["suite"], "history"))
@@ -113,7 +127,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 raise
             print("No simulation data for " + testStr)
             continue
-        
+
         refData = sio.loadmat(refDataFile)
         for varKey in (set(refData.keys()) & set(newData.keys())):
             # TODO -- Consider keeping a list of the variables that fail
@@ -122,7 +136,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             if varKey[0:2] == "__":
                 continue
 
-            #Compute the difference between the solution and the reference
+            # Compute the difference between the solution and the reference
             try:
                 varDataNew = newData[varKey]
                 varDataRef = refData[varKey]
@@ -135,14 +149,14 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 print(testStr, "Fail from KeyError")
                 testFailed = True
                 continue
-            
+
             # #Check absolute and relative error against tol
             if np.max(diffMat) > tol and np.max(diffMat) > tol*np.max(np.abs(varDataRef)):
                 print(testStr, "Fail from tolerance")
                 print("variable failing:", varKey)
                 print("max error:", np.max(diffMat))
                 testFailed = True
-        
+
         if testFailed:
             failList.append(testStr)
 
@@ -197,7 +211,7 @@ def main(compareDir):
     failList = compare_with_ref(runInfo, dirDict, tol=1e-4)
     failListAnalyt = compare_with_analyt(runInfoAnalyt, dirDict, tol=1e-4)
 
-    #Print a summary of test results
+    # Print a summary of test results
     print("\n")
     print("--------------------------------------------------------------")
     if len(failList) > 0:

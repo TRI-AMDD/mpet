@@ -46,7 +46,7 @@ def get_configs(paramfile="params.cfg"):
     return P_s, P_e
 
 
-def get_dicts_from_configs(P_s, P_e):
+def get_dicts_from_configs(P_s, P_e, paramfile):
     # Dictionary of dimensional system and electrode parameters
     dD_s = {}
     dD_e = {}
@@ -61,13 +61,19 @@ def get_dicts_from_configs(P_s, P_e):
     # Simulation parameters
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
+    dD_s["CrateCurr"] = P_s.getfloat('Sim Params', '1C_current_density',fallback=None)
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
-    ndD_s["c0_fac"] = P_s.getfloat('Electrolyte', 'c0_fac')
+    try:
+        ndD_s["c0_fac"] = P_s.getfloat('Electrolyte', 'c0_fac')
+    except configparser.NoOptionError:
+        # not available when not using solid elyte, but then
+        # also not required so ignore error
+        pass
     # Should have deprecation warnings to encourage users to
     # update their params files to mirror options in
     # configDefaults.
@@ -83,6 +89,13 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["capFrac"] = P_s.getfloat('Sim Params', 'capFrac',fallback=1)
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
+
+    # If prevDir is a relative path, convert to absolute
+    if ndD_s["prevDir"] != "false":
+        if not os.path.isabs(ndD_s["prevDir"]):
+            dir = os.path.dirname(paramfile)
+            ndD_s["prevDir"] = os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
+
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
@@ -133,13 +146,6 @@ def get_dicts_from_configs(P_s, P_e):
                          "s": P_s.getfloat('Geometry', 'BruggExp_s')}
 
     # Electrolyte
-    cmax = dD_s["cmax"] = P_s.getfloat('Electrolyte', 'cmax')
-    delta = ndD_s["delta"] = P_s.getfloat('Electrolyte', 'delta')
-    kr = dD_s["kr"] = P_s.getfloat('Electrolyte', 'kr')
-    kd = dD_s["kd"] = kr*cmax*delta**2/(1-delta)
-    #c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
-    c0 = dD_s["c0"] = delta*cmax
-    a_slyte = ndD_s["a_slyte"] = P_s.getfloat('Electrolyte', 'a_slyte') #new for SE
     zp = ndD_s["zp"] = P_s.getfloat('Electrolyte', 'zp')
     zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
     if zm > 0:
@@ -147,6 +153,17 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["nup"] = P_s.getfloat('Electrolyte', 'nup')
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
+    if ndD_s["elyteModelType"] == 'solid':
+        cmax = dD_s["cmax"] = P_s.getfloat('Electrolyte', 'cmax')
+        delta = ndD_s["delta"] = P_s.getfloat('Electrolyte', 'delta')
+        # a_slyte variable is never used
+        # a_slyte = ndD_s["a_slyte"] = P_s.getfloat('Electrolyte', 'a_slyte')
+        ndD_s["a_slyte"] = P_s.getfloat('Electrolyte', 'a_slyte')
+        kr = dD_s["kr"] = P_s.getfloat('Electrolyte', 'kr')
+        kd = dD_s["kd"] = kr * cmax * delta ** 2 / (1 - delta)
+        c0 = dD_s["c0"] = delta * cmax
+    else:
+        c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
     D_ref = dD_s["D_ref"] = dD_s["Dref"] = getattr(props_elyte,SMset)()[-1]
     ndD_s["n_refTrode"] = P_s.getfloat('Electrolyte', 'n')
@@ -212,7 +229,11 @@ def get_dicts_from_configs(P_s, P_e):
 
     # Various calculated and defined parameters
     L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
-    c_ref = dD_s["c_ref"] = dD_s["cref"] = ndD_s["c0_fac"]*c0  # mol/m^3 = 1 M
+    try:
+        c_ref = dD_s["c_ref"] = dD_s["cref"] = ndD_s["c0_fac"] * c0  # mol/m^3 = 1 M
+    except KeyError:
+        # use default if c0_fac not defined in config
+        c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000.  # mol/m^3 = 1 M
     # Ambipolar diffusivity
     Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
     # Cation transference number
@@ -241,24 +262,29 @@ def get_dicts_from_configs(P_s, P_e):
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
-    CrateCurr = dD_s["CrateCurr"] = dD_e[limtrode]["cap"] / 3600.  # A/m^2
-    dD_s["currset"] = CrateCurr * dD_s["Crate"]  # A/m^2
-    Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*CrateCurr)
+
+    # If 1C_current_density is not defined, use the theoretical capacity
+    theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    if not dD_s["CrateCurr"]:
+        dD_s["CrateCurr"] = theoretical_1C_current
+
+    dD_s["currset"] = dD_s["CrateCurr"] * dD_s["Crate"]  # A/m^2
+    Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*dD_s["CrateCurr"])
 
     # Some nondimensional parameters
     ndD_s["T"] = Tabs / T_ref
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
-    #elyte initially in equilibrium:
-    ndD_s["c0"] = delta*cmax/c_ref
-    ndD_s["cmax"] = cmax/c_ref
-    ndD_s["kr"] = kr *t_ref*c_ref#/(L_ref**3) *t_ref/N_A
-    ndD_s["kd"] = kd *t_ref
+    ndD_s["c0"] = c0 / c_ref
     ndD_s["phi_cathode"] = 0.
-    ndD_s["currset"] = dD_s["Crate"] / curr_ref
-    ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
+    ndD_s["currset"] = dD_s["currset"] / theoretical_1C_current / curr_ref
+    ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*dD_s["CrateCurr"]))
     ndD_s["Rfilm_foil"] = dD_s["Rfilm_foil"] / Rser_ref
+    if ndD_s["elyteModelType"] == 'solid':
+        ndD_s["cmax"] = cmax / c_ref
+        ndD_s["kr"] = kr * t_ref * c_ref
+        ndD_s["kd"] = kd * t_ref
 
     # parameters which depend on the electrode
     dD_s["psd_raw"] = {}
@@ -375,15 +401,17 @@ def get_dicts_from_configs(P_s, P_e):
     ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
     ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
-    #Nondimensionalize current and voltage segments
+    # Nondimensionalize current and voltage segments
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref,
+                                      dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
-        
+            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref),
+                                      dD_s["segments"][i][1]*60/t_ref))
+
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
     dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
@@ -550,8 +578,8 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if (solidType in ["CHR", "diffn"] and solidShape not in
             ["sphere", "cylinder"]):
         raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-    if ((solidType not in ndD_s["1varTypes"]) and
-            (solidType not in ndD_s["2varTypes"])):
+    if ((solidType not in ndD_s["1varTypes"])
+            and (solidType not in ndD_s["2varTypes"])):
         raise NotImplementedError("Input solidType not defined")
     if solidShape not in ["C3", "sphere", "cylinder"]:
         raise NotImplementedError("Input solidShape not defined")

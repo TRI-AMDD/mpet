@@ -33,6 +33,22 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Enable reporting of all variables
     simulation.m.SetReportingOn(True)
 
+    # Turn off reporting of some variables
+    simulation.m.endCondition.ReportingOn = False
+
+    # Turn off reporting of particle ports
+    for trode in simulation.m.trodes:
+        for particle in simulation.m.particles[trode]:
+            pModel = particle[0]
+            for port in pModel.Ports:
+                for var in port.Variables:
+                    var.ReportingOn = False
+
+    # Turn off reporting of cell ports
+    for port in simulation.m.Ports:
+        for var in port.Variables:
+            var.ReportingOn = False
+
     # Set relative tolerances
     daesolver.RelativeTolerance = ndD_s["relTol"]
 
@@ -75,7 +91,7 @@ def main(paramfile, keepArchive=True):
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     P_s, P_e = IO.get_configs(paramfile)
-    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e)
+    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e, paramfile)
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -117,13 +133,13 @@ def main(paramfile, keepArchive=True):
     except subp.CalledProcessError:
         pass
 
-    fo=open(os.path.join(outdir, 'run_info.txt'), 'w')
-    
-    #Print mpet version
+    fo = open(os.path.join(outdir, 'run_info.txt'), 'w')
+
+    # Print mpet version
     print("mpet version:", file=fo)
     print(mpet.__version__+"\n", file=fo)
 
-    #Print git commit info if it exists
+    # Print git commit info if it exists
     if commit_hash != "":
         # Store commit info to file, as well as how to patch if
         # there's a diff
@@ -147,22 +163,23 @@ def main(paramfile, keepArchive=True):
         pyFiles = glob.glob(os.path.join(localDir, "*.py"))
         for pyFile in pyFiles:
             shutil.copy(pyFile, snapshotDir)
-    
+
     fo.close()
-    
+
     # External functions are not supported by the Compute Stack approach.
     # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    noise=ndD_e['c']['noise']
-    logPad=ndD_e['c']['logPad']
+    noise = ndD_e['c']['noise']
+    logPad = ndD_e['c']['logPad']
     segments = ndD_s["profileType"] in ["CCsegments","CVsegments"]
-    if (noise or logPad or (segments and ndD_s["tramp"]>0)) and cfg.has_key('daetools.core.equations.evaluationMode'):
+    if (noise or logPad or (segments and ndD_s["tramp"] > 0)) \
+            and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 
-    #Disable printStats
+    # Disable printStats
     cfg.SetString('daetools.activity.printStats','false')
 
     # Carry out the simulation

@@ -1,3 +1,5 @@
+Development: [![Coverage Status](https://coveralls.io/repos/github/TRI-AMDD/mpet-dev/badge.svg?branch=development)](https://coveralls.io/github/TRI-AMDD/mpet-dev?branch=development)
+Master: [![Coverage Status](https://coveralls.io/repos/github/TRI-AMDD/mpet-dev/badge.svg?branch=master)](https://coveralls.io/github/TRI-AMDD/mpet-dev?branch=master)
 # MPET -- Multiphase Porous Electrode Theory
 
 This software is designed to run simulations of batteries with porous electrodes using porous electrode theory, which is a volume-averaged, multiscale approach to capture the coupled behavior of electrolyte and active material within electrodes. As a result, with physical parameter inputs and run protocols (specified current or voltage profiles), it makes predictions about the internal dynamics within a battery (electrolyte concentration and potential, solid phase concentrations, reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities such as total current and voltage. In this way, it is similar to the [`dualfoil`](http://www.cchem.berkeley.edu/jsngrp/fortran.html) code released by Newman and coworkers from Berkeley. This software has much of the functionality contained in `dualfoil` (it is currently missing, e.g., temperature dependence). However, beyond the standard porous electrode theory simulations, this software can also simulate electrodes in which the active materials phase separate using non-equilibrium thermodynamics within a phase field modeling framework. Such behavior is common in widely used electrode materials, including graphite and LiFePO4.
@@ -13,10 +15,13 @@ Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of 
 
 ## Installation
 
-1.  Download the [latest release of MPET](https://bitbucket.org/bazantgroup/mpet/downloads/?tab=tags), or clone a copy of this source code repository.
-2.  Enter the mpet folder, and use the setup.py script to install the mpet Python package.
+1.  Install the prerequisites above.
+2.  Download the [latest release of MPET](https://bitbucket.org/bazantgroup/mpet/downloads/?tab=tags), or clone a copy of this source code repository.
+3.  Enter the mpet folder, and use the setup.py script to install the mpet Python package:
     - We recommend using the pip package manager: `pip install .`
     - The legacy approach also works: `python setup.py install`
+
+MPET is also available on [PyPI](https://pypi.org/project/mpet/), the Python Package Index, and can be installed with `pip install mpet`.
 
 ## Simulation
 
