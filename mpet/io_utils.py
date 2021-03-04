@@ -68,6 +68,12 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
     dD_s["Vmin"] = P_s.getfloat('Sim Params', 'Vmin')
+    try:
+        ndD_s["c0_fac"] = P_s.getfloat('Electrolyte', 'c0_fac')
+    except configparser.NoOptionError:
+        # not available when not using solid elyte, but then
+        # also not required so ignore error
+        pass
     # Should have deprecation warnings to encourage users to
     # update their params files to mirror options in
     # configDefaults.
@@ -148,9 +154,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     if ndD_s["elyteModelType"] == 'solid':
-        # c_dep variable is never used
-        # c_dep = ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
-        ndD_s["c_dep"] = P_s.getfloat('Electrolyte', 'c_dep')
         cmax = dD_s["cmax"] = P_s.getfloat('Electrolyte', 'cmax')
         delta = ndD_s["delta"] = P_s.getfloat('Electrolyte', 'delta')
         # a_slyte variable is never used
@@ -226,7 +229,11 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
 
     # Various calculated and defined parameters
     L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
-    c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000.  # mol/m^3 = 1 M
+    try:
+        c_ref = dD_s["c_ref"] = dD_s["cref"] = ndD_s["c0_fac"] * c0  # mol/m^3 = 1 M
+    except KeyError:
+        # use default if c0_fac not defined in config
+        c_ref = dD_s["c_ref"] = dD_s["cref"] = 1000.  # mol/m^3 = 1 M
     # Ambipolar diffusivity
     Damb = dD_s["Damb"] = ((zp-zm)*Dp*Dm)/(zp*Dp-zm*Dm)
     # Cation transference number
