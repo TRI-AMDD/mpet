@@ -10,7 +10,6 @@ import h5py
 import mpet.geometry as geom
 import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
-import mpet.props_am as props_am
 import mpet.utils as utils
 
 """Set list of matplotlib rc parameters to make more readable plots."""
@@ -463,7 +462,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         return fig, ax
 
     # Plot all solid concentrations or potentials
-    elif plot_type[:-2] in ["csld", "musld"]:
+    elif plot_type[:-2] in ["csld"]:
         if dataReporter == "hdf5Fast":
             # hdf5Fast does not print internal particle concentrations
             raise Exception("hdf5Fast dataReporter does not print internal particle "
@@ -523,31 +522,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 c2barstr = c2barstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 datay1 = utils.get_dict_key(data, c1str[pOut,vOut])
                 datay2 = utils.get_dict_key(data, c2str[pOut,vOut])
-                if plot_type[:-2] in ["musld"]:
-                    c1bar = utils.get_dict_key(data, c1barstr[pOut,vOut])[tOut]
-                    c2bar = utils.get_dict_key(data, c2barstr[pOut,vOut])[tOut]
-                    muRfunc = props_am.muRfuncs(
-                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
-                    datay1, datay2 = muRfunc(
-                        (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                 datay = (datay1, datay2)
                 numy = len(datay1)
             else:
                 cstr = cstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 cbarstr = cbarstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 datay = utils.get_dict_key(data, cstr)[tOut]
-                if plot_type[:-2] in ["musld"]:
-                    muRfunc = props_am.muRfuncs(
-                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
-                    datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                 numy = len(datay)
             datax = np.linspace(0, lenval * Lfac, numy)
             plt.close(fig)
             return datax, datay
-        if plot_type[:-2] in ["csld"]:
-            ylim = (0, 1.01)
-        elif plot_type[:-2] in ["musld"]:
-            ylim = (-4, 4)
+        ylim = (0, 1.01)
         for pInd in range(Np):
             for vInd in range(Nv):
                 lens[pInd,vInd] = psd_len[trode][vInd,pInd]
@@ -561,14 +546,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     datay3 = 0.5*(datay1 + datay2)
                     lbl1, lbl2 = r"$\widetilde{c}_1$", r"$\widetilde{c}_2$"
                     lbl3 = r"$\overline{c}$"
-                    if plot_type[:-2] in ["musld"]:
-                        lbl1, lbl2 = r"$\mu_1/k_\mathrm{B}T$", r"$\mu_2/k_\mathrm{B}T$"
-                        c1bar = utils.get_dict_key(data, c1barstr[pInd,vInd])[t0ind]
-                        c2bar = utils.get_dict_key(data, c2barstr[pInd,vInd])[t0ind]
-                        muRfunc = props_am.muRfuncs(
-                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                        datay1, datay2 = muRfunc(
-                            (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay1) if isinstance(datay1, np.ndarray) else 1
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line1, = ax[pInd,vInd].plot(datax, datay1, label=lbl1)
@@ -582,11 +559,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     cstr[pInd,vInd] = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
-                    if plot_type[:-2] in ["musld"]:
-                        cbar = utils.get_dict_key(data, cbarstr[pInd,vInd])[t0ind]
-                        muRfunc = props_am.muRfuncs(
-                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                        datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                     numy = len(datay)
                     # check if it is array, then return length. otherwise return 1
                     numy = len(datay) if isinstance(datay, np.ndarray) else 1
@@ -648,15 +620,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                         datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[tind]
                         datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[tind]
                         datay3 = 0.5*(datay1 + datay2)
-                        if plot_type[:-2] in ["musld"]:
-                            c1bar = utils.get_dict_key(data, c1barstr[pInd,vInd],
-                                                       squeeze=False)[0][tind]
-                            c2bar = utils.get_dict_key(data, c2barstr[pInd,vInd],
-                                                       squeeze=False)[0][tind]
-                            muRfunc = props_am.muRfuncs(
-                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                            datay1, datay2 = muRfunc(
-                                (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                         lines1[pInd,vInd].set_ydata(datay1)
                         lines2[pInd,vInd].set_ydata(datay2)
                         lines_local = np.vstack((lines1, lines2))
@@ -672,12 +635,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                                        squeeze=False)[:,tind]
                         else:  # 1D array
                             datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
-                        if plot_type[:-2] in ["musld"]:
-                            cbar = utils.get_dict_key(data, cbarstr[pInd,vInd],
-                                                      squeeze=False)[0][tind]
-                            muRfunc = props_am.muRfuncs(
-                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                            datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
                         lines[pInd,vInd].set_ydata(datay)
                         lines_local = lines.copy()
                     toblit.extend(lines_local.reshape(-1))
