@@ -10,7 +10,7 @@ Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of 
 
 ## Prerequisites
 
-1.  [Python 3.7](https://www.python.org/) with the following packages installed: `numpy`, `scipy`, `matplotlib`, `pyqt5`, and `h5py`.
+1.  [Python 3.7](https://www.python.org/) with the following packages installed: `numpy`, `scipy`, `matplotlib`, `pyqt5`, `sympy`, and `h5py`.
 2.  [DAE Tools](http://www.daetools.com/) version 1.9.0, which can be [downloaded here](https://sourceforge.net/projects/daetools/files/daetools/1.9.0/).
 
 ## Installation
