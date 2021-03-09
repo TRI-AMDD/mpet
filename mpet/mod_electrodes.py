@@ -15,6 +15,7 @@ import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
 import scipy.special as spcl
+import sympy as sym
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
@@ -432,7 +433,7 @@ class Mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_diffn(c, ndD["D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
                 Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
@@ -476,13 +477,19 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_diffn(c, D, Flux_bc, dr, T):
     N = len(c)
+    #lambdify nonconstant diffusivity function
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D * np.diff(c)/dr
+    if "c" not in str(D):
+        Flux_vec[1:N] = -D * np.diff(c)/dr
+    else:
+        c_var = sym.Symbol("c")
+        Dnonconst = sym.lambdify(c_var, D, modules = "numpy")
+        Flux_vec[1:N] = -Dnonconst(c_edges) * np.diff(c)/dr
     return Flux_vec
 
 
@@ -492,7 +499,12 @@ def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
+    if "c" not in str(D):
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
+    else:
+        c_var = sym.Symbol("c")
+        Dnonconst = sym.lambdify(c_var, D, modules = "numpy")
+        Flux_vec[1:N] = -Dnonconst(c_edges)/T * Dfunc(c_edges) * np.diff(mu)/dr
     return Flux_vec
 
 
@@ -506,8 +518,14 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[-1] = Flux2_bc
     c1_edges = utils.mean_linear(c1)
     c2_edges = utils.mean_linear(c2)
-    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
-    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
+    if "c" not in str(D):
+        Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
+        Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
+    else: 
+        c_var = sym.Symbol("c")
+        Dnonconst = sym.lambdify(c_var, D, modules = "numpy")
+        Flux1_vec[1:N] = -Dnonconst(c1_edges)/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
+        Flux2_vec[1:N] = -Dnonconst(c2_edges)/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
 
 

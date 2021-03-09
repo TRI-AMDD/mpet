@@ -16,6 +16,7 @@ import numpy as np
 
 import mpet.props_am as props_am
 import mpet.props_elyte as props_elyte
+import mpet.utils as utils
 
 
 def get_configs(paramfile="params.cfg"):
@@ -183,7 +184,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["B"] = P.getfloat('Material', 'B')
         dD["EvdW"] = P.getfloat('Material', 'EvdW',fallback=None)
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
-        dD["D"] = P.getfloat('Material', 'D')
+        dD["D"] = utils.get_diffusivity(P.get('Material', 'D'))
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')

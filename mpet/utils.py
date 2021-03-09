@@ -7,6 +7,8 @@ import scipy.io as sio
 
 import daetools.pyDAE as dae
 
+from sympy.parsing.sympy_parser import parse_expr
+
 
 def mean_linear(a):
     """Calculate the linear mean along a vector."""
@@ -143,3 +145,11 @@ def get_dict_key(data, string, squeeze = True, final = False):
     else: #returns entire array
         return array
 
+
+def get_diffusivity(function):
+    """Process nonconstant diffusivities in the electrodes"""
+    if "c" in str(function):
+        return parse_expr(function)
+    else:
+        #constant diffusivity
+        return float(function)
