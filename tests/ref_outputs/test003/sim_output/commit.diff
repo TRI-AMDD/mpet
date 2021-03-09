@@ -1,1 +1,40 @@
+diff --git a/tests/ref_outputs/test003/params_c.cfg b/tests/ref_outputs/test003/params_c.cfg
+index f95ed57..a548504 100644
+--- a/tests/ref_outputs/test003/params_c.cfg
++++ b/tests/ref_outputs/test003/params_c.cfg
+@@ -17,7 +17,7 @@ kappa = 5.0148e-10
+ B = 0.1916e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = lattice
+ dgammadc = -2e-30
+ cwet = 0.98
+diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
+index 8ba06c3..6caf6a7 100644
+--- a/tests/ref_outputs/test010/params_c.cfg
++++ b/tests/ref_outputs/test010/params_c.cfg
+@@ -17,7 +17,7 @@ kappa = 2.5e-10
+ B = 0.1e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = lattice
+ dgammadc = 0e-30
+ cwet = 0.98
+diff --git a/tests/ref_outputs/test013/params_a.cfg b/tests/ref_outputs/test013/params_a.cfg
+index 330481f..152ea51 100644
+--- a/tests/ref_outputs/test013/params_a.cfg
++++ b/tests/ref_outputs/test013/params_a.cfg
+@@ -17,7 +17,7 @@ kappa = 5.0148e-10
+ B = 0.1916e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = constant
+ dgammadc = 0e-30
+ cwet = 0.98
 

@@ -1,1 +1,181 @@
+diff --git a/tests/ref_outputs/test003/params_c.cfg b/tests/ref_outputs/test003/params_c.cfg
+index f95ed57..a548504 100644
+--- a/tests/ref_outputs/test003/params_c.cfg
++++ b/tests/ref_outputs/test003/params_c.cfg
+@@ -17,7 +17,7 @@ kappa = 5.0148e-10
+ B = 0.1916e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = lattice
+ dgammadc = -2e-30
+ cwet = 0.98
+diff --git a/tests/ref_outputs/test003/sim_output/commit.diff b/tests/ref_outputs/test003/sim_output/commit.diff
+index 8b13789..eca58c2 100644
+--- a/tests/ref_outputs/test003/sim_output/commit.diff
++++ b/tests/ref_outputs/test003/sim_output/commit.diff
+@@ -1 +1,40 @@
++diff --git a/tests/ref_outputs/test003/params_c.cfg b/tests/ref_outputs/test003/params_c.cfg
++index f95ed57..a548504 100644
++--- a/tests/ref_outputs/test003/params_c.cfg
+++++ b/tests/ref_outputs/test003/params_c.cfg
++@@ -17,7 +17,7 @@ kappa = 5.0148e-10
++ B = 0.1916e9
++ EvdW = 0.0
++ rho_s = 1.3793e28
++-D = 5.3e-19
+++D = 5.3e-19*(1-c/100)
++ Dfunc = lattice
++ dgammadc = -2e-30
++ cwet = 0.98
++diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
++index 8ba06c3..6caf6a7 100644
++--- a/tests/ref_outputs/test010/params_c.cfg
+++++ b/tests/ref_outputs/test010/params_c.cfg
++@@ -17,7 +17,7 @@ kappa = 2.5e-10
++ B = 0.1e9
++ EvdW = 0.0
++ rho_s = 1.3793e28
++-D = 5.3e-19
+++D = 5.3e-19*(1-c/100)
++ Dfunc = lattice
++ dgammadc = 0e-30
++ cwet = 0.98
++diff --git a/tests/ref_outputs/test013/params_a.cfg b/tests/ref_outputs/test013/params_a.cfg
++index 330481f..152ea51 100644
++--- a/tests/ref_outputs/test013/params_a.cfg
+++++ b/tests/ref_outputs/test013/params_a.cfg
++@@ -17,7 +17,7 @@ kappa = 5.0148e-10
++ B = 0.1916e9
++ EvdW = 0.0
++ rho_s = 1.3793e28
++-D = 5.3e-19
+++D = 5.3e-19*(1-c/100)
++ Dfunc = constant
++ dgammadc = 0e-30
++ cwet = 0.98
+ 
+diff --git a/tests/ref_outputs/test003/sim_output/daetools_config_options.txt b/tests/ref_outputs/test003/sim_output/daetools_config_options.txt
+index 5b8dc25..e2f40ff 100644
+--- a/tests/ref_outputs/test003/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test003/sim_output/daetools_config_options.txt
+@@ -8,10 +8,7 @@
+             "checkUnitsConsistency": "true",
+             "resetLAMatrixAfterDiscontinuity": "true",
+             "printInfo": "false",
+-            "nodes": {
+-                "useNodeMemoryPools": "false",
+-                "deleteNodesThreshold": "1000000"
+-            },
++            "deepCopyClonedNodes": "true",
+             "equations": {
+                 "info": [
+                     "If simplifyExpressions is true equation expressions will be simplified.",
+@@ -31,7 +28,7 @@
+         },
+         "activity": {
+             "printHeader": "false",
+-            "printStats": "false",
++            "printStats": "true",
+             "timeHorizon": "100.0",
+             "reportingInterval": "1.0",
+             "reportTimeDerivatives": "false",
+@@ -56,9 +53,8 @@
+             "printInfo": "false"
+         },
+         "IDAS": {
++            "SolveMode": "normal",
+             "relativeTolerance": "1E-5",
+-            "integrationMode": "Normal",
+-            "reportDataInOneStepMode": "false",
+             "nextTimeAfterReinitialization": "1E-7",
+             "printInfo": "false",
+             "numberOfSTNRebuildsDuringInitialization": "1000",
+@@ -67,7 +63,7 @@
+             "sensRelativeTolerance": "1E-5",
+             "sensAbsoluteTolerance": "1E-5",
+             "MaxOrd": "5",
+-            "MaxNumSteps": "1000",
++            "MaxNumSteps": "2000",
+             "InitStep": "0.0",
+             "MaxStep": "0.0",
+             "MaxErrTestFails": "10",
+diff --git a/tests/ref_outputs/test003/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test003/sim_output/input_dict_c_dD.p
+index 1cd2bf9..0c68f0a 100644
+Binary files a/tests/ref_outputs/test003/sim_output/input_dict_c_dD.p and b/tests/ref_outputs/test003/sim_output/input_dict_c_dD.p differ
+diff --git a/tests/ref_outputs/test003/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test003/sim_output/input_dict_c_ndD.p
+index 8664097..91e2705 100644
+Binary files a/tests/ref_outputs/test003/sim_output/input_dict_c_ndD.p and b/tests/ref_outputs/test003/sim_output/input_dict_c_ndD.p differ
+diff --git a/tests/ref_outputs/test003/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test003/sim_output/input_dict_system_dD.p
+index da75a08..3873eba 100644
+Binary files a/tests/ref_outputs/test003/sim_output/input_dict_system_dD.p and b/tests/ref_outputs/test003/sim_output/input_dict_system_dD.p differ
+diff --git a/tests/ref_outputs/test003/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test003/sim_output/input_dict_system_ndD.p
+index 09c0b14..560637e 100644
+Binary files a/tests/ref_outputs/test003/sim_output/input_dict_system_ndD.p and b/tests/ref_outputs/test003/sim_output/input_dict_system_ndD.p differ
+diff --git a/tests/ref_outputs/test003/sim_output/input_params_c.cfg b/tests/ref_outputs/test003/sim_output/input_params_c.cfg
+index f95ed57..a548504 100644
+--- a/tests/ref_outputs/test003/sim_output/input_params_c.cfg
++++ b/tests/ref_outputs/test003/sim_output/input_params_c.cfg
+@@ -17,7 +17,7 @@ kappa = 5.0148e-10
+ B = 0.1916e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = lattice
+ dgammadc = -2e-30
+ cwet = 0.98
+diff --git a/tests/ref_outputs/test003/sim_output/output_data.mat b/tests/ref_outputs/test003/sim_output/output_data.mat
+index 05bee3a..72c3412 100644
+Binary files a/tests/ref_outputs/test003/sim_output/output_data.mat and b/tests/ref_outputs/test003/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test003/sim_output/run_info.txt b/tests/ref_outputs/test003/sim_output/run_info.txt
+index 42bab6e..8031ee1 100644
+--- a/tests/ref_outputs/test003/sim_output/run_info.txt
++++ b/tests/ref_outputs/test003/sim_output/run_info.txt
+@@ -2,10 +2,10 @@ mpet version:
+ 0.1.5
+ 
+ branch name:
+-fix/finite_volumes
++feature/nonconstant_diffusivity
+ 
+ commit hash:
+-85d2a26
++e80b6ad
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 0.11441421508789062 s
++Total run time: 2.30423903465271 s
+diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
+index 8ba06c3..6caf6a7 100644
+--- a/tests/ref_outputs/test010/params_c.cfg
++++ b/tests/ref_outputs/test010/params_c.cfg
+@@ -17,7 +17,7 @@ kappa = 2.5e-10
+ B = 0.1e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = lattice
+ dgammadc = 0e-30
+ cwet = 0.98
+diff --git a/tests/ref_outputs/test013/params_a.cfg b/tests/ref_outputs/test013/params_a.cfg
+index 330481f..152ea51 100644
+--- a/tests/ref_outputs/test013/params_a.cfg
++++ b/tests/ref_outputs/test013/params_a.cfg
+@@ -17,7 +17,7 @@ kappa = 5.0148e-10
+ B = 0.1916e9
+ EvdW = 0.0
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 5.3e-19*(1-c/100)
+ Dfunc = constant
+ dgammadc = 0e-30
+ cwet = 0.98
 

@@ -8,10 +8,7 @@
             "checkUnitsConsistency": "true",
             "resetLAMatrixAfterDiscontinuity": "true",
             "printInfo": "false",
-            "nodes": {
-                "useNodeMemoryPools": "false",
-                "deleteNodesThreshold": "1000000"
-            },
+            "deepCopyClonedNodes": "true",
             "equations": {
                 "info": [
                     "If simplifyExpressions is true equation expressions will be simplified.",
@@ -20,7 +17,7 @@
                     "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
                 ],
                 "simplifyExpressions": "false",
-                "evaluationMode": "evaluationTree_OpenMP",
+                "evaluationMode": "computeStack_OpenMP",
                 "evaluationTree_OpenMP": {
                     "numThreads": "0"
                 },
@@ -31,7 +28,7 @@
         },
         "activity": {
             "printHeader": "false",
-            "printStats": "false",
+            "printStats": "true",
             "timeHorizon": "100.0",
             "reportingInterval": "1.0",
             "reportTimeDerivatives": "false",
@@ -56,9 +53,8 @@
             "printInfo": "false"
         },
         "IDAS": {
+            "SolveMode": "normal",
             "relativeTolerance": "1E-5",
-            "integrationMode": "Normal",
-            "reportDataInOneStepMode": "false",
             "nextTimeAfterReinitialization": "1E-7",
             "printInfo": "false",
             "numberOfSTNRebuildsDuringInitialization": "1000",
@@ -67,7 +63,7 @@
             "sensRelativeTolerance": "1E-5",
             "sensAbsoluteTolerance": "1E-5",
             "MaxOrd": "5",
-            "MaxNumSteps": "1000",
+            "MaxNumSteps": "2000",
             "InitStep": "0.0",
             "MaxStep": "0.0",
             "MaxErrTestFails": "10",
