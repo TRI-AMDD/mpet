@@ -23,7 +23,7 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()
     simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
-    datareporter = data_reporting.setup_data_reporters(simulation, outdir)
+    datareporter = data_reporting.setup_data_reporters(simulation, ndD_s, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
@@ -70,6 +70,8 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     simulation.Initialize(daesolver, datareporter, log)
 
     # Solve at time=0 (initialization)
+    # Increase the number of Newton iterations for more robust initialization
+    cfg=dae.daeGetConfig().SetString("daetools.IDAS.MaxNumItersIC","100")
     simulation.SolveInitial()
 
     # Run
