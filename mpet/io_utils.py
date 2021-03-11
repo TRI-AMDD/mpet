@@ -382,8 +382,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref,
-                                      dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append(
+                (dD_s["segments"][i][0]*dD_s["CrateCurr"]/theoretical_1C_current/curr_ref,
+                 dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
             ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref),

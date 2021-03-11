@@ -280,7 +280,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot current profile
     if plot_type == "curr":
-        current = utils.get_dict_key(data, pfx + 'current') * 3600/td
+        limtrode = ("c" if ndD_s["z"] < 1 else "a")
+        theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+        current = (utils.get_dict_key(data, pfx + 'current')
+                   * theoretical_1C_current / dD_s['CrateCurr'] * dD_s['curr_ref'])
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
         if data_only:
             return times*td, current
