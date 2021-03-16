@@ -482,7 +482,7 @@ def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D * np.diff(c)/dr
+    Flux_vec[1:N] = -D * Dfunc(c_edges) * np.diff(c)/dr
     return Flux_vec
 
 
