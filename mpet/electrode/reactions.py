@@ -102,8 +102,9 @@ def MHC(eta, c_sld, c_lyte, k0, T, act_R=None,
         Rate = ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
 
+
 def CIET(eta, c_sld, c_lyte, k0, T, act_R=None,
-                  act_lyte=None, lmbda=None, alpha=None):
+         act_lyte=None, lmbda=None, alpha=None):
     # See Fraggedakis et al. 2020
     eta_f = eta + T*np.log(c_lyte/c_sld)
     ecd_extras = (1-c_sld)/np.sqrt(4.0*np.pi*lmbda)
@@ -118,4 +119,3 @@ def CIET(eta, c_sld, c_lyte, k0, T, act_R=None,
         kox = k0*MHC_kfunc(eta_f, lmbda)
         Rate = ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
-
