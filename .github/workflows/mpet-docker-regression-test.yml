@@ -56,7 +56,6 @@ jobs:
         cd mpet/bin/workdir
         coveralls --service=github || : #Dont fret if if fails
 
-
     - name: Checks test results
       run: |
         cd mpet/tests

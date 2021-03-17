@@ -1,4 +1,4 @@
-"""
+r"""
 This module provides functions defining properties of the ion-conducting
 phase -- the electrolyte Manage functions for the parameters involved in
 Stefan-Maxwell based concentrated electrolyte transport theory for
@@ -149,26 +149,27 @@ def test1():
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
-
 def LIONSIMBA():
     """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
     """
-    T = 298 #isothermal model
+    T = 298  # isothermal model
 
     def tp0(c):
         return 0.364
 
     def sigma(c):
-        c_dim = c*1000 #dimensionalized c
+        c_dim = c*1000  # dimensionalized c
         r1 = -10.5
         r2 = 0.668e-3
         r3 = 0.494e-6
-        r4 = 0.074 
+        r4 = 0.074
         r5 = -1.78e-5
         r6 = -8.86e-10
         r7 = -6.96e-5
         r8 = 2.8e-8
-        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + T*(r4 + r5*c_dim + r6*c_dim**2) + T**2 *(r7 + r8*c_dim))**2
+        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2
+                                  + T*(r4 + r5*c_dim + r6*c_dim**2)
+                                  + T**2 * (r7 + r8*c_dim))**2
         return sig_out  # m^2/s
 
     def D(c):
@@ -199,17 +200,18 @@ def LIONSIMBA():
 def LIONSIMBA_isothermal():
     """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
     """
-    T = 298 #isothermal model
+    # isothermal at 298 K
 
     def tp0(c):
         return 0.364
 
     def sigma(c):
-        ce = c*1000 #dimensionalized c
-        return 4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2 +1.5094e-10*ce**3 -1.6018*1e-14*ce**4 # S/m
+        ce = c*1000  # dimensionalized c
+        return 4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2 \
+            + 1.5094e-10*ce**3 - 1.6018*1e-14*ce**4  # S/m
 
     def D(c):
-        return 7.5e-10 # m^2/s
+        return 7.5e-10  # m^2/s
 
     def therm_fac(c):
         return 1.
