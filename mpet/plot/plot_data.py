@@ -804,7 +804,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datax = cellsvec[-Nvol["c"]:]
         if data_only:
             plt.close(fig)
-            return datax, datay[t0ind]
+            return datax, datay
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay[t0ind])
 

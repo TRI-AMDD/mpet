@@ -110,6 +110,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                         "c": P_s.getfloat('Particles', 'mean_c')}
     dD_s["psd_stddev"] = {"a": P_s.getfloat('Particles', 'stddev_a'),
                           "c": P_s.getfloat('Particles', 'stddev_c')}
+    dD_s["specified_psd"] = {"a": P_s.get('Particles', 'specified_psd_a', fallback = "False"),
+                             "c": P_s.get('Particles', 'specified_psd_c', fallback = "False")}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
                     "c": P_s.getfloat('Particles', 'cs0_c')}
 
@@ -438,15 +440,22 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
         mean = dD_s["psd_mean"][trode]
         stddev = dD_s["psd_stddev"][trode]
         solidType = ndD_e[trode]["type"]
-        # Make a length-sampled particle size distribution
-        # Log-normally distributed
-        if are_close(dD_s["psd_stddev"][trode], 0.):
-            raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
+        if dD_s["specified_psd"][trode] == "False" or dD_s["specified_psd"][trode] == "false":
+            # If PSD is not specified, make a length-sampled particle size distribution
+            # Log-normally distributed
+            if are_close(dD_s["psd_stddev"][trode], 0.):
+                raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2)/np.sqrt(var+mean**2))
+                sigma = np.sqrt(np.log(var/(mean**2)+1))
+                raw = np.random.lognormal(mu, sigma, size=(Nv, Np))
         else:
-            var = stddev**2
-            mu = np.log((mean**2)/np.sqrt(var+mean**2))
-            sigma = np.sqrt(np.log(var/(mean**2)+1))
-            raw = np.random.lognormal(mu, sigma, size=(Nv, Np))
+            raw = np.array(ast.literal_eval(dD_s["specified_psd"][trode]))
+            Nv_raw, Np_raw = np.shape(raw)
+            if Nv_raw != Nv or Np_raw != Np:
+                print("Specified particle size distribution discretization of volumes inequal to the one specified in the config file")
+                raise ValueError
         psd_raw[trode] = raw
         # For particles with internal profiles, convert psd to
         # integers -- number of steps
