@@ -4,7 +4,7 @@ When adding new features or making changes to the code, it's helpful to run a su
 
 ## Prerequisites
 
-The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, `coveralls`, `configparser`, and `h5py`.
+The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, and `coveralls`.
 
 ## Running
 
