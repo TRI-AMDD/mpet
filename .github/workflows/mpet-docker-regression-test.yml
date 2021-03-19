@@ -54,8 +54,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         cd mpet/bin/workdir
-        coveralls || : #Dont fret if if fails
-
+        coveralls --service=github || : #Dont fret if if fails
 
     - name: Checks test results
       run: |

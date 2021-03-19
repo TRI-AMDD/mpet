@@ -8,7 +8,7 @@ This includes the equations defining
  - potential drop between simulated particles
 """
 import daetools.pyDAE as dae
-from pyUnits import m, kg, s, K, Pa, mol, J, W
+from pyUnits import s
 
 import numpy as np
 
@@ -18,12 +18,13 @@ import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.props_elyte as props_elyte
 import mpet.utils as utils
-from mpet.daeVariableTypes import *
+from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
 
-#Dictionary of end conditions
-endConditions={
+# Dictionary of end conditions
+endConditions = {
     1:"Vmax reached",
     2:"Vmin reached"}
+
 
 class ModCell(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD_s=None,
@@ -51,8 +52,8 @@ class ModCell(dae.daeModel):
                 "Simulated volumes in electrode {trode}".format(trode=trode))
             self.DmnPart[trode] = dae.daeDomain(
                 "Npart_{trode}".format(trode=trode), self, dae.unit(),
-                "Particles sampled in each control " +
-                "volume in electrode {trode}".format(trode=trode))
+                "Particles sampled in each control "
+                + "volume in electrode {trode}".format(trode=trode))
 
         # Variables
         self.c_lyte = {}
@@ -212,8 +213,8 @@ class ModCell(dae.daeModel):
                     eq = self.CreateEquation(
                         "portout_pm_trode{trode}v{vInd}p{pInd}".format(
                             vInd=vInd, pInd=pInd, trode=trode))
-                    eq.Residual = (self.phi_part[trode](vInd, pInd) -
-                                   self.portsOutBulk[trode][vInd,pInd].phi_m())
+                    eq.Residual = (self.phi_part[trode](vInd, pInd)
+                                   - self.portsOutBulk[trode][vInd,pInd].phi_m())
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
@@ -297,6 +298,9 @@ class ModCell(dae.daeModel):
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
+
+            Nm_edges, i_edges = get_lyte_internal_fluxes(ctmp, phitmp, disc, ndD)
+
             # If we don't have a porous anode:
             # 1) the total current flowing into the electrolyte is set
             # 2) assume we have a Li foil with BV kinetics and the specified rate constant
@@ -304,13 +308,11 @@ class ModCell(dae.daeModel):
             eqP = self.CreateEquation("GhostPointP_L")
             if Nvol["a"] == 0:
                 # Concentration BC from mass flux
-                Nm_foil = get_lyte_internal_fluxes(
-                    ctmp[0:2], phitmp[0:2], disc["dxd1"][0], disc["eps_o_tau_edges"][0], ndD)[0]
-                eqC.Residual = Nm_foil[0]
+                eqC.Residual = Nm_edges[0]
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
-                cWall = utils.mean_harmonic(ctmp[0], ctmp[1])
+                cWall = .5*(ctmp[0] + ctmp[1])
                 ecd = ndD["k0_foil"]*cWall**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
@@ -329,16 +331,14 @@ class ModCell(dae.daeModel):
                 if ndD["elyteModelType"] == "dilute":
                     phiWall -= ndD["T"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
-                eqP.Residual = phiWall - utils.mean_linear(phitmp[0], phitmp[1])
+                eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
             # We have a porous anode -- no flux of charge or anions through current collector
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
 
-            Nm_edges, i_edges = get_lyte_internal_fluxes(
-                ctmp, phitmp, disc["dxd1"], disc["eps_o_tau_edges"], ndD)
-            dvgNm = np.diff(Nm_edges)/disc["dxd2"]
-            dvgi = np.diff(i_edges)/disc["dxd2"]
+            dvgNm = np.diff(Nm_edges)/disc["dxvec"]
+            dvgi = np.diff(i_edges)/disc["dxvec"]
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
@@ -370,7 +370,7 @@ class ModCell(dae.daeModel):
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            if ndD["tramp"]>0:
+            if ndD["tramp"] > 0:
                 eq.Residual = self.current() - (
                     ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
@@ -379,7 +379,7 @@ class ModCell(dae.daeModel):
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            if ndD["tramp"]>0:
+            if ndD["tramp"] > 0:
                 eq.Residual = self.phi_applied() - (
                     ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
                     * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
@@ -387,60 +387,60 @@ class ModCell(dae.daeModel):
             else:
                 eq.Residual = self.phi_applied() - ndD["Vset"]
         elif self.profileType == "CCsegments":
-            if ndD["tramp"]>0:
+            if ndD["tramp"] > 0:
                 ndD["segments_setvec"][0] = ndD["currPrev"]
                 self.segSet = extern_funcs.InterpTimeScalar(
                     "segSet", self, dae.unit(), dae.Time(),
                     ndD["segments_tvec"], ndD["segments_setvec"])
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - self.segSet()
-            
-            #CCsegments implemented as discontinuous equations
+
+            # CCsegments implemented as discontinuous equations
             else:
-                #First segment
-                time=ndD["segments"][0][1]
-                self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                # First segment
+                time = ndD["segments"][0][1]
+                self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - ndD["segments"][0][0]
 
-                #Middle segments
+                # Middle segments
                 for i in range(1,len(ndD["segments"])-1):
-                    time=time+ndD["segments"][i][1]
-                    self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                    time = time+ndD["segments"][i][1]
+                    self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("Total_Current_Constraint")
                     eq.Residual = self.current() - ndD["segments"][i][0]
 
-                #Last segment
+                # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - ndD["segments"][-1][0]
                 self.END_IF()
 
         elif self.profileType == "CVsegments":
-            if ndD["tramp"]>0:
+            if ndD["tramp"] > 0:
                 ndD["segments_setvec"][0] = ndD["phiPrev"]
                 self.segSet = extern_funcs.InterpTimeScalar(
                     "segSet", self, dae.unit(), dae.Time(),
                     ndD["segments_tvec"], ndD["segments_setvec"])
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - self.segSet()
-            
-            #CVsegments implemented as discontinuous equations
+
+            # CVsegments implemented as discontinuous equations
             else:
-                #First segment
-                time=ndD["segments"][0][1]
-                self.IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                # First segment
+                time = ndD["segments"][0][1]
+                self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["segments"][0][0]
 
-                #Middle segments
+                # Middle segments
                 for i in range(1,len(ndD["segments"])-1):
-                    time=time+ndD["segments"][i][1]
-                    self.ELSE_IF(dae.Time()<dae.Constant(time*s), 1.e-3)
+                    time = time+ndD["segments"][i][1]
+                    self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("applied_potential")
                     eq.Residual = self.phi_applied() - ndD["segments"][i][0]
 
-                #Last segment
+                # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
@@ -449,27 +449,35 @@ class ModCell(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-        #Ending conditions for the simulation
+        # Ending conditions for the simulation
         if self.profileType in ["CC", "CCsegments"]:
-            #Vmax reached
+            # Vmax reached
             self.ON_CONDITION((self.phi_applied() <= ndD["phimin"])
-                            & (self.endCondition() < 1),
+                              & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 1)])
-            
-            #Vmin reached
+
+            # Vmin reached
             self.ON_CONDITION((self.phi_applied() >= ndD["phimax"])
-                            & (self.endCondition() < 1),
+                              & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
 
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
     T = ndD["T"]
-    c_edges_int = utils.mean_harmonic(c_lyte)
+    dxd1 = disc["dxd1"]
+    eps_o_tau = disc["eps_o_tau"]
+
+    # Get concentration at cell edges using weighted mean
+    wt = utils.pad_vec(disc["dxvec"])
+    c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
+
     if ndD["elyteModelType"] == "dilute":
-        Dp = eps_o_tau * ndD["Dp"]
-        Dm = eps_o_tau * ndD["Dm"]
+        # Get porosity at cell edges using weighted harmonic mean
+        eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
+        Dp = eps_o_tau_edges * ndD["Dp"]
+        Dm = eps_o_tau_edges * ndD["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
@@ -479,20 +487,18 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, dxd1, eps_o_tau, ndD):
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif ndD["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
-        # modify the free solution transport properties for porous media
 
-        def D(c):
-            return eps_o_tau*D_fs(c)
+        # Get diffusivity and conductivity at cell edges using weighted harmonic mean
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte), wt)
+        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte), wt)
 
-        def sigma(c):
-            return eps_o_tau*sigma_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -sigma(c_edges_int)/T * (
+        i_edges_int = -sigma_edges/T * (
             np.diff(phi_lyte)/dxd1
             + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
             * thermFac(c_edges_int)
             * np.diff(np.log(c_lyte))/dxd1
             )
-        Nm_edges_int = num*(-D(c_edges_int)*np.diff(c_lyte)/dxd1
+        Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
     return Nm_edges_int, i_edges_int

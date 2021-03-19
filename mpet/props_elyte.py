@@ -1,4 +1,4 @@
-"""
+r"""
 This module provides functions defining properties of the ion-conducting
 phase -- the electrolyte Manage functions for the parameters involved in
 Stefan-Maxwell based concentrated electrolyte transport theory for
@@ -151,17 +151,16 @@ def test1():
 
 def Colclasure20():
     def tp0(Ce):
-        T=303.15
+        T = 303.15
         Acoeff_Trfn = -0.0000002876102*T**2 + 0.0002077407*T - 0.03881203
         Bcoeff_Trfn = 0.000001161463*T**2 - 0.00086825*T + 0.1777266
         Ccoeff_Trfn = -0.0000006766258*T**2 + 0.0006389189*T + 0.3091761
 
         return (Acoeff_Trfn*Ce**2 + Bcoeff_Trfn*Ce
-            + Ccoeff_Trfn)
-
+                + Ccoeff_Trfn)
 
     def D(Ce):
-        T=303.15
+        T = 303.15
         D_00 = -0.5688226
         D_01 = -1607.003
         D_10 = -0.8108721
@@ -170,22 +169,24 @@ def Colclasure20():
         D_21 = -33.43827
         T_g0 = -24.83763
         T_g1 = 64.07366
-        return(10**(D_00 + D_01 / (T - (T_g0 + T_g1 * Ce)) + (D_10 + D_11 / (T -
-                            (T_g0 + T_g1 * Ce)))*Ce + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
+        return(10**(D_00 + D_01 / (T - (T_g0 + T_g1 * Ce))
+                    + (D_10 + D_11 / (T - (T_g0 + T_g1 * Ce)))*Ce
+                    + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
 
     def therm_fac(c):
         T = 303.15
         return 1 + 0.341*np.exp(261/T)-0.00225*np.exp(1360/T)*c + 0.54*np.exp(329/T)*c**2
 
     def sigma(Ce):
-        T=303.15
+        T = 303.15
         Acoeff_Kappa = 0.0001909446*T**2 - 0.08038545*T + 9.00341
         Bcoeff_Kappa = -0.00000002887587*T**4 + 0.00003483638*T**3 - 0.01583677*T**2 + 3.195295*T - 241.4638
         Ccoeff_Kappa = 0.00000001653786*T**4 - 0.0000199876*T**3 + 0.009071155*T**2 - 1.828064*T + 138.0976
-        Dcoeff_Kappa = -0.000000002791965*T**4 + 0.000003377143*T**3 - 0.001532707*T**2 + 0.3090003*T - 23.35671
+        Dcoeff_Kappa = -0.000000002791965*T**4 + 0.000003377143 * \
+            T**3 - 0.001532707*T**2 + 0.3090003*T - 23.35671
 
         return (Ce * (Acoeff_Kappa + Bcoeff_Kappa * Ce
-            + Ccoeff_Kappa * Ce**2 + Dcoeff_Kappa * Ce**3))
+                      + Ccoeff_Kappa * Ce**2 + Dcoeff_Kappa * Ce**3))
 
     Dref = D(cref)
 
@@ -195,5 +196,82 @@ def Colclasure20():
     def sigma_ndim(c):
         return sigma(c) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+
+def LIONSIMBA():
+    """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
+    """
+    T = 298  # isothermal model
+
+    def tp0(c):
+        return 0.364
+
+    def sigma(c):
+        c_dim = c*1000  # dimensionalized c
+        r1 = -10.5
+        r2 = 0.668e-3
+        r3 = 0.494e-6
+        r4 = 0.074
+        r5 = -1.78e-5
+        r6 = -8.86e-10
+        r7 = -6.96e-5
+        r8 = 2.8e-8
+        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2
+                                  + T*(r4 + r5*c_dim + r6*c_dim**2)
+                                  + T**2 * (r7 + r8*c_dim))**2
+        return sig_out  # m^2/s
+
+    def D(c):
+        c_dim = c*1000
+        T = 298
+        r1 = 4.43
+        r2 = 54
+        r3 = 229
+        r4 = 5e-3
+        r5 = 0.22e-3
+        D_out = 1e-4 * 10**(-r1-r2/(T-r3-r4*c_dim)-r5*c_dim)
+        return D_out
+
+    def therm_fac(c):
+        return 1.
+
+    Dref = D(cref)
+
+    def D_ndim(c):
+        return D(c) / Dref
+
+    def sigma_ndim(c):
+        return sigma(c) * (
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+
+def LIONSIMBA_isothermal():
+    """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
+    """
+    # isothermal at 298 K
+
+    def tp0(c):
+        return 0.364
+
+    def sigma(c):
+        ce = c*1000  # dimensionalized c
+        return 4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2 \
+            + 1.5094e-10*ce**3 - 1.6018*1e-14*ce**4  # S/m
+
+    def D(c):
+        return 7.5e-10  # m^2/s
+
+    def therm_fac(c):
+        return 1.
+
+    Dref = D(cref)
+
+    def D_ndim(c):
+        return D(c) / Dref
+
+    def sigma_ndim(c):
+        return sigma(c) * (
+            k*Tref/(e**2*Dref*N_A*(1000*cref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref

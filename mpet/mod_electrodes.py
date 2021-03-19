@@ -14,7 +14,6 @@ materials within a battery electrode.
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
-import scipy.special as spcl
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
@@ -22,7 +21,8 @@ import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
-from mpet.daeVariableTypes import *
+from mpet.daeVariableTypes import mole_frac_t
+
 
 class Mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -61,8 +61,8 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -127,13 +127,13 @@ class Mod2var(dae.daeModel):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - utils.mean_linear(self.c1bar(), self.c2bar())
+        eq.Residual = self.cbar() - .5*(self.c1bar() + self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= utils.mean_linear(self.c1.dt(k), self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
 
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
@@ -296,8 +296,8 @@ class Mod1var(dae.daeModel):
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -481,8 +481,8 @@ def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = utils.mean_harmonic(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(c)/dr
+    c_edges = utils.mean_linear(c)
+    Flux_vec[1:N] = -D * Dfunc(c_edges) * np.diff(c)/dr
     return Flux_vec
 
 
@@ -491,7 +491,7 @@ def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = utils.mean_harmonic(c)
+    c_edges = utils.mean_linear(c)
     Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
     return Flux_vec
 
@@ -504,8 +504,8 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[0] = 0.  # symmetry at r=0
     Flux1_vec[-1] = Flux1_bc
     Flux2_vec[-1] = Flux2_bc
-    c1_edges = utils.mean_harmonic(c1)
-    c2_edges = utils.mean_harmonic(c2)
+    c1_edges = utils.mean_linear(c1)
+    c2_edges = utils.mean_linear(c2)
     Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
     Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec

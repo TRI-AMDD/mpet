@@ -56,3 +56,4 @@ it is both tested as absolute and relative tolerance.
  - test017: test CV continuation
  - test018: Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil
  - test019: SM electrolyte with LFP homog, sep + cathode, significant elyte polarization
+ - test022: Test of specified_psd_c option, LFP homog
