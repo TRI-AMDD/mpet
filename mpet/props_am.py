@@ -15,9 +15,10 @@ class Dfuncs():
     details on the two forms, see muRfuncs which defines both solid
     solution (_ss) and materials based on simpler thermodynamic models.
     """
+
     def __init__(self, Dfunc):
-        
-        #Convert Dfunc to a callable function
+
+        # Convert Dfunc to a callable function
         self.Dfunc = getattr(self,Dfunc)
 
     def constant(self, y):
@@ -27,8 +28,8 @@ class Dfuncs():
         return y*(1-y)
 
     def NMC532_Colclasure20(self,y):
-        cm2_s=20000.*10**(-2319.*y**10 + 6642.*y**9 - 5269.*y**8 - 3319.*y**7 + 10038.*y**6
-        -9806.*y**5 + 5817.*y**4 - 2286.*y**3 + 575.3*y**2 - 83.16*y-9.292)
+        cm2_s = 20000.*10**(-2319.*y**10 + 6642.*y**9 - 5269.*y**8 - 3319.*y**7 + 10038.*y**6
+                            - 9806.*y**5 + 5817.*y**4 - 2286.*y**3 + 575.3*y**2 - 83.16*y-9.292)
         return(cm2_s/1e4)
 
 
@@ -45,6 +46,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, T, ndD=None, **kwargs):
         """ ndD can be the full dictionary of nondimensional
         parameters for the electrode particles, as made for the
@@ -168,7 +170,7 @@ class muRfuncs():
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
-    
+
     def LiC6_Colclasure_1506T(self, y, ybar, muR_ref, ISfuncs=None):
         """Taken from Colclasure 2020, but only for lithiating. The range of\
         confidence is 0.01 to 0.97 for voltages of ~0.6V and \
@@ -176,25 +178,25 @@ class muRfuncs():
         it will cause numeric issues just use U1."""
         x = y
         U1 = \
-        -1.059423355572770E-02*np.tanh((x - 1.453708425609560E-02) / 9.089868397988610E-05) \
-        + 2.443615203087110E-02*np.tanh((x - 5.464261369950400E-01) / 6.270508166379020E-01) + \
-        -1.637520788053810E-02*np.tanh((x - 5.639025014475490E-01) / 7.053886409518520E-02) + \
-        -6.542365622896410E-02*np.tanh((x - 5.960370524233590E-01) / 1.409966536648620E+00) + \
-        -4.173226059293490E-02*np.tanh((x - 1.787670587868640E-01) / 7.693844911793470E-02) \
-        - 4.792178163846890E-01*np.tanh((x + 3.845707852011820E-03) / 4.112633446959460E-02) \
-        + 6.594735004847470E-01 \
-        - 4.364293924074990E-02*np.tanh((x - 9.449231893318330E-02) / -2.046776012570780E-02) \
-        - 8.241166396760410E-02*np.tanh((x - 7.746685789572230E-02) / 3.593817905677970E-02)
+            - 1.059423355572770E-02*np.tanh((x - 1.453708425609560E-02) / 9.089868397988610E-05) \
+            + 2.443615203087110E-02*np.tanh((x - 5.464261369950400E-01) / 6.270508166379020E-01) \
+            - 1.637520788053810E-02*np.tanh((x - 5.639025014475490E-01) / 7.053886409518520E-02) \
+            - 6.542365622896410E-02*np.tanh((x - 5.960370524233590E-01) / 1.409966536648620E+00) \
+            - 4.173226059293490E-02*np.tanh((x - 1.787670587868640E-01) / 7.693844911793470E-02) \
+            - 4.792178163846890E-01*np.tanh((x + 3.845707852011820E-03) / 4.112633446959460E-02) \
+            + 6.594735004847470E-01 \
+            - 4.364293924074990E-02*np.tanh((x - 9.449231893318330E-02) / -2.046776012570780E-02) \
+            - 8.241166396760410E-02*np.tanh((x - 7.746685789572230E-02) / 3.593817905677970E-02)
         U2 = \
-        -1.731504647676420E+02*np.power(x, 8.0) + 8.252008712749000E+01*np.power(x, 7.0) + \
-        1.233160814852810E+02*np.power(x, 6.0) + 5.913206621637760E+01*np.power(x, 5.0) \
-        + 3.322960033709470E+01*np.power(x, 4.0) + 3.437968012320620E+00*np.power(x, 3.0) \
-        - 6.906367679257650E+01*np.power(x, 2.0) - 1.228217254296760E+01*x - 5.037944982759270E+01
+            -1.731504647676420E+02*np.power(x, 8.0) + 8.252008712749000E+01*np.power(x, 7.0) \
+            + 1.233160814852810E+02*np.power(x, 6.0) + 5.913206621637760E+01*np.power(x, 5.0) \
+            + 3.322960033709470E+01*np.power(x, 4.0) + 3.437968012320620E+00*np.power(x, 3.0) \
+            - 6.906367679257650E+01*np.power(x, 2.0) - \
+            1.228217254296760E+01*x - 5.037944982759270E+01
         U = U1 + (U2 - U1) / (1.0 + np.exp(-1.0e2*(x - 1.02956203215198)))
         muR = self.get_muR_from_OCV(U, muR_ref)
         actR = None
         return muR, actR
-
 
     def Li_ss(self, y, ybar, muR_ref, ISfuncs=None):
         muR = 0.*y + muR_ref
@@ -227,23 +229,23 @@ class muRfuncs():
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
-    
+
     def NMC532_Colclasure20(self, y, ybar, muR_ref, ISfuncs=None):
-        x=y
+        x = y
         OCV = (5.314735633000300E+00 +
-        -3.640117692001490E+03*x**14.0 + 1.317657544484270E+04*x**13.0
-        - 1.455742062291360E+04*x**12.0 - 1.571094264365090E+03*x**11.0
-        + 1.265630978512400E+04*x**10.0 - 2.057808873526350E+03*x**9.0
-        - 1.074374333186190E+04*x**8.0 + 8.698112755348720E+03*x**7.0
-        - 8.297904604107030E+02*x**6.0 - 2.073765547574810E+03*x**5.0
-        + 1.190223421193310E+03*x**4.0 - 2.724851668445780E+02*x**3.0
-        + 2.723409218042130E+01*x**2.0 - 4.158276603609060E+00*x +
-        -5.573191762723310E-04*np.exp(6.560240842659690E+00*x**4.148209275061330E+01)
-        )
+               -3.640117692001490E+03*x**14.0 + 1.317657544484270E+04*x**13.0
+               - 1.455742062291360E+04*x**12.0 - 1.571094264365090E+03*x**11.0
+               + 1.265630978512400E+04*x**10.0 - 2.057808873526350E+03*x**9.0
+               - 1.074374333186190E+04*x**8.0 + 8.698112755348720E+03*x**7.0
+               - 8.297904604107030E+02*x**6.0 - 2.073765547574810E+03*x**5.0
+               + 1.190223421193310E+03*x**4.0 - 2.724851668445780E+02*x**3.0
+               + 2.723409218042130E+01*x**2.0 - 4.158276603609060E+00*x +
+               -5.573191762723310E-04*np.exp(6.560240842659690E+00*x**4.148209275061330E+01)
+               )
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
-    
+
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """Ideal solution material for testing."""
         OCV = -self.kToe*np.log(y/(1-y))
