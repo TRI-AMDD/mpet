@@ -1,40 +1,38 @@
 from mpet import props_elyte
 
+from mpet.exceptions import UnknownParameterError
 from mpet.config import constants
 
 
-class Definitions:
+class DerivedValues:
     def __init__(self):
         """
         """
         # to keep track of values that were already calculated
-        self.values = {}
+        # initialize with empty dicts for electrodes
+        self.values = {'c': {}, 'a': {}}
 
-    def get(self, item, params):
+    def get(self, config, item, trode=None):
         """
         """
         if item not in self.values:
-            # calculate the value
+            # get the method to calculate the value
             try:
                 func = getattr(self, item)
             except AttributeError:
                 # No equation for the requested item
-                return None
+                raise UnknownParameterError(f"Unknown parameter: {item}")
 
-            self.values[item] = func(params)
+            # calculate the value
+            raise NotImplementedError(f"TBD, would call method {func}")
 
         return self.values[item]
 
-
-class DefinitionsSystem(Definitions):
-    """
-    Derived parameters for system
-    """
     def numsegments(self, p):
         """
         Number of segments
         """
-        return len(['segs'])
+        return len(p['segs'])
 
     def L_ref(self, p):
         """
@@ -86,36 +84,24 @@ class DefinitionsSystem(Definitions):
         """
         raise NotImplementedError('need acces to both sys and electrode config')
 
-
-class DefinitionsElectrode(Definitions):
-    """
-    Derived parameters for electrode
-    TODO: some params need access to system and electrode config
-    """
-    def __init__(self, electrode):
-        super().__init__()
-        assert electrode in ['cathode', 'anode'], f"Invalid electrode: {electrode}"
-        # internally, only the first character is used
-        self.trode = electrode[0]
-
-    def csmax(self, p):
+    def csmax(self, p, trode):
         """
         Maximum concentraion in electrode solids, mol/m^3
         """
         return p['rho_s'] / constants.N_A
 
-    def cs_ref(self, p):
+    def cs_ref(self, p, trode):
         """
         TODO: this parameter is just a scaling of 1 or .5 of cs_ref
         Perhaps just storing that scaling is enough?
         """
-        if p['type'] in constants.one_var_types:
+        if p[trode, 'type'] in constants.one_var_types:
             prefac = 1
-        elif p['type'] in constants.two_var_types:
+        elif p[trode, 'type'] in constants.two_var_types:
             prefac = .5
-        return prefac * p['csmax']
+        return prefac * p[trode, 'csmax']
 
-    def cap(self, p):
+    def cap(self, p, trode):
         """
         C / mˆ2
         """

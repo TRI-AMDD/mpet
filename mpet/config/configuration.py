@@ -15,7 +15,8 @@ import numpy as np
 
 from mpet.config import schemas
 # import mpet.props_am as props_am
-from mpet.config.derived_params import DefinitionsSystem, DefinitionsElectrode
+from mpet.config.derived_values import DerivedValues
+from mpet.exceptions import UnknownParameterError
 
 
 #: parameter that are define per electrode with a _{electrode} suffix
@@ -32,7 +33,8 @@ PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T
 class Config:
     def __init__(self, paramfile="params.cfg"):
         """
-        Hold values from system and electrode configuration files
+        Hold values from system and electrode configuration files, as well as
+        derived values
         """
         # store path to config file
         self.path = os.path.dirname(paramfile)
@@ -54,7 +56,7 @@ class Config:
         if not os.path.isabs(cathode_paramfile):
             cathode_paramfile = os.path.join(self.path, cathode_paramfile)
             self.paramfiles['c'] = cathode_paramfile
-        self.D_c = ParameterSet(cathode_paramfile, 'cathode', self.path)
+        self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
         self.D_c.params['trodes'] = trodes
         self.D_c.have_separator = have_separator
 
@@ -63,13 +65,18 @@ class Config:
             if not os.path.isabs(anode_paramfile):
                 anode_paramfile = os.path.join(self.path, anode_paramfile)
             self.paramfiles['a'] = anode_paramfile
-            self.D_a = ParameterSet(anode_paramfile, 'anode', self.path)
+            self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
             self.D_a.params['trodes'] = trodes
             self.D_a.have_separator = have_separator
         else:
             self.D_a = None
 
+        # initialize class to calculate and hold derived values
+        self.derived_values = DerivedValues()
+
         # set the random seed
+        # TODO: replace by a process_config method that does more processing, e.g.
+        # including particle size distribution
         if self.D_s['randomSeed']:
             np.random.seed(self.D_s['seed'])
 
@@ -78,34 +85,45 @@ class Config:
         Get the value of a parameter, either a single item to retrieve from the system config,
         or a tuple of (electrode, item), in which case item is read from the config of the given
         electrode (a or c)
+        If the value is found in none of the configs, it is assumed to be a derived
+        parameter that can be calculated from the config values
         """
         try:
             if isinstance(items, tuple):
+                # electrode config
                 try:
                     trode, item = items
                 except ValueError:
-                    raise ValueError(f"Reading from config requires one or two arguments, but "
+                    raise ValueError(f"Reading from electrode config requires two arguments, but "
                                      f"got {len(items)}")
-            else:
-                trode = None
-                item = items
-
-            if trode is None:
-                # get parameter from system config
-                return self.D_s[item]
-            else:
-                # get parameter from electrode config
+                # select correct config
                 if trode == 'a':
                     assert self.D_a is not None, "Anode parameter requested but " \
                                                  "anode is not simulated"
-                    return self.D_a[item]
+                    d = self.D_a
                 elif trode == 'c':
-                    return self.D_c[item]
+                    d = self.D_c
                 else:
                     raise ValueError(f"Provided electrode must be a or c, got {trode}")
+            else:
+                # system config
+                trode = None
+                item = items
+                d = self.D_s
+
+            # try to read the parameter from the config
+            try:
+                value = d[item]
+            except UnknownParameterError:
+                # not known in config, assume it is a derived value
+                # this will raise an UnknownParameterError if still not found
+                value = self.derived_values.get(self, item, trode)
+
         except RecursionError:
             raise Exception(f"Failed to get {items} due to recursion error. "
                             f"Circular parameter dependency?")
+
+        return value
 
     def __setitem__(self, items, value):
         """
@@ -118,45 +136,33 @@ class Config:
             try:
                 trode, item = items
             except ValueError:
-                raise ValueError(f"Setting config value requires one or two arguments, but "
+                raise ValueError(f"Setting electrode config value requires two arguments, but "
                                  f"got {len(items)}")
+            # select correct config
+                if trode == 'a':
+                    assert self.D_a is not None, "Anode parameter requested but " \
+                                                 "anode is not simulated"
+                    d = self.D_a
+                elif trode == 'c':
+                    d = self.D_c
+                else:
+                    raise ValueError(f"Provided electrode must be a or c, got {trode}")
         else:
-            trode = None
+            # system config
             item = items
+            d = self.D_s
 
-        if trode is None:
-            # use system config
-            conf = self.D_s
-        else:
-            # use electrode config
-            if trode == 'a':
-                assert self.D_a is not None, "Anode parameter requested but " \
-                                             "anode is not simulated"
-                conf = self.D_a
-            elif trode == 'c':
-                conf = self.D_c
-            else:
-                raise ValueError(f"Provided electrode must be a or c, got {trode}")
-
-        conf[item] = value
+        d[item] = value
 
 
 class ParameterSet:
-    def __init__(self, paramfile, entity, path):
+    def __init__(self, paramfile, config_type, path):
         """
-        Hold a set of parameters from a single entity (system, cathode, anode)
+        Hold a set of parameters from a single entity (system, electrode)
         """
-        assert entity in ['system', 'cathode', 'anode'], f"Invalid entity: {entity}"
+        assert config_type in ['system', 'electrode'], f"Invalid config type: {config_type}"
         self.path = path
-
-        if entity == 'system':
-            self.definitions = DefinitionsSystem()
-            self.config_type = 'system'
-        else:
-            # cathode or anode
-            self.definitions = DefinitionsElectrode(entity)
-            # config type is the same for cathode/anode
-            self.config_type = 'electrode'
+        self.config_type = config_type
 
         self.have_separator = False
         self.params = {}
@@ -198,15 +204,11 @@ class ParameterSet:
 
     def __getitem__(self, item):
         """
-        Get a parameter, either from known parameters or a derived value
+        Get a parameter
         """
-        # if an item is unknown in the dict, assume it needs to be calculated
+        # if an item is unknown in the dict, try the aliases and per electrode values
         if item not in self.params:
-            value = self._get_value(item)
-            if value is None:
-                raise Exception(f"Unknown parameter: {item}")
-            # store the calculated value
-            self.params[item] = value
+            self.params[item] = self._get_value(item)
 
         return self.params[item]
 
@@ -227,7 +229,7 @@ class ParameterSet:
 
     def _get_value(self, item):
         """
-        Calculate a value that is not part of config file
+        Get a value that is defined per electrode/separator, or is used as an alias
         """
         if item in PARAMS_PER_TRODE:
             # create a new dict containg the value per electrode
@@ -246,13 +248,4 @@ class ParameterSet:
         elif item in PARAMS_ALIAS:
             return self[PARAMS_ALIAS[item]]
         else:
-            # assume this is a derived parameter
-            # return None when not found, which is further
-            # handled in __getitem__
-            # TODO: Some values may actually be None, perhaps handle through exceptions instead
-            return self.definitions.get(item, self)
-        # TODO: properly handle prevDir with the new schema format
-        # elif item == 'prevDir':
-        #     value = self.parser.get(item)
-        #     if value != 'false' and not os.path.isabs(value):
-        #         return os.path.normpath(os.path.join(self.path, value))
+            raise UnknownParameterError(f"Unknown parameter: {item}")
