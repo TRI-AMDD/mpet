@@ -15,6 +15,7 @@ import numpy as np
 
 from mpet.config import schemas
 # import mpet.props_am as props_am
+from mpet.config.derived_params import DefinitionsSystem, DefinitionsElectrode
 
 
 #: parameter that are define per electrode with a _{electrode} suffix
@@ -48,7 +49,7 @@ class Config:
         cathode_paramfile = self.D_s['cathode']
         if not os.path.isabs(cathode_paramfile):
             cathode_paramfile = os.path.join(self.path, cathode_paramfile)
-        self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
+        self.D_c = ParameterSet(cathode_paramfile, 'cathode', self.path)
         self.D_c.params['trodes'] = trodes
         self.D_c.have_separator = have_separator
 
@@ -56,7 +57,7 @@ class Config:
             anode_paramfile = self.D_s['anode']
             if not os.path.isabs(anode_paramfile):
                 anode_paramfile = os.path.join(self.path, anode_paramfile)
-            self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
+            self.D_a = ParameterSet(anode_paramfile, 'anode', self.path)
             self.D_a.params['trodes'] = trodes
             self.D_a.have_separator = have_separator
         else:
@@ -102,19 +103,24 @@ class Config:
 
 
 class ParameterSet:
-    def __init__(self, paramfile, config_type, path):
+    def __init__(self, paramfile, entity, path):
         """
-        Hold a set of parameters from a single entity (system or electrode)
+        Hold a set of parameters from a single entity (system, cathode, anode)
         """
-        assert config_type in ['system', 'electrode'], f"Invalid config type: {config_type}"
-        self.config_type = config_type
+        assert entity in ['system', 'cathode', 'anode'], f"Invalid entity: {entity}"
         self.path = path
 
-        self.have_separator = False
+        if entity == 'system':
+            self.definitions = DefinitionsSystem()
+            self.config_type = 'system'
+        else:
+            # cathode or anode
+            self.definitions = DefinitionsElectrode(entity)
+            # config type is the same for cathode/anode
+            self.config_type = 'electrode'
 
+        self.have_separator = False
         self.params = {}
-        # scalings used for non-dimensional parameters
-        # self.scaling_values = {}
 
         self._load_file(paramfile)
 
@@ -189,8 +195,8 @@ class ParameterSet:
             # assume this is a derived parameter
             # return None when not found, which is further
             # handled in __getitem__
-            # TODO: how to handle parameters that need to be calculated
-            raise NotImplementedError(item)
+            # TODO: Some values may actually be None, perhaps handle through exceptions instead
+            return self.definitions.get(item, self)
         # TODO: properly handle prevDir with the new schema format
         # elif item == 'prevDir':
         #     value = self.parser.get(item)

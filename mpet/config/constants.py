@@ -14,3 +14,5 @@ F = e * N_A
 two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
 #: General particle classification (2 var)
 one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
+#: Concentration, mol/m^3 = 1M
+c_ref = 1000.
