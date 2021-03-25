@@ -111,6 +111,13 @@ class Config:
                 item = items
                 d = self.D_s
 
+            # get alias of item in case it is defined
+            try:
+                item = PARAMS_ALIAS[item]
+            except KeyError:
+                # no alias for this item
+                pass
+
             # try to read the parameter from the config
             try:
                 value = d[item]
@@ -153,6 +160,18 @@ class Config:
             d = self.D_s
 
         d[item] = value
+
+    def keys(self):
+        """
+        Config keys that can be accessed directly: system and derived values
+        Does not include electrode values
+        Required to let this class be a valid mapping that can be used with ** operator
+        """
+        keys = [*self.D_s.params.keys(), *self.derived_values.values.keys()]
+        # remove the literal c and a keys that are in derived values
+        keys.remove('c')
+        keys.remove('a')
+        return keys
 
 
 class ParameterSet:
@@ -229,7 +248,7 @@ class ParameterSet:
 
     def _get_value(self, item):
         """
-        Get a value that is defined per electrode/separator, or is used as an alias
+        Get a value that is defined per electrode/separator
         """
         if item in PARAMS_PER_TRODE:
             # create a new dict containg the value per electrode
@@ -245,7 +264,5 @@ class ParameterSet:
                 # delete the original key. TODO: verify this is ok to do
                 del self.params[key]
             return d
-        elif item in PARAMS_ALIAS:
-            return self[PARAMS_ALIAS[item]]
         else:
             raise UnknownParameterError(f"Unknown parameter: {item}")

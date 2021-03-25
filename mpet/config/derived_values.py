@@ -1,3 +1,4 @@
+from string import Formatter as StringFormatter
 from mpet import props_elyte
 
 from mpet.exceptions import UnknownParameterError
@@ -12,99 +13,116 @@ class DerivedValues:
         # initialize with empty dicts for electrodes
         self.values = {'c': {}, 'a': {}}
 
+        self.config = None
+
+        self.equations = {'Damb': '(({zp} - {zm}) * {Dp} * {Dm}) / ({zp} * {Dp} - {zm} * {Dm})',
+                          'tp': '{zp} * {Dp} / ({zp} * {Dp} - {zm} * {Dm})',
+                          't_ref': '{L_ref}**2 / {D_ref}',
+                          'curr_ref': '3600. / {t_ref}',
+                          'sigma_s_ref': '{L_ref}**2 - constants.F**2 * constants.c_ref / '
+                                '({t_ref} * constants.k * constants.N_A * constants.T_ref)'}
+
+    def __repr__(self):
+        return dict.__repr__(self.values)
+
     def get(self, config, item, trode=None):
         """
         """
-        if item not in self.values:
-            # get the method to calculate the value
-            try:
-                func = getattr(self, item)
-            except AttributeError:
-                # No equation for the requested item
-                raise UnknownParameterError(f"Unknown parameter: {item}")
+        # set config class-wide for easy access in methods
+        self.config = config
 
-            # calculate the value
-            raise NotImplementedError(f"TBD, would call method {func}")
+        # select general or electrode dict
+        if trode is None:
+            values = self.values
+            args = ()
+        else:
+            values = self.values[trode]
+            args = (trode, )
 
-        return self.values[item]
+        # calculate value if not already stored
+        if item not in values:
+            if item in self.equations:
+                values[item] = self._process_equation(self.equations[item])
+            else:
+                # get the method to calculate the value
+                try:
+                    func = getattr(self, item)
+                except AttributeError:
+                    raise UnknownParameterError(f"Unknown parameter: {item}")
 
-    def numsegments(self, p):
+                try:
+                    values[item] = func(*args)
+                except TypeError:
+                    # TypeError occurs when calling arg-less func with args,
+                    # or the other way around
+                    raise Exception(f"Requested parameter {item} without electrode specification")
+
+        return values[item]
+
+    def _process_equation(self, equation):
+        """
+        """
+        # ** operator does not call __getitem__ which would load the parameters,
+        # so do this manually before calling **
+        params = [item[1] for item in StringFormatter().parse(equation) if item[1] is not None]
+        for param in params:
+            self.config[param]
+        # evaluate the equation
+        return eval(equation.format(**self.config))
+
+    def numsegments(self):
         """
         Number of segments
         """
-        return len(p['segs'])
+        return len(self.config['segs'])
 
-    def L_ref(self, p):
+    def L_ref(self):
         """
         reference L
         TODO: with or without underscore?
         """
-        return p['L']['c']
+        return self.config['L']['c']
 
-    def D_ref(self, p):
+    def D_ref(self):
         """
         reference D
         """
-        if p['elyteModelType'] == 'dilute':
-            return p['Damb']
+        if self.config['elyteModelType'] == 'dilute':
+            return self.config['Damb']
         else:
-            return getattr(props_elyte, p['SMset'])()[-1]
+            return getattr(props_elyte, self.config['SMset'])()[-1]
 
-    def Damb(self, p):
+    def z(self):
         """
-        Ambipolar diffusivity
         """
-        return ((p['zp'] - p['zm']) * p['Dp'] * p['Dm']) \
-            / (p['zp'] * p['Dp'] - p['zm'] * p['Dm'])
+        if 'a' in self.config.trodes:
+            return self.config['c', 'cap'] / self.config['a', 'cap']
+        else:
+            # flat plate anode with assumed infinite supply of metal
+            return 0.
 
-    def tp(self, p):
-        """
-        Cation transference number
-        """
-        return p['zp'] * p['Dp'] / (p['zp'] * p['Dp'] - p['zm'] * p['Dm'])
-
-    def t_ref(self, p):
-        """
-        Diffusive time scale
-        """
-        return p['L_ref']**2 / p['D_ref']
-
-    def curr_ref(self, p):
-        """
-        """
-        return 3600. / p['t_ref']
-
-    def sigma_s_ref(self, p):
-        """
-        """
-        return p['L_ref']**2 * constants.F**2 * constants.c_ref / p['L_ref']
-
-    def z(self, p):
-        """
-        """
-        raise NotImplementedError('need acces to both sys and electrode config')
-
-    def csmax(self, p, trode):
+    def csmax(self, trode):
         """
         Maximum concentraion in electrode solids, mol/m^3
         """
-        return p['rho_s'] / constants.N_A
+        return self.config[trode, 'rho_s'] / constants.N_A
 
-    def cs_ref(self, p, trode):
+    def cs_ref(self, trode):
         """
         TODO: this parameter is just a scaling of 1 or .5 of cs_ref
         Perhaps just storing that scaling is enough?
         """
-        if p[trode, 'type'] in constants.one_var_types:
+        if self.config[trode, 'type'] in constants.one_var_types:
             prefac = 1
-        elif p[trode, 'type'] in constants.two_var_types:
+        elif self.config[trode, 'type'] in constants.two_var_types:
             prefac = .5
-        return prefac * p[trode, 'csmax']
+        return prefac * self.config[trode, 'csmax']
 
-    def cap(self, p, trode):
+    def cap(self, trode):
         """
         C / mˆ2
         """
         raise NotImplementedError('need acces to both sys and electrode config')
-        # return constants.e * p_system['L'][self.trode] * (1 - p_system['poros'][self.trode]) \
-        #     * p_system['P_L'][self.trode] * p['rho_s']
+        return constants.e * self.config['L'][self.trode] \
+            * (1 - self.config['poros'][self.trode]) \
+            * self.config['P_L'][self.trode] * self.config['rho_s']
