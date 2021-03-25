@@ -20,11 +20,13 @@ from mpet.config.derived_params import DefinitionsSystem, DefinitionsElectrode
 
 #: parameter that are define per electrode with a _{electrode} suffix
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
-                    'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp']
+                    'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
+                    'specified_psd']
 #: subset of PARAMS_PER_TRODE that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
 #: parameters that are used with several names. TODO: can we get rid of these?
-PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T'}
+PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T',
+                'td': 't_ref'}
 
 
 class Config:
@@ -46,9 +48,12 @@ class Config:
         self.D_s.have_separator = have_separator
 
         # load electrode parameter file(s)
+        self.paramfiles = {}
+
         cathode_paramfile = self.D_s['cathode']
         if not os.path.isabs(cathode_paramfile):
             cathode_paramfile = os.path.join(self.path, cathode_paramfile)
+            self.paramfiles['c'] = cathode_paramfile
         self.D_c = ParameterSet(cathode_paramfile, 'cathode', self.path)
         self.D_c.params['trodes'] = trodes
         self.D_c.have_separator = have_separator
@@ -57,6 +62,7 @@ class Config:
             anode_paramfile = self.D_s['anode']
             if not os.path.isabs(anode_paramfile):
                 anode_paramfile = os.path.join(self.path, anode_paramfile)
+            self.paramfiles['a'] = anode_paramfile
             self.D_a = ParameterSet(anode_paramfile, 'anode', self.path)
             self.D_a.params['trodes'] = trodes
             self.D_a.have_separator = have_separator
@@ -100,6 +106,39 @@ class Config:
         except RecursionError:
             raise Exception(f"Failed to get {items} due to recursion error. "
                             f"Circular parameter dependency?")
+
+    def __setitem__(self, items, value):
+        """
+        Set a parameter value, either a single item to store in system config,
+        or a tuple of (electrode, item), in which case the item is stored in the config
+        of the given electrode (a or c)
+        """
+        # then process as in __getitem__
+        if isinstance(items, tuple):
+            try:
+                trode, item = items
+            except ValueError:
+                raise ValueError(f"Setting config value requires one or two arguments, but "
+                                 f"got {len(items)}")
+        else:
+            trode = None
+            item = items
+
+        if trode is None:
+            # use system config
+            conf = self.D_s
+        else:
+            # use electrode config
+            if trode == 'a':
+                assert self.D_a is not None, "Anode parameter requested but " \
+                                             "anode is not simulated"
+                conf = self.D_a
+            elif trode == 'c':
+                conf = self.D_c
+            else:
+                raise ValueError(f"Provided electrode must be a or c, got {trode}")
+
+        conf[item] = value
 
 
 class ParameterSet:
@@ -170,6 +209,21 @@ class ParameterSet:
             self.params[item] = value
 
         return self.params[item]
+
+    def __setitem__(self, item, value):
+        """
+        Set a parameter value
+        """
+        print(f"Setting {item} to {value}")
+        # check if the parameter was already set
+        # TODO: verify this check is useful, or if overwriting a value is ok
+        # note: explicitly check in self.params instead of just self, as otherwise
+        # the getter may complain that the parameter does not exist,
+        # which is actually what we expect
+        if item in self.params:
+            raise ValueError(f"Trying to set parameter {item} but it is already defined")
+
+        self.params[item] = value
 
     def _get_value(self, item):
         """
