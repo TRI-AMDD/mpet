@@ -3,7 +3,8 @@
 import ast
 from distutils.util import strtobool
 
-from schema import Schema, Use, Optional, And
+from schema import Schema, Use, Optional, And, Or
+import numpy as np
 
 from mpet.config import constants
 
@@ -30,6 +31,13 @@ def check_allowed_values(value, allowed_values):
     return True
 
 
+def tobool(value):
+    """
+    Convert value to boolean
+    """
+    return bool(strtobool(value))
+
+
 # system parameters, per section
 system = {'Sim Params': {'profileType': lambda x:
                          check_allowed_values(x, ["CC", "CV", "CCsegments", "CVsegments"]),
@@ -47,7 +55,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
                          'T': And(Use(float), constants.T_ref),
-                         'randomSeed': Use(strtobool),
+                         'randomSeed': Use(tobool),
                          Optional('seed'): And(Use(int), lambda x: x >= 0),
                          Optional('dataReporter', default='mat'): str,
                          'Rser': Use(float),
@@ -66,14 +74,16 @@ system = {'Sim Params': {'profileType': lambda x:
                         'stddev_a': Use(float),
                         'cs0_c': Use(float),
                         'cs0_a': Use(float),
-                        Optional('specified_psd_c', default=False): Use(strtobool),
-                        Optional('specified_psd_a', default=False): Use(strtobool)},
-          'Conductivity': {'simBulkCond_c': Use(strtobool),
-                           'simBulkCond_a': Use(strtobool),
+                        Optional('specified_psd_c', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
+                        Optional('specified_psd_a', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x))))},
+          'Conductivity': {'simBulkCond_c': Use(tobool),
+                           'simBulkCond_a': Use(tobool),
                            'sigma_s_c': Use(float),
                            'sigma_s_a': Use(float),
-                           'simPartCond_c': Use(strtobool),
-                           'simPartCond_a': Use(strtobool),
+                           'simPartCond_c': Use(tobool),
+                           'simPartCond_a': Use(tobool),
                            'G_mean_c': Use(float),
                            'G_stddev_c': Use(float),
                            'G_mean_a': Use(float),
@@ -106,8 +116,8 @@ electrode = {'Particles': {'type': str,
                            'shape': str,
                            'thickness': Use(float)},
              'Material': {'muRfunc': str,
-                          'logPad': Use(strtobool),
-                          'noise': Use(strtobool),
+                          'logPad': Use(tobool),
+                          'noise': Use(tobool),
                           'noise_prefac': Use(float),
                           'numnoise': Use(int),
                           Optional('Omega_a', default=None): Use(float),
