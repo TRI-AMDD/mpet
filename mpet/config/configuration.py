@@ -16,6 +16,7 @@ import numpy as np
 from mpet.config import schemas
 # import mpet.props_am as props_am
 from mpet.config.derived_values import DerivedValues
+from mpet.config import constants
 from mpet.exceptions import UnknownParameterError
 
 
@@ -27,7 +28,7 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
 #: parameters that are used with several names. TODO: can we get rid of these?
 PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T',
-                'td': 't_ref'}
+                'td': 't_ref', 'Omga': 'Omega_a', 'Omgb': 'Omega_b', 'Omgc': 'Omega_c'}
 
 
 class Config:
@@ -42,12 +43,13 @@ class Config:
         # load system parameters file
         self.D_s = ParameterSet(paramfile, 'system', self.path)
         # the anode and separator are optional: only if there are volumes to simulate
-        trodes = ['c']
+        self.trodes = ['c']
         if self.D_s['Nvol_a'] > 0:
-            trodes.append('a')
-        have_separator = self.D_s['Nvol_s'] > 0
-        self.D_s.params['trodes'] = trodes
-        self.D_s.have_separator = have_separator
+            self.trodes.append('a')
+        self.trodes = self.trodes
+        self.have_separator = self.D_s['Nvol_s'] > 0
+        self.D_s.params['trodes'] = self.trodes
+        self.D_s.have_separator = self.have_separator
 
         # load electrode parameter file(s)
         self.paramfiles = {}
@@ -57,28 +59,26 @@ class Config:
             cathode_paramfile = os.path.join(self.path, cathode_paramfile)
             self.paramfiles['c'] = cathode_paramfile
         self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
-        self.D_c.params['trodes'] = trodes
-        self.D_c.have_separator = have_separator
+        self.D_c.params['trodes'] = self.trodes
+        self.D_c.have_separator = self.have_separator
 
-        if 'a' in trodes:
+        if 'a' in self.trodes:
             anode_paramfile = self.D_s['anode']
             if not os.path.isabs(anode_paramfile):
                 anode_paramfile = os.path.join(self.path, anode_paramfile)
             self.paramfiles['a'] = anode_paramfile
             self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
-            self.D_a.params['trodes'] = trodes
-            self.D_a.have_separator = have_separator
+            self.D_a.params['trodes'] = self.trodes
+            self.D_a.have_separator = self.have_separator
         else:
             self.D_a = None
 
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
 
-        # set the random seed
-        # TODO: replace by a process_config method that does more processing, e.g.
-        # including particle size distribution
-        if self.D_s['randomSeed']:
-            np.random.seed(self.D_s['seed'])
+        # set defaults and scale values that should be non-dim
+        self.config_processed = False
+        self._process_config()
 
     def __getitem__(self, items):
         """
@@ -146,14 +146,14 @@ class Config:
                 raise ValueError(f"Setting electrode config value requires two arguments, but "
                                  f"got {len(items)}")
             # select correct config
-                if trode == 'a':
-                    assert self.D_a is not None, "Anode parameter requested but " \
-                                                 "anode is not simulated"
-                    d = self.D_a
-                elif trode == 'c':
-                    d = self.D_c
-                else:
-                    raise ValueError(f"Provided electrode must be a or c, got {trode}")
+            if trode == 'a':
+                assert self.D_a is not None, "Anode parameter requested but " \
+                                             "anode is not simulated"
+                d = self.D_a
+            elif trode == 'c':
+                d = self.D_c
+            else:
+                raise ValueError(f"Provided electrode must be a or c, got {trode}")
         else:
             # system config
             item = items
@@ -161,17 +161,164 @@ class Config:
 
         d[item] = value
 
-    def keys(self):
+    def _process_config(self):
         """
-        Config keys that can be accessed directly: system and derived values
-        Does not include electrode values
-        Required to let this class be a valid mapping that can be used with ** operator
+        Set default values and process some values
         """
-        keys = [*self.D_s.params.keys(), *self.derived_values.values.keys()]
-        # remove the literal c and a keys that are in derived values
-        keys.remove('c')
-        keys.remove('a')
-        return keys
+        # TODO: To add in this method: prevDir?
+        if self.config_processed:
+            raise Exception("The config can be processed only once as values are scaled in-place")
+        self.config_processed = True
+
+        # set the random seed (do this before generating any random distributions)
+        if self.D_s['randomSeed']:
+            np.random.seed(self.D_s['seed'])
+
+        # set default CrateCurr = 1C_current_density
+        limtrode = self['limtrode']
+        theoretical_1C_current = self[limtrode, 'cap'] / 3600.  # A/m^2
+        param = '1C_current_density'
+        if self[param] is None:
+            # set to theoretical value
+            self[param] = theoretical_1C_current
+
+        # non-dimensional scalings
+        # TODO: what is an optional parameter needs scaling?
+        # first check if parameter is present?
+        self['T'] = self['Tabs'] / constants.T_ref
+        self['Rser'] = self['Rser'] / self['Rser_ref']
+        self['Dp'] = self['Dp'] / self['D_ref']
+        self['Dm'] = self['Dm'] / self['D_ref']
+        self['c0'] = self['c0'] / constants.c_ref
+        self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
+        self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+        self['k0_foil'] = self['k0_foil'] / (self['CrateCurr'] * self['curr_ref'])
+        self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
+
+        # scalings per electrode
+        self['beta'] = {}
+        for trode in self.trodes:
+            self['L'][trode] = self['L'][trode] / self['L_ref']
+            self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
+            self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
+
+            kT = constants.k * constants.T_ref
+            self[trode, 'lambda'] = self[trode, 'lambda'] / kT
+            self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            for param in ['Omga', 'Omgb', 'Omgc', 'EvdW']:
+                value = self[trode, param]
+                if value is not None:
+                    self[trode, param] = value / kT
+
+        # particle distributions
+        # TODO: check for prevDir, load previous values if set
+        self._distr_part()
+
+        # Gibss free energy, must be done after distr_part
+        self._G()
+
+    def _distr_part(self):
+        """
+        """
+        # intialize dicts in config
+        self['psd_num'] = {}
+        self['psd_len'] = {}
+        self['psd_area'] = {}
+        self['psd_vol'] = {}
+        self['psr_vol_FracVol'] = {}
+
+        for trode in self.trodes:
+            solidType = self[trode, 'type']
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+
+            # check if PSD is specified. If so, it is an ndarray so use np.all
+            if not np.all(self['specified_psd'][trode]):
+                # If PSD is not specified, make a length-sampled particle size distribution
+                # Log-normally distributed
+                mean = self['mean'][trode]
+                stddev = self['stddev'][trode]
+                if np.allclose(stddev, 0., atol=1e-12):
+                    raw = mean * np.ones((Nvol, Npart))
+                else:
+                    var = stddev**2
+                    mu = np.log((mean**2) / np.sqrt(var + mean**2))
+                    sigma = np.sqrt(np.log(var/(mean**2) + 1))
+                    raw = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+            else:
+                # use user-defined PSD
+                raw = self['specified_psd'][trode]
+                if raw.shape != (Nvol, Npart):
+                    raise ValueError('Specified particle size distribution discretization '
+                                     'of volumes inequal to the one specified in the config file')
+
+            # TODO: need to store raw distribution?
+
+            # For particles with internal profiles, convert psd to
+            # integers -- number of steps
+            solidDisc = self[trode, 'discretization']
+            if solidType in ['ACR']:
+                psd_num = np.ceil(raw / solidDisc).astype(int)
+                psd_len = solidDisc * psd_num
+            elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
+                psd_num = np.ceil(raw / solidDisc).astype(int) + 1
+                psd_len = solidDisc * (psd_num - 1)
+            # For homogeneous particles (only one 'volume' per particle)
+            # ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']
+            elif 'homog' in solidType:
+                # Each particle is only one volume
+                psd_num = np.ones(raw.shape, dtype=np.int)
+                # The lengths are given by the original length distr.
+                psd_len = raw
+            else:
+                raise NotImplementedError(f'Unknown solid type: {solidType}')
+
+            # Calculate areas and volumes
+            solidShape = self[trode, 'shape']
+            if solidShape == 'sphere':
+                psd_area = 4 * np.pi * psd_len**2
+                psd_vol = (4. / 3) * np.pi * psd_len**3
+            elif solidShape == 'C3':
+                psd_area = 2 * 1.2263 * psd_len**2
+                psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
+            elif solidShape == 'cylinder':
+                psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
+                psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
+            else:
+                raise NotImplementedError(f'Unknown solid shape: {solidShape}')
+
+            # Fraction of individual particle volume compared to total
+            # volume of particles _within the simulated electrode
+            # volume_
+            psd_frac_vol = psd_vol / psd_vol.sum(axis=1, keepdims=True)
+
+            # store values to config
+            self['psd_num'][trode] = psd_num
+            self['psd_len'][trode] = psd_len
+            self['psd_area'][trode] = psd_area
+            self['psd_vol'][trode] = psd_vol
+            self['psr_vol_FracVol'][trode] = psd_frac_vol
+
+    def _G(self):
+        """
+        """
+        self['G'] = {}
+        for trode in self.trodes:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_mean'][trode]
+            stddev = self['G_stddev'][trode]
+            if np.allclose(stddev, 0, atol=1e-12):
+                G = mean * np.ones((Nvol, Npart))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2) / np.sqrt(var + mean**2))
+                sigma = np.sqrt(np.log(var / (mean**2) + 1))
+                G = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+
+            # scale and store
+            self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
 
 class ParameterSet:
@@ -225,7 +372,7 @@ class ParameterSet:
         """
         Get a parameter
         """
-        # if an item is unknown in the dict, try the aliases and per electrode values
+        # if an item is unknown in the dict, try the per electrode values
         if item not in self.params:
             self.params[item] = self._get_value(item)
 
@@ -235,15 +382,6 @@ class ParameterSet:
         """
         Set a parameter value
         """
-        print(f"Setting {item} to {value}")
-        # check if the parameter was already set
-        # TODO: verify this check is useful, or if overwriting a value is ok
-        # note: explicitly check in self.params instead of just self, as otherwise
-        # the getter may complain that the parameter does not exist,
-        # which is actually what we expect
-        if item in self.params:
-            raise ValueError(f"Trying to set parameter {item} but it is already defined")
-
         self.params[item] = value
 
     def _get_value(self, item):

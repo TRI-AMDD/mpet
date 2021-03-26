@@ -114,7 +114,7 @@ system = {'Sim Params': {'profileType': lambda x:
 electrode = {'Particles': {'type': str,
                            'discretization': Use(float),
                            'shape': str,
-                           'thickness': Use(float)},
+                           Optional('thickness'): Use(float)},
              'Material': {'muRfunc': str,
                           'logPad': Use(tobool),
                           'noise': Use(tobool),

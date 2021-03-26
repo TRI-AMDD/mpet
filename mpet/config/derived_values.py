@@ -1,6 +1,8 @@
 from string import Formatter as StringFormatter
-from mpet import props_elyte
 
+import numpy as np
+
+from mpet import props_elyte, props_am
 from mpet.exceptions import UnknownParameterError
 from mpet.config import constants
 
@@ -15,12 +17,24 @@ class DerivedValues:
 
         self.config = None
 
+        # Equations defining derived parameters
+        # any parameter must be enclosed in curly brackets
+        # electrode-specific parameters must have a _tr suffix
+        # electrode selection from system config must have [tr] suffix
+        # constants can be accessed with constants.<constants name>, without curly brackets
         self.equations = {'Damb': '(({zp} - {zm}) * {Dp} * {Dm}) / ({zp} * {Dp} - {zm} * {Dm})',
                           'tp': '{zp} * {Dp} / ({zp} * {Dp} - {zm} * {Dm})',
                           't_ref': '{L_ref}**2 / {D_ref}',
                           'curr_ref': '3600. / {t_ref}',
-                          'sigma_s_ref': '{L_ref}**2 - constants.F**2 * constants.c_ref / '
-                                '({t_ref} * constants.k * constants.N_A * constants.T_ref)'}
+                          'sigma_s_ref': '{L_ref}**2 - constants.F**2 * constants.c_ref '
+                                         '/ ({t_ref} * constants.k * constants.N_A '
+                                         '* constants.T_ref)',
+                          'currset': '{CrateCurr} * {Crate}',  # A/m^2
+                          'Rser_ref': 'constants.k * constants.T_ref / (constants.e * {curr_ref} '
+                                      '* {CrateCurr})',
+                          'csmax': '{rho_s_tr} / constants.N_A',
+                          'cap': 'constants.e * {L[tr]} * (1 - {poros[tr]}) '
+                                 ' * {P_L[tr]} * {rho_s_tr}'}
 
     def __repr__(self):
         return dict.__repr__(self.values)
@@ -42,33 +56,63 @@ class DerivedValues:
         # calculate value if not already stored
         if item not in values:
             if item in self.equations:
-                values[item] = self._process_equation(self.equations[item])
+                values[item] = self._process_equation(self.equations[item], trode)
             else:
                 # get the method to calculate the value
                 try:
                     func = getattr(self, item)
                 except AttributeError:
-                    raise UnknownParameterError(f"Unknown parameter: {item}")
+                    raise UnknownParameterError(f'Unknown parameter: {item}')
 
                 try:
                     values[item] = func(*args)
                 except TypeError:
                     # TypeError occurs when calling arg-less func with args,
                     # or the other way around
-                    raise Exception(f"Requested parameter {item} without electrode specification")
+                    raise Exception(f'Requested electrode parameter without electrode '
+                                    f'specification, or system parameter with '
+                                    f'electrode specification (parameter: {item})')
 
         return values[item]
 
-    def _process_equation(self, equation):
+    def _process_equation(self, equation, trode=None):
         """
         """
-        # ** operator does not call __getitem__ which would load the parameters,
-        # so do this manually before calling **
+        # get parameters that are specified in equation, i.e. everything in curly brackets
         params = [item[1] for item in StringFormatter().parse(equation) if item[1] is not None]
+        formatter = {}
+        # add tr key to formatter in case param[tr] is used in the string formatting
+        if trode is not None:
+            formatter['tr'] = trode
+        have_electrode_select = False
         for param in params:
-            self.config[param]
-        # evaluate the equation
-        return eval(equation.format(**self.config))
+            # suffixes for electrode parameters
+            electrode_suffix = '_tr'
+            electrode_select = '[tr]'
+            if param.endswith(electrode_suffix):
+                # electrode parameter
+                assert trode is not None, 'Equation requires electrode specification'
+                # remove trailing _tr from param. Don't use .split in case _tr occurs
+                # somewhere in the middle as well
+                param_config = param[:-len(electrode_suffix)]
+                formatter[param] = self.config[trode, param_config]
+            elif param.endswith(electrode_select):
+                # electrode selected from system parameter
+                assert trode is not None, 'Equation requires electrode specification'
+                have_electrode_select = True
+                # remove trailing [tr]
+                param_config = param[:-len(electrode_select)]
+                # put the full parameter dict in the formatter, as the []
+                # operator still works in string formatting
+                formatter[param_config] = self.config[param_config]
+            else:
+                # system parameter
+                formatter[param] = self.config[param]
+        # if there is electrode selection, replace the tr placeholder
+        # by the electrode to use
+        if have_electrode_select:
+            equation = equation.replace('[tr]', f'[{trode}]')
+        return eval(equation.format(**formatter))
 
     def numsegments(self):
         """
@@ -101,11 +145,13 @@ class DerivedValues:
             # flat plate anode with assumed infinite supply of metal
             return 0.
 
-    def csmax(self, trode):
+    def limtrode(self):
         """
-        Maximum concentraion in electrode solids, mol/m^3
         """
-        return self.config[trode, 'rho_s'] / constants.N_A
+        if self.config['z'] < 1:
+            return 'c'
+        else:
+            return 'a'
 
     def cs_ref(self, trode):
         """
@@ -118,11 +164,27 @@ class DerivedValues:
             prefac = .5
         return prefac * self.config[trode, 'csmax']
 
-    def cap(self, trode):
+    def muR_ref(self, trode):
         """
-        C / mˆ2
         """
-        raise NotImplementedError('need acces to both sys and electrode config')
-        return constants.e * self.config['L'][self.trode] \
-            * (1 - self.config['poros'][self.trode]) \
-            * self.config['P_L'][self.trode] * self.config['rho_s']
+        muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
+        cs0bar = self.config['cs0'][trode]
+        cs0 = np.array([cs0bar])
+
+        solidType = self.config[trode, 'type']
+        if solidType in constants.two_var_types:
+            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), 0.)[0][0]
+        elif solidType in constants.one_var_types:
+            muR_ref = -muRfunc(cs0, cs0bar, 0.)[0]
+        else:
+            raise ValueError('Unknown solid type: {solidType}')
+        return muR_ref
+
+    def phiRef(self, trode):
+        """
+        """
+        # TODO: in io_utils, anode value is initalized to zero with note:
+        # temporary, used for Vmax, Vmin'
+        # no reference to phiRef found before the below value is set, so is
+        # this needed?
+        return -self.config[trode, 'muR_ref'][0]
