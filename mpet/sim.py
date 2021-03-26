@@ -44,7 +44,7 @@ class SimMPET(dae.daeSimulation):
     def SetUpParametersAndDomains(self):
         # Domains
         config = self.config
-        if config["Nvol"]["s"] >= 1:
+        if config.have_separator:
             self.m.DmnCell["s"].CreateArray(config["Nvol"]["s"])
         for tr in config["trodes"]:
             self.m.DmnCell[tr].CreateArray(config["Nvol"][tr])
