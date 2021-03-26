@@ -183,10 +183,6 @@ class DerivedValues:
     def phiRef(self):
         """
         """
-        # TODO: in io_utils, anode value is initalized to zero with note:
-        # temporary, used for Vmax, Vmin'
-        # no reference to phiRef found before the below value is set, so is
-        # this needed?
         d = {}
         for trode in self.config.trodes:
             d[trode] = -self.config[trode, 'muR_ref'][0]

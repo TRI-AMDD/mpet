@@ -212,7 +212,9 @@ class Config:
                     self[trode, param] = value / kT
 
         # scaling/addition of macroscopic input information
-        Vref = self['phiRef']['c'] - self['phiRef']['a']
+        Vref = self['phiRef']['c']
+        if 'a' in self.trodes:
+            Vref -= self['phiRef']['a']
         factor = constants.e / kT
         self['Vset'] = -(factor * self['Vset'] + Vref)
         self['phimin'] = -(factor * self['Vmax'] + Vref)
