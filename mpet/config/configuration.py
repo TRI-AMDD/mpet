@@ -2,7 +2,7 @@
 
 This module provides functions for various data format exchanges:
  - config files (on disk) <--> dictionaries of parameters (in memory)
- - dictionaries of parameters (in memory) <--> dictionaries of parameters ("pickled" on disk)
+ - dictionaries of parameters (in memory) <--> dictionaries of parameters ('pickled' on disk)
 
 It also has various other functions used in processes for things such as generating
 distributions from input means and standard deviations.
@@ -18,7 +18,8 @@ from mpet.config import schemas
 from mpet.config.derived_values import DerivedValues
 from mpet.config import constants
 from mpet.exceptions import UnknownParameterError
-
+# temporary:
+from mpet.io_utils import size2regsln
 
 #: parameter that are define per electrode with a _{electrode} suffix
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
@@ -32,7 +33,7 @@ PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T
 
 
 class Config:
-    def __init__(self, paramfile="params.cfg"):
+    def __init__(self, paramfile='params.cfg'):
         """
         Hold values from system and electrode configuration files, as well as
         derived values
@@ -94,17 +95,17 @@ class Config:
                 try:
                     trode, item = items
                 except ValueError:
-                    raise ValueError(f"Reading from electrode config requires two arguments, but "
-                                     f"got {len(items)}")
+                    raise ValueError(f'Reading from electrode config requires two arguments, but '
+                                     f'got {len(items)}')
                 # select correct config
                 if trode == 'a':
-                    assert self.D_a is not None, "Anode parameter requested but " \
-                                                 "anode is not simulated"
+                    assert self.D_a is not None, 'Anode parameter requested but ' \
+                                                 'anode is not simulated'
                     d = self.D_a
                 elif trode == 'c':
                     d = self.D_c
                 else:
-                    raise ValueError(f"Provided electrode must be a or c, got {trode}")
+                    raise ValueError(f'Provided electrode must be a or c, got {trode}')
             else:
                 # system config
                 trode = None
@@ -127,8 +128,8 @@ class Config:
                 value = self.derived_values.get(self, item, trode)
 
         except RecursionError:
-            raise Exception(f"Failed to get {items} due to recursion error. "
-                            f"Circular parameter dependency?")
+            raise Exception(f'Failed to get {items} due to recursion error. '
+                            f'Circular parameter dependency?')
 
         return value
 
@@ -143,17 +144,17 @@ class Config:
             try:
                 trode, item = items
             except ValueError:
-                raise ValueError(f"Setting electrode config value requires two arguments, but "
-                                 f"got {len(items)}")
+                raise ValueError(f'Setting electrode config value requires two arguments, but '
+                                 f'got {len(items)}')
             # select correct config
             if trode == 'a':
-                assert self.D_a is not None, "Anode parameter requested but " \
-                                             "anode is not simulated"
+                assert self.D_a is not None, 'Anode parameter requested but ' \
+                                             'anode is not simulated'
                 d = self.D_a
             elif trode == 'c':
                 d = self.D_c
             else:
-                raise ValueError(f"Provided electrode must be a or c, got {trode}")
+                raise ValueError(f'Provided electrode must be a or c, got {trode}')
         else:
             # system config
             item = items
@@ -167,7 +168,7 @@ class Config:
         """
         # TODO: To add in this method: prevDir?
         if self.config_processed:
-            raise Exception("The config can be processed only once as values are scaled in-place")
+            raise Exception('The config can be processed only once as values are scaled in-place')
         self.config_processed = True
 
         # set the random seed (do this before generating any random distributions)
@@ -185,6 +186,7 @@ class Config:
         # non-dimensional scalings
         # TODO: what is an optional parameter needs scaling?
         # first check if parameter is present?
+        kT = constants.k * constants.T_ref
         self['T'] = self['Tabs'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
@@ -202,7 +204,6 @@ class Config:
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
 
-            kT = constants.k * constants.T_ref
             self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
             for param in ['Omga', 'Omgb', 'Omgc', 'EvdW']:
@@ -210,12 +211,23 @@ class Config:
                 if value is not None:
                     self[trode, param] = value / kT
 
+        # scaling/addition of macroscopic input information
+        Vref = self['phiRef']['c'] - self['phiRef']['a']
+        factor = constants.e / kT
+        self['Vset'] = -(factor * self['Vset'] + Vref)
+        self['phimin'] = -(factor * self['Vmax'] + Vref)
+        self['phimax'] = -(factor * self['Vmin'] + Vref)
+
         # particle distributions
         # TODO: check for prevDir, load previous values if set
         self._distr_part()
 
         # Gibss free energy, must be done after distr_part
         self._G()
+
+        # Electrode parameters that depend on invidividual particle
+        # TODO: can maybe replace this by some logic that extracts value based on i, j
+        self._indvPart()
 
     def _distr_part(self):
         """
@@ -320,13 +332,61 @@ class Config:
             self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
+    def _indvPart(self):
+        """
+        """
+        for trode in self.trodes:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            self[trode, 'indvPart'] = np.empty((Nvol, Npart), dtype=object)
+            # reference scales per trode
+            cs_ref_part = constants.N_A * self[trode, 'cs_ref']  # part/m^3
+
+            for i in range(Nvol):
+                for j in range(Npart):
+                    # Bring in a copy of the nondimensional parameters
+                    # we've calculated so far which are the same for
+                    # all particles.
+                    # TODO: see if we can avoid this
+                    if trode == 'c':
+                        self[trode, 'indvPart'][i, j] = self.D_c
+                    elif trode == 'a':
+                        self[trode, 'indvPart'][i, j] = self.D_a
+                    # This creates a reference for shorthand.
+                    cfg = self[trode, 'indvPart'][i, j]
+                    # This specific particle dimensions
+                    cfg['N'] = self['psd_num'][trode][i,j]
+                    plen = self['psd_len'][trode][i,j]
+                    parea = self['psd_area'][trode][i,j]
+                    pvol = self['psd_vol'][trode][i,j]
+                    # Define a few reference scales
+                    F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
+                    i_s_ref = constants.e * F_s_ref  # A/m^2
+                    kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
+                    gamma_S_ref = kappa_ref / plen  # J/m^2
+                    # non-dimensional quantities
+                    # TODO: this is wrong! Assumes the original values have not been scaled,
+                    # but they have
+                    cfg['kappa'] = self[trode, 'kappa'] / kappa_ref
+                    nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
+                    cfg['beta_s'] = nd_dgammadc / cfg['kappa']
+                    cfg['D'] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    cfg['k0'] = self[trode, 'k0'] / (constants.e * F_s_ref)
+                    cfg['Rfilm'] = self[trode, 'Rfilm'] / (constants.k * constants.T_ref
+                                                           / (constants.e * i_s_ref))
+                    cfg['delta_L'] = (parea * plen) / pvol
+                    # If we're using the model that varies Omg_a with particle size,
+                    # overwrite its value for each particle
+                    if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:
+                        cfg['Omga'] = size2regsln(plen)
+
 
 class ParameterSet:
     def __init__(self, paramfile, config_type, path):
         """
         Hold a set of parameters from a single entity (system, electrode)
         """
-        assert config_type in ['system', 'electrode'], f"Invalid config type: {config_type}"
+        assert config_type in ['system', 'electrode'], f'Invalid config type: {config_type}'
         self.path = path
         self.config_type = config_type
 
@@ -340,7 +400,7 @@ class ParameterSet:
         Create config from file
         """
         if not os.path.isfile(fname):
-            raise Exception(f"Missing config file: {fname}")
+            raise Exception(f'Missing config file: {fname}')
         # create config parser
         parser = configparser.ConfigParser()
         parser.optionxform = str
@@ -352,13 +412,13 @@ class ParameterSet:
             try:
                 config_schema = getattr(schemas, self.config_type)[section]
             except KeyError:
-                raise Exception(f"Unknown section '{section}' in {self.fname}")
+                raise Exception(f'Unknown section "{section}" in {self.fname}')
             # validate
             section_params = config_schema.validate(dict(parser[section].items()))
             # verify there are no duplicate keys
             for key in section_params.keys():
                 if key in self.params:
-                    raise Exception(f"Duplicate key found: {key}")
+                    raise Exception(f'Duplicate key found: {key}')
             # store the config
             self.params.update(section_params)
 
@@ -403,4 +463,4 @@ class ParameterSet:
                 del self.params[key]
             return d
         else:
-            raise UnknownParameterError(f"Unknown parameter: {item}")
+            raise UnknownParameterError(f'Unknown parameter: {item}')
