@@ -41,7 +41,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
-    def __init__(self, T, ndD=None, **kwargs):
+    def __init__(self, config, trode):
         """ ndD can be the full dictionary of nondimensional
         parameters for the electrode particles, as made for the
         simulations. Otherwise, parameters can be passed directly in
@@ -57,10 +57,9 @@ class muRfuncs():
         or
             muRfuncs(T, muRfunc="LiMn2O4_ss")
         """
-        if ndD is None:
-            ndD = kwargs
-        self.ndD = ndD
-        self.T = T  # nondimensional
+        self.config = config
+        self.trode = trode
+        self.T = config['T']  # nondimensional
         k = 1.381e-23
         Tabs = 298
         e = 1.602e-19
@@ -68,7 +67,7 @@ class muRfuncs():
         self.kToe = (k*Tabs)/e
 
         # Convert "muRfunc" to a callable function
-        self.muRfunc = getattr(self,ndD["muRfunc"])
+        self.muRfunc = getattr(self, config[trode, "muRfunc"])
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
@@ -212,7 +211,7 @@ class muRfuncs():
         # Based Omg = 3*k*T_ref
         yL = 0.07072018
         yR = 0.92927982
-        OCV_rs = -self.kToe*self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        OCV_rs = -self.kToe*self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
         width = 0.005
         OCV = OCV_rs*step_down(y, yL, width) + OCV_rs*step_up(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
@@ -323,7 +322,7 @@ class muRfuncs():
 
     def general_non_homog(self, y, ybar):
         """ Helper function """
-        ptype = self.ndD["type"]
+        ptype = self.config[self.trode, "type"]
         mod1var, mod2var = False, False
         if isinstance(y, np.ndarray):
             mod1var = True
@@ -335,18 +334,18 @@ class muRfuncs():
         else:
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
-            shape = self.ndD["shape"]
-            kappa = self.ndD["kappa"]
-            B = self.ndD["B"]
+            shape = self.config[self.trode, "shape"]
+            kappa = self.config[self.trode, "kappa"]
+            B = self.config[self.trode, "B"]
             if shape == "C3":
                 if mod1var:
-                    cwet = self.ndD["cwet"]
+                    cwet = self.config[self.trode, "cwet"]
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
-                beta_s = self.ndD["beta_s"]
+                beta_s = self.config[self.trode, "beta_s"]
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
                     muR_nh = self.non_homog_round_wetting(
@@ -367,7 +366,7 @@ class muRfuncs():
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
-        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -377,9 +376,9 @@ class muRfuncs():
     def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
-        ndD = self.ndD
         muR1homog, muR2homog = self.graphite_2param_homog(
-            y, ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"], ISfuncs)
+            y, self.config[self.trode, "Omga"], self.config[self.trode, "Omgb"],
+            self.config[self.trode, "Omgc"], self.config[self.trode, "EvdW"], ISfuncs)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
@@ -391,9 +390,8 @@ class muRfuncs():
 
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
-        ndD = self.ndD
         muRhomog = self.graphite_1param_homog_3(
-            y, ndD["Omga"], ndD["Omgb"], ISfuncs)
+            y, self.config[self.trode, "Omga"], self.config[self.trode, "Omgb"], ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -402,14 +400,14 @@ class muRfuncs():
 
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
-        muR = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muR = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
 
     def testRS_ps(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*2.
-        muRhomog = self.reg_sln(y, self.ndD["Omga"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
