@@ -68,12 +68,11 @@ class muRfuncs():
         self.eokT = e/(k*Tabs)
         self.kToe = (k*Tabs)/e
 
-        #Convert "muRfunc" to a callable function
+        # Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self,ndD["muRfunc"])
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
-
 
     ######
     # Solid solution functions
@@ -85,10 +84,10 @@ class muRfuncs():
     def LiMn2O4_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Doyle, Newman, 1996 """
         # OCV in V vs Li/Li+
-        OCV = (4.19829 + 0.0565661*np.tanh(-14.5546*y + 8.60942) -
-               0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111) -
-               0.157123*np.exp(-0.04738*y**8) +
-               0.810239*np.exp(-40*(y - 0.133875)))
+        OCV = (4.19829 + 0.0565661*np.tanh(-14.5546*y + 8.60942)
+               - 0.0275479*(1/((0.998432 - y)**(0.492465)) - 1.90111)
+               - 0.157123*np.exp(-0.04738*y**8)
+               + 0.810239*np.exp(-40*(y - 0.133875)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -96,10 +95,10 @@ class muRfuncs():
     def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
         """ Fuller, Doyle, Newman, 1994 """
         # OCV in V vs Li/Li+
-        OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268) -
-               0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994) -
-               0.045*np.exp(-71.69*y**8) +
-               0.01*np.exp(-200*(y - 0.19)))
+        OCV = (4.06279 + 0.0677504*np.tanh(-21.8502*y + 12.8268)
+               - 0.105734*(1/((1.00167 - y)**(0.379571)) - 1.575994)
+               - 0.045*np.exp(-71.69*y**8)
+               + 0.01*np.exp(-200*(y - 0.19)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -123,11 +122,11 @@ class muRfuncs():
 
     def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """ Safari, Delacourt 2011 """
-        OCV = (0.6379 + 0.5416*np.exp(-305.5309*y) +
-               0.044*np.tanh(-(y - 0.1958)/0.1088) -
-               0.1978*np.tanh((y - 1.0571)/0.0854) -
-               0.6875*np.tanh((y + 0.0117)/0.0529) -
-               0.0175*np.tanh((y - 0.5692)/0.0875))
+        OCV = (0.6379 + 0.5416*np.exp(-305.5309*y)
+               + 0.044*np.tanh(-(y - 0.1958)/0.1088)
+               - 0.1978*np.tanh((y - 1.0571)/0.0854)
+               - 0.6875*np.tanh((y + 0.0117)/0.0529)
+               - 0.0175*np.tanh((y - 0.5692)/0.0875))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -177,8 +176,8 @@ class muRfuncs():
         This function was obtained from Dan Cogswell's fit of Samsung
         data.
         """
-        OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4 -
-               0.06*np.log(y/(1-y)))
+        OCV = (3.86 + 1.67*y - 9.52*y**2 + 15.04*y**3 - 7.95*y**4
+               - 0.06*np.log(y/(1-y)))
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -450,7 +449,6 @@ class muRfuncs():
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
-
 
     def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
         """ Torchio et al, 2016. """

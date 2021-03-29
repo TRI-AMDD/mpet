@@ -27,12 +27,13 @@ def electrodePlots(testDir, dirDict, trode):
     cmpr.soc(testDir, dirDict, "c")
     cmpr.cbarLine(testDir, dirDict, "c")
 
+
 def getNumberOfTests():
-  n = 0
-  for key in globals().keys():
-    if re.match(r'test[0-9][0-9][0-9]$',key):
-      n = n + 1
-  return n
+    n = 0
+    for key in globals().keys():
+        if re.match(r'test[0-9][0-9][0-9]$', key):
+            n = n + 1
+    return n
 
 
 def testAnalytSphDifn(testDir, dirDict):
@@ -98,12 +99,12 @@ def testAnalytCylDifn(testDir, dirDict):
 def analytSphDifn(R, T):
     """ Analytical solution for diffusion in a sphere """
     n = 30
-    lmbdavec = np.pi*np.arange(1, n+1)
-    theta = 0*R
+    lmbdavec = np.pi * np.arange(1, n + 1)
+    theta = 0 * R
     for i, lmbda in enumerate(lmbdavec):
-        theta += ((2./lmbda**2) * np.sin(lmbda*R)/R
-                  * (np.sin(lmbda) - lmbda*np.cos(lmbda))
-                  * np.exp(-lmbda**2*T))
+        theta += ((2. / lmbda ** 2) * np.sin(lmbda * R) / R
+                  * (np.sin(lmbda) - lmbda * np.cos(lmbda))
+                  * np.exp(-lmbda ** 2 * T))
     return theta
 
 
@@ -111,8 +112,8 @@ def analytCylDifn(R, T):
     """ Analytical solution for diffusion in a cylinder """
     n = 30
     lmbdavec = spcl.jn_zeros(0, n)
-    theta = 0*R
+    theta = 0 * R
     for i, lmbda in enumerate(lmbdavec):
-        theta += ((2./lmbda) * spcl.j0(lmbda*R)/spcl.j1(lmbda)
-                  * np.exp(-lmbda**2*T))
+        theta += ((2. / lmbda) * spcl.j0(lmbda * R) / spcl.j1(lmbda)
+                  * np.exp(-lmbda ** 2 * T))
     return theta

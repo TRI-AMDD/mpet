@@ -1,4 +1,4 @@
-"""
+r"""
 This module provides functions defining properties of the ion-conducting
 phase -- the electrolyte Manage functions for the parameters involved in
 Stefan-Maxwell based concentrated electrolyte transport theory for
@@ -159,11 +159,12 @@ def LIONSIMBA_nonisothermal():
         return 0.364
 
     def sigma(c, T):
-        c_dim = c*1000 #dimensionalized c
+        c_dim = c*1000  # dimensionalized c
+        T_dim = T*Tref
         r1 = -10.5
         r2 = 0.668e-3
         r3 = 0.494e-6
-        r4 = 0.074 
+        r4 = 0.074
         r5 = -1.78e-5
         r6 = -8.86e-10
         r7 = -6.96e-5
@@ -173,12 +174,13 @@ def LIONSIMBA_nonisothermal():
 
     def D(c, T):
         c_dim = c*1000
+        T_dim = T*Tref
         r1 = 4.43
         r2 = 54
         r3 = 229
         r4 = 5e-3
         r5 = 0.22e-3
-        D_out = 1e-4 * 10**(-r1-r2/(T*Tref-r3-r4*c_dim)-r5*c_dim)
+        D_out = 1e-4 * 10**(-r1-r2/(T_dim-r3-r4*c_dim)-r5*c_dim)
         return D_out
 
     def therm_fac(c, T):
@@ -207,6 +209,7 @@ def LIONSIMBA_isothermal():
 
     def D(c, T):
         return 7.5e-10 # m^2/s
+    # isothermal at 298 K
 
     def therm_fac(c, T):
         return 1.
