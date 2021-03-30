@@ -150,7 +150,6 @@ def test1():
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
-
 def LIONSIMBA_nonisothermal():
     """ Set of parameters from LIONSIMBA validation. Torchio et al, 2016.
     """
@@ -169,7 +168,9 @@ def LIONSIMBA_nonisothermal():
         r6 = -8.86e-10
         r7 = -6.96e-5
         r8 = 2.8e-8
-        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + (T*Tref)*(r4 + r5*c_dim + r6*c_dim**2) + (T*Tref)**2 *(r7 + r8*c_dim))**2
+        sig_out = 1e-4 * c_dim * (r1 + r2*c_dim + r3*c_dim**2 + T_dim
+                                  * (r4 + r5*c_dim + r6*c_dim**2)
+                                  + T_dim**2 * (r7 + r8*c_dim))**2
         return sig_out  # m^2/s
 
     def D(c, T):
@@ -204,11 +205,12 @@ def LIONSIMBA_isothermal():
         return 0.364
 
     def sigma(c, T):
-        ce = c*1000 #dimensionalized c
-        return 4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2 +1.5094e-10*ce**3 -1.6018*1e-14*ce**4 # S/m
+        ce = c*1000  # dimensionalized c
+        return (4.1253e-2 + 5.007e-4*ce - 4.7212e-7*ce**2
+                + 1.5094e-10*ce**3 - 1.6018*1e-14*ce**4)  # S/m
 
     def D(c, T):
-        return 7.5e-10 # m^2/s
+        return 7.5e-10  # m^2/s
     # isothermal at 298 K
 
     def therm_fac(c, T):

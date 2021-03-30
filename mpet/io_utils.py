@@ -187,7 +187,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
-        dD["E_D"] = P.getfloat('Material', 'E_D', fallback = 0)
+        dD["E_D"] = P.getfloat('Material', 'E_D', fallback=0)
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
@@ -199,7 +199,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         # Reactions
         ndD["rxnType"] = P.get('Reactions', 'rxnType')
         dD["k0"] = P.getfloat('Reactions', 'k0')
-        dD["E_A"] = P.getfloat('Reactions', 'E_A', fallback = 0)
+        dD["E_A"] = P.getfloat('Reactions', 'E_A', fallback=0)
         ndD["alpha"] = P.getfloat('Reactions', 'alpha')
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')

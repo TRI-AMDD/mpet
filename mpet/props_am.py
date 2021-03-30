@@ -15,6 +15,7 @@ class Dfuncs():
     details on the two forms, see muRfuncs which defines both solid
     solution (_ss) and materials based on simpler thermodynamic models.
     """
+
     def __init__(self, Dfunc):
         Dopts = {}
         Dopts['lattice'] = self.lattice
@@ -41,6 +42,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, T, ndD=None, **kwargs):
         """ ndD can be the full dictionary of nondimensional
         parameters for the electrode particles, as made for the
@@ -64,7 +66,7 @@ class muRfuncs():
         k = 1.381e-23
         Tabs = 298
         e = 1.602e-19
-        #eokT and kToe are the reference values for scalings
+        # eokT and kToe are the reference values for scalings
         self.eokT = e/(k*Tabs)
         self.kToe = (k*Tabs)/e
 
@@ -433,7 +435,8 @@ class muRfuncs():
         r10 = 37.311
         r11 = 73.083
         r12 = 95.96
-        OCV_ref = (-r1 + r2*y**2 -r3*y**4 + r4*y**6 - r5*y**8 + r6 * y**10)/(-r7 + r8*y**2 - r9*y**4 + r10*y**6 - r11*y**8 + r12*y**10)
+        OCV_ref = (-r1 + r2*y**2 - r3*y**4 + r4*y**6 - r5*y**8 + r6 * y**10) / \
+            (-r7 + r8*y**2 - r9*y**4 + r10*y**6 - r11*y**8 + r12*y**10)
         k1 = -0.001
         k2 = 0.199521039
         k3 = -0.928373822
@@ -461,7 +464,8 @@ class muRfuncs():
         r5 = 0.0019
         r6 = 0.2808
         r7 = 0.7984
-        OCV_ref = r1 + r2*y + r3*y**0.5 - r4*y**(-1) + r5*y**(-1.5) + r6*np.exp(0.9-15*y) - r7*np.exp(0.4465*y-0.4108)
+        OCV_ref = r1 + r2*y + r3*y**0.5 - r4 * \
+            y**(-1) + r5*y**(-1.5) + r6*np.exp(0.9-15*y) - r7*np.exp(0.4465*y-0.4108)
         k1 = 0.001
         k2 = 0.005269056
         k3 = 3.299265709
@@ -481,7 +485,8 @@ class muRfuncs():
         k17 = 374577.3152
         k18 = -385821.1607
         k19 = 165705.8597
-        dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8)/(k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8)
+        dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8) / \
+            (k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8)
         OCV = OCV_ref + dUdT*(T-1)*Tref
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
