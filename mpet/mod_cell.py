@@ -97,7 +97,7 @@ class ModCell(dae.daeModel):
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
         # potential.
-        if (not 'a' in config.trodes) and (not config.have_separator) and Nvol["c"] == 1:
+        if ('a' not in config.trodes) and (not config.have_separator) and Nvol["c"] == 1:
             self.SVsim = True
         else:
             self.SVsim = False

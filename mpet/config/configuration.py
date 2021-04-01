@@ -79,6 +79,7 @@ class Config:
 
         # set defaults and scale values that should be non-dim
         self.config_processed = False
+        self.params_per_particle = []
         self._process_config()
 
     def __getitem__(self, items):
@@ -89,47 +90,48 @@ class Config:
         If the value is found in none of the configs, it is assumed to be a derived
         parameter that can be calculated from the config values
         """
-        try:
-            if isinstance(items, tuple):
-                # electrode config
-                try:
-                    trode, item = items
-                except ValueError:
-                    raise ValueError(f'Reading from electrode config requires two arguments, but '
-                                     f'got {len(items)}')
-                # select correct config
-                if trode == 'a':
-                    assert self.D_a is not None, 'Anode parameter requested but ' \
-                                                 'anode is not simulated'
-                    d = self.D_a
-                elif trode == 'c':
-                    d = self.D_c
-                else:
-                    raise ValueError(f'Provided electrode must be a or c, got {trode}')
+        # TODO: the initial logic is very similar in del/set/get item, perhaps this can be moved to
+        # a separate method
+        if isinstance(items, tuple):
+            # electrode config
+            try:
+                trode, item = items
+            except ValueError:
+                raise ValueError(f'Reading from electrode config requires two arguments, but '
+                                 f'got {len(items)}')
+            # select correct config
+            if trode == 'a':
+                assert self.D_a is not None, 'Anode parameter requested but ' \
+                                             'anode is not simulated'
+                d = self.D_a
+            elif trode == 'c':
+                d = self.D_c
             else:
-                # system config
-                trode = None
-                item = items
-                d = self.D_s
+                raise ValueError(f'Provided electrode must be a or c, got {trode}')
+        else:
+            # system config
+            trode = None
+            item = items
+            d = self.D_s
 
-            # get alias of item in case it is defined
-            try:
-                item = PARAMS_ALIAS[item]
-            except KeyError:
-                # no alias for this item
-                pass
+        # get alias of item in case it is defined
+        try:
+            item = PARAMS_ALIAS[item]
+        except KeyError:
+            # no alias for this item
+            pass
 
-            # try to read the parameter from the config
-            try:
-                value = d[item]
-            except UnknownParameterError:
-                # not known in config, assume it is a derived value
-                # this will raise an UnknownParameterError if still not found
-                value = self.derived_values.get(self, item, trode)
-
-        except RecursionError:
-            raise Exception(f'Failed to get {items} due to recursion error. '
-                            f'Circular parameter dependency?')
+        # try to read the parameter from the config
+        # first check if this parameter is defined on the particle level
+        if trode is not None and item in self.params_per_particle:
+            return self[trode, 'indvPart'][item]
+        # else we try to read if from the global config
+        try:
+            value = d[item]
+        except UnknownParameterError:
+            # not known in config, assume it is a derived value
+            # this will raise an UnknownParameterError if still not found
+            value = self.derived_values.get(self, item, trode)
 
         return value
 
@@ -139,7 +141,6 @@ class Config:
         or a tuple of (electrode, item), in which case the item is stored in the config
         of the given electrode (a or c)
         """
-        # then process as in __getitem__
         if isinstance(items, tuple):
             try:
                 trode, item = items
@@ -161,6 +162,36 @@ class Config:
             d = self.D_s
 
         d[item] = value
+
+    def __delitem__(self, items):
+        """
+        Delete a parameter value, either a single item to delete from system config,
+        or a tuple of (electrode, item), in which case the item is deleted from the config
+        of the given electrode (a or c)
+        """
+        if isinstance(items, tuple):
+            try:
+                trode, item = items
+            except ValueError:
+                raise ValueError(f'Setting electrode config value requires two arguments, but '
+                                 f'got {len(items)}')
+            # select correct config
+            if trode == 'a':
+                assert self.D_a is not None, 'Anode parameter requested but ' \
+                                             'anode is not simulated'
+                d = self.D_a
+            elif trode == 'c':
+                d = self.D_c
+            else:
+                raise ValueError(f'Provided electrode must be a or c, got {trode}')
+        else:
+            # system config
+            item = items
+            d = self.D_s
+
+        # delete directly from the underlying dict, to avoid having to define __delitem__ in
+        # ParameterSet class
+        del d.params[item]
 
     def _process_config(self):
         """
@@ -228,7 +259,6 @@ class Config:
         self._G()
 
         # Electrode parameters that depend on invidividual particle
-        # TODO: can maybe replace this by some logic that extracts value based on i, j
         self._indvPart()
 
     def _distr_part(self):
@@ -239,7 +269,7 @@ class Config:
         self['psd_len'] = {}
         self['psd_area'] = {}
         self['psd_vol'] = {}
-        self['psr_vol_FracVol'] = {}
+        self['psd_vol_FracVol'] = {}
 
         for trode in self.trodes:
             solidType = self[trode, 'type']
@@ -311,7 +341,7 @@ class Config:
             self['psd_len'][trode] = psd_len
             self['psd_area'][trode] = psd_area
             self['psd_vol'][trode] = psd_vol
-            self['psr_vol_FracVol'][trode] = psd_frac_vol
+            self['psd_vol_FracVol'][trode] = psd_frac_vol
 
     def _G(self):
         """
@@ -340,24 +370,23 @@ class Config:
         for trode in self.trodes:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            self[trode, 'indvPart'] = np.empty((Nvol, Npart), dtype=object)
+            self[trode, 'indvPart'] = {}
+
+            # intialize parameters
+            # TODO: verify dtypes
+            param_types = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
+                           'Rfilm': float, 'delta_L': float, 'Omga': float}
+            for param, dtype in param_types.items():
+                self[trode, 'indvPart'][param] = np.empty((Nvol, Npart), dtype=dtype)
+
             # reference scales per trode
             cs_ref_part = constants.N_A * self[trode, 'cs_ref']  # part/m^3
 
+            # calculate the values for each particle in each volume
             for i in range(Nvol):
                 for j in range(Npart):
-                    # Bring in a copy of the nondimensional parameters
-                    # we've calculated so far which are the same for
-                    # all particles.
-                    # TODO: see if we can avoid this
-                    if trode == 'c':
-                        self[trode, 'indvPart'][i, j] = self.D_c
-                    elif trode == 'a':
-                        self[trode, 'indvPart'][i, j] = self.D_a
-                    # This creates a reference for shorthand.
-                    cfg = self[trode, 'indvPart'][i, j]
                     # This specific particle dimensions
-                    cfg['N'] = self['psd_num'][trode][i,j]
+                    self[trode, 'indvPart']['N'][i, j] = self['psd_num'][trode][i,j]
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
@@ -369,18 +398,35 @@ class Config:
                     # non-dimensional quantities
                     # TODO: this is wrong! Assumes the original values have not been scaled,
                     # but they have
-                    cfg['kappa'] = self[trode, 'kappa'] / kappa_ref
+                    kappa = self[trode, 'indvPart']['kappa'][i, j] \
+                        = self[trode, 'kappa'] / kappa_ref
                     nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
-                    cfg['beta_s'] = nd_dgammadc / cfg['kappa']
-                    cfg['D'] = self[trode, 'D'] * self['t_ref'] / plen**2
-                    cfg['k0'] = self[trode, 'k0'] / (constants.e * F_s_ref)
-                    cfg['Rfilm'] = self[trode, 'Rfilm'] / (constants.k * constants.T_ref
-                                                           / (constants.e * i_s_ref))
-                    cfg['delta_L'] = (parea * plen) / pvol
+                    self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc / kappa
+                    self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
+                        / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
+                        / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:
-                        cfg['Omga'] = size2regsln(plen)
+                        self[trode, 'indvPart']['Omga'][i, j] = size2regsln(plen)
+                    else:
+                        # just use global value
+                        self[trode, 'indvPart']['Omga'][i, j] = self[trode, 'Omga']
+            # delete the per-electrode values to avoid that those are still used
+            for param in param_types.keys():
+                try:
+                    del self[trode, param]
+                except KeyError:
+                    # not all params are defined on the electrode level, ignore those
+                    # that do not exist
+                    pass
+
+        # store which items are defined per particle, so in the future they are retrieved
+        # per particle instead of from the values per electrode
+        self.params_per_particle = list(param_types.keys())
 
 
 class ParameterSet:
@@ -434,23 +480,9 @@ class ParameterSet:
         """
         Get a parameter
         """
-        # if an item is unknown in the dict, try the per electrode values
-        if item not in self.params:
-            self.params[item] = self._get_value(item)
-
-        return self.params[item]
-
-    def __setitem__(self, item, value):
-        """
-        Set a parameter value
-        """
-        self.params[item] = value
-
-    def _get_value(self, item):
-        """
-        Get a value that is defined per electrode/separator
-        """
-        if item in PARAMS_PER_TRODE:
+        if item in self.params:
+            return self.params[item]
+        elif item in PARAMS_PER_TRODE:
             # create a new dict containg the value per electrode
             d = {}
             # some parameters are also defined for the separator
@@ -463,6 +495,13 @@ class ParameterSet:
                 d[trode] = self[key]
                 # delete the original key. TODO: verify this is ok to do
                 del self.params[key]
+            self.params[item] = d
             return d
         else:
             raise UnknownParameterError(f'Unknown parameter: {item}')
+
+    def __setitem__(self, item, value):
+        """
+        Set a parameter value
+        """
+        self.params[item] = value
