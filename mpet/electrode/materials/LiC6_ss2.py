@@ -1,4 +1,6 @@
-import numpy as np
+from mpet.props_am import step_down
+
+
 def LiC6_ss2(self, y, ybar, muR_ref, ISfuncs=None):
     """ Bernardi and Go 2011 """
     p1, p2, p3, p4 = (0.085, 0.120, 0.210, 3.5)

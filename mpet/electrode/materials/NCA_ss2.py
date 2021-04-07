@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def NCA_ss2(self, y, ybar, muR_ref, ISfuncs=None):
     """
     Li_q Ni(0.8)Co(0.15)Al(0.05)O2

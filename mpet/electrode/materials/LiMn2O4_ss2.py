@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
     """ Fuller, Doyle, Newman, 1994 """
     # OCV in V vs Li/Li+
@@ -9,4 +11,3 @@ def LiMn2O4_ss2(self, y, ybar, muR_ref, ISfuncs=None):
     muR = self.get_muR_from_OCV(OCV, muR_ref)
     actR = None
     return muR, actR
-

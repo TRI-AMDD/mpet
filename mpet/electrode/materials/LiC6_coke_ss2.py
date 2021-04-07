@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiC6_coke_ss2(self, y, ybar, muR_ref, ISfuncs=None):
     """ Fuller, Doyle, Newman, 1994 """
     c1 = -0.132056

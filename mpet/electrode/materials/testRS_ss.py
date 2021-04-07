@@ -1,3 +1,6 @@
+from mpet.props_am import step_down, step_up
+
+
 def testRS_ss(self, y, ybar, muR_ref, ISfuncs=None):
     """
     Regular solution material which phase separates at binodal points,

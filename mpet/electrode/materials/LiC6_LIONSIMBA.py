@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
     """ Torchio et al, 2016. """
     T = self.T
@@ -20,19 +23,19 @@ def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
     k7 = 19329.7549
     k8 = -37147.8947
     k9 = 38379.18127
-    k10 = -16515.05308 
-    k11 = 1 
-    k12 = -48.09287227 
-    k13 = 1017.234804 
-    k14 = -10481.80419 
-    k15 = 59431.3 
-    k16 = -195881.6488 
-    k17 = 374577.3152 
-    k18 = -385821.1607 
-    k19 = 165705.8597 
-    dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8) / \ 
-        (k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8) 
-    OCV = OCV_ref + dUdT*(T-1)*Tref 
-    muR = self.get_muR_from_OCV(OCV, muR_ref) 
-    actR = None 
-    return muR, actR 
+    k10 = -16515.05308
+    k11 = 1
+    k12 = -48.09287227
+    k13 = 1017.234804
+    k14 = -10481.80419
+    k15 = 59431.3
+    k16 = -195881.6488
+    k17 = 374577.3152
+    k18 = -385821.1607
+    k19 = 165705.8597
+    dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8) / \
+        (k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8)
+    OCV = OCV_ref + dUdT*(T-1)*Tref
+    muR = self.get_muR_from_OCV(OCV, muR_ref)
+    actR = None
+    return muR, actR

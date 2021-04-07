@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiMn2O4_ss(self, y, ybar, muR_ref, ISfuncs=None):
     """ Doyle, Newman, 1996 """
     # OCV in V vs Li/Li+

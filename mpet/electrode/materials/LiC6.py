@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
     """ Ferguson and Bazant 2014 """
     muRtheta = -self.eokT*0.12
@@ -13,4 +15,3 @@ def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
     muR1 += muRtheta + muR_ref
     muR2 += muRtheta + muR_ref
     return (muR1, muR2), (actR1, actR2)
-

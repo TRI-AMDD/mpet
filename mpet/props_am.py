@@ -80,8 +80,8 @@ class muRfuncs():
         # on a variable name
         # the following line can be interpreted as
         #   muRmodule = from mpet.electrode.materials.[var] import [var]
-        muRmodule = __import__('mpet.electrode.materials.' +
-                               ndD["muRfunc"], globals(), locals(), [ndD["muRfunc"]], 0)
+        muRmodule = __import__('mpet.electrode.materials.' + ndD["muRfunc"],
+                               globals(), locals(), [ndD["muRfunc"]], 0)
 
         # Extract the function from the module
         muRfunc = getattr(muRmodule,ndD["muRfunc"])

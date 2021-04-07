@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def NCA_ss1(self, y, ybar, muR_ref, ISfuncs=None):
     """
     This function was obtained from Dan Cogswell's fit of Samsung

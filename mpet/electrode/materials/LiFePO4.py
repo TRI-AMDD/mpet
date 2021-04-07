@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
     """ Bai, Cogswell, Bazant 2011 """
     muRtheta = -self.eokT*3.422

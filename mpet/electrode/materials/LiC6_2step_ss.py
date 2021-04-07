@@ -1,4 +1,7 @@
 import numpy as np
+from mpet.props_am import step_up, step_down
+
+
 def LiC6_2step_ss(self, y, ybar, muR_ref, ISfuncs=None):
     """
     Fit function to the OCV predicted by the phase separating

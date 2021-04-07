@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def LiC6_ss(self, y, ybar, muR_ref, ISfuncs=None):
     """ Safari, Delacourt 2011 """
     OCV = (0.6379 + 0.5416*np.exp(-305.5309*y)
