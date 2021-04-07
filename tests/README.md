@@ -59,3 +59,4 @@ it is both tested as absolute and relative tolerance.
  - test020: hdf5 file output
  - test021: hdf5Fast file output and restarting hdf5 simulations
  - test022: Test of specified_psd_c option, LFP homog
+ - test023: CIET for LFP
