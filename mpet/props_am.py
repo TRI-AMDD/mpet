@@ -73,9 +73,22 @@ class muRfuncs():
         self.kToe = (k*Tabs)/e
 
         # Convert "muRfunc" to a callable function
-        am = __import__('mpet.am', globals(), locals(),  [ndD["muRfunc"]], 0)
-        muRfunc = getattr(getattr(am,ndD["muRfunc"]),ndD["muRfunc"])
-        self.muRfunc = types.MethodType( muRfunc, self )
+
+        # Import module  which contains the function we seek, the path can be
+        # adjusted later on to allow for "local" material to be used
+        # we need to call __import__ because the module import is dependent
+        # on a variable name
+        # the following line can be interpreted as
+        #   muRmodule = from mpet.electrode.materials.[var] import [var]
+        muRmodule = __import__('mpet.electrode.materials.' +
+                               ndD["muRfunc"], globals(), locals(), [ndD["muRfunc"]], 0)
+
+        # Extract the function from the module
+        muRfunc = getattr(muRmodule,ndD["muRfunc"])
+
+        # Append the function to the instance, we also have to make sure the
+        # function knows what 'self' is with the types.MethodType function
+        self.muRfunc = types.MethodType(muRfunc, self)
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
