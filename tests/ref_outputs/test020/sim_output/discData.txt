@@ -1,0 +1,35 @@
+Battery discretization cell center positions [m]. Zero is at the anode current collector.
+2.5e-05
+
+Separator discretization cell center positions [m]. Zero is at the anode current collector.
+
+
+Cathode discretization cell center positions [m]. Zero is at the anode current collector.
+2.5e-05
+
+Battery discretization face positions [m]. Zero is at the anode current collector.
+0.0,5e-05
+
+
+Particle output files are indexed such that Vol 0 is closest to the
+anode current collector for both electrodes.  Indexing within volumes
+is such that Part 0 is closest to the "carbon backbone" if simPartCond
+was set to true for that electrode. Otherwise it is in arbitrary
+order.
+
+
+Particle discretization info follows.  Lengths and number of
+discretization points are provided for each simulated particle.
+Meshes are made as a linear space between zero and particle length
+with the given number of points.  Rows correspond to different
+simulation volumes with the first row being closest to the anode
+current collector and the last closest to the cathode current
+collector.  Columns represent individual particles within each
+simulated volume in no particular order.
+
+
+Cathode particle sizes [m]
+4e-08
+
+Cathode particle number of discr. points
+40
