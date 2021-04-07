@@ -48,8 +48,14 @@ def test_compare(Dirs, tol):
 
         # Compute the difference between the solution and the reference
         try:
-            varDataNew = newData[varKey]
-            varDataRef = refData[varKey]
+            if newDatah5:
+                varDataNew = newData[varKey][:]
+            else:
+                varDataNew = newData[varKey]
+            if refDatah5:
+                varDataRef = refData[varKey][:]
+            else:
+                varDataRef = refData[varKey]
             diffMat = np.abs(varDataNew - varDataRef)
         except ValueError:
             assert False, "Fail from ValueError"
