@@ -37,6 +37,8 @@ it is both tested as absolute and relative tolerance.
 
 # List of tests
 
+ - benchmark_LIONSIMBA: isothermal comparison with the problem studied in Torchio et al., 2016.
+ - benhmark_LIONSIMBA_nonisothermal: constant temperature comparison (323K without heat generation) using the nonisothermal model implemented in LIONSIMBA
  - test001: LFP ACR C3
  - test002: LFP CHR cylinder
  - test003: LFP CHR sphere
