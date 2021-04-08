@@ -82,16 +82,10 @@ class Config:
         self.params_per_particle = []
         self._process_config()
 
-    def __getitem__(self, items):
+    def select_config(self, items):
         """
-        Get the value of a parameter, either a single item to retrieve from the system config,
-        or a tuple of (electrode, item), in which case item is read from the config of the given
-        electrode (a or c)
-        If the value is found in none of the configs, it is assumed to be a derived
-        parameter that can be calculated from the config values
+        Select system or electrode config based on reqested parameter(s)
         """
-        # TODO: the initial logic is very similar in del/set/get item, perhaps this can be moved to
-        # a separate method
         if isinstance(items, tuple):
             # electrode config
             try:
@@ -121,11 +115,24 @@ class Config:
             # no alias for this item
             pass
 
-        # try to read the parameter from the config
-        # first check if this parameter is defined on the particle level
-        if trode is not None and item in self.params_per_particle:
-            return self[trode, 'indvPart'][item]
-        # else we try to read if from the global config
+        # select individual particle settings if requested
+        if item in self.params_per_particle:
+            assert trode is not None, 'Particle-specific parameter requested but ' \
+                                      'electrode not specified'
+            d = self[trode, 'indvPart']
+        return d, item, trode
+
+    def __getitem__(self, items):
+        """
+        Get the value of a parameter, either a single item to retrieve from the system config,
+        or a tuple of (electrode, item), in which case item is read from the config of the given
+        electrode (a or c)
+        If the value is found in none of the configs, it is assumed to be a derived
+        parameter that can be calculated from the config values
+        """
+        # select config
+        d, item, trode = self.select_config(items)
+
         try:
             value = d[item]
         except UnknownParameterError:
@@ -141,26 +148,8 @@ class Config:
         or a tuple of (electrode, item), in which case the item is stored in the config
         of the given electrode (a or c)
         """
-        if isinstance(items, tuple):
-            try:
-                trode, item = items
-            except ValueError:
-                raise ValueError(f'Setting electrode config value requires two arguments, but '
-                                 f'got {len(items)}')
-            # select correct config
-            if trode == 'a':
-                assert self.D_a is not None, 'Anode parameter requested but ' \
-                                             'anode is not simulated'
-                d = self.D_a
-            elif trode == 'c':
-                d = self.D_c
-            else:
-                raise ValueError(f'Provided electrode must be a or c, got {trode}')
-        else:
-            # system config
-            item = items
-            d = self.D_s
-
+        # select config, ignore returned trode value as we don't need it
+        d, item, _ = self.select_config(items)
         d[item] = value
 
     def __delitem__(self, items):
@@ -169,28 +158,12 @@ class Config:
         or a tuple of (electrode, item), in which case the item is deleted from the config
         of the given electrode (a or c)
         """
-        if isinstance(items, tuple):
-            try:
-                trode, item = items
-            except ValueError:
-                raise ValueError(f'Setting electrode config value requires two arguments, but '
-                                 f'got {len(items)}')
-            # select correct config
-            if trode == 'a':
-                assert self.D_a is not None, 'Anode parameter requested but ' \
-                                             'anode is not simulated'
-                d = self.D_a
-            elif trode == 'c':
-                d = self.D_c
-            else:
-                raise ValueError(f'Provided electrode must be a or c, got {trode}')
-        else:
-            # system config
-            item = items
-            d = self.D_s
+        d, item = self.select_config(items)
 
         # delete directly from the underlying dict, to avoid having to define __delitem__ in
         # ParameterSet class
+        # Note: this means __delitem__ does not work with particle-level settings as then
+        # d is a normal dict and not a ParameterSet
         del d.params[item]
 
     def _process_config(self):
@@ -375,7 +348,7 @@ class Config:
             # intialize parameters
             # TODO: verify dtypes
             param_types = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
-                           'Rfilm': float, 'delta_L': float, 'Omga': float}
+                           'Rfilm': float, 'delta_L': float, 'Omega_a': float}
             for param, dtype in param_types.items():
                 self[trode, 'indvPart'][param] = np.empty((Nvol, Npart), dtype=dtype)
 
@@ -411,18 +384,10 @@ class Config:
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:
-                        self[trode, 'indvPart']['Omga'][i, j] = size2regsln(plen)
+                        self[trode, 'indvPart']['Omega_a'][i, j] = size2regsln(plen)
                     else:
                         # just use global value
-                        self[trode, 'indvPart']['Omga'][i, j] = self[trode, 'Omga']
-            # delete the per-electrode values to avoid that those are still used
-            for param in param_types.keys():
-                try:
-                    del self[trode, param]
-                except KeyError:
-                    # not all params are defined on the electrode level, ignore those
-                    # that do not exist
-                    pass
+                        self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode
