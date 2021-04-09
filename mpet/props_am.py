@@ -2,6 +2,7 @@
 import numpy as np
 
 import mpet.geometry as geo
+from mpet.config import constants
 
 
 class Dfuncs():
@@ -41,33 +42,36 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
-    def __init__(self, config, trode):
-        """ ndD can be the full dictionary of nondimensional
+    def __init__(self, config, trode, ind=None):
+        """config is be the full dictionary of
         parameters for the electrode particles, as made for the
-        simulations. Otherwise, parameters can be passed directly in
-        as keyword arguments and must contain all of the needed
-        parameters for the material of interest.
-        E.g.
-        For a regular solution material:
-            muRfuncs(T, ndD)
-        or
-            muRfuncs(T, muRfunc="LiFePO4", Omga=3.4)
-        For solid solution function based on fit OCV:
-            muRfuncs(T, ndD)
-        or
-            muRfuncs(T, muRfunc="LiMn2O4_ss")
+        simulations. trode is the selected electrode.
+        ind is optinally the selected particle, provided as (vInd, pInd)
         """
         self.config = config
         self.trode = trode
+        self.ind = ind
         self.T = config['T']  # nondimensional
-        k = 1.381e-23
-        Tabs = 298
-        e = 1.602e-19
-        self.eokT = e/(k*Tabs)
-        self.kToe = (k*Tabs)/e
+        self.eokT = constants.e / (constants.k * constants.T_ref)
+        self.kToe = 1. / self.eokT
 
         # Convert "muRfunc" to a callable function
-        self.muRfunc = getattr(self, config[trode, "muRfunc"])
+        self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+
+    def get_trode_param(self, item):
+        """
+        Shorthand to retrieve electrode-specific value
+        """
+        value = self.config[self.trode, item]
+        # check if it is a particle-specific parameter
+        # need to take care of possible alias
+        try:
+            item = constants.PARAMS_ALIAS[item]
+        except KeyError:
+            pass
+        if self.ind is not None and item in self.config.params_per_particle:
+            value = value[self.ind]
+        return value
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
@@ -211,7 +215,7 @@ class muRfuncs():
         # Based Omg = 3*k*T_ref
         yL = 0.07072018
         yR = 0.92927982
-        OCV_rs = -self.kToe*self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
+        OCV_rs = -self.kToe*self.reg_sln(y, self.get("Omga"), ISfuncs)
         width = 0.005
         OCV = OCV_rs*step_down(y, yL, width) + OCV_rs*step_up(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
@@ -243,7 +247,10 @@ class muRfuncs():
     def graphite_2param_homog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
         """ Helper function """
         y1, y2 = y
-        ISfuncs1, ISfuncs2 = ISfuncs
+        if ISfuncs is None:
+            ISfuncs1, ISfuncs2 = None, None
+        else:
+            ISfuncs1, ISfuncs2 = ISfuncs
         muR1 = self.reg_sln(y1, Omga, ISfuncs1)
         muR2 = self.reg_sln(y2, Omga, ISfuncs2)
         muR1 += Omgb*y2 + Omgc*y2*(1-y2)*(1-2*y1)
@@ -322,7 +329,7 @@ class muRfuncs():
 
     def general_non_homog(self, y, ybar):
         """ Helper function """
-        ptype = self.config[self.trode, "type"]
+        ptype = self.get_trode_param("type")
         mod1var, mod2var = False, False
         if isinstance(y, np.ndarray):
             mod1var = True
@@ -334,18 +341,18 @@ class muRfuncs():
         else:
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
-            shape = self.config[self.trode, "shape"]
-            kappa = self.config[self.trode, "kappa"]
-            B = self.config[self.trode, "B"]
+            shape = self.get_trode_param("shape")
+            kappa = self.get_trode_param("kappa")
+            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
-                    cwet = self.config[self.trode, "cwet"]
+                    cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
-                beta_s = self.config[self.trode, "beta_s"]
+                beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
                     muR_nh = self.non_homog_round_wetting(
@@ -366,7 +373,7 @@ class muRfuncs():
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
-        muRhomog = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -377,8 +384,8 @@ class muRfuncs():
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
         muR1homog, muR2homog = self.graphite_2param_homog(
-            y, self.config[self.trode, "Omga"], self.config[self.trode, "Omgb"],
-            self.config[self.trode, "Omgc"], self.config[self.trode, "EvdW"], ISfuncs)
+            y, self.get_trode_param("Omga"), self.get_trode_param("Omgb"),
+            self.get_trode_param("Omgc"), self.get_trode_param("EvdW"), ISfuncs)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
@@ -391,7 +398,7 @@ class muRfuncs():
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
         muRhomog = self.graphite_1param_homog_3(
-            y, self.config[self.trode, "Omga"], self.config[self.trode, "Omgb"], ISfuncs)
+            y, self.get_trode_param("Omga"), self.get_trode_param("Omgb"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -400,14 +407,14 @@ class muRfuncs():
 
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
-        muR = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
+        muR = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
 
     def testRS_ps(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*2.
-        muRhomog = self.reg_sln(y, self.config[self.trode, "Omga"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)

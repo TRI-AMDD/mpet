@@ -138,7 +138,7 @@ class ModCell(dae.daeModel):
                             trode=trode, vInd=vInd, pInd=pInd),
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
-                    solidType = config[trode, "indvPart"][vInd,pInd]['type']
+                    solidType = config[trode, "type"]
                     if solidType in constants.two_var_types:
                         pMod = mod_electrodes.Mod2var
                     elif solidType in constants.one_var_types:
@@ -146,10 +146,10 @@ class ModCell(dae.daeModel):
                     else:
                         raise NotImplementedError("unknown solid type")
                     self.particles[trode][vInd,pInd] = pMod(
-                        "partTrode{trode}vol{vInd}part{pInd}".format(
+                        config, trode, vInd, pInd,
+                        Name="partTrode{trode}vol{vInd}part{pInd}".format(
                             trode=trode, vInd=vInd, pInd=pInd),
-                        self, ndD=config[trode, "indvPart"][vInd,pInd],
-                        ndD_s=config)  # TODO: only pass config and v, p indices here?
+                        Parent=self)
                     self.ConnectPorts(self.portsOutLyte[trode][vInd],
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
@@ -306,7 +306,7 @@ class ModCell(dae.daeModel):
             # 2) assume we have a Li foil with BV kinetics and the specified rate constant
             eqC = self.CreateEquation("GhostPointC_L")
             eqP = self.CreateEquation("GhostPointP_L")
-            if Nvol["a"] == 0:
+            if 'a' not in config["trodes"]:
                 # Concentration BC from mass flux
                 eqC.Residual = Nm_edges[0]
                 # Phi BC from BV at the foil
@@ -352,7 +352,7 @@ class ModCell(dae.daeModel):
         # C-rates.
         eq = self.CreateEquation("Total_Current")
         eq.Residual = self.current()
-        limtrode = ("c" if config["z"] < 1 else "a")
+        limtrode = config["limtrode"]
         dx = 1./Nvol[limtrode]
         rxn_scl = config["beta"][limtrode] * (1-config["poros"][limtrode]) \
             * config["P_L"][limtrode]

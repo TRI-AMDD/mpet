@@ -13,6 +13,7 @@ import h5py
 import mpet.mod_cell as mod_cell
 import mpet.daeVariableTypes
 import mpet.utils as utils
+from mpet.config import constants
 
 
 class SimMPET(dae.daeSimulation):
@@ -80,12 +81,12 @@ class SimMPET(dae.daeSimulation):
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
-                        solidType = self.ndD_e[tr]["indvPart"][i,j]["type"]
-                        if solidType in config["1varTypes"]:
+                        solidType = self.config[tr, "type"]
+                        if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
-                        elif solidType in config["2varTypes"]:
+                        elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
                             part.cbar.SetInitialGuess(cs0)
@@ -116,9 +117,10 @@ class SimMPET(dae.daeSimulation):
                 self.m.phi_lyteGP_L.SetInitialGuess(0)
 
             # Separator electrolyte initialization
-            for i in range(Nvol["s"]):
-                self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
-                self.m.phi_lyte["s"].SetInitialGuess(i, 0)
+            if config.have_separator:
+                for i in range(Nvol["s"]):
+                    self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
+                    self.m.phi_lyte["s"].SetInitialGuess(i, 0)
 
             # Anode and cathode electrolyte initialization
             for tr in config["trodes"]:
@@ -144,7 +146,7 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
-                        solidType = self.ndD_e[tr]["indvPart"][i, j]["type"]
+                        solidType = self.config[tr, "type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
                             l=tr, i=i, j=j)
 
