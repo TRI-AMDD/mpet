@@ -110,7 +110,7 @@ class DerivedValues:
         """
         Number of segments
         """
-        return len(self.config['segs'])
+        return len(self.config['segments'])
 
     def L_ref(self):
         """

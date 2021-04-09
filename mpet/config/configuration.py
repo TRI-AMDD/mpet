@@ -182,7 +182,7 @@ class Config:
             self[param] = theoretical_1C_current
 
         # non-dimensional scalings
-        # TODO: what is an optional parameter needs scaling?
+        # TODO: what if an optional parameter needs scaling?
         # first check if parameter is present?
         kT = constants.k * constants.T_ref
         self['T'] = self['Tabs'] / constants.T_ref
@@ -217,6 +217,53 @@ class Config:
         self['Vset'] = -(factor * self['Vset'] + Vref)
         self['phimin'] = -(factor * self['Vmax'] + Vref)
         self['phimax'] = -(factor * self['Vmin'] + Vref)
+
+        # Scaling of current and voltage segments
+        segments = []
+        if self['profileType'] == 'CCsegments':
+            for i in range(len(self['segments'])):
+                segments.append((self["segments"][i][0]*self["CrateCurr"]
+                                / theoretical_1C_current/self['curr_ref'],
+                                self["segments"][i][1]*60/self['t_ref']))
+        elif self['profileType'] == 'CVsegments':
+            for i in range(len(self['segments'])):
+                segments.append((-((constants.e/kT)*self['segments'][i][0]+Vref),
+                                self['segments'][i][1]*60/self['t_ref']))
+
+        # Current or voltage segments profiles
+        segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+        if self['profileType'] == 'CCsegments':
+            segments_setvec[0] = 0.
+        elif self['profileType'] == 'CVsegments':
+            segments_setvec[0] = -(kT / constants.e) * Vref
+        tPrev = 0.
+        for segIndx in range(self['numsegments']):
+            tNext = tPrev + self['tramp']
+            segments_tvec[2*segIndx+1] = tNext
+            tPrev = tNext
+            # Factor of 60 here to convert to s
+            tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+            segments_tvec[2*segIndx+2] = tNext
+            tPrev = tNext
+            setNext = self['segments'][segIndx][0]
+            segments_setvec[2*segIndx+1] = setNext
+            segments_setvec[2*segIndx+2] = setNext
+        segments_tvec /= self['t_ref']
+        if self['profileType'] == 'CCsegments':
+            segments_setvec /= self['curr_ref']
+        elif self['profileType'] == 'CVsegments':
+            segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+        if 'segments' in self['profileType']:
+            self['tend'] = segments_tvec[-1]
+            # Pad the last segment so no extrapolation occurs
+            segments_tvec[-1] *= 1.01
+        self['segments'] = segments
+        self['segments_tvec'] = segments_tvec
+        self['segments_setvec'] = segments_setvec
+        self['tend'] /= self['t_ref']
+        if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
+            self['tend'] = np.abs(self['capFrac'] / self['currset'])
 
         # particle distributions
         # TODO: check for prevDir, load previous values if set
