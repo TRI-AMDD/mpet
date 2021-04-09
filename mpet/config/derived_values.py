@@ -63,15 +63,7 @@ class DerivedValues:
                     func = getattr(self, item)
                 except AttributeError:
                     raise UnknownParameterError(f'Unknown parameter: {item}')
-
-                try:
-                    values[item] = func(*args)
-                except TypeError:
-                    # TypeError occurs when calling arg-less func with args,
-                    # or the other way around
-                    raise Exception(f'Requested electrode parameter without electrode '
-                                    f'specification, or system parameter with '
-                                    f'electrode specification (parameter: {item})')
+                values[item] = func(*args)
 
         return values[item]
 
@@ -177,7 +169,7 @@ class DerivedValues:
         elif solidType in constants.one_var_types:
             muR_ref = -muRfunc(cs0, cs0bar, 0.)[0]
         else:
-            raise ValueError('Unknown solid type: {solidType}')
+            raise ValueError(f'Unknown solid type: {solidType}')
         return muR_ref
 
     def phiRef(self):

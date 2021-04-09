@@ -16,3 +16,13 @@ two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
 one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
 #: Concentration, mol/m^3 = 1M
 c_ref = 1000.
+
+#: parameter that are defined per electrode with a _{electrode} suffix
+PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
+                    'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
+                    'specified_psd']
+#: subset of PARAMS_PER_TRODE that is defined for the separator as well
+PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
+#: parameters that are used with several names. TODO: can we get rid of these?
+PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T',
+                'td': 't_ref', 'Omga': 'Omega_a', 'Omgb': 'Omega_b', 'Omgc': 'Omega_c'}

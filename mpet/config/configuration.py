@@ -14,22 +14,13 @@ import os
 import numpy as np
 
 from mpet.config import schemas
+from mpet.config.constants import PARAMS_ALIAS, PARAMS_PER_TRODE, PARAMS_SEPARATOR
 # import mpet.props_am as props_am
 from mpet.config.derived_values import DerivedValues
 from mpet.config import constants
 from mpet.exceptions import UnknownParameterError
 # temporary:
 from mpet.io_utils import size2regsln
-
-#: parameter that are define per electrode with a _{electrode} suffix
-PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
-                    'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
-                    'specified_psd']
-#: subset of PARAMS_PER_TRODE that is defined for the separator as well
-PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
-#: parameters that are used with several names. TODO: can we get rid of these?
-PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T',
-                'td': 't_ref', 'Omga': 'Omega_a', 'Omgb': 'Omega_b', 'Omgc': 'Omega_c'}
 
 
 class Config:
@@ -150,7 +141,13 @@ class Config:
         """
         # select config, ignore returned trode value as we don't need it
         d, item, _ = self.select_config(items)
-        d[item] = value
+        if item in self.params_per_particle:
+            assert self.particle_indices is not None, 'Select a particle with ' \
+                                                      'Config.set_particle ' \
+                                                      'before setting particle parameters'
+            d[item][self.particle_indices] = value
+        else:
+            d[item] = value
 
     def __delitem__(self, items):
         """
@@ -158,13 +155,10 @@ class Config:
         or a tuple of (electrode, item), in which case the item is deleted from the config
         of the given electrode (a or c)
         """
-        d, item = self.select_config(items)
+        # select config, ignore returned trode value as we don't need it
+        d, item, _ = self.select_config(items)
 
-        # delete directly from the underlying dict, to avoid having to define __delitem__ in
-        # ParameterSet class
-        # Note: this means __delitem__ does not work with particle-level settings as then
-        # d is a normal dict and not a ParameterSet
-        del d.params[item]
+        del d[item]
 
     def _process_config(self):
         """
@@ -281,8 +275,7 @@ class Config:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
             # For homogeneous particles (only one 'volume' per particle)
-            # ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']
-            elif 'homog' in solidType:
+            elif solidType in ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']:
                 # Each particle is only one volume
                 psd_num = np.ones(raw.shape, dtype=np.int)
                 # The lengths are given by the original length distr.
@@ -371,6 +364,7 @@ class Config:
                     # non-dimensional quantities
                     # TODO: this is wrong! Assumes the original values have not been scaled,
                     # but they have
+                    print("WARNING: individual particle values are not yet correct")
                     kappa = self[trode, 'indvPart']['kappa'][i, j] \
                         = self[trode, 'kappa'] / kappa_ref
                     nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
@@ -470,3 +464,9 @@ class ParameterSet:
         Set a parameter value
         """
         self.params[item] = value
+
+    def __delitem__(self, item):
+        """
+        Remove a parameter value
+        """
+        del self.params[item]
