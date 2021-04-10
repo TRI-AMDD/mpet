@@ -76,7 +76,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     dD_s["period"] = ast.literal_eval(P_s.get('Sim Params', 'period', fallback = str([0]*len(segs))))
-    ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
+    dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
     dD_s["totalCycle"] = ndD_s["totalCycle"] = P_s.getint('Sim Params', 'totalCycle', fallback = 1)
     numsegs = dD_s["numsegments"] = len(segs)
     dD_s["Vmax"] = P_s.getfloat('Sim Params', 'Vmax')
@@ -515,6 +515,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         ndD_s["period"] = np.array(dD_s["period"])*60/t_ref
     else:
         ndD_s["period"] = dD_s["period"]*60/t_ref
+
+    #nondimesionalize tramp
+    ndD_s["tramp"] = dD_s["tramp"]/t_ref # in units of seconds
 
     return dD_s, ndD_s, dD_e, ndD_e
 
