@@ -1,96 +1,201 @@
-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
-index 2099d71..fefb1b5 100644
---- a/mpet/plot/plot_data.py
-+++ b/mpet/plot/plot_data.py
-@@ -64,7 +64,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
-             else:
-                 tot_cycle = tot_cycle + 1
+diff --git a/tests/ref_outputs/test022/params_system.cfg b/tests/ref_outputs/test022/params_system.cfg
+index f6d9a0c..e104f71 100644
+--- a/tests/ref_outputs/test022/params_system.cfg
++++ b/tests/ref_outputs/test022/params_system.cfg
+@@ -1,7 +1,7 @@
+ [Sim Params]
+ #Maccor short cycler update, using the hdf5 short file output
+ profileType = Short_PreDiag_000173.000
+-tramp = 1e-3
++tramp = 0.01
+ Crate = 1
+ Vmax = 1e10
+ Vmin = -1e10
+diff --git a/tests/ref_outputs/test022/sim_output/commit.diff b/tests/ref_outputs/test022/sim_output/commit.diff
+index 1cc5bc8..aba14e4 100644
+--- a/tests/ref_outputs/test022/sim_output/commit.diff
++++ b/tests/ref_outputs/test022/sim_output/commit.diff
+@@ -1,75 +1,14 @@
+-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
+-index 2099d71..fcfdbc7 100644
+---- a/mpet/plot/plot_data.py
+-+++ b/mpet/plot/plot_data.py
+-@@ -64,7 +64,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+-             else:
+-                 tot_cycle = tot_cycle + 1
+- 
+--    limtrode = dD_s["limtrode"]
+-+    #limtrode = dD_s["limtrode"]
+-+    limtrode = 'c'
+-     # simulated (porous) electrodes
+- 
+-     Nvol = ndD_s["Nvol"]
+-@@ -81,7 +82,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+-     F = dD_s['F']                      # C/mol
+-     td = dD_s["td"]
+-     Etheta = {"a": 0.}
+--    material_type = dD_e[limtrode]["material_type"]
+-+    #material_type = dD_e[limtrode]["material_type"]
+-+    material_type = "LMO"
+- # get information from limiting electrodes
+-     L = dD_s["L"][limtrode]
+-     P_L = ndD_s["P_L"][limtrode]
+-diff --git a/tests/test_suite.py b/tests/test_suite.py
+-index 0edcec1..c926d59 100644
+---- a/tests/test_suite.py
+-+++ b/tests/test_suite.py
+-@@ -108,7 +108,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+-         timeList_new.append(get_sim_time(newDir))
+-         timeList_ref.append(get_sim_time(refDir))
+-         try:
+--            newData, f_type = open_data_file(newDataFile)
+-+            newData, fnew_type = open_data_file(newDataFile)
+-         except IOError as exception:
+-             # If it's an error _other than_ the file not being there
+-             if exception.errno != errno.ENOENT:
+-@@ -116,7 +116,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+-             print("No simulation data for " + testStr)
+-             continue
+-         
+--        refData, f_type = open_data_file(refDataFile)
+-+        refData, fref_type = open_data_file(refDataFile)
+-         for varKey in (set(refData.keys()) & set(newData.keys())):
+-             # TODO -- Consider keeping a list of the variables that fail
+- 
+-@@ -126,8 +126,10 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
+- 
+-             #Compute the difference between the solution and the reference
+-             try:
+--                varDataNew = np.array(newData[varKey])
+--                varDataRef = np.array(refData[varKey])
+-+                varDataNew = get_dict_key(newData, varKey, fnew_type)
+-+                varDataRef = get_dict_key(refData, varKey, fref_type)
+-+                print("varDataNew", varDataNew, type(varDataNew), varDataNew.shape)
+-+                print("varDataRef", varDataRef, type(varDataRef), varDataRef.shape)
+-                 diffMat = np.abs(varDataNew - varDataRef)
+-             except ValueError:
+-                 print(testStr, "Fail from ValueError")
+-@@ -181,10 +183,11 @@ def main(compareDir):
+-     # whether to run that particular test.
+-     n_tests = 22
+-     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
+--               for i in range(1, n_tests+1)}
+-+    #           for i in range(1, n_tests+1)}
+-+               for i in range(21, n_tests+1)}
+-     runInfoAnalyt = {
+--        "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+--        "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+-+    #    "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
+-+    #    "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+-         }
+- 
+-     if compareDir is None:
++diff --git a/tests/ref_outputs/test022/params_system.cfg b/tests/ref_outputs/test022/params_system.cfg
++index f6d9a0c..e104f71 100644
++--- a/tests/ref_outputs/test022/params_system.cfg
+++++ b/tests/ref_outputs/test022/params_system.cfg
++@@ -1,7 +1,7 @@
++ [Sim Params]
++ #Maccor short cycler update, using the hdf5 short file output
++ profileType = Short_PreDiag_000173.000
++-tramp = 1e-3
+++tramp = 0.01
++ Crate = 1
++ Vmax = 1e10
++ Vmin = -1e10
  
--    limtrode = dD_s["limtrode"]
-+    #limtrode = dD_s["limtrode"]
-+    limtrode = 'c'
-     # simulated (porous) electrodes
+diff --git a/tests/ref_outputs/test022/sim_output/daetools_config_options.txt b/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
+index 735ce29..e39dc4c 100644
+--- a/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
+@@ -28,7 +28,7 @@
+         },
+         "activity": {
+             "printHeader": "false",
+-            "printStats": "false",
++            "printStats": "true",
+             "timeHorizon": "100.0",
+             "reportingInterval": "1.0",
+             "reportTimeDerivatives": "false",
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p
+index 0aa2665..f243cd3 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p
+index 331e594..191466d 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_0_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_0_dD.p
+index d01f8ca..4a0f97e 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_0_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_0_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_0_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_0_ndD.p
+index 1f538f7..fff1e01 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_0_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_0_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_1_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_1_dD.p
+index 3d2d668..55bb9be 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_1_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_1_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_1_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_1_ndD.p
+index 1fa916e..268f4c5 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_1_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_1_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_2_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_2_dD.p
+index 592bfb8..601fccf 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_2_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_2_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_2_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_2_ndD.p
+index 982d996..5d6eab5 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_2_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_2_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_3_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_3_dD.p
+index a39c3af..2ffd2b2 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_3_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_3_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_3_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_3_ndD.p
+index 3c71e27..224e909 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_3_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_3_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_4_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_4_dD.p
+index 8dea49b..b8f2ec9 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_4_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_4_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_4_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_4_ndD.p
+index c108dc8..8d651c9 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_4_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_4_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_5_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_5_dD.p
+index a39c3af..2ffd2b2 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_5_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_5_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_5_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_5_ndD.p
+index 3c71e27..224e909 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_5_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_5_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_6_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_6_dD.p
+index 8dea49b..b8f2ec9 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_6_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_6_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_6_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_6_ndD.p
+index c108dc8..8d651c9 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_6_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_6_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_7_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_7_dD.p
+index c5f2afa..eb6cc71 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_7_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_7_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_7_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_7_ndD.p
+index 80b3c36..1fb88d4 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_7_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_7_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/output_data.hdf5 b/tests/ref_outputs/test022/sim_output/output_data.hdf5
+index 786f9ee..b4142f1 100644
+Binary files a/tests/ref_outputs/test022/sim_output/output_data.hdf5 and b/tests/ref_outputs/test022/sim_output/output_data.hdf5 differ
+diff --git a/tests/ref_outputs/test022/sim_output/run_info.txt b/tests/ref_outputs/test022/sim_output/run_info.txt
+index 5d23c0e..2bf8d74 100644
+--- a/tests/ref_outputs/test022/sim_output/run_info.txt
++++ b/tests/ref_outputs/test022/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.4
++0.1.5
  
-     Nvol = ndD_s["Nvol"]
-@@ -81,7 +82,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
-     F = dD_s['F']                      # C/mol
-     td = dD_s["td"]
-     Etheta = {"a": 0.}
--    material_type = dD_e[limtrode]["material_type"]
-+    #material_type = dD_e[limtrode]["material_type"]
-+    material_type = "LFP"
- # get information from limiting electrodes
-     L = dD_s["L"][limtrode]
-     P_L = ndD_s["P_L"][limtrode]
-@@ -397,6 +399,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
-         #units will be in Ahr/m^2*m^2 = Ah
-         #discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
-         #both of these arrays
-+        print(P_L, poros, L, density)
-         gravimetric_caps = discharge_capacities/(P_L * (1-poros) * L * density) / 1000 #mAh/g
-         #discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600 #mAh/m^2 since int over time
+ branch name:
+ feature/battery_cycle
  
-diff --git a/tests/test_defs.py b/tests/test_defs.py
-index 901a579..ddc5b17 100644
---- a/tests/test_defs.py
-+++ b/tests/test_defs.py
-@@ -573,7 +573,7 @@ def test019(testDir, dirDict, pflag):
+ commit hash:
+-aecdacb
++bd7b43d
  
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
  
- def test020(testDir, dirDict, pflag):
--    """ Functional waveform test with effective area ratio turned on """
-+    """ Functional waveform test """
-     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
-     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
-     psys = osp.join(testDir, "params_system.cfg")
-@@ -590,7 +590,6 @@ def test020(testDir, dirDict, pflag):
-     IO.write_config_file(P_s, psys)
-     P = IO.get_config(ptrode)
-     P.set("Particles", "type", "homog")
--    P.set("Particles", "area_volume_ratio", "True")
-     P.set("Material", "muRfunc", "LiFePO4")
-     IO.write_config_file(P, ptrode)
-     main.main(psys, keepArchive=False)
-@@ -664,6 +663,29 @@ def test022(testDir, dirDict, pflag):
-         cyclingPlots(testDir, dirDict)
- 
- 
-+def test023(testDir, dirDict, pflag):
-+    """ LFP ACR test for current with A instead of C-rate """
-+    shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
-+    shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
-+    psys = osp.join(testDir, "params_system.cfg")
-+    ptrode = osp.join(testDir, "params_c.cfg")
-+    P_s = IO.get_config(psys)
-+    P_s.set("Sim Params", "Crate", "0.15A")
-+    IO.write_config_file(P_s, psys)
-+    P = IO.get_config(ptrode)
-+    P.set("Particles", "type", "ACR")
-+    P.set("Material", "muRfunc", "LiFePO4")
-+    P.set("Material", "material_type", "LFP")
-+    IO.write_config_file(P, ptrode)
-+    main.main(psys, keepArchive=False)
-+    shutil.move(dirDict["simOut"], testDir)
-+    if pflag:
-+        corePlots(testDir, dirDict)
-+        electrodePlots(testDir, dirDict, "c")
-+
-+
-+
-+
- def testAnalytSphDifn(testDir, dirDict):
-     """ Analytical test for diffusion in a sphere """
-     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
-diff --git a/tests/test_suite.py b/tests/test_suite.py
-index 0e945a5..56b0367 100644
---- a/tests/test_suite.py
-+++ b/tests/test_suite.py
-@@ -182,6 +182,7 @@ def main(compareDir):
-     n_tests = 22
-     runInfo = {'test{:03}'.format(i): getattr(defs, 'test{:03}'.format(i))
-                for i in range(1, n_tests+1)}
-+    #           for i in range(22, n_tests+1)}
-     runInfoAnalyt = {
-         "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),
-         "testAnalytSphDifn": (defs.testAnalytSphDifn, defs.analytSphDifn),
+-Total run time: 4.117787599563599 s
++Total run time: 4.106770038604736 s
 
