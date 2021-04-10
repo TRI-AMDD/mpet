@@ -128,18 +128,14 @@ def get_dict_key(data, string, squeeze = True, final = False):
     Takes in data array and the string whose value we want to get. Final is a
     boolean that determines whether or not it only returns the final value of the array.
     If final is true, then it only returns the last value, otherwise it returns the entire array.
-    Squeeze squeezes into 1D array if is true, toherwise false"""
-    array = []
-    final_value = 0
-    if isinstance(data, dict): #mat file
-        array = data[string]
-    elif isinstance(data, h5py._hl.files.File): #hdf5 file
-        array = data[string][:]
-    if squeeze: #squeezes
-        array = np.squeeze(array)
-        final_value = array[-1]
-    if final: #only returns last value
-        return final_value
+    Final overwrites squeeze--if final is true, then the array will always be squeezed.
+    Squeeze squeezes into 1D array if is true, otherwise false"""
+    array = data[string][...]
+    #do not call both squeeze false and final true!!!
+    if final:
+        return np.squeeze(array)[-1]
+    elif squeeze: #only returns last value
+        return np.squeeze(array)
     else: #returns entire array
         return array
 
