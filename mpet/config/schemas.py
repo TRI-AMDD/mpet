@@ -49,7 +49,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          'Vset': Use(float),
                          Optional('capFrac', default=1.0): Use(float),
                          'segments': Use(parse_segments),
-                         'prevDir': str,
+                         Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
                          'tsteps': And(Use(int), lambda x: x > 0),
                          'relTol': And(Use(float), lambda x: x > 0),

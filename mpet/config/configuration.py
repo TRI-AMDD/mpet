@@ -9,13 +9,13 @@ distributions from input means and standard deviations.
 """
 import configparser
 import os
-# import pickle
+import pickle
 
 import numpy as np
 
 from mpet.config import schemas
 from mpet.config.constants import PARAMS_ALIAS, PARAMS_PER_TRODE, PARAMS_SEPARATOR
-# import mpet.props_am as props_am
+
 from mpet.config.derived_values import DerivedValues
 from mpet.config import constants
 from mpet.exceptions import UnknownParameterError
@@ -71,7 +71,17 @@ class Config:
         # set defaults and scale values that should be non-dim
         self.config_processed = False
         self.params_per_particle = []
-        self._process_config()
+        # either process the config, or read already processed config from disk
+        prevDir = self['prevDir']
+        if prevDir and prevDir != 'false':
+            if not os.path.isabs(prevDir):
+                print("relative prevdir:", prevDir)
+                # assume it is relative to the input parameter files
+                print("input cfg path:", self.path)
+                prevDir = os.path.normpath(os.path.join(self.path, prevDir))
+            self.read(prevDir)
+        else:
+            self._process_config()
 
     def select_config(self, items):
         """
@@ -112,6 +122,61 @@ class Config:
                                       'electrode not specified'
             d = self[trode, 'indvPart']
         return d, item, trode
+
+    def write(self, folder=None):
+        """
+        Write config to disk
+        """
+        filenamebase = 'input_dict'
+        if folder:
+            filenamebase = os.path.join(folder, filenamebase)
+
+        # system, derived values, cathode, optionally anode
+        dicts = {'system': self.D_s.params, 'derived_values': self.derived_values.values,
+                 'cathode': self.D_c.params}
+        if 'a' in self.trodes:
+            dicts['anode'] = self.D_a.params
+
+        for section, d in dicts.items():
+            with open(f'{filenamebase}_{section}.p', 'wb') as f:
+                pickle.dump(d, f)
+
+    def read(self, folder=None):
+        """
+        Read previously processed config from disk
+        """
+        filenamebase = 'input_dict'
+        if folder:
+            filenamebase = os.path.join(folder, filenamebase)
+
+        # system, derived values, cathode, optionally anode
+        sections = ['system', 'derived_values', 'cathode']
+        if 'a' in self.trodes:
+            sections.append('anode')
+
+        for section in sections:
+            with open(f'{filenamebase}_{section}.p', 'rb') as f:
+                try:
+                    d = pickle.load(f)
+                except UnicodeDecodeError:
+                    d = pickle.load(f, encoding='latin1')
+
+            if section == 'system':
+                self.D_s.params = d
+            elif section == 'derived_values':
+                self.derived_values.values = d
+            elif section == 'cathode':
+                self.D_c.params = d
+            elif section == 'anode':
+                self.D_a.params = d
+            else:
+                raise Exception(f'Unknown section: {section}')
+
+        # make sure to set the numpy random seed, as is usually done in process_config
+        if self.D_s['randomSeed']:
+            np.random.seed(self.D_s['seed'])
+
+        self.config_processed = True
 
     def __getitem__(self, items):
         """
@@ -164,7 +229,6 @@ class Config:
         """
         Set default values and process some values
         """
-        # TODO: To add in this method: prevDir?
         if self.config_processed:
             raise Exception('The config can be processed only once as values are scaled in-place')
         self.config_processed = True

@@ -114,17 +114,14 @@ def main(paramfile, keepArchive=True):
             raise
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(outdir, paramFileName)
-    # IO.write_config_file(P_s, filename=paramFile)
     copyfile(paramfile, paramFile)
-    # dictFile = os.path.join(outdir, "input_dict_system")
-    # IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
+
     for trode in config["trodes"]:
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
-        # IO.write_config_file(P_e[trode], filename=paramFile)
         copyfile(config.paramfiles[trode], paramFile)
-        # dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
-        # IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
+
+    config.write(outdir)
 
     # Store info about this script
     # mpet.py script directory
