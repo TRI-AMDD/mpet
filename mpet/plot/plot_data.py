@@ -26,6 +26,8 @@ from mpet.config import constants
 # mpl.rcParams['lines.markeredgewidth'] = 0.1
 # mpl.rcParams['text.usetex'] = True
 
+# TODO: rescale parameters back to dimensional values where needed
+
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
@@ -52,10 +54,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     Tref = constants.T_ref               # Temp, K
     e = constants.e                      # Charge of proton, C
     F = constants.F                      # C/mol
+    c_ref = constants.c_ref
     td = config["td"]
     Etheta = {"a": 0.}
     for trode in trodes:
-        Etheta[trode] = -(k*Tref/e) * config[trode, "phiRef"]
+        Etheta[trode] = -(k*Tref/e) * config["phiRef"][trode]
     Vstd = Etheta["c"] - Etheta["a"]
     dataReporter = config["dataReporter"]
     Nvol = config["Nvol"]
@@ -86,8 +89,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         cellsvec += config["L"]["a"] / config["L"]["c"]
         cellsvec_a = dxa*np.arange(Nvol["a"]) + dxa/2.
         cellsvec = np.hstack((cellsvec_a, cellsvec))
-    cellsvec *= config["Lref"] * Lfac
-    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * config["Lref"] * Lfac
+    cellsvec *= config["L_ref"] * Lfac
+    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * config["L_ref"] * Lfac
     # Extract the reported simulation times
     times = utils.get_dict_key(data, pfx + 'phi_applied_times')
     numtimes = len(times)
@@ -111,9 +114,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #            print "Actual psd_mean [nm]:", np.mean(psd_len[l])
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
         print("Cell structure:")
-        print(("porous anode | " if Nvol["a"] else "flat anode | ")
-              + ("sep | " if Nvol["s"] else "") + "porous cathode")
-        if Nvol["a"]:
+        print(("porous anode | " if "a" in config.trodes else "flat anode | ")
+              + ("sep | " if config.have_separator else "") + "porous cathode")
+        if "a" in config.trodes:
             print("capacity ratio cathode:anode, 'z':", config["z"])
         for trode in trodes:
             print("solidType_{t}:".format(t=trode), config[trode, 'type'])
@@ -125,9 +128,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         else:  # CV
             print("Vset:", config['Vset'])
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
-              np.array(config['psd_mean']["c"])*Lfac)
+              np.array(config['mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
-              np.array(config['psd_stddev']["c"])*Lfac)
+              np.array(config['stddev']["c"])*Lfac)
 #        print "reg sln params:"
 #        print ndD["Omga"]
         print("ndim B_c:", config["c", "B"])
@@ -328,7 +331,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         xmax = Ltot
         if plot_type in ["elytec", "elytecf"]:
             ylbl = 'Concentration of electrolyte [M]'
-            datay = datay_c * config["cref"] / 1000.
+            datay = datay_c * c_ref / 1000.
         elif plot_type in ["elytep", "elytepf"]:
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd

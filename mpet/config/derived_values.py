@@ -26,7 +26,7 @@ class DerivedValues:
                           'tp': '{zp} * {Dp} / ({zp} * {Dp} - {zm} * {Dm})',
                           't_ref': '{L_ref}**2 / {D_ref}',
                           'curr_ref': '3600. / {t_ref}',
-                          'sigma_s_ref': '{L_ref}**2 - constants.F**2 * constants.c_ref '
+                          'sigma_s_ref': '{L_ref}**2 * constants.F**2 * constants.c_ref '
                                          '/ ({t_ref} * constants.k * constants.N_A '
                                          '* constants.T_ref)',
                           'currset': '{CrateCurr} * {Crate}',  # A/m^2
