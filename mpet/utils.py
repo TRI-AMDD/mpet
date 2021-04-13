@@ -130,11 +130,10 @@ def get_dict_key(data, string, squeeze=True, final=False):
     If final is true, then it only returns the last value, otherwise it returns the entire array.
     Final overwrites squeeze--if final is true, then the array will always be squeezed.
     Squeeze squeezes into 1D array if is true, otherwise false"""
-    array = data[string][...]
     # do not call both squeeze false and final true!!!
-    if final:
-        return np.squeeze(array)[-1]
-    elif squeeze:  # only returns last value
-        return np.squeeze(array)
+    if final:  # only returns last value
+        return data[string][...,-1].item()
+    elif squeeze:
+        return np.squeeze(data[string][...])
     else:  # returns entire array
-        return array
+        return data[string][...]
