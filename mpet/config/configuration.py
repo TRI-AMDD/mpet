@@ -22,66 +22,106 @@ from mpet.exceptions import UnknownParameterError
 # temporary:
 from mpet.io_utils import size2regsln
 
+PARTICLE_PARAMS = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
+                   'Rfilm': float, 'delta_L': float, 'Omega_a': float}
+
 
 class Config:
-    def __init__(self, paramfile='params.cfg'):
+    def __init__(self, paramfile='params.cfg', from_dicts=False):
         """
         Hold values from system and electrode configuration files, as well as
         derived values
         """
-        # store path to config file
-        self.path = os.path.dirname(paramfile)
-
-        # load system parameters file
-        self.D_s = ParameterSet(paramfile, 'system', self.path)
-        # the anode and separator are optional: only if there are volumes to simulate
-        self.trodes = ['c']
-        if self.D_s['Nvol_a'] > 0:
-            self.trodes.append('a')
-        self.trodes = self.trodes
-        self.have_separator = self.D_s['Nvol_s'] > 0
-        self.D_s.params['trodes'] = self.trodes
-        self.D_s.have_separator = self.have_separator
-
-        # load electrode parameter file(s)
-        self.paramfiles = {}
-
-        cathode_paramfile = self.D_s['cathode']
-        if not os.path.isabs(cathode_paramfile):
-            cathode_paramfile = os.path.join(self.path, cathode_paramfile)
-            self.paramfiles['c'] = cathode_paramfile
-        self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
-        self.D_c.params['trodes'] = self.trodes
-        self.D_c.have_separator = self.have_separator
-
-        if 'a' in self.trodes:
-            anode_paramfile = self.D_s['anode']
-            if not os.path.isabs(anode_paramfile):
-                anode_paramfile = os.path.join(self.path, anode_paramfile)
-            self.paramfiles['a'] = anode_paramfile
-            self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
-            self.D_a.params['trodes'] = self.trodes
-            self.D_a.have_separator = self.have_separator
-        else:
-            self.D_a = None
-
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
-
-        # set defaults and scale values that should be non-dim
-        self.config_processed = False
-        self.params_per_particle = []
-        # either process the config, or read already processed config from disk
-        prevDir = self['prevDir']
-        if prevDir and prevDir != 'false':
-            if not os.path.isabs(prevDir):
-                print("relative prevdir:", prevDir)
-                # assume it is relative to the input parameter files
-                print("input cfg path:", self.path)
-                prevDir = os.path.normpath(os.path.join(self.path, prevDir))
-            self.read(prevDir)
+        if from_dicts:
+            # read existing dictionaries instead of parameter file
+            # paramfile is now folder with input dicts
+            self.path = os.path.normpath(paramfile)
+            # set which electrodes there are based on which dict files exist
+            self.trodes = ['c']
+            if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
+                self.trodes.append('a')
+            # create empty parametersets and derived values
+            self.D_s = ParameterSet(None, 'system', self.path)
+            self.D_c = ParameterSet(None, 'electrode', self.path)
+            if 'a' in self.trodes:
+                self.D_a = ParameterSet(None, 'electrode', self.path)
+            else:
+                self.D_a = None
+            # now populate the dicts
+            self.read(self.path)
+            if 's' in self.D_s['Nvol']:
+                self.have_separator = True
+            else:
+                self.have_separator = False
+            self.D_s.have_separator = self.have_separator
+            self.D_c.have_separator = self.have_separator
+            self.D_s.trodes = self.trodes
+            self.D_c.trodes = self.trodes
+            if self.D_a is not None:
+                self.D_a.have_separator = self.have_separator
+                self.D_a.trodes = self.trodes
+            self.params_per_particle = list(PARTICLE_PARAMS.keys())
         else:
-            self._process_config()
+            # store path to config file
+            self.path = os.path.dirname(paramfile)
+            # load system parameters file
+            self.D_s = ParameterSet(paramfile, 'system', self.path)
+            # the anode and separator are optional: only if there are volumes to simulate
+            self.trodes = ['c']
+            if self.D_s['Nvol_a'] > 0:
+                self.trodes.append('a')
+            self.trodes = self.trodes
+            self.have_separator = self.D_s['Nvol_s'] > 0
+            self.D_s.params['trodes'] = self.trodes
+            self.D_s.have_separator = self.have_separator
+
+            # load electrode parameter file(s)
+            self.paramfiles = {}
+
+            cathode_paramfile = self.D_s['cathode']
+            if not os.path.isabs(cathode_paramfile):
+                cathode_paramfile = os.path.join(self.path, cathode_paramfile)
+                self.paramfiles['c'] = cathode_paramfile
+            self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
+            self.D_c.params['trodes'] = self.trodes
+            self.D_c.have_separator = self.have_separator
+
+            if 'a' in self.trodes:
+                anode_paramfile = self.D_s['anode']
+                if not os.path.isabs(anode_paramfile):
+                    anode_paramfile = os.path.join(self.path, anode_paramfile)
+                self.paramfiles['a'] = anode_paramfile
+                self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
+                self.D_a.params['trodes'] = self.trodes
+                self.D_a.have_separator = self.have_separator
+            else:
+                self.D_a = None
+
+            # set defaults and scale values that should be non-dim
+            self.config_processed = False
+            self.params_per_particle = []
+            # either process the config, or read already processed config from disk
+            prevDir = self['prevDir']
+            if prevDir and prevDir != 'false':
+                if not os.path.isabs(prevDir):
+                    # assume it is relative to the input parameter files
+                    prevDir = os.path.normpath(os.path.join(self.path, prevDir))
+                self.read(prevDir)
+                # have to set particle-specific parameters here because process_config
+                # is not called
+                self.params_per_particle = list(PARTICLE_PARAMS.keys())
+            else:
+                self._process_config()
+
+    @classmethod
+    def from_dicts(cls, path):
+        """
+        Create a config instance from a set of dictionaries on disk, instead
+        of from config files
+        """
+        return cls(path, from_dicts=True)
 
     def select_config(self, items):
         """
@@ -451,9 +491,8 @@ class Config:
 
             # intialize parameters
             # TODO: verify dtypes
-            param_types = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
-                           'Rfilm': float, 'delta_L': float, 'Omega_a': float}
-            for param, dtype in param_types.items():
+
+            for param, dtype in PARTICLE_PARAMS.items():
                 self[trode, 'indvPart'][param] = np.empty((Nvol, Npart), dtype=dtype)
 
             # reference scales per trode
@@ -473,9 +512,6 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
-                    # TODO: this is wrong! Assumes the original values have not been scaled,
-                    # but they have
-                    print("WARNING: individual particle values are not yet correct")
                     kappa = self[trode, 'indvPart']['kappa'][i, j] \
                         = self[trode, 'kappa'] / kappa_ref
                     nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
@@ -496,7 +532,7 @@ class Config:
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode
-        self.params_per_particle = list(param_types.keys())
+        self.params_per_particle = list(PARTICLE_PARAMS.keys())
 
 
 class ParameterSet:
@@ -511,7 +547,8 @@ class ParameterSet:
         self.have_separator = False
         self.params = {}
 
-        self._load_file(paramfile)
+        if paramfile is not None:
+            self._load_file(paramfile)
 
     def _load_file(self, fname):
         """
