@@ -122,7 +122,7 @@ def open_data_file(dataFile):
     return data
 
 
-def get_dict_key(data, string, squeeze = True, final = False):
+def get_dict_key(data, string, squeeze=True, final=False):
     """Gets the values in a 1D array, which is formatted slightly differently
     depending on whether it is a h5py file or a mat file
     Takes in data array and the string whose value we want to get. Final is a
@@ -131,11 +131,10 @@ def get_dict_key(data, string, squeeze = True, final = False):
     Final overwrites squeeze--if final is true, then the array will always be squeezed.
     Squeeze squeezes into 1D array if is true, otherwise false"""
     array = data[string][...]
-    #do not call both squeeze false and final true!!!
+    # do not call both squeeze false and final true!!!
     if final:
         return np.squeeze(array)[-1]
-    elif squeeze: #only returns last value
+    elif squeeze:  # only returns last value
         return np.squeeze(array)
-    else: #returns entire array
+    else:  # returns entire array
         return array
-
