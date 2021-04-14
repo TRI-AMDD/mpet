@@ -52,8 +52,8 @@ class InterpTimeVector(daeScalarExternalFunction):
             return adouble(0)
         # Store the previous time value to prevent excessive
         # interpolation.
-        if (len(self.previous_output) > 0 and
-                self.previous_output[0] == time.Value):
+        if (len(self.previous_output) > 0
+                and self.previous_output[0] == time.Value):
             return adouble(float(self.previous_output[1][self.position]))
         noise_vec = self.interp(time.Value)
         # it is a list now not a tuple

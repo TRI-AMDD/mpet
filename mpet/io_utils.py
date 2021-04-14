@@ -84,16 +84,16 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     dD_s["tend"] = P_s.getfloat('Sim Params', 'tend')
     ndD_s["prevDir"] = P_s.get('Sim Params', 'prevDir')
 
-    #If prevDir is a relative path, convert to absolute
+    # If prevDir is a relative path, convert to absolute
     if ndD_s["prevDir"] != "false":
         if not os.path.isabs(ndD_s["prevDir"]):
             dir = os.path.dirname(paramfile)
-            ndD_s["prevDir"]=os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
+            ndD_s["prevDir"] = os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
 
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
     Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
-    ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback = 'mat')
+    ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback='mat')
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
                      "c": P_s.getint('Sim Params', 'Nvol_c'),
                      "s": P_s.getint('Sim Params', 'Nvol_s')}
@@ -110,6 +110,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                         "c": P_s.getfloat('Particles', 'mean_c')}
     dD_s["psd_stddev"] = {"a": P_s.getfloat('Particles', 'stddev_a'),
                           "c": P_s.getfloat('Particles', 'stddev_c')}
+    dD_s["specified_psd"] = {"a": P_s.get('Particles', 'specified_psd_a', fallback="False"),
+                             "c": P_s.get('Particles', 'specified_psd_c', fallback="False")}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
                     "c": P_s.getfloat('Particles', 'cs0_c')}
 
@@ -185,6 +187,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
+        dD["E_D"] = P.getfloat('Material', 'E_D', fallback=0)
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
@@ -196,6 +199,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         # Reactions
         ndD["rxnType"] = P.get('Reactions', 'rxnType')
         dD["k0"] = P.getfloat('Reactions', 'k0')
+        dD["E_A"] = P.getfloat('Reactions', 'E_A', fallback=0)
         ndD["alpha"] = P.getfloat('Reactions', 'alpha')
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
@@ -225,7 +229,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
     dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
-    dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
     for trode in ndD_s['trodes']:
@@ -244,8 +247,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         ndD_s['z'] = 0.
     limtrode = ("c" if ndD_s["z"] < 1 else "a")
 
-    #If 1C_current_density is not defined, use the theoretical capacity
-    theoretical_1C_current=dD_e[limtrode]["cap"] / 3600.  # A/m^2
+    # If 1C_current_density is not defined, use the theoretical capacity
+    theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2
     if not dD_s["CrateCurr"]:
         dD_s["CrateCurr"] = theoretical_1C_current
 
@@ -363,7 +366,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
+                ndD_tmp["E_D"] = dD_e[trode]['E_D']/(k*N_A*T_ref)
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
+                ndD_tmp["E_A"] = dD_e[trode]['E_A']/(k*N_A*T_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
                 # If we're using the model that varies Omg_a with particle size,
@@ -378,15 +383,18 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["phimin"] = -((e/(k*T_ref))*dD_s["Vmax"] + ndDVref)
     ndD_s["phimax"] = -((e/(k*T_ref))*dD_s["Vmin"] + ndDVref)
 
-    #Nondimensionalize current and voltage segments
+    # Nondimensionalize current and voltage segments
     ndD_s["segments"] = []
     if ndD_s["profileType"] == "CCsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((dD_s["segments"][i][0]/curr_ref, dD_s["segments"][i][1]*60/t_ref))
+            ndD_s["segments"].append(
+                (dD_s["segments"][i][0]*dD_s["CrateCurr"]/theoretical_1C_current/curr_ref,
+                 dD_s["segments"][i][1]*60/t_ref))
     elif ndD_s["profileType"] == "CVsegments":
         for i in range(len(dD_s["segments"])):
-            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref), dD_s["segments"][i][1]*60/t_ref))
-        
+            ndD_s["segments"].append((-((e/(k*T_ref))*dD_s["segments"][i][0]+ndDVref),
+                                      dD_s["segments"][i][1]*60/t_ref))
+
     # Current or voltage segments profiles
     dD_s["segments_tvec"] = np.zeros(2*numsegs + 1)
     dD_s["segments_setvec"] = np.zeros(2*numsegs + 1)
@@ -435,15 +443,23 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
         mean = dD_s["psd_mean"][trode]
         stddev = dD_s["psd_stddev"][trode]
         solidType = ndD_e[trode]["type"]
-        # Make a length-sampled particle size distribution
-        # Log-normally distributed
-        if are_close(dD_s["psd_stddev"][trode], 0.):
-            raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
+        if dD_s["specified_psd"][trode] == "False" or dD_s["specified_psd"][trode] == "false":
+            # If PSD is not specified, make a length-sampled particle size distribution
+            # Log-normally distributed
+            if are_close(dD_s["psd_stddev"][trode], 0.):
+                raw = (dD_s["psd_mean"][trode] * np.ones((Nv, Np)))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2)/np.sqrt(var+mean**2))
+                sigma = np.sqrt(np.log(var/(mean**2)+1))
+                raw = np.random.lognormal(mu, sigma, size=(Nv, Np))
         else:
-            var = stddev**2
-            mu = np.log((mean**2)/np.sqrt(var+mean**2))
-            sigma = np.sqrt(np.log(var/(mean**2)+1))
-            raw = np.random.lognormal(mu, sigma, size=(Nv, Np))
+            raw = np.array(ast.literal_eval(dD_s["specified_psd"][trode]))
+            Nv_raw, Np_raw = np.shape(raw)
+            if Nv_raw != Nv or Np_raw != Np:
+                print("Specified particle size distribution discretization of volumes inequal "
+                      "to the one specified in the config file")
+                raise ValueError
         psd_raw[trode] = raw
         # For particles with internal profiles, convert psd to
         # integers -- number of steps
@@ -533,8 +549,6 @@ def size2regsln(size):
 
 
 def test_system_input(dD, ndD):
-    if not are_close(dD['Tabs'], 298.):
-        raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
     if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
@@ -543,9 +557,6 @@ def test_system_input(dD, ndD):
 
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
-    T298 = are_close(dD_s['Tabs'], 298.)
-    if not T298:
-        raise NotImplementedError("Temperature dependence not supported")
     solidType = ndD['type']
     solidShape = ndD['shape']
     if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
@@ -553,13 +564,11 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if (solidType in ["CHR", "diffn"] and solidShape not in
             ["sphere", "cylinder"]):
         raise NotImplementedError("CHR and diffn req. sphere or cylinder")
-    if ((solidType not in ndD_s["1varTypes"]) and
-            (solidType not in ndD_s["2varTypes"])):
+    if ((solidType not in ndD_s["1varTypes"])
+            and (solidType not in ndD_s["2varTypes"])):
         raise NotImplementedError("Input solidType not defined")
-    if solidShape not in ["C3", "sphere", "cylinder"]:
+    if solidShape not in ["C3", "sphere", "cylinder", "homog_sdn"]:
         raise NotImplementedError("Input solidShape not defined")
-    if solidType == "homog_sdn" and not T298:
-        raise NotImplementedError("homog_snd req. Tabs=298")
 
 
 def write_config_file(P, filename="input_params.cfg"):
