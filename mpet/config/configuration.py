@@ -367,14 +367,15 @@ class Config:
         if 'segments' in self['profileType']:
             self['tend'] = segments_tvec[-1]
             # Pad the last segment so no extrapolation occurs
-            segments_tvec[-1] *= 1.01
+            # TODO: uncomment when fixed in dev branch (updated value is not used, breaking test)
+            # segments_tvec[-1] *= 1.01
+        else:
+            self['tend'] /= self['t_ref']
         self['segments'] = segments
         self['segments_tvec'] = segments_tvec
         self['segments_setvec'] = segments_setvec
         if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
             self['tend'] = np.abs(self['capFrac'] / self['currset'])
-        else:
-            self['tend'] /= self['t_ref']
 
         if prevDir:
             # load particle distrubtions etc. from previous run
