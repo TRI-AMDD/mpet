@@ -23,7 +23,7 @@ class SimMPET(dae.daeSimulation):
         self.tScale = tScale
         config["currPrev"] = 0.
         config["phiPrev"] = 0.
-        if config["prevDir"] != "false":
+        if config["prevDir"] and config["prevDir"] != "false":
             # Get the data mat file from prevDir
             self.dataPrev = osp.join(config["prevDir"], "output_data")
             data = utils.open_data_file(self.dataPrev)
@@ -60,7 +60,7 @@ class SimMPET(dae.daeSimulation):
         Nvol = config["Nvol"]
         Npart = config["Npart"]
         phi_cathode = config["phi_cathode"]
-        if config["prevDir"] == "false":
+        if not config["prevDir"] or config["prevDir"] == "false":
             # Solids
             for tr in config["trodes"]:
                 cs0 = config['cs0'][tr]
@@ -155,13 +155,13 @@ class SimMPET(dae.daeSimulation):
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
 
-                        if solidType in config["1varTypes"]:
+                        if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", final=True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
-                        elif solidType in config["2varTypes"]:
+                        elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))
                             part.c2bar.SetInitialGuess(
@@ -173,11 +173,12 @@ class SimMPET(dae.daeSimulation):
                                     k, data[partStr + "c1"][-1,k])
                                 part.c2.SetInitialCondition(
                                     k, data[partStr + "c2"][-1,k])
-            for i in range(Nvol["s"]):
-                self.m.c_lyte["s"].SetInitialCondition(
-                    i, data["c_lyte_s"][-1,i])
-                self.m.phi_lyte["s"].SetInitialGuess(
-                    i, data["phi_lyte_s"][-1,i])
+            if config.have_separator:
+                for i in range(Nvol["s"]):
+                    self.m.c_lyte["s"].SetInitialCondition(
+                        i, data["c_lyte_s"][-1,i])
+                    self.m.phi_lyte["s"].SetInitialGuess(
+                        i, data["phi_lyte_s"][-1,i])
             for tr in config["trodes"]:
                 for i in range(Nvol[tr]):
                     self.m.c_lyte[tr].SetInitialCondition(

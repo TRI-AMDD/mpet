@@ -34,6 +34,7 @@ class Config:
         """
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
+        self.params_per_particle = []
         if from_dicts:
             # read existing dictionaries instead of parameter file
             # paramfile is now folder with input dicts
@@ -50,7 +51,7 @@ class Config:
             else:
                 self.D_a = None
             # now populate the dicts
-            self.read(self.path)
+            self.read(self.path, full=True)
             if 's' in self.D_s['Nvol']:
                 self.have_separator = True
             else:
@@ -101,17 +102,13 @@ class Config:
 
             # set defaults and scale values that should be non-dim
             self.config_processed = False
-            self.params_per_particle = []
             # either process the config, or read already processed config from disk
             prevDir = self['prevDir']
             if prevDir and prevDir != 'false':
                 if not os.path.isabs(prevDir):
                     # assume it is relative to the input parameter files
-                    prevDir = os.path.normpath(os.path.join(self.path, prevDir))
-                self.read(prevDir)
-                # have to set particle-specific parameters here because process_config
-                # is not called
-                self.params_per_particle = list(PARTICLE_PARAMS.keys())
+                    self['prevDir'] = os.path.normpath(os.path.join(self.path, prevDir))
+                self._process_config(self['prevDir'])
             else:
                 self._process_config()
 
@@ -181,7 +178,7 @@ class Config:
             with open(f'{filenamebase}_{section}.p', 'wb') as f:
                 pickle.dump(d, f)
 
-    def read(self, folder=None):
+    def read(self, folder=None, full=False):
         """
         Read previously processed config from disk
         """
@@ -201,21 +198,33 @@ class Config:
                 except UnicodeDecodeError:
                     d = pickle.load(f, encoding='latin1')
 
-            if section == 'system':
-                self.D_s.params = d
-            elif section == 'derived_values':
-                self.derived_values.values = d
-            elif section == 'cathode':
-                self.D_c.params = d
-            elif section == 'anode':
-                self.D_a.params = d
+            if full:
+                # update all config
+                if section == 'system':
+                    self.D_s.params = d
+                elif section == 'derived_values':
+                    self.derived_values.values = d
+                elif section == 'cathode':
+                    self.D_c.params = d
+                elif section == 'anode':
+                    self.D_a.params = d
+                else:
+                    raise Exception(f'Unknown section: {section}')
             else:
-                raise Exception(f'Unknown section: {section}')
+                # only update generated distributions
+                if section == 'system':
+                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_vol',
+                                'psd_vol_FracVol', 'G']:
+                        self[key] = d[key]
+                elif section in ['anode', 'cathode']:
+                    trode = section[0]
+                    self[trode, 'indvPart'] = d['indvPart']
 
         # make sure to set the numpy random seed, as is usually done in process_config
-        if self.D_s['randomSeed']:
+        if self['randomSeed']:
             np.random.seed(self.D_s['seed'])
 
+        self.params_per_particle = list(PARTICLE_PARAMS.keys())
         self.config_processed = True
 
     def __getitem__(self, items):
@@ -246,13 +255,7 @@ class Config:
         """
         # select config, ignore returned trode value as we don't need it
         d, item, _ = self.select_config(items)
-        if item in self.params_per_particle:
-            assert self.particle_indices is not None, 'Select a particle with ' \
-                                                      'Config.set_particle ' \
-                                                      'before setting particle parameters'
-            d[item][self.particle_indices] = value
-        else:
-            d[item] = value
+        d[item] = value
 
     def __delitem__(self, items):
         """
@@ -265,7 +268,7 @@ class Config:
 
         del d[item]
 
-    def _process_config(self):
+    def _process_config(self, prevDir=None):
         """
         Set default values and process some values
         """
@@ -365,19 +368,23 @@ class Config:
         self['segments'] = segments
         self['segments_tvec'] = segments_tvec
         self['segments_setvec'] = segments_setvec
-        self['tend'] /= self['t_ref']
         if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
             self['tend'] = np.abs(self['capFrac'] / self['currset'])
+        else:
+            self['tend'] /= self['t_ref']
 
-        # particle distributions
-        # TODO: check for prevDir, load previous values if set
-        self._distr_part()
-
-        # Gibss free energy, must be done after distr_part
-        self._G()
-
-        # Electrode parameters that depend on invidividual particle
-        self._indvPart()
+        if prevDir:
+            # load particle distrubtions etc. from previous run
+            self.read(prevDir, full=False)
+            # Set params per particle as would be done in _invdPart when generating distributions
+            self.params_per_particle = list(PARTICLE_PARAMS.keys())
+        else:
+            # particle distributions
+            self._distr_part()
+            # Gibss free energy, must be done after distr_part
+            self._G()
+            # Electrode parameters that depend on invidividual particle
+            self._indvPart()
 
     def _distr_part(self):
         """
