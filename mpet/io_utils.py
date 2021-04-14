@@ -246,7 +246,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     else:
         # flat plate anode with assumed infinite supply of metal
         ndD_s['z'] = 0.
-    limtrode = ("c" if ndD_s["z"] < 1 else "a")
+    limtrode = dD_s["limtrode"] = ("c" if ndD_s["z"] < 1 else "a")
 
     # If 1C_current_density is not defined, use the theoretical capacity
     theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2

@@ -44,6 +44,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         sStr = "."
     # Read in the parameters used to define the simulation
     dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
+
+    limtrode = dD_s["limtrode"]
     # simulated (porous) electrodes
     Nvol = ndD_s["Nvol"]
     trodes = ndD_s["trodes"]
@@ -59,6 +61,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     F = dD_s['F']                      # C/mol
     td = dD_s["td"]
     Etheta = {"a": 0.}
+    cap = dD_e[limtrode]["cap"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
@@ -295,6 +298,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ax.set_ylabel("Current [C-rate]")
         if save_flag:
             fig.savefig("mpet_current.png", bbox_inches="tight")
+        return fig, ax
+
+    if plot_type == "power":
+        current = utils.get_dict_key(data, pfx + 'current') * (3600/td) * (cap/3600)  # in A/m^2
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
+        power = np.multiply(current, voltage)
+        if data_only:
+            return times*td, power
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, power)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel(r"Power [W/m$^2$]")
+        if save_flag:
+            fig.savefig("mpet_power.png", bbox_inches="tight")
         return fig, ax
 
     # Plot electrolyte concentration or potential
