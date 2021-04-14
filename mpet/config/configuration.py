@@ -315,6 +315,9 @@ class Config:
                 value = self[trode, param]
                 if value is not None:
                     self[trode, param] = value / kT
+        # scalings on separator
+        if self.have_separator:
+            self['L']['s'] /= self['L_ref']
 
         # scaling/addition of macroscopic input information
         Vref = self['phiRef']['c']
