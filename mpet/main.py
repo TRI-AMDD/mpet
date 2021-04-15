@@ -14,7 +14,6 @@ import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
-# import mpet.io_utils as IO
 from mpet.config.configuration import Config
 import mpet.sim as sim
 import mpet.utils as utils
