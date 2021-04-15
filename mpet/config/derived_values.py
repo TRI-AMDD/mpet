@@ -10,6 +10,9 @@ from mpet.config import constants
 class DerivedValues:
     def __init__(self):
         """
+        DerivedValues holds the functions and equations required
+        to calculate a parameter that is derived from other parameters.
+        Results are cached, so each parameter is calculated only once
         """
         # to keep track of values that were already calculated
         # initialize with empty dicts for electrodes
@@ -37,10 +40,14 @@ class DerivedValues:
                                  ' * {P_L[tr]} * {rho_s_tr}'}
 
     def __repr__(self):
+        """
+        Representation when printing this class
+        """
         return dict.__repr__(self.values)
 
     def get(self, config, item, trode=None):
         """
+        Retrieve a derived parameter
         """
         # set config class-wide for easy access in methods
         self.config = config
@@ -69,6 +76,7 @@ class DerivedValues:
 
     def _process_equation(self, equation, trode=None):
         """
+        Calculate a parameter that is defined in an equation defined as string
         """
         # get parameters that are specified in equation, i.e. everything in curly brackets
         params = [item[1] for item in StringFormatter().parse(equation) if item[1] is not None]
@@ -115,7 +123,6 @@ class DerivedValues:
     def L_ref(self):
         """
         reference L
-        TODO: with or without underscore?
         """
         return self.config['L']['c']
 
@@ -130,6 +137,7 @@ class DerivedValues:
 
     def z(self):
         """
+        z
         """
         if 'a' in self.config.trodes:
             return self.config['c', 'cap'] / self.config['a', 'cap']
@@ -139,6 +147,7 @@ class DerivedValues:
 
     def limtrode(self):
         """
+        limtrode
         """
         if self.config['z'] < 1:
             return 'c'
@@ -147,8 +156,7 @@ class DerivedValues:
 
     def cs_ref(self, trode):
         """
-        TODO: this parameter is just a scaling of 1 or .5 of cs_ref
-        Perhaps just storing that scaling is enough?
+        reference cs
         """
         if self.config[trode, 'type'] in constants.one_var_types:
             prefac = 1
@@ -158,6 +166,7 @@ class DerivedValues:
 
     def muR_ref(self, trode):
         """
+        reference muR
         """
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
         cs0bar = self.config['cs0'][trode]
@@ -174,6 +183,7 @@ class DerivedValues:
 
     def phiRef(self):
         """
+        reference phi
         """
         d = {}
         for trode in self.config.trodes:

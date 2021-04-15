@@ -388,6 +388,7 @@ class Config:
 
     def _distr_part(self):
         """
+        Generate particle distributions
         """
         # intialize dicts in config
         self['psd_num'] = {}
@@ -420,8 +421,6 @@ class Config:
                 if raw.shape != (Nvol, Npart):
                     raise ValueError('Specified particle size distribution discretization '
                                      'of volumes inequal to the one specified in the config file')
-
-            # TODO: need to store raw distribution?
 
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
@@ -469,6 +468,7 @@ class Config:
 
     def _G(self):
         """
+        Generate Gibbs free energy distribution
         """
         self['G'] = {}
         for trode in self.trodes:
@@ -490,6 +490,7 @@ class Config:
 
     def _indvPart(self):
         """
+        Generate particle-specific parameter values
         """
         for trode in self.trodes:
             Nvol = self['Nvol'][trode]
@@ -497,8 +498,6 @@ class Config:
             self[trode, 'indvPart'] = {}
 
             # intialize parameters
-            # TODO: verify dtypes
-
             for param, dtype in constants.PARAMS_PARTICLE.items():
                 self[trode, 'indvPart'][param] = np.empty((Nvol, Npart), dtype=dtype)
 
