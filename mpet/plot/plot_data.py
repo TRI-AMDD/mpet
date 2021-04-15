@@ -26,8 +26,6 @@ from mpet.config import constants
 # mpl.rcParams['lines.markeredgewidth'] = 0.1
 # mpl.rcParams['text.usetex'] = True
 
-# TODO: rescale parameters back to dimensional values where needed
-
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
@@ -124,9 +122,15 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             print("rxnType_{t}:".format(t=trode), config[trode, 'rxnType'])
         if profileType == "CC":
             print("C_rate:", config['Crate'])
-            print("current:", config['currset'], "A/m^2")
+            theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
+            currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
+            print("current:", currset_dim, "A/m^2")
         else:  # CV
-            print("Vset:", config['Vset'])
+            Vref = config['phiRef']['c']
+            if 'a' in config.trodes:
+                Vref -= config['phiRef']['a']
+            Vset_dim = -(config['Vset'] * constants.k * constants.T / constants.e - Vref)
+            print("Vset:", Vset_dim)
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
               np.array(config['mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
@@ -142,20 +146,27 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         print("Npart_c:", Npart["c"])
         if 'a' in config.trodes:
             print("Npart_a:", Npart["a"])
-        print("Dp [m^2/s]:", config['Dp'])
-        print("Dm [m^2/s]:", config['Dm'])
-        print("Damb [m^2/s]:", config['Damb'])
+        print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
+        print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
+        print("Damb [m^2/s]:", config['Damb'] * config['D_ref'])
         print("td [s]:", config["td"])
         for trode in trodes:
-            print("k0_{t} [A/m^2]:".format(t=trode), config[trode, 'k0'])
+            if trode == "a":
+                k0 = config.D_a["k0"]
+            elif trode == "c":
+                k0 = config.D_c["k0"]
+            else:
+                raise Exception(f"Unknown trode: {trode}")
+            print("k0_{t} [A/m^2]:".format(t=trode), k0)
             rxnType = config[trode, 'rxnType']
             if rxnType == "BV":
                 print("alpha_" + trode + ":", config[trode, 'alpha'])
             elif rxnType in ["Marcus", "MHC"]:
-                print("lambda_" + trode + "/(kTref):", config[trode, "lambda"])
+                print("lambda_" + trode + "/(kTref):", config[trode, "lambda"]
+                      * constants.k * constants.T)
             if config['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- "
-                      + "sigma_s [S/m]: " + str(config['sigma_s'][trode]))
+                      + "sigma_s [S/m]: " + str(config['sigma_s'][trode] * config['sigma_s_ref']))
             else:
                 print(trode + " bulk conductivity loss: No")
             try:
@@ -278,8 +289,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot current profile
     if plot_type == "curr":
-        limtrode = config['limtrode']
-        theoretical_1C_current = config[limtrode, "cap"] / 3600.  # A/m^2
+        theoretical_1C_current = config[config['limtrode'], "cap"] / 3600.  # A/m^2
         current = (utils.get_dict_key(data, pfx + 'current')
                    * theoretical_1C_current / config['CrateCurr'] * config['curr_ref'])
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
@@ -349,12 +359,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
-                datay = i_edges * (F*config["cref"]*config["Dref"]/config["Lref"])
+                datay = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
             elif plot_type in ["elytedivi", "elytedivif"]:
                 ylbl = r'Divergence of electrolyte current density [A/m$^3$]'
                 datax = cellsvec
                 datay = np.diff(i_edges, axis=1) / disc["dxvec"]
-                datay *= (F*config["cref"]*config["Dref"]/config["Lref"]**2)
+                datay *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
         if fplot:
             datay = datay[t0ind]
         if data_only:

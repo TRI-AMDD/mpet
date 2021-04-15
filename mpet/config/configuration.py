@@ -286,7 +286,6 @@ class Config:
             self[param] = theoretical_1C_current
 
         # non-dimensional scalings
-        # first check if parameter is present?
         kT = constants.k * constants.T_ref
         self['T'] = self['Tabs'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
@@ -363,8 +362,7 @@ class Config:
         if 'segments' in self['profileType']:
             self['tend'] = segments_tvec[-1]
             # Pad the last segment so no extrapolation occurs
-            # TODO: uncomment when fixed in dev branch (updated value is not used, breaking test)
-            # segments_tvec[-1] *= 1.01
+            segments_tvec[-1] *= 1.01
         else:
             self['tend'] /= self['t_ref']
         self['segments'] = segments
