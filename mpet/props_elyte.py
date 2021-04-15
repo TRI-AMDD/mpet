@@ -16,8 +16,6 @@ T in these equations is nondimensionalized wrt 298K
 import numpy as np
 from mpet.config import constants
 
-cref = 1.  # M
-
 
 def LiClO4_PC():
     """ Set of parameters from Fuller, Doyle, Newman 1994, with
@@ -44,14 +42,14 @@ def LiClO4_PC():
             * np.exp(b*(c/rho - p_u)**2
                      - (a/p_u)*(c/rho - p_u)))  # S/m
         return out
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref/1000, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -80,14 +78,14 @@ def valoen_reimers():
                    + k20*c**2 + k21*c**2*(T*constants.T_ref))**2  # mS/cm
         out *= 0.1  # S/m
         return out
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref/1000, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -113,7 +111,7 @@ def valoen_bernardi():
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -137,14 +135,14 @@ def test1():
     def sigma(c, T):
         return Dm*(1000*c)*constants.N_A*constants.e**2 \
             / (constants.k*T*constants.T_ref*(1-tp0(c)))  # S/m
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref/1000, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -185,14 +183,14 @@ def LIONSIMBA_nonisothermal():
     def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref/1000, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -214,12 +212,12 @@ def LIONSIMBA_isothermal():
     def therm_fac(c, T):
         return 1.
 
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref/1000, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
