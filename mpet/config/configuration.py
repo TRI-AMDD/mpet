@@ -19,8 +19,6 @@ from mpet.config.constants import PARAMS_ALIAS, PARAMS_PER_TRODE, PARAMS_SEPARAT
 from mpet.config.derived_values import DerivedValues
 from mpet.config import constants
 from mpet.exceptions import UnknownParameterError
-# temporary:
-from mpet.io_utils import size2regsln
 
 
 class Config:
@@ -108,6 +106,8 @@ class Config:
                 self._process_config(self['prevDir'])
             else:
                 self._process_config()
+
+            self._verify_config()
 
     @classmethod
     def from_dicts(cls, path):
@@ -536,7 +536,7 @@ class Config:
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:
-                        self[trode, 'indvPart']['Omega_a'][i, j] = size2regsln(plen)
+                        self[trode, 'indvPart']['Omega_a'][i, j] = self.size2regsln(plen)
                     else:
                         # just use global value
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
@@ -544,6 +544,52 @@ class Config:
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode
         self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
+
+    def _verify_config(self):
+        """
+        Verify configuration parameters
+        """
+        # solid type
+        for trode in self.trodes:
+            solidShape = self[trode, 'shape']
+            solidType = self[trode, 'type']
+            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
+                raise Exception("ACR and homog_sdn req. C3 shape")
+            if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder"]):
+                raise NotImplementedError("CHR and diffn req. sphere or cylinder")
+
+    @staticmethod
+    def size2regsln(size):
+        """
+        This function returns the non-dimensional regular solution
+        parameter which creates a barrier height that corresponds to
+        the given particle size (C3 particle, measured in nm in the
+        [100] direction). The barrier height vs size is taken from
+        Cogswell and Bazant 2013, and the reg sln vs barrier height
+        was done by TRF 2014 (Ferguson and Bazant 2014).
+        """
+        # First, this function wants the argument to be in [nm]
+        size *= 1e+9
+        # Parameters for polynomial curve fit
+        p1 = -1.168e4
+        p2 = 2985
+        p3 = -208.3
+        p4 = -8.491
+        p5 = -10.25
+        p6 = 4.516
+        # The nucleation barrier depends on the ratio of the particle
+        # wetted area to total particle volume.
+        # *Wetted* area to volume ratio for C3 particles (Cogswell
+        # 2013 or Kyle Smith)
+        AV = 3.6338/size
+        # Fit function (TRF, "SWCS" paper 2014)
+        param = p1*AV**5 + p2*AV**4 + p3*AV**3 + p4*AV**2 + p5*AV + p6
+        # replace values less than 2 with 2.
+        if isinstance(param, np.ndarray):
+            param[param < 2] = 2.
+        elif param < 2:
+            param = 2.
+        return param
 
 
 class ParameterSet:

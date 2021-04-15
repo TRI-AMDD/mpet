@@ -6,6 +6,8 @@ from distutils.util import strtobool
 from schema import Schema, Use, Optional, And, Or
 import numpy as np
 
+from mpet.config import constants
+
 
 def parse_segments(key):
     """
@@ -109,9 +111,12 @@ system = {'Sim Params': {'profileType': lambda x:
                           'Dp': Use(float),
                           'Dm': Use(float)}}
 
-electrode = {'Particles': {'type': str,
+electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
+                                                                  constants.one_var_types
+                                                                  + constants.two_var_types),
                            'discretization': Use(float),
-                           'shape': str,
+                           'shape': lambda x:
+                               check_allowed_values(x, ["C3", "sphere", "cylinder", "homog_sdn"]),
                            Optional('thickness'): Use(float)},
              'Material': {'muRfunc': str,
                           'logPad': Use(tobool),
