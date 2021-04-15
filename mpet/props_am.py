@@ -426,7 +426,6 @@ class muRfuncs():
     def LiCoO2_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
         """ Torchio et al, 2016. """
         T = self.T
-        Tref = 298
         r1 = 4.656
         r2 = 88.669
         r3 = 401.119
@@ -452,7 +451,7 @@ class muRfuncs():
         k9 = -9.82431213599998
         k10 = 3.048755063
         dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3)/(k6+k7*y+k8*y**2+k9*y**3+k10*y**4)
-        OCV = OCV_ref + dUdT*(T-1)*Tref
+        OCV = OCV_ref + dUdT*(T-1)*constants.T_ref
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
@@ -460,7 +459,6 @@ class muRfuncs():
     def LiC6_LIONSIMBA(self, y, ybar, muR_ref, ISfuncs=None):
         """ Torchio et al, 2016. """
         T = self.T
-        Tref = 298
         r1 = 0.7222
         r2 = 0.1387
         r3 = 0.029
@@ -491,7 +489,7 @@ class muRfuncs():
         k19 = 165705.8597
         dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8) / \
             (k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8)
-        OCV = OCV_ref + dUdT*(T-1)*Tref
+        OCV = OCV_ref + dUdT*(T-1)*constants.T_ref
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
