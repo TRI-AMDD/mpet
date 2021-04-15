@@ -129,7 +129,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             Vref = config['phiRef']['c']
             if 'a' in config.trodes:
                 Vref -= config['phiRef']['a']
-            Vset_dim = -(config['Vset'] * constants.k * constants.T / constants.e - Vref)
+            Vset_dim = -(config['Vset'] * k * Tref / e - Vref)
             print("Vset:", Vset_dim)
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
               np.array(config['mean']["c"])*Lfac)
@@ -163,7 +163,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 print("alpha_" + trode + ":", config[trode, 'alpha'])
             elif rxnType in ["Marcus", "MHC"]:
                 print("lambda_" + trode + "/(kTref):", config[trode, "lambda"]
-                      * constants.k * constants.T)
+                      * k * Tref)
             if config['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- "
                       + "sigma_s [S/m]: " + str(config['sigma_s'][trode] * config['sigma_s_ref']))
