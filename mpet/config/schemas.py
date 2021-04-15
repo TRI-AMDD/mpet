@@ -6,8 +6,6 @@ from distutils.util import strtobool
 from schema import Schema, Use, Optional, And, Or
 import numpy as np
 
-from mpet.config import constants
-
 
 def parse_segments(key):
     """
@@ -54,7 +52,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          'tsteps': And(Use(int), lambda x: x > 0),
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
-                         'T': And(Use(float), constants.T_ref),
+                         'T': Use(float),
                          'randomSeed': Use(tobool),
                          Optional('seed'): And(Use(int), lambda x: x >= 0),
                          Optional('dataReporter', default='mat'): str,
@@ -129,10 +127,12 @@ electrode = {'Particles': {'type': str,
                           'rho_s': Use(float),
                           'D': Use(float),
                           'Dfunc': str,
+                          Optional('E_D', default=0.): Use(float),
                           'dgammadc': Use(float),
                           'cwet': Use(float)},
              'Reactions': {'rxnType': str,
                            'k0': Use(float),
+                           Optional('E_A', default=0.): Use(float),
                            'alpha': Use(float),
                            'lambda': Use(float),
                            'Rfilm': Use(float)}}

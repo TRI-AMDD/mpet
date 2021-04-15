@@ -22,9 +22,6 @@ from mpet.exceptions import UnknownParameterError
 # temporary:
 from mpet.io_utils import size2regsln
 
-PARTICLE_PARAMS = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
-                   'Rfilm': float, 'delta_L': float, 'Omega_a': float}
-
 
 class Config:
     def __init__(self, paramfile='params.cfg', from_dicts=False):
@@ -63,7 +60,7 @@ class Config:
             if self.D_a is not None:
                 self.D_a.have_separator = self.have_separator
                 self.D_a.trodes = self.trodes
-            self.params_per_particle = list(PARTICLE_PARAMS.keys())
+            self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
         else:
             # store path to config file
             self.path = os.path.dirname(paramfile)
@@ -224,7 +221,7 @@ class Config:
         if self['randomSeed']:
             np.random.seed(self.D_s['seed'])
 
-        self.params_per_particle = list(PARTICLE_PARAMS.keys())
+        self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
         self.config_processed = True
 
     def __getitem__(self, items):
@@ -380,7 +377,7 @@ class Config:
             # load particle distrubtions etc. from previous run
             self.read(prevDir, full=False)
             # Set params per particle as would be done in _invdPart when generating distributions
-            self.params_per_particle = list(PARTICLE_PARAMS.keys())
+            self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
         else:
             # particle distributions
             self._distr_part()
@@ -502,7 +499,7 @@ class Config:
             # intialize parameters
             # TODO: verify dtypes
 
-            for param, dtype in PARTICLE_PARAMS.items():
+            for param, dtype in constants.PARAMS_PARTICLE.items():
                 self[trode, 'indvPart'][param] = np.empty((Nvol, Npart), dtype=dtype)
 
             # reference scales per trode
@@ -527,8 +524,12 @@ class Config:
                     nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                     self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc / kappa
                     self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
+                        / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
+                        / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
@@ -542,7 +543,7 @@ class Config:
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode
-        self.params_per_particle = list(PARTICLE_PARAMS.keys())
+        self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
 
 
 class ParameterSet:
