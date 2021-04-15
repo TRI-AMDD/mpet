@@ -36,4 +36,6 @@ mpetMaterialsMHC.py
 venv/
 .remarkrc
 .vim
-*/.flake8
+.idea
+*.egg-info
+.vscode

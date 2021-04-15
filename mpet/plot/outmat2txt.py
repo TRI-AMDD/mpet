@@ -2,9 +2,10 @@
 import os
 
 import numpy as np
-import scipy.io as sio
+import h5py
 
 import mpet.plot.plot_data as plot_data
+import mpet.utils as utils
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
@@ -83,8 +84,8 @@ def main(indir, genData=True, discData=True, elyteData=True,
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
 
-    def get_trode_str(l):
-        return ("Anode" if l == "a" else "Cathode")
+    def get_trode_str(tr):
+        return ("Anode" if tr == "a" else "Cathode")
     if "a" in trodes:
         psd_len_a = dD_s["psd_len"]["a"]
         Nv_a, Np_a = psd_len_a.shape
@@ -141,15 +142,15 @@ def main(indir, genData=True, discData=True, elyteData=True,
             print(file=fo)
             print(particleIndxExpl, file=fo)
             print(particleDiscExpl, file=fo)
-            for l in trodes:
+            for tr in trodes:
                 print(file=fo)
-                Trode = get_trode_str(l)
+                Trode = get_trode_str(tr)
                 print((Trode + " particle sizes [m]"), file=fo)
-                for vind in range(ndD_s["Nvol"][l]):
-                    print(",".join(map(str, dD_s["psd_len"][l][vind,:])), file=fo)
+                for vind in range(ndD_s["Nvol"][tr]):
+                    print(",".join(map(str, dD_s["psd_len"][tr][vind,:])), file=fo)
                 print("\n" + Trode + " particle number of discr. points", file=fo)
-                for vind in range(ndD_s["Nvol"][l]):
-                    print(",".join(map(str, ndD_s["psd_num"][l][vind,:])), file=fo)
+                for vind in range(ndD_s["Nvol"][tr]):
+                    print(",".join(map(str, ndD_s["psd_num"][tr][vind,:])), file=fo)
 
     if elyteData:
         valid_current = True
@@ -183,25 +184,25 @@ def main(indir, genData=True, discData=True, elyteData=True,
                        elytediviMat, delimiter=dlm, header=elytediviHdr)
 
     if csldData:
-        dataFileName = "output_data.mat"
+        dataFileName = "output_data"
         dataFile = os.path.join(indir, dataFileName)
-        data = sio.loadmat(dataFile)
-        for l in trodes:
-            Trode = get_trode_str(l)
+        data = utils.open_data_file(dataFile)
+        for tr in trodes:
+            Trode = get_trode_str(tr)
             type2c = False
-            if ndD_e[l]["type"] in ndD_s["1varTypes"]:
+            if ndD_e[tr]["type"] in ndD_s["1varTypes"]:
                 str_base = partStr + "c"
-            elif ndD_e[l]["type"] in ndD_s["2varTypes"]:
+            elif ndD_e[tr]["type"] in ndD_s["2varTypes"]:
                 type2c = True
                 str1_base = partStr + "c1"
                 str2_base = partStr + "c2"
-            for i in range(ndD_s["Npart"][l]):
-                for j in range(ndD_s["Nvol"][l]):
+            for i in range(ndD_s["Npart"][tr]):
+                for j in range(ndD_s["Nvol"][tr]):
                     if type2c:
-                        sol1 = str1_base.format(l=l, i=i, j=j)
-                        sol2 = str2_base.format(l=l, i=i, j=j)
-                        datay1 = data[sol1]
-                        datay2 = data[sol2]
+                        sol1 = str1_base.format(l=tr, i=i, j=j)
+                        sol2 = str2_base.format(l=tr, i=i, j=j)
+                        datay1 = utils.get_dict_key(data, sol1)
+                        datay2 = utils.get_dict_key(data, sol2)
                         filename1 = fnameSol1Base.format(l=Trode, i=i, j=j)
                         filename2 = fnameSol2Base.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename1), datay1,
@@ -209,20 +210,24 @@ def main(indir, genData=True, discData=True, elyteData=True,
                         np.savetxt(os.path.join(indir, filename2), datay2,
                                    delimiter=dlm, header=sol2Hdr)
                     else:
-                        sol = str_base.format(l=l, i=i, j=j)
-                        datay = data[sol]
+                        sol = str_base.format(l=tr, i=i, j=j)
+                        datay = utils.get_dict_key(data, sol)
                         filename = fnameSolBase.format(l=Trode, i=i, j=j)
                         np.savetxt(os.path.join(indir, filename), datay,
                                    delimiter=dlm, header=solHdr)
+
+        # close file if it is a h5py file
+        if isinstance(data, h5py._hl.files.File):
+            data.close()
 
     if cbarData:
         cbarDict = plot_data.show_data(
             indir, plot_type="cbar_full", print_flag=False,
             save_flag=False, data_only=True)
-        for l in trodes:
-            Trode = get_trode_str(l)
+        for tr in trodes:
+            Trode = get_trode_str(tr)
             fname = "cbar{l}Data.txt".format(l=Trode)
-            Nv, Np = ndD_s["Nvol"][l], ndD_s["Npart"][l]
+            Nv, Np = ndD_s["Nvol"][tr], ndD_s["Npart"][tr]
             NpartTot = Nv*Np
             cbarMat = np.zeros((ntimes, NpartTot))
             cbarHdr = cbarHdrBase
@@ -230,7 +235,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
             for i in range(Nv):
                 for j in range(Np):
                     cbarHdr += "{i}/{j},".format(j=j, i=i)
-                    cbarMat[:,partInd] = cbarDict[l][:,i,j]
+                    cbarMat[:,partInd] = cbarDict[tr][:,i,j]
                     partInd += 1
             np.savetxt(os.path.join(indir, fname), cbarMat,
                        delimiter=dlm, header=cbarHdr.rstrip(','))

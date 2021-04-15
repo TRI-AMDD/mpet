@@ -1,8 +1,11 @@
 import setuptools
 
-exec(open('mpet/version.py').read())
+version = {}
+with open('mpet/version.py', 'r', encoding='utf-8') as fh:
+    exec(fh.read(), version)
+__version__ = version['__version__']
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -16,8 +19,8 @@ setuptools.setup(
     license='MIT',
     url='https://bitbucket.org/bazantgroup/mpet',
     packages=['mpet','mpet.plot','mpet.electrode'],
-    install_requires=["numpy","scipy","matplotlib","pyQt5"],
-    extras_require = {'test':['pytest','coverage', 'coveralls','configparser','h5py']},
+    install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py'],
+    extras_require={'test':['pytest','coverage', 'coveralls','configparser','flake8']},
     python_requires='>=3.5,<3.8',
     scripts=['bin/mpetrun.py','bin/mpetplot.py'],
     classifiers=[

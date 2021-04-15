@@ -14,7 +14,6 @@ materials within a battery electrode.
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
-import scipy.special as spcl
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
@@ -22,7 +21,8 @@ import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
-from mpet.daeVariableTypes import *
+from mpet.daeVariableTypes import mole_frac_t
+
 
 class Mod2var(dae.daeModel):
     def __init__(self, Name, Parent=None, Description="", ndD=None,
@@ -61,8 +61,8 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -127,13 +127,13 @@ class Mod2var(dae.daeModel):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - utils.mean_linear(self.c1bar(), self.c2bar())
+        eq.Residual = self.cbar() - .5*(self.c1bar() + self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= utils.mean_linear(self.c1.dt(k), self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
 
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
@@ -161,10 +161,10 @@ class Mod2var(dae.daeModel):
         eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
         eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq1 = self.CreateEquation("Rxn1")
         eq2 = self.CreateEquation("Rxn2")
@@ -206,10 +206,10 @@ class Mod2var(dae.daeModel):
             eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
             eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR2"]:
             for i in range(N):
@@ -236,7 +236,7 @@ class Mod2var(dae.daeModel):
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
-                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, Flux1_bc, Flux2_bc, dr, T)
+                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc, Flux2_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -296,8 +296,8 @@ class Mod1var(dae.daeModel):
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
-        #Get reaction rate function from dictionary name
-        self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
+        # Get reaction rate function from dictionary name
+        self.calc_rxn_rate = getattr(reactions,ndD["rxnType"])
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -375,7 +375,7 @@ class Mod1var(dae.daeModel):
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
@@ -413,7 +413,7 @@ class Mod1var(dae.daeModel):
         else:
             eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR"]:
             for i in range(N):
@@ -432,9 +432,9 @@ class Mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, Flux_bc, dr, T)
+                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -476,27 +476,27 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_flux_diffn(c, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = utils.mean_harmonic(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(c)/dr
+    c_edges = utils.mean_linear(c)
+    Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
     return Flux_vec
 
 
-def calc_flux_CHR(c, mu, D, Dfunc, Flux_bc, dr, T):
+def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
-    c_edges = utils.mean_harmonic(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.diff(mu)/dr
+    c_edges = utils.mean_linear(c)
+    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
     return Flux_vec
 
 
-def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
+def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, T):
     N = len(c1)
     Flux1_vec = np.empty(N+1, dtype=object)
     Flux2_vec = np.empty(N+1, dtype=object)
@@ -504,10 +504,10 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, Flux1_bc, Flux2_bc, dr, T):
     Flux2_vec[0] = 0.  # symmetry at r=0
     Flux1_vec[-1] = Flux1_bc
     Flux2_vec[-1] = Flux2_bc
-    c1_edges = utils.mean_harmonic(c1)
-    c2_edges = utils.mean_harmonic(c2)
-    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.diff(mu1_R)/dr
-    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.diff(mu2_R)/dr
+    c1_edges = utils.mean_linear(c1)
+    c2_edges = utils.mean_linear(c2)
+    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
+    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R)/dr
     return Flux1_vec, Flux2_vec
 
 
