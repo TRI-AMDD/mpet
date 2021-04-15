@@ -490,16 +490,18 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
-        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte), wt)
-        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte), wt)
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)
+        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T), wt)
 
         sp, n = config["sp"], config["n_refTrode"]
-        i_edges_int = -sigma_edges/T * (
+        # there is an error in the MPET paper, temperature dependence should be
+        # in sigma and not outside of sigma
+        i_edges_int = -sigma_edges * (
             np.diff(phi_lyte)/dxd1
-            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
-            * thermFac(c_edges_int)
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int, T)/(zp*nup))
+            * thermFac(c_edges_int, T)
             * np.diff(np.log(c_lyte))/dxd1
             )
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+                            + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     return Nm_edges_int, i_edges_int

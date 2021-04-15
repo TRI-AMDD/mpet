@@ -187,6 +187,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["rho_s"] = P.getfloat('Material', 'rho_s')
         dD["D"] = P.getfloat('Material', 'D')
         ndD["Dfunc"] = P.get('Material', 'Dfunc')
+        dD["E_D"] = P.getfloat('Material', 'E_D', fallback=0)
         dD["dgammadc"] = P.getfloat('Material', 'dgammadc')
         ndD["cwet"] = P.getfloat('Material', 'cwet')
         ndD["muRfunc"] = P.get('Material', 'muRfunc')
@@ -198,6 +199,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         # Reactions
         ndD["rxnType"] = P.get('Reactions', 'rxnType')
         dD["k0"] = P.getfloat('Reactions', 'k0')
+        dD["E_A"] = P.getfloat('Reactions', 'E_A', fallback=0)
         ndD["alpha"] = P.getfloat('Reactions', 'alpha')
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
@@ -227,7 +229,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
     dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
-    dD_s["elytei_ref"] = F*c_ref*D_ref / L_ref
     # maximum concentration in electrode solids, mol/m^3
     # and electrode capacity ratio
     for trode in ndD_s['trodes']:
@@ -365,7 +366,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
+                ndD_tmp["E_D"] = dD_e[trode]['E_D']/(k*N_A*T_ref)
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
+                ndD_tmp["E_A"] = dD_e[trode]['E_A']/(k*N_A*T_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
                 # If we're using the model that varies Omg_a with particle size,
@@ -546,8 +549,6 @@ def size2regsln(size):
 
 
 def test_system_input(dD, ndD):
-    if not are_close(dD['Tabs'], 298.):
-        raise Exception("Temperature dependence not implemented")
     if ndD['Nvol']["c"] < 1:
         raise Exception("Must have at least one porous electrode")
     if ndD["profileType"] not in ["CC", "CV", "CCsegments", "CVsegments"]:
@@ -556,9 +557,6 @@ def test_system_input(dD, ndD):
 
 
 def test_electrode_input(dD, ndD, dD_s, ndD_s):
-    T298 = are_close(dD_s['Tabs'], 298.)
-    if not T298:
-        raise NotImplementedError("Temperature dependence not supported")
     solidType = ndD['type']
     solidShape = ndD['shape']
     if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
@@ -569,10 +567,8 @@ def test_electrode_input(dD, ndD, dD_s, ndD_s):
     if ((solidType not in ndD_s["1varTypes"])
             and (solidType not in ndD_s["2varTypes"])):
         raise NotImplementedError("Input solidType not defined")
-    if solidShape not in ["C3", "sphere", "cylinder"]:
+    if solidShape not in ["C3", "sphere", "cylinder", "homog_sdn"]:
         raise NotImplementedError("Input solidShape not defined")
-    if solidType == "homog_sdn" and not T298:
-        raise NotImplementedError("homog_snd req. Tabs=298")
 
 
 def write_config_file(P, filename="input_params.cfg"):
