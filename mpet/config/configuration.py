@@ -120,7 +120,7 @@ class Config:
         """
         return cls(path, from_dicts=True)
 
-    def select_config(self, items):
+    def _select_config(self, items):
         """
         Select system or electrode config based on reqested parameter(s)
         """
@@ -236,7 +236,7 @@ class Config:
         parameter that can be calculated from the config values
         """
         # select config
-        d, item, trode = self.select_config(items)
+        d, item, trode = self._select_config(items)
 
         try:
             value = d[item]
@@ -254,7 +254,7 @@ class Config:
         of the given electrode (a or c)
         """
         # select config, ignore returned trode value as we don't need it
-        d, item, _ = self.select_config(items)
+        d, item, _ = self._select_config(items)
         d[item] = value
 
     def __delitem__(self, items):
@@ -264,7 +264,7 @@ class Config:
         of the given electrode (a or c)
         """
         # select config, ignore returned trode value as we don't need it
-        d, item, _ = self.select_config(items)
+        d, item, _ = self._select_config(items)
 
         del d[item]
 
@@ -289,7 +289,6 @@ class Config:
             self[param] = theoretical_1C_current
 
         # non-dimensional scalings
-        # TODO: what if an optional parameter needs scaling?
         # first check if parameter is present?
         kT = constants.k * constants.T_ref
         self['T'] = self['Tabs'] / constants.T_ref
@@ -611,7 +610,6 @@ class ParameterSet:
                 # get the value for this electrode/separator and store it
                 key = f'{item}_{trode}'
                 d[trode] = self[key]
-                # delete the original key. TODO: verify this is ok to do
                 del self.params[key]
             self.params[item] = d
             return d

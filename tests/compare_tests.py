@@ -98,7 +98,7 @@ def _test_analytic(testDir, tol, info):
     t_ref = config["t_ref"]
     L_part = config["psd_len"]["c"][0, 0]
     nx_part = config["psd_num"]["c"][0, 0]
-    t_refPart = L_part ** 2 / config["c", "D"]
+    t_refPart = L_part ** 2 / config.D_c["D"]
     # Skip first time point: analytical solution fails at t=0.
     t0ind = 2
     r0ind = 1
