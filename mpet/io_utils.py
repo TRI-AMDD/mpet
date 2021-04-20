@@ -156,6 +156,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
 
     # Electrolyte
     c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
+    c0_solv = dD_s["c0_solv"] = P_s.getfloat('Electrolyte', 'c0_solv', fallback = 0)
+    D_solv = dD_s["D_solv"] = P_s.getfloat('Electrolyte','D_solv', fallback = 0)
     zp = ndD_s["zp"] = P_s.getfloat('Electrolyte', 'zp')
     zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
     if zm > 0:
@@ -187,6 +189,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["disc"] = P.getfloat('Particles', 'discretization')
         ndD["shape"] = P.get('Particles', 'shape')
         dD["thickness"] = P.getfloat('Particles', 'thickness')
+        dD["ssa"] = P.getfloat('Particles', 'ssa', fallback = -1)
 
         # Material
         # both 1var and 2var parameters
@@ -215,6 +218,28 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["lambda"] = P.getfloat('Reactions', 'lambda')
         dD["Rfilm"] = P.getfloat('Reactions', 'Rfilm')
 
+        # Degradation
+        ndD["SEI"] = P.getboolean('Degradation','SEI', fallback = False)
+        ndD["Plating"] = P.getboolean('Degradation','Plating', fallback = False)
+        ndD["muRSEI"] = P.get('Degradation', 'muRSEI', fallback = "None")
+        ndD["muRpl"] = P.get('Degradation', 'muRpl', fallback = "None")
+        dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI', fallback = 0)
+        dD["n0_SEI"] = P.getfloat('Degradation','n0_SEI', fallback = 0)
+        ndD["first_cycle_ratio"] = P.getfloat('Degradation','first_cycle_ratio', fallback = 0)
+        dD["Li_mm"] = P.getfloat('Degradation','Li_mm', fallback = 0)
+        ndD["vfrac_1"] = P.getfloat('Degradation', 'vfrac_1', fallback = 0)
+        ndD["vfrac_2"] = P.getfloat('Degradation', 'vfrac_2', fallback = 0)
+        dD["k0_SEI"] = P.getfloat('Degradation','k0_SEI',fallback=0)
+        dD["k0_pl"] = P.getfloat('Degradation','k0_pl',fallback=0)
+        ndD["alpha_SEI"] = P.getfloat('Degradation','alpha_SEI',fallback=0.5)
+        ndD["alpha_pl"] = P.getfloat('Degradation','alpha_pl',fallback=0.5)
+        ndD["beta2"] = P.getfloat('Degradation','beta2',fallback=0)
+        dD["E_ads"] = P.getfloat('Degradation','E_ads',fallback=1)
+        dD["zeta"] = P.getfloat('Degradation','zeta',fallback=1)
+        ndD["nu"] = P.getfloat('Degradation','nu',fallback=1)
+        dD["R0SEI"] = P.getfloat('Degradation','R0SEI',fallback=0)
+        dD["R0SEILi"] = P.getfloat('Degradation','R0SEILi',fallback=0)
+
         # electrode parameters
         dD_e[trode] = dD.copy()
         ndD_e[trode] = ndD.copy()
@@ -223,7 +248,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     test_system_input(dD_s, ndD_s)
     for trode in ndD_s["trodes"]:
         test_electrode_input(dD_e[trode], ndD_e[trode], dD_s, ndD_s)
-    psd_raw, psd_num, psd_len, psd_area, psd_vol = distr_part(
+    psd_raw, psd_num, psd_len, psd_area, psd_vol, psd_SEI_area_ratio = distr_part(
         dD_s, ndD_s, dD_e, ndD_e)
     G = distr_G(dD_s, ndD_s)
 
@@ -272,6 +297,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
     ndD_s["c0"] = c0 / c_ref
+    ndD_s["c0_solv"] = c0_solv / c_ref
+    ndD_s["D_solv"] = D_solv / D_ref
     ndD_s["phi_cathode"] = 0.
     ndD_s["currset"] = dD_s["Crate"] / curr_ref
     ndD_s["k0_foil"] = dD_s["k0_foil"] * (1./(curr_ref*CrateCurr))
@@ -388,11 +415,31 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 # non-dimensional quantities
                 ndD_tmp["kappa"] = dD_e[trode]['kappa'] / kappa_ref
                 nd_dgammadc = dD_e[trode]['dgammadc']*(cs_ref_part/gamma_S_ref)
+                ndD_tmp["psd_SEI_area_ratio"] = psd_SEI_area_ratio[trode]
                 ndD_tmp["beta_s"] = (1/ndD_tmp["kappa"])*nd_dgammadc
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
+                ndD_tmp["R0SEI"] = dD_e[trode]["R0SEI"] / (k*T_ref/(e*i_s_ref))
+                ndD_tmp["R0SEILi"] = dD_e[trode]["R0SEILi"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
+                # non dimensionalize SEI parameters
+                ndD_tmp["k0_SEI"] = dD_e[trode]['k0_SEI']/(e*F_s_ref)
+                ndD_tmp["k0_pl"] = dD_e[trode]['k0_pl']/(e*F_s_ref)
+                ndD_tmp["c_SEI"] = dD_e[trode]['rho_SEI'] / cs_ref_part
+                ndD_tmp["n0_SEI"] = dD_e[trode]['n0_SEI']*3600/e*utils.get_density(dD["material_type"]) / cs_ref_part # from mAh/g to unit/m^3
+                if ndD_tmp['SEI']:
+                    ndD_tmp["L10"] = ndD_tmp["n0_SEI"]*ndD_e[trode]['first_cycle_ratio']*np.sum(pvol)/(ndD_e[trode]['vfrac_1']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
+                    ndD_tmp["L20"] = ndD_tmp["n0_SEI"]*(1-ndD_e[trode]['first_cycle_ratio'])*np.sum(pvol)/(ndD_e[trode]['vfrac_2']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
+                else:
+                    ndD_tmp["L10"] = 0.1e-9/plen
+                    ndD_tmp["L20"] = 0.1e-9/plen
+                
+                ndD_tmp["zeta"] = dD_e[trode]["zeta"]/plen #zeta is also a nondimensional length
+                ndD_tmp["E_ads"] = e*dD_e[trode]["E_ads"] #nondimensionalize adsorption energy
+                ndD_tmp["Li_mm"] = dD_e[trode]['Li_mm'] * cs_ref_part #parts/mol
+                #double check this!!
+
                 # If we're using the model that varies Omg_a with particle size,
                 # overwrite its value for each particle
                 if Type in ["homog_sdn", "homog2_sdn"]:
@@ -528,6 +575,7 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
     psd_len = {}
     psd_area = {}
     psd_vol = {}
+    psd_SEI_area_ratio = {}
     for trode in ndD_s["trodes"]:
         Nv = ndD_s["Nvol"][trode]
         Np = ndD_s["Npart"][trode]
@@ -579,7 +627,19 @@ def distr_part(dD_s, ndD_s, dD_e, ndD_e):
                                * dD_e[trode]['thickness'])
             psd_vol[trode] = (np.pi * psd_len[trode]**2
                               * dD_e[trode]['thickness'])
-    return psd_raw, psd_num, psd_len, psd_area, psd_vol
+
+        if dD_e[trode]["ssa"] == -1:
+            #if we do not assign specific surface area
+            psd_SEI_area_ratio[trode] = 1
+        else:
+            # if we define a specific surface area
+            # first, get volumetric specific surface area
+            v_ssa = dD_e[trode]['ssa']*utils.get_density(dD_e[trode]["material_type"])*1000 #units of /m 
+            geom_ssa = np.sum(psd_area[trode])/np.sum(psd_vol[trode]) #geometric sssa
+            #get ratio between the two
+            psd_SEI_area_ratio[trode] = v_ssa/geom_ssa
+
+    return psd_raw, psd_num, psd_len, psd_area, psd_vol, psd_SEI_area_ratio
 
 
 def distr_G(dD, ndD):
