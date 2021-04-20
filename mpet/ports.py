@@ -20,3 +20,14 @@ class portFromBulk(dae.daePort):
         self.phi_m = dae.daeVariable(
             "phi_m", elec_pot_t, self,
             "Electric potential in the e- conducting phase")
+
+
+class portFromSystem(dae.daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+        dae.daePort.__init__(self, Name, PortType, Model, Description)
+        self.charge_discharge = dae.daeVariable(
+            "charge_discharge", dae.no_t, self,
+            "+1 indicates charge, and -1 indicates discharge")
+        self.cycle_number = dae.daeVariable(
+            "cycle_number", dae.no_t, self,
+            "keeps track of which cycle number we are on in the mpet simulations")

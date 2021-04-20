@@ -154,6 +154,10 @@ class ModCell(dae.daeModel):
         self.portsOutLyte = {}
         self.portsOutBulk = {}
         self.particles = {}
+
+        self.portsOutSystem = ports.portFromSystem(
+            "portOutSystem", dae.eOutletPort, self, "port out charge_discharge to mod_electrodes")
+
         for trode in trodes:
             Nv = Nvol[trode]
             Np = Npart[trode]
@@ -186,6 +190,9 @@ class ModCell(dae.daeModel):
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
+                    self.ConnectPorts(self.portsOutSystem,
+                                      self.particles[trode][vInd,pInd].portInSystem)
+
 
 
     def DeclareEquations(self):
@@ -261,6 +268,12 @@ class ModCell(dae.daeModel):
                 else:
                     eq1 = self.CreateEquation("R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                     eq1.Residual = self.R_Vp[trode](vInd) - self.R_no_deg_Vp[trode](vInd)
+
+        # Define degradation port variables
+        eq = self.CreateEquation("Port_out_charge_discharge")
+        eq.Residual = self.charge_discharge() - self.portsOutSystem.charge_discharge()
+        eq = self.CreateEquation("Port_out_cycle_number")
+        eq.Residual = self.cycle_number() - self.portsOutSystem.cycle_number()
 
         # Define output port variables
         for trode in trodes:

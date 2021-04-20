@@ -69,9 +69,14 @@ class Mod2var(dae.daeModel):
         self.portInBulk = ports.portFromBulk(
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
+        self.portInSystem = ports.portFromSystem(
+            "portInSystem", dae.eInletPort, self,
+            "Inlet port from charge/discharge")
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        self.charge_discharge = self.portInSystem.charge_discharge
+        self.cycle_number = self.portInSystem.cycle_number
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -309,9 +314,15 @@ class Mod1var(dae.daeModel):
         self.portInBulk = ports.portFromBulk(
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
+        self.portInSystem = ports.portFromSystem(
+            "portInSystem", dae.eInletPort, self,
+            "Inlet port for charge_discharge") ### SD added 07/15/2020
+
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        self.charge_discharge = self.portInSystem.charge_discharge 
+        self.cycle_number = self.portInSystem.cycle_number
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
