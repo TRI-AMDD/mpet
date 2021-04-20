@@ -1,14 +1,14 @@
 Battery discretization cell center positions [m]. Zero is at the anode current collector.
-6.25e-06,1.875e-05,3.75e-05,6.25e-05
+2.5e-05
 
 Separator discretization cell center positions [m]. Zero is at the anode current collector.
-6.25e-06,1.875e-05
+
 
 Cathode discretization cell center positions [m]. Zero is at the anode current collector.
-3.75e-05,6.25e-05
+2.5e-05
 
 Battery discretization face positions [m]. Zero is at the anode current collector.
-0.0,1.25e-05,2.5e-05,5e-05,7.5e-05
+0.0,5e-05
 
 
 Particle output files are indexed such that Vol 0 is closest to the
@@ -29,9 +29,7 @@ simulated volume in no particular order.
 
 
 Cathode particle sizes [m]
-4e-08,4.2e-08,3.8e-08
-3.6e-08,4e-08,4.4e-08
+4e-08
 
 Cathode particle number of discr. points
-1,1,1
-1,1,1
+40
