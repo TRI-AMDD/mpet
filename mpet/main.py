@@ -67,6 +67,8 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     if not datareporter.Connect("", simName):
         sys.exit()
 
+    # Increase the number of Newton iterations for more robust initialization
+    cfg=dae.daeGetConfig().SetString("daetools.IDAS.MaxNumItersIC","100")
     # Initialize the simulation
     simulation.Initialize(daesolver, datareporter, log)
 
