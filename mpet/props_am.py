@@ -302,6 +302,19 @@ class muRfuncs():
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
+    def SEI_early(self, y, ybar, muR_ref, ISfuncs=None):
+        OCV = 0.73 #+ self.kToe*np.log(y**2) # Das  et al. JES 166(4) 2019
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
+    def plating1(self, y, ybar, muR_ref, ISfuncs=None):
+        # Gao et al. Science Advances 2020 -0.15V. -0.1V is from Che-Ning's data
+        OCV = -0.15
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
