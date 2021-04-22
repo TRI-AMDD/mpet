@@ -19,6 +19,7 @@ import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
+import mpet.props_elyte as props_elyte
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
 from mpet.daeVariableTypes import *
@@ -299,10 +300,34 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
+                "Rate of SEI growth on particle volume basis")
         if ndD["type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
+
+        self.Rxn_SEI = dae.daeVariable("Rxn_SEI", dae.no_t, self,
+                "Rate of SEI growth reaction")
+        self.L1 = dae.daeVariable("L1", dae.no_t, self,
+                "Primary SEI thickness")
+        self.L2 = dae.daeVariable("L2", dae.no_t, self,
+                "Secondary SEI thickness")
+        self.c_L0 = dae.daeVariable("c_L0", dae.no_t, self,
+                "Lithium ion concentration at surface L0")
+        self.c_L1 = dae.daeVariable("c_L1", dae.no_t, self,
+                "Lithium ion concentration at surface L1")
+        self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
+        self.phi_SEI_L1 = dae.daeVariable("phi_SEI_L1", elec_pot_t, self,
+                "Electrostatic potential at SEI/electrolyte interface")
+        self.phi_SEI_L0 = dae.daeVariable("phi_SEI_L0", elec_pot_t, self,
+                "Electrostatic potential at electrode/SEI interface")
+
+        #get SEI and plating reaction rates
+        if ndD["SEI"]:
+            self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
+        if ndD["Plating"]:
+            self.calc_rxn_rate_plating = getattr(reactions,"plating_simple")
 
         #Get reaction rate function from dictionary name
         self.calc_rxn_rate=getattr(reactions,ndD["rxnType"])
@@ -353,8 +378,50 @@ class Mod1var(dae.daeModel):
                     previous_output, _position_)
                 for _position_ in range(N)]
 
-        # Figure out mu_O, mu of the oxidized state
-        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+        # calculate effective concentration from the Stern layer
+        if ndD["SEI"]:
+
+           R_SEI = ndD["R0SEI"]*self.L1()/ndD["L10"]
+
+           #resistance of the SEI layer to electrons
+           eq = self.CreateEquation("resistance_SEI")
+           eq.Residual = self.phi_SEI_L0() - self.phi_SEI_L1() - self.Rxn_SEI()*R_SEI
+
+           #stern layer-double layer equilibrium between c_lyte and c_L1
+           eq = self.CreateEquation("Stern_layer")
+           eq.Residual = self.c_L1() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1()))*self.c_lyte()
+
+           eps_o_tau1 = ndD["vfrac_1"]/ndD["vfrac_1"]**self.ndD_s["BruggExp"]["c"]
+           eps_o_tau2 = ndD["vfrac_2"]/ndD["vfrac_2"]**self.ndD_s["BruggExp"]["c"]
+
+           #ionic flux between lithium 
+           eq = self.CreateEquation("lithium_ion_reaction")
+           eq.Residual = self.Rxn() - lyte_fluxes(self.c_L1(), self.c_L0(), self.phi_SEI_L1(), self.phi_SEI_L0(), self.L1(), eps_o_tau1, self.ndD_s)
+
+           #ionic flux between layer 1 and layer 2
+           eq = self.CreateEquation("SEI_ion_reaction")
+           eq.Residual = self.Rxn() + self.Rxn_SEI() - lyte_fluxes(self.c_lyte(), self.c_L1(), self.phi_lyte(), self.phi_SEI_L1(), self.L2(), eps_o_tau2, self.ndD_s)
+
+
+        else:
+
+           eq = self.CreateEquation("resistance_SEI")
+           eq.Residual = self.phi_SEI_L0() - self.phi_SEI_L1()
+
+           eq = self.CreateEquation("resistance_SEI_1")
+           eq.Residual = self.phi_lyte() - self.phi_SEI_L1()
+
+           eq = self.CreateEquation("lithium_ion_reaction")
+           eq.Residual = self.c_L0() - self.c_L1()
+
+           eq = self.CreateEquation("SEI_ion_reaction")
+           eq.Residual = self.c_lyte() - self.c_L1()
+
+
+        # F#igure out mu_O, mu of the oxidized state
+        mu_O, act_lyte = calc_mu_O(self.c_L0(), self.phi_SEI_L0(), self.phi_m(), T,
+                                   self.ndD_s["elyteModelType"])
+        mu_O_SEI, act_lyte_SEI = calc_mu_O(self.c_L1(), self.phi_SEI_L1(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -376,12 +443,26 @@ class Mod1var(dae.daeModel):
             self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
         elif ndD["type"] in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_0D1var(c, mu_O, mu_O_SEI, act_lyte, self.ISfuncs, self.noise)
+         
+        p1 = np.exp(-self.L1()/ndD["zeta"]) 
+        p2 = 1-self.c_solv()/self.ndD_s["c0_solv"]
+        w1 = p1/(p1 + p2) # normalized to conserve mass
+        w2 = p2/(p1 + p2) # normalized to conserve mass
+
+        eq = self.CreateEquation("Solvent_diffusion_Fick")
+        eq.Residual = (self.ndD_s["c0_solv"] - self.c_solv())*(self.ndD_s["D_solv"]/self.L2()) - self.Rxn_SEI()
+
+        eq = self.CreateEquation("Primary_SEI_growth")
+        eq.Residual = w1*self.Rxn_SEI() - ndD["vfrac_1"]*self.L1.dt()
+
+        eq = self.CreateEquation("Secondary_SEI_growth")
+        eq.Residual = w2*self.Rxn_SEI() - ndD["vfrac_2"]*self.L2.dt()
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
+    def sld_dynamics_0D1var(self, c, muO, muO_SEI, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         T = self.ndD_s["T"]
         c_surf = c
@@ -394,8 +475,25 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
 
+        # add SEI equations
+        if ndD["SEI"]:
+            muR_SEI, actR_SEI = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+            eta_SEI = calc_eta(muR_SEI, muO_SEI)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_L1(), self.c_L1(), self.ndD_s["c0_solv"], ndD["k0_SEI"], T, ndD["alpha"])
+
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0] #convert to Rxn_deg[0] if space dependent
+
+        else:
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - 0 #convert to Rxn_deg[0] if space dependent
+
+        eq = self.CreateEquation("dcsSEIdt")
+        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
+ 
         eq = self.CreateEquation("dcsdt")
-        eq.Residual = self.c.dt(0) - ndD["delta_L"]*self.Rxn()
+        eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-np.sign(self.Rxn())*self.Rxn_SEI())
+     #   eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-self.Rxn_SEI())
         if ndD["noise"]:
             eq.Residual += noise[0]()
 
@@ -545,6 +643,13 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     return muR, actR
 
 
+def calc_muR_SEI(c, cbar, T, ndD, ISfuncs=None):
+    muRfunc = props_am.muRfuncs(T, ndD).muRSEI
+    muR_ref = ndD["muR_ref"]
+    muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
+    return muR, actR
+
+
 def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):
         raise Exception("MX function designed for csr mult")
@@ -563,3 +668,38 @@ def MX(mat, objvec):
         else:
             out[i] = 0.0
     return out
+
+def lyte_fluxes(c_lyte2, c_lyte1, phi_lyte2, phi_lyte1, dxd1, eps_o_tau, ndD):
+    zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
+    nu = nup + num
+    T = ndD["T"]
+    c_edges_int = 0.5*(c_lyte2+c_lyte1)
+    if ndD["elyteModelType"] == "dilute":
+        Dp = eps_o_tau * ndD["Dp"]
+        Dm = eps_o_tau * ndD["Dm"]
+#        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
+#                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
+        Nm_edges_int = num*(-Dm*(c_lyte2-c_lyte1)/dxd1
+                            - Dm/T*zm*c_edges_int*(phi_lyte2-phi_lyte1)/dxd1)
+       # i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*(c_lyte2-c_lyte1)/dxd1)
+       #                - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*(phi_lyte2-phi_lyte1)/dxd1)
+#        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
+    elif ndD["elyteModelType"] == "SM":
+        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
+        # modify the free solution transport properties for porous media
+
+        def D(c):
+            return eps_o_tau*D_fs(c)
+
+        def sigma(c):
+            return eps_o_tau*sigma_fs(c)
+        sp, n = ndD["sp"], ndD["n_refTrode"]
+        i_edges_int = -sigma(c_edges_int)/T * (
+            (phi_lyte2-phi_lyte1)/dxd1
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
+            * thermFac(c_edges_int)
+            * (np.log(c_lyte2)-np.log(c_lyte1))/dxd1
+            )
+        Nm_edges_int = num*(-D(c_edges_int)*(c_lyte2-c_lyte1)/dxd1
+                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+    return Nm_edges_int
