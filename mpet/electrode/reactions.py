@@ -99,9 +99,10 @@ def MHC(eta, c_sld, c_lyte, k0, T, act_R=None,
     return Rate
 
 
-def SEI(eta, c_e, c_Li_ion, c_solv, c_sld, k0, T, alpha=None):
-    ecd = k0 * ((c_e*c_Li_ion*c_solv)**(1-alpha)) * (c_sld**alpha)
-    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T)) 
+def SEI(eta, c_e, c_Li_ion, c_solv, k0, T, alpha=None):
+    ecd = k0 * ((c_e*c_Li_ion*c_solv)**(1-alpha))
+    #Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    Rate = ecd * (np.exp(-alpha*eta/T))
     return Rate
 
 def plating_simple(V_Li, eta, k0, T, alpha=None):
