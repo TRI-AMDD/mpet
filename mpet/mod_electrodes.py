@@ -304,6 +304,7 @@ class Mod1var(dae.daeModel):
                 "Rate of SEI growth on particle volume basis")
         if ndD["type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
+            self.Rxn_sign = dae.daeVariable("Rxn_sign", dae.no_t, self, "Rate of reaction is +/-")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
@@ -381,15 +382,24 @@ class Mod1var(dae.daeModel):
         # calculate effective concentration from the Stern layer
         if ndD["SEI"]:
 
-           R_SEI = ndD["R0SEI"]*self.L1()/ndD["L10"]
+           c_avg = (self.c_L0()+self.c_L1())/2
+
+           R_SEI = ndD["R0SEI"]*(self.L1()/ndD["L10"])/(c_avg**ndD["nu"])
 
            #resistance of the SEI layer to electrons
            eq = self.CreateEquation("resistance_SEI")
            eq.Residual = self.phi_SEI_L0() - self.phi_SEI_L1() - self.Rxn_SEI()*R_SEI
 
            #stern layer-double layer equilibrium between c_lyte and c_L1
-           eq = self.CreateEquation("Stern_layer")
-           eq.Residual = self.c_L1() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1()))*self.c_lyte()
+           c_avg_1 = (self.c_L1()+self.c_lyte())/2
+           #if concentrated solution model
+           if self.ndD_s["elyteModelType"] == "SM":
+               eq = self.CreateEquation("Stern_layer")
+               thermFac, tp0 = getattr(props_elyte,self.ndD_s["SMset"])()[2:4]
+               eq.Residual = (self.c_L1()/self.c_lyte())**(thermFac(c_avg_1)*tp0(c_avg_1)) - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
+           else:
+               eq = self.CreateEquation("Stern_layer")
+               eq.Residual = self.c_L1()/self.c_lyte() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
 
            eps_o_tau1 = ndD["vfrac_1"]/ndD["vfrac_1"]**self.ndD_s["BruggExp"]["c"]
            eps_o_tau2 = ndD["vfrac_2"]/ndD["vfrac_2"]**self.ndD_s["BruggExp"]["c"]
@@ -490,10 +500,18 @@ class Mod1var(dae.daeModel):
 
         eq = self.CreateEquation("dcsSEIdt")
         eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
+
+        #the sign function doesn't work sadly...
+        self.IF(self.Rxn() >= 0)
+        eq = self.CreateEquation("sign_Rxn")
+        eq.Residual = self.Rxn_sign() - 1
+        self.ELSE()
+        eq = self.CreateEquation("sign_Rxn")
+        eq.Residual = self.Rxn_sign() + 1
+        self.END_IF()
  
         eq = self.CreateEquation("dcsdt")
-        eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-np.sign(self.Rxn())*self.Rxn_SEI())
-     #   eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-self.Rxn_SEI())
+        eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-self.Rxn_sign()*self.Rxn_SEI())
         if ndD["noise"]:
             eq.Residual += noise[0]()
 
