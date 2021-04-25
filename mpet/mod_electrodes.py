@@ -314,10 +314,8 @@ class Mod1var(dae.daeModel):
                 "Primary SEI thickness")
         self.L2 = dae.daeVariable("L2", dae.no_t, self,
                 "Secondary SEI thickness")
-        self.c_L0 = dae.daeVariable("c_L0", dae.no_t, self,
-                "Lithium ion concentration at surface L0")
-        self.c_L1 = dae.daeVariable("c_L1", dae.no_t, self,
-                "Lithium ion concentration at surface L1")
+        self.c_eff_lyte = dae.daeVariable("c_eff_lyte", dae.no_t, self,
+                "Lithium ion concentration in the primary SEI layer")
         self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
         self.phi_SEI_L1 = dae.daeVariable("phi_SEI_L1", elec_pot_t, self,
                 "Electrostatic potential at SEI/electrolyte interface")
@@ -382,36 +380,29 @@ class Mod1var(dae.daeModel):
         # calculate effective concentration from the Stern layer
         if ndD["SEI"]:
 
-           c_avg = (self.c_L0()+self.c_L1())/2
-
-           R_SEI = ndD["R0SEI"]*(self.L1()/ndD["L10"])/(c_avg**ndD["nu"])
+           R_SEI = ndD["R0SEI"]*(self.L1()/ndD["L10"])/(self.c_eff_lyte()**ndD["nu"])
 
            #resistance of the SEI layer to electrons
            eq = self.CreateEquation("resistance_SEI")
            eq.Residual = self.phi_SEI_L0() - self.phi_SEI_L1() - self.Rxn_SEI()*R_SEI
 
            #stern layer-double layer equilibrium between c_lyte and c_L1
-           c_avg_1 = (self.c_L1()+self.c_lyte())/2
+           c_avg_1 = (self.c_eff_lyte()+self.c_lyte())/2
            #if concentrated solution model
            if self.ndD_s["elyteModelType"] == "SM":
                eq = self.CreateEquation("Stern_layer")
                thermFac, tp0 = getattr(props_elyte,self.ndD_s["SMset"])()[2:4]
-               eq.Residual = (self.c_L1()/self.c_lyte())**(thermFac(c_avg_1)*tp0(c_avg_1)) - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
+               eq.Residual = (self.c_eff_lyte()/self.c_lyte())**(thermFac(c_avg_1)*tp0(c_avg_1)) - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
            else:
                eq = self.CreateEquation("Stern_layer")
-               eq.Residual = self.c_L1()/self.c_lyte() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
+               eq.Residual = self.c_eff_lyte()/self.c_lyte() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
 
-           eps_o_tau1 = ndD["vfrac_1"]/ndD["vfrac_1"]**self.ndD_s["BruggExp"]["c"]
-           eps_o_tau2 = ndD["vfrac_2"]/ndD["vfrac_2"]**self.ndD_s["BruggExp"]["c"]
+           eps_o_tau1 = (1-ndD["vfrac_1"])/(1-ndD["vfrac_1"])**self.ndD_s["BruggExp"]["c"]
+           eps_o_tau2 = (1-ndD["vfrac_2"])/(1-ndD["vfrac_2"])**self.ndD_s["BruggExp"]["c"]
 
            #ionic flux between lithium 
            eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = self.Rxn() - lyte_fluxes(self.c_L1(), self.c_L0(), self.phi_SEI_L1(), self.phi_SEI_L0(), self.L1(), eps_o_tau1, self.ndD_s)
-
-           #ionic flux between layer 1 and layer 2
-           eq = self.CreateEquation("SEI_ion_reaction")
-           eq.Residual = self.Rxn() + self.Rxn_SEI() - lyte_fluxes(self.c_lyte(), self.c_L1(), self.phi_lyte(), self.phi_SEI_L1(), self.L2(), eps_o_tau2, self.ndD_s)
-
+           eq.Residual = self.Rxn() - lyte_fluxes(self.c_eff_lyte(), self.phi_SEI_L1(), self.phi_SEI_L0(), self.L1(), eps_o_tau1, self.ndD_s)
 
         else:
 
@@ -422,16 +413,13 @@ class Mod1var(dae.daeModel):
            eq.Residual = self.phi_lyte() - self.phi_SEI_L1()
 
            eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = self.c_L0() - self.c_L1()
-
-           eq = self.CreateEquation("SEI_ion_reaction")
-           eq.Residual = self.c_lyte() - self.c_L1()
+           eq.Residual = self.c_eff_lyte() - self.c_lyte()
 
 
         # F#igure out mu_O, mu of the oxidized state
-        mu_O, act_lyte = calc_mu_O(self.c_L0(), self.phi_SEI_L0(), self.phi_m(), T,
+        mu_O, act_lyte = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L0(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
-        mu_O_SEI, act_lyte_SEI = calc_mu_O(self.c_L1(), self.phi_SEI_L1(), self.phi_m(), T,
+        mu_O_SEI, act_lyte_SEI = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L1(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -489,7 +477,7 @@ class Mod1var(dae.daeModel):
         if ndD["SEI"]:
             muR_SEI, actR_SEI = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
             eta_SEI = calc_eta(muR_SEI, muO_SEI)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_L1(), self.c_L1(), self.ndD_s["c0_solv"], ndD["k0_SEI"], T, ndD["alpha"])
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.ndD_s["c0_solv"], ndD["k0_SEI"], T, ndD["alpha"])
 
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI[0] #convert to Rxn_deg[0] if space dependent
@@ -687,18 +675,16 @@ def MX(mat, objvec):
             out[i] = 0.0
     return out
 
-def lyte_fluxes(c_lyte2, c_lyte1, phi_lyte2, phi_lyte1, dxd1, eps_o_tau, ndD):
+def lyte_fluxes(c_eff, phi_lyte2, phi_lyte1, dxd1, eps_o_tau, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
     T = ndD["T"]
-    c_edges_int = 0.5*(c_lyte2+c_lyte1)
     if ndD["elyteModelType"] == "dilute":
         Dp = eps_o_tau * ndD["Dp"]
         Dm = eps_o_tau * ndD["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
-        Nm_edges_int = num*(-Dm*(c_lyte2-c_lyte1)/dxd1
-                            - Dm/T*zm*c_edges_int*(phi_lyte2-phi_lyte1)/dxd1)
+        Nm_edges_int = num*(- Dm/T*zm*c_eff*(phi_lyte2-phi_lyte1)/dxd1)
        # i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*(c_lyte2-c_lyte1)/dxd1)
        #                - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*(phi_lyte2-phi_lyte1)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
@@ -712,12 +698,8 @@ def lyte_fluxes(c_lyte2, c_lyte1, phi_lyte2, phi_lyte1, dxd1, eps_o_tau, ndD):
         def sigma(c):
             return eps_o_tau*sigma_fs(c)
         sp, n = ndD["sp"], ndD["n_refTrode"]
-        i_edges_int = -sigma(c_edges_int)/T * (
+        i_edges_int = -sigma(c_eff)/T * (
             (phi_lyte2-phi_lyte1)/dxd1
-            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
-            * thermFac(c_edges_int)
-            * (np.log(c_lyte2)-np.log(c_lyte1))/dxd1
             )
-        Nm_edges_int = num*(-D(c_edges_int)*(c_lyte2-c_lyte1)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+        Nm_edges_int = num*((1./(num*zm)*(1-tp0(c_eff))*i_edges_int))
     return Nm_edges_int

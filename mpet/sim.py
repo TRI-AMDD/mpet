@@ -147,8 +147,7 @@ class SimMPET(dae.daeSimulation):
                     #Set electrolyte concentration in each particle
                     for j in range(Npart[l]):
                         self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
-                        self.m.particles[l][i,j].c_L0.SetInitialGuess(ndD_s["c0"])
-                        self.m.particles[l][i,j].c_L1.SetInitialGuess(ndD_s["c0"])
+                        self.m.particles[l][i,j].c_eff_lyte.SetInitialGuess(ndD_s["c0"])
          
             #set last values
             self.m.last_current.AssignValue(0)
