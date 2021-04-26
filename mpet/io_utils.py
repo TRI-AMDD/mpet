@@ -428,7 +428,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 ndD_tmp["k0_pl"] = dD_e[trode]['k0_pl']/(e*F_s_ref)
                 ndD_tmp["c_SEI"] = dD_e[trode]['rho_SEI'] / cs_ref_part
                 ndD_tmp["n0_SEI"] = dD_e[trode]['n0_SEI']*3600/e*utils.get_density(dD["material_type"]) / cs_ref_part # from mAh/g to unit/m^3
-                if ndD_tmp['SEI']:
+                if ndD_tmp['SEI'] and ndD_tmp["n0_SEI"] != 0:
                     ndD_tmp["L10"] = ndD_tmp["n0_SEI"]*ndD_e[trode]['first_cycle_ratio']*np.sum(pvol)/(ndD_e[trode]['vfrac_1']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
                     ndD_tmp["L20"] = ndD_tmp["n0_SEI"]*(1-ndD_e[trode]['first_cycle_ratio'])*np.sum(pvol)/(ndD_e[trode]['vfrac_2']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
                 else:
