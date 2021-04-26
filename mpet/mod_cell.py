@@ -155,18 +155,25 @@ class ModCell(dae.daeModel):
                             trode=trode, vInd=vInd, pInd=pInd),
                         self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
                         ndD_s=ndD_s)
-                    # instantiate interfaces between particle and electrolyte per particle
-                    self.interfaces[trode][vInd,pInd] = InterfaceRegion(
-                        "interfaceTrode{trode}vol{vInd}part{pInd}".format(
-                            trode=trode, vInd=vInd, pInd=pInd),
-                        self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
-                        ndD_s=ndD_s)
 
-                    self.ConnectPorts(self.portsOutLyte[trode][vInd],
-                                      self.interfaces[trode][vInd,pInd].portInLyte)
+                    if ndD_s["simInterface"]:
+                        # instantiate interfaces between particle and electrolyte per particle
+                        self.interfaces[trode][vInd,pInd] = InterfaceRegion(
+                            "interfaceTrode{trode}vol{vInd}part{pInd}".format(
+                                trode=trode, vInd=vInd, pInd=pInd),
+                            self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
+                            ndD_s=ndD_s)
 
-                    self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutLyte,
-                                      self.particles[trode][vInd,pInd].portInLyte)
+                        # connect elyte to interface, then interface to particle
+                        self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                          self.interfaces[trode][vInd,pInd].portInLyte)
+
+                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutLyte,
+                                          self.particles[trode][vInd,pInd].portInLyte)
+                    else:
+                        # connect elyte to particle
+                        self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                          self.particles[trode][vInd,pInd].portInLyte)
 
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)

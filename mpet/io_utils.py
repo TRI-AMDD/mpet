@@ -117,6 +117,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                           "c": P_s.getfloat('Particles', 'stddev_c')}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
                     "c": P_s.getfloat('Particles', 'cs0_c')}
+    ndD_s["simInterface"] = P_s.getboolean('Particles', 'simInterface', fallback=False)
 
     # Conductivity
     ndD_s["simBulkCond"] = {
