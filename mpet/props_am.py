@@ -69,6 +69,10 @@ class muRfuncs():
 
         #Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self,ndD["muRfunc"])
+        if ndD["SEI"]:
+            self.muR_SEI = getattr(self,ndD["muRSEI"])
+        if ndD["Plating"]:
+            self.muR_pl = getattr(self,ndD["muRpl"])
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref

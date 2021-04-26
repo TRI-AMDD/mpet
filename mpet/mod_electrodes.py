@@ -392,17 +392,14 @@ class Mod1var(dae.daeModel):
            if self.ndD_s["elyteModelType"] == "SM":
                eq = self.CreateEquation("Stern_layer")
                thermFac, tp0 = getattr(props_elyte,self.ndD_s["SMset"])()[2:4]
-               eq.Residual = (self.c_eff_lyte()/self.c_lyte())**(thermFac(c_avg_1)*tp0(c_avg_1)) - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
+               eq.Residual = self.c_eff_lyte() - self.c_lyte()*(np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"]))**(1/thermFac(c_avg_1))
            else:
                eq = self.CreateEquation("Stern_layer")
-               eq.Residual = self.c_eff_lyte()/self.c_lyte() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])
-
-           eps_o_tau1 = (1-ndD["vfrac_1"])/(1-ndD["vfrac_1"])**self.ndD_s["BruggExp"]["c"]
-           eps_o_tau2 = (1-ndD["vfrac_2"])/(1-ndD["vfrac_2"])**self.ndD_s["BruggExp"]["c"]
+               eq.Residual = self.c_eff_lyte() - np.exp(-(self.phi_lyte() - self.phi_SEI_L1())-ndD["E_ads"])*self.c_lyte()
 
            #ionic flux between lithium 
            eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = self.Rxn() - lyte_fluxes(self.c_eff_lyte(), self.phi_SEI_L1(), self.phi_SEI_L0(), self.L1(), eps_o_tau1, self.ndD_s)
+           eq.Residual = self.Rxn()*ndD["R0SEILi"] - (self.phi_SEI_L1()-self.phi_SEI_L0())
 
         else:
 
@@ -414,7 +411,7 @@ class Mod1var(dae.daeModel):
 
            eq = self.CreateEquation("lithium_ion_reaction")
            eq.Residual = self.c_eff_lyte() - self.c_lyte()
-
+           
 
         # F#igure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L0(), self.phi_m(), T,
@@ -475,12 +472,13 @@ class Mod1var(dae.daeModel):
 
         # add SEI equations
         if ndD["SEI"]:
-            muR_SEI, actR_SEI = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, muO_SEI)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.ndD_s["c0_solv"], ndD["k0_SEI"], T, ndD["alpha"])
 
+            muR_SEI, actR_SEI = calc_muR_SEI(c_surf, self.cbar(), T, ndD, ISfuncs)
+            eta_SEI = calc_eta(muR_SEI, muO_SEI)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha"])
             eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0] #convert to Rxn_deg[0] if space dependent
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI #convert to Rxn_deg[0] if space dependent
+
 
         else:
             eq = self.CreateEquation("Rxn_SEI")
@@ -650,8 +648,8 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
 
 
 def calc_muR_SEI(c, cbar, T, ndD, ISfuncs=None):
-    muRfunc = props_am.muRfuncs(T, ndD).muRSEI
-    muR_ref = ndD["muR_ref"]
+    muRfunc = props_am.muRfuncs(T, ndD).muR_SEI
+    muR_ref = ndD["muR_ref"][0]
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR
 
