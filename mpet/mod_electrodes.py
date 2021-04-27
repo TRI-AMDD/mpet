@@ -475,10 +475,9 @@ class Mod1var(dae.daeModel):
 
             muR_SEI, actR_SEI = calc_muR_SEI(c_surf, self.cbar(), T, ndD, ISfuncs)
             eta_SEI = calc_eta(muR_SEI, muO_SEI)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha"])
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI #convert to Rxn_deg[0] if space dependent
-
 
         else:
             eq = self.CreateEquation("Rxn_SEI")
