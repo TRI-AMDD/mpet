@@ -465,7 +465,7 @@ class Mod1var(dae.daeModel):
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_eff_lyte(), ndD["k0"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
