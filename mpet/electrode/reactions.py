@@ -100,6 +100,9 @@ def MHC(eta, c_sld, c_lyte, k0, T, act_R=None,
 
 
 def SEI(eta, c_e, c_Li_ion, c_solv, k0, T, alpha=None):
+    """Frumkin-corrected BV equation. c_e is ~ lithium ion concentration
+       in the primary SEI layer, c_Li_ion is the lithium ion concentration
+       in the bulk"""
     ecd = k0 * ((c_e*c_Li_ion*c_solv)**(1-alpha))
     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate

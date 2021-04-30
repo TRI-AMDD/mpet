@@ -416,7 +416,7 @@ class Mod1var(dae.daeModel):
         # F#igure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L0(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
-        mu_O_SEI, act_lyte_SEI = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_SEI_L1(), T,
+        mu_O_SEI, act_lyte_SEI = calc_mu_O_frumkin(self.c_lyte(), self.phi_lyte(), self.c_eff_lyte(), self.phi_SEI_L1(), T,
                                    self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -637,6 +637,18 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
         mu_lyte = T*np.log(act_lyte) + phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
+
+
+def calc_mu_O_frumkin(c_lyte1, phi_lyte1, c_lyte2, phi_lyte2, T, elyteModelType):
+    """Calculates the potential for a Frumkin-BV reaction. 1 is on the bulk side
+       and 2 is in the Stern layer side"""
+    if elyteModelType == "SM":
+        #not implemented yet
+        x = 1
+    elif elyteModelType == "dilute":
+        act_lyte = c_lyte1/c_lyte2
+        mu_lyte = T*np.log(act_lyte) + phi_lyte1 - phi_lyte2
+    return mu_lyte, act_lyte
 
 
 def calc_muR(c, cbar, T, ndD, ISfuncs=None):
