@@ -38,3 +38,4 @@ venv/
 .vim
 .idea
 *.egg-info
+.vscode/
