@@ -1,6 +1,6 @@
 import daetools.pyDAE as dae
 from mpet import ports
-# from mpet.daeVariableTypes import mole_frac_t, elec_pot_t
+from mpet.daeVariableTypes import mole_frac_t, elec_pot_t
 
 
 """
@@ -17,6 +17,19 @@ class InterfaceRegion(dae.daeModel):
         self.ndD = ndD
         self.ndD_s = ndD_s
 
+        # Domain
+        self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
+                                 "discretization domain")
+
+        # Variables
+        self.c = dae.daeVariable("c", mole_frac_t, self,
+                                 "Concentration in interface",
+                                 [self.Dmn])
+
+        self.phi = dae.daeVariable("phi", elec_pot_t, self,
+                                   "Electrical potential in interface",
+                                   [self.Dmn])
+
         # Ports
         self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self,
@@ -25,24 +38,35 @@ class InterfaceRegion(dae.daeModel):
         self.portOutLyte = ports.portFromElyte(
             "portOutLyte", dae.eOutletPort, self,
             "Electrolyte port from interface to particles")
-        # self.portInBulk = ports.portFromBulk(
-        #     "portInBulk", dae.eInletPort, self,
-        #     "Inlet port from e- conducting phase")
-        # self.c_lyte = dae.daeVariable(
-        #     "c_lyte", mole_frac_t, self,
-        #     "Concentration in the electrolyte")
-        # self.phi_lyte = dae.daeVariable(
-        #     "phi_lyte", elec_pot_t, self,
-        #     "Electric potential in the electrolyte")
-        # self.phi_m = self.portInBulk.phi_m
 
     def DeclareEquations(self):
         super().DeclareEquations()
+        Nvol = self.ndD_s["Nvol_i"]
 
-        # temporary interface region model: connect input to output
-        # so interface does effectively nothing
-        eq = self.CreateEquation("c_lyte_interface")
-        eq.Residual = self.portInLyte.c_lyte() - self.portOutLyte.c_lyte()
+        # Elyte to interface connection
 
-        eq = self.CreateEquation("phi_lyte_interface")
-        eq.Residual = self.portInLyte.phi_lyte() - self.portOutLyte.phi_lyte()
+        # set first grid point of interface equal to elyte
+        eq = self.CreateEquation("c_lyte_to_interface")
+        eq.Residual = self.portInLyte.c_lyte() - self.c(0)
+
+        eq = self.CreateEquation("phi_lyte_to_interface")
+        eq.Residual = self.portInLyte.phi_lyte() - self.phi(0)
+
+        # Interface to particle connection through output port
+
+        # last grid point of interface is output to particle
+        eq = self.CreateEquation("c_interface_to_particle")
+        eq.Residual = self.portOutLyte.c_lyte() - self.c(Nvol-1)
+
+        eq = self.CreateEquation("phi_interface_to_particle")
+        eq.Residual = self.portOutLyte.phi_lyte() - self.phi(Nvol-1)
+
+        # Interface internals
+
+        # fake interface region: set each grid point equal to previous grid point
+        for n in range(1, Nvol):
+            eq = self.CreateEquation(f"c_interface{n}")
+            eq.Residual = self.c(n) - self.c(n-1)
+
+            eq = self.CreateEquation(f"phi_interface{n}")
+            eq.Residual = self.phi(n) - self.phi(n-1)

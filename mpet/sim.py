@@ -51,6 +51,9 @@ class SimMPET(dae.daeSimulation):
                 for j in range(ndD["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(ndD["psd_num"][tr][i,j]))
+                    if ndD["simInterface"]:
+                        self.m.interfaces[tr][i, j].Dmn.CreateArray(
+                            int(ndD["Nvol_i"]))
 
     def SetUpVariables(self):
         ndD_s = self.ndD_s
@@ -127,6 +130,11 @@ class SimMPET(dae.daeSimulation):
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
+                        # Set concentration and potential in interface region
+                        if ndD_s["simInterface"]:
+                            for k in range(ndD_s["Nvol_i"]):
+                                self.m.interfaces[tr][i,j].c.SetInitialGuess(k, ndD_s["c0"])
+                                self.m.interfaces[tr][i,j].phi.SetInitialGuess(k, 0)
 
         else:
             dPrev = self.dataPrev

@@ -117,7 +117,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                           "c": P_s.getfloat('Particles', 'stddev_c')}
     ndD_s["cs0"] = {"a": P_s.getfloat('Particles', 'cs0_a'),
                     "c": P_s.getfloat('Particles', 'cs0_c')}
-    ndD_s["simInterface"] = P_s.getboolean('Particles', 'simInterface', fallback=False)
 
     # Conductivity
     ndD_s["simBulkCond"] = {
@@ -171,6 +170,14 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["sp"] = P_s.getfloat('Electrolyte', 'sp')
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
+
+    # Interface region
+    ndD_s["simInterface"] = P_s.getboolean('Interface', 'simInterface', fallback=False)
+    if ndD_s["simInterface"]:
+        for key in ['Nvol_i']:
+            ndD_s[key] = P_s.getint('Interface', key)
+        for key in ['L_i', 'poros_i', 'BruggExp_i']:
+            ndD_s[key] = P_s.getfloat('Interface', key)
 
     # Constants
     k = dD_s["k"] = 1.381e-23  # J/(K particle)
