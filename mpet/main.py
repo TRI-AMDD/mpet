@@ -36,13 +36,19 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
     # Turn off reporting of some variables
     simulation.m.endCondition.ReportingOn = False
 
-    # Turn off reporting of particle ports
+    # Turn off reporting of particle and interface ports
     for trode in simulation.m.trodes:
         for particle in simulation.m.particles[trode]:
             pModel = particle[0]
             for port in pModel.Ports:
                 for var in port.Variables:
                     var.ReportingOn = False
+        if ndD_s["simInterface"]:
+            for interfaces in simulation.m.interfaces[trode]:
+                for iModel in interfaces:
+                    for port in iModel.Ports:
+                        for var in port.Variables:
+                            var.ReportingOn = False
 
     # Turn off reporting of cell ports
     for port in simulation.m.Ports:
