@@ -416,7 +416,7 @@ class Mod1var(dae.daeModel):
         # F#igure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L0(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
-        mu_O_SEI, act_lyte_SEI = calc_mu_O_frumkin(self.c_lyte(), self.phi_lyte(), self.c_eff_lyte(), self.phi_SEI_L1(), T,
+        mu_O_SEI, act_lyte_SEI = calc_mu_O_frumkin(self.phi_lyte(), self.c_eff_lyte(), self.phi_SEI_L1(), T,
                                    self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -469,13 +469,12 @@ class Mod1var(dae.daeModel):
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
-
         # add SEI equations
         if ndD["SEI"]:
 
             muR_SEI, actR_SEI = calc_muR_SEI(c_surf, self.cbar(), T, ndD, ISfuncs)
             eta_SEI = calc_eta(muR_SEI, muO_SEI)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_eff_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI #convert to Rxn_deg[0] if space dependent
 
@@ -639,14 +638,14 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     return mu_O, act_lyte
 
 
-def calc_mu_O_frumkin(c_lyte1, phi_lyte1, c_lyte2, phi_lyte2, T, elyteModelType):
+def calc_mu_O_frumkin(phi_lyte1, c_lyte, phi_lyte2, T, elyteModelType):
     """Calculates the potential for a Frumkin-BV reaction. 1 is on the bulk side
        and 2 is in the Stern layer side"""
     if elyteModelType == "SM":
         #not implemented yet
         x = 1
     elif elyteModelType == "dilute":
-        act_lyte = c_lyte1/c_lyte2
+        act_lyte = c_lyte**2 #this is based on the SEI reaction and electroneutral assumption
         mu_lyte = T*np.log(act_lyte) + phi_lyte1 - phi_lyte2
     return mu_lyte, act_lyte
 
