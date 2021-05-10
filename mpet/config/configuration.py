@@ -25,7 +25,12 @@ class Config:
     def __init__(self, paramfile='params.cfg', from_dicts=False):
         """
         Hold values from system and electrode configuration files, as well as
-        derived values
+        derived values.
+
+        :param str paramfile: Path to .cfg file on disk
+        :param bool from_dicts: Whether to read existing config dicts from disk
+
+        :return: Config object
         """
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
@@ -113,13 +118,25 @@ class Config:
     def from_dicts(cls, path):
         """
         Create a config instance from a set of dictionaries on disk, instead
-        of from config files
+        of from config files.
+
+        :param str path: folder containing previously-saved config dicts
+
+        :return: Config object
         """
         return cls(path, from_dicts=True)
 
-    def _select_config(self, items):
+    def _retrieve_config(self, items):
         """
-        Select system or electrode config based on reqested parameter(s)
+        Select system or electrode config based on reqested parameter(s) and
+        retrieve the parameter value
+
+        :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
+        `electrode` config, or a single string to retrieve item from system config.
+        `electrode` must be one of a, c.
+
+        :return: config subset (system/chosen electrode/individual particle in electrode),
+            item, electrode (None if system config)
         """
         if isinstance(items, tuple):
             # electrode config
@@ -157,11 +174,14 @@ class Config:
             d = self[trode, 'indvPart']
         return d, item, trode
 
-    def write(self, folder=None):
+    def write(self, folder=None, filenamebase='input_dict'):
         """
-        Write config to disk
+        Write config to disk in pickled format.
+
+        :param str folder: Folder in which to store the config (default: current folder)
+        :param str filenamebase: prefix of filenames. These are appended with _system,
+            _cathode, _anode, and _derived_values to create four config dicts on disk.
         """
-        filenamebase = 'input_dict'
         if folder:
             filenamebase = os.path.join(folder, filenamebase)
 
@@ -175,11 +195,20 @@ class Config:
             with open(f'{filenamebase}_{section}.p', 'wb') as f:
                 pickle.dump(d, f)
 
-    def read(self, folder=None, full=False):
+    def read(self, folder=None, filenamebase='input_dict', full=False):
         """
-        Read previously processed config from disk
+        Read previously processed config from disk. This also sets the numpy random seed
+        if enabled in the config.
+
+        :param str folder: Folder in from which to read the config (default: current folder)
+        :param str filenamebase: prefix of filenames. These are appended with _system,
+            _cathode, _anode, and _derived_values to read the four config dicts from disk
+        :param bool full: If true, all values from the dictionaries on disk are read.
+            If false, only the generated particle distributions are read from the config dicts,
+            i.e. the psd_* and G values in the system config, and the indvPart section of the
+            electrode configs
         """
-        filenamebase = 'input_dict'
+
         if folder:
             filenamebase = os.path.join(folder, filenamebase)
 
@@ -226,14 +255,17 @@ class Config:
 
     def __getitem__(self, items):
         """
-        Get the value of a parameter, either a single item to retrieve from the system config,
-        or a tuple of (electrode, item), in which case item is read from the config of the given
-        electrode (a or c)
-        If the value is found in none of the configs, it is assumed to be a derived
-        parameter that can be calculated from the config values
+        Get the value of a parameter. If the value is found in none of the configs,
+        it is assumed to be a derived parameter that can be calculated from the config values.
+
+        :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
+            `electrode` config, or a single string to retrieve item from system config.
+            `electrode` must be one of a, c.
+
+        :return: parameter value
         """
         # select config
-        d, item, trode = self._select_config(items)
+        d, item, trode = self._retrieve_config(items)
 
         try:
             value = d[item]
@@ -246,28 +278,41 @@ class Config:
 
     def __setitem__(self, items, value):
         """
-        Set a parameter value, either a single item to store in system config,
-        or a tuple of (electrode, item), in which case the item is stored in the config
-        of the given electrode (a or c)
+        Set a parameter value.
+
+        :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
+            `electrode` config, or a single string to retrieve item from system config.
+            `electrode` must be one of a, c.
         """
         # select config, ignore returned trode value as we don't need it
-        d, item, _ = self._select_config(items)
+        d, item, _ = self._retrieve_config(items)
         d[item] = value
 
     def __delitem__(self, items):
         """
-        Delete a parameter value, either a single item to delete from system config,
-        or a tuple of (electrode, item), in which case the item is deleted from the config
-        of the given electrode (a or c)
+        Delete a parameter value.
+
+        :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
+            `electrode` config, or a single string to retrieve item from system config.
+            `electrode` must be one of a, c.
         """
         # select config, ignore returned trode value as we don't need it
-        d, item, _ = self._select_config(items)
+        d, item, _ = self._retrieve_config(items)
 
         del d[item]
 
     def _process_config(self, prevDir=None):
         """
-        Set default values and process some values
+        Process raw config:
+
+        #. Set numpy random seed
+        #. Set default values
+        #. Scale to non-dimensional values
+        #. Parse current/voltage segments
+        #. Either generate particle distributions or load from previous run
+
+        :param bool prevDir: if True, load particle distributions from previous run,
+            otherwise generate them
         """
         if self.config_processed:
             raise Exception('The config can be processed only once as values are scaled in-place')
@@ -386,7 +431,7 @@ class Config:
 
     def _distr_part(self):
         """
-        Generate particle distributions
+        Generate particle distributions and store in config.
         """
         # intialize dicts in config
         self['psd_num'] = {}
@@ -466,7 +511,7 @@ class Config:
 
     def _G(self):
         """
-        Generate Gibbs free energy distribution
+        Generate Gibbs free energy distribution and store in config.
         """
         self['G'] = {}
         for trode in self.trodes:
@@ -488,7 +533,7 @@ class Config:
 
     def _indvPart(self):
         """
-        Generate particle-specific parameter values
+        Generate particle-specific parameter values and store in config.
         """
         for trode in self.trodes:
             Nvol = self['Nvol'][trode]
@@ -544,7 +589,7 @@ class Config:
 
     def _verify_config(self):
         """
-        Verify configuration parameters
+        Verify configuration parameters.
         """
         # solid type
         for trode in self.trodes:
@@ -564,6 +609,10 @@ class Config:
         [100] direction). The barrier height vs size is taken from
         Cogswell and Bazant 2013, and the reg sln vs barrier height
         was done by TRF 2014 (Ferguson and Bazant 2014).
+
+        :param float/array size: Size of the particle(s) (m)
+
+        :return: regular solution parameter (float/array)
         """
         # First, this function wants the argument to be in [nm]
         size *= 1e+9
@@ -592,7 +641,11 @@ class Config:
 class ParameterSet:
     def __init__(self, paramfile, config_type, path):
         """
-        Hold a set of parameters from a single entity (system, electrode)
+        Hold a set of parameters for a single entity (system, one electrode).
+
+        :param str paramfile: Full path to .cfg file on disk
+        :param str config_type: "system" or "electrode"
+        :param str path: Folder containing the .cfg file
         """
         assert config_type in ['system', 'electrode'], f'Invalid config type: {config_type}'
         self.path = path
@@ -606,7 +659,9 @@ class ParameterSet:
 
     def _load_file(self, fname):
         """
-        Create config from file
+        Create config from file.
+
+        :param str fname: full path to .cfg file
         """
         if not os.path.isfile(fname):
             raise Exception(f'Missing config file: {fname}')
@@ -633,13 +688,17 @@ class ParameterSet:
 
     def __repr__(self):
         """
-        When printing this class, print the parameters dict
+        When printing this class, print the parameters dict.
         """
         return dict.__repr__(self.params)
 
     def __getitem__(self, item):
         """
-        Get a parameter
+        Get a parameter.
+
+        :param str item: Name of the parameter
+
+        :return: value of the parameter
         """
         if item in self.params:
             return self.params[item]
@@ -662,12 +721,17 @@ class ParameterSet:
 
     def __setitem__(self, item, value):
         """
-        Set a parameter value
+        Set a parameter value.
+
+        :param str item: Name of the parameter
+        :param value: Value of the parameter
         """
         self.params[item] = value
 
     def __delitem__(self, item):
         """
-        Remove a parameter value
+        Remove a parameter value.
+
+        :param str item: Name of the parameter
         """
         del self.params[item]

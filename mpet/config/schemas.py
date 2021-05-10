@@ -13,6 +13,9 @@ def parse_segments(key):
     """
     Parse the segments key of the configuration file and
     validate it
+
+    :param str key: The raw key from the config file
+    :return: segments (tuple)
     """
     segments = ast.literal_eval(key)
     assert isinstance(segments, list), "segments must be a list"
@@ -26,6 +29,10 @@ def parse_segments(key):
 def check_allowed_values(value, allowed_values):
     """
     Check if value was chosen from a set of allowed values
+
+    :param value: Value to verify
+    :param list allowed_values: Possible values
+    :return: True if value appears in allowed_values, else and AssertionError is raised
     """
     assert value in allowed_values, f"{value} is invalid, options are: {allowed_values}"
     return True
@@ -34,11 +41,14 @@ def check_allowed_values(value, allowed_values):
 def tobool(value):
     """
     Convert value to boolean
+
+    :param str value: Value to convert to bool
+    :return: Boolean representation of value
     """
     return bool(strtobool(value))
 
 
-# system parameters, per section
+#: System parameters, per section
 system = {'Sim Params': {'profileType': lambda x:
                          check_allowed_values(x, ["CC", "CV", "CCsegments", "CVsegments"]),
                          'Crate': Use(float),
@@ -111,6 +121,7 @@ system = {'Sim Params': {'profileType': lambda x:
                           'Dp': Use(float),
                           'Dm': Use(float)}}
 
+#: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                                                                   constants.one_var_types
                                                                   + constants.two_var_types),

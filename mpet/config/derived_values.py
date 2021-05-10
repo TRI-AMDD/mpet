@@ -41,13 +41,18 @@ class DerivedValues:
 
     def __repr__(self):
         """
-        Representation when printing this class
+        Representation when printing this class:
+        print the underlying dict with parameter values
         """
         return dict.__repr__(self.values)
 
     def get(self, config, item, trode=None):
         """
         Retrieve a derived parameter
+
+        :param Config config: Global configuration object
+        :param str item: Name of parameter
+        :param str trode: Electrode to retrieve parameter for (None for system values)
         """
         # set config class-wide for easy access in methods
         self.config = config
@@ -77,6 +82,9 @@ class DerivedValues:
     def _process_equation(self, equation, trode=None):
         """
         Calculate a parameter that is defined in an equation defined as string
+
+        :param str equation: Equation to evaluate
+        :param str trode: electrode, None for system values
         """
         # get parameters that are specified in equation, i.e. everything in curly brackets
         params = [item[1] for item in StringFormatter().parse(equation) if item[1] is not None]
