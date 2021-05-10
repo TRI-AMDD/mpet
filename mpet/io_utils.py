@@ -178,6 +178,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
             ndD_s[key] = P_s.getint('Interface', key)
         for key in ['L_i', 'poros_i', 'BruggExp_i']:
             ndD_s[key] = P_s.getfloat('Interface', key)
+        for key in ['interfaceModelType', 'interfaceSMset']:
+            ndD_s[key] = P_s.get('Interface', key)
 
     # Constants
     k = dD_s["k"] = 1.381e-23  # J/(K particle)

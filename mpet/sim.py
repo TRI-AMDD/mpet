@@ -133,7 +133,10 @@ class SimMPET(dae.daeSimulation):
                         # Set concentration and potential in interface region
                         if ndD_s["simInterface"]:
                             for k in range(ndD_s["Nvol_i"]):
-                                self.m.interfaces[tr][i,j].c.SetInitialGuess(k, ndD_s["c0"])
+                                # TODO: What is the difference between condition and guess?
+                                # For MPET to run, one of these should be a guess, the other
+                                # a condition
+                                self.m.interfaces[tr][i,j].c.SetInitialCondition(k, ndD_s["c0"])
                                 self.m.interfaces[tr][i,j].phi.SetInitialGuess(k, 0)
 
         else:

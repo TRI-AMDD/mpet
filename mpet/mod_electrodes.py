@@ -73,6 +73,10 @@ class Mod2var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        if ndD_s["simInterface"]:
+            self.portOutParticle = ports.portFromParticle(
+                "portOutParticle", dae.eOutletPort, self,
+                "Outlet port from particle")
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -148,6 +152,11 @@ class Mod2var(dae.daeModel):
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
+
+        if self.ndD_s["simInterface"]:
+            # Output dcbardt to interface region
+            eq = self.CreateEquation("particle_to_interface_dcbardt")
+            eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
 
     def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
@@ -309,6 +318,10 @@ class Mod1var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        if ndD_s["simInterface"]:
+            self.portOutParticle = ports.portFromParticle(
+                "portOutParticle", dae.eOutletPort, self,
+                "Outlet port from particle")
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -367,6 +380,11 @@ class Mod1var(dae.daeModel):
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
+
+        if self.ndD_s["simInterface"]:
+            # Output dcbardt to interface region
+            eq = self.CreateEquation("particle_to_interface_dcbardt")
+            eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
 
     def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD

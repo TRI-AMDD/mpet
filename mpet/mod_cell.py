@@ -162,14 +162,20 @@ class ModCell(dae.daeModel):
                             "interfaceTrode{trode}vol{vInd}part{pInd}".format(
                                 trode=trode, vInd=vInd, pInd=pInd),
                             self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
-                            ndD_s=ndD_s)
+                            ndD_s=ndD_s, cell=self,
+                            particle=self.particles[trode][vInd,pInd],
+                            vInd=vInd,pInd=pInd,trode=trode)
 
                         # connect elyte to interface, then interface to particle
                         self.ConnectPorts(self.portsOutLyte[trode][vInd],
                                           self.interfaces[trode][vInd,pInd].portInLyte)
 
-                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutLyte,
+                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutInterface,
                                           self.particles[trode][vInd,pInd].portInLyte)
+
+                        # connect particle to interface
+                        self.ConnectPorts(self.particles[trode][vInd,pInd].portOutParticle,
+                                          self.interfaces[trode][vInd,pInd].portInParticle)
                     else:
                         # connect elyte to particle
                         self.ConnectPorts(self.portsOutLyte[trode][vInd],
@@ -215,8 +221,13 @@ class ModCell(dae.daeModel):
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
-                             * self.particles[trode][vInd,pInd].dcbardt())
+                    if self.ndD["simInterface"]:
+                        # TODO: how does the interface region affect the reaction rate?
+                        RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                                 * Vj * self.particles[trode][vInd,pInd].dcbardt())
+                    else:
+                        RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                                 * Vj * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
         # Define output port variables
