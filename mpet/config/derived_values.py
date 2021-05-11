@@ -16,7 +16,14 @@ class DerivedValues:
         # initialize with empty dicts for electrodes
         self.values = {'c': {}, 'a': {}}
 
+        # placeholder for config
         self.config = None
+
+        # store list of available derived values: any method of which
+        # the name does not start with _
+        # callable is a trick to avoid returning attributes like self.config as well
+        self.available_values = [k for k in dir(self) if not k.startswith('_')
+                                 and callable(getattr(self, k))]
 
     def __repr__(self):
         """
@@ -25,24 +32,27 @@ class DerivedValues:
         """
         return dict.__repr__(self.values)
 
-    def get(self, config, item, trode=None):
+    def __getitem__(self, args):
         """
         Retrieve a derived parameter
 
-        :param Config config: Global configuration object
-        :param str item: Name of parameter
-        :param str trode: Electrode to retrieve parameter for (None for system values)
+        :param tuple args: Tuple with 3 items: Config object, name of parameter
+            to retrieve, electrode to retrieve parameter for (None for system values)
+
+        :return: value of derived parameter
         """
+        config, item, trode = args
+
         # set config class-wide for easy access in methods
         self.config = config
 
         # select general or electrode dict
         if trode is None:
             values = self.values
-            args = ()
+            func_args = ()
         else:
             values = self.values[trode]
-            args = (trode, )
+            func_args = (trode, )
 
         # calculate value if not already stored
         if item not in values:
@@ -50,7 +60,7 @@ class DerivedValues:
                 func = getattr(self, item)
             except AttributeError:
                 raise UnknownParameterError(f'Unknown parameter: {item}')
-            values[item] = func(*args)
+            values[item] = func(*func_args)
 
         return values[item]
 

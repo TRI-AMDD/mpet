@@ -265,7 +265,7 @@ class Config:
         except UnknownParameterError:
             # not known in config, assume it is a derived value
             # this will raise an UnknownParameterError if still not found
-            value = self.derived_values.get(self, item, trode)
+            value = self.derived_values[self, item, trode]
 
         return value
 
