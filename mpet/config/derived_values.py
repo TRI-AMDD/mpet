@@ -1,5 +1,3 @@
-from string import Formatter as StringFormatter
-
 import numpy as np
 
 from mpet import props_elyte, props_am
@@ -19,25 +17,6 @@ class DerivedValues:
         self.values = {'c': {}, 'a': {}}
 
         self.config = None
-
-        # Equations defining derived parameters
-        # any parameter must be enclosed in curly brackets
-        # electrode-specific parameters must have a _tr suffix
-        # electrode selection from system config must have [tr] suffix
-        # constants can be accessed with constants.<constants name>, without curly brackets
-        self.equations = {'Damb': '(({zp} - {zm}) * {Dp} * {Dm}) / ({zp} * {Dp} - {zm} * {Dm})',
-                          'tp': '{zp} * {Dp} / ({zp} * {Dp} - {zm} * {Dm})',
-                          't_ref': '{L_ref}**2 / {D_ref}',
-                          'curr_ref': '3600. / {t_ref}',
-                          'sigma_s_ref': '{L_ref}**2 * constants.F**2 * constants.c_ref '
-                                         '/ ({t_ref} * constants.k * constants.N_A '
-                                         '* constants.T_ref)',
-                          'currset': '{1C_current_density} * {Crate}',  # A/m^2
-                          'Rser_ref': 'constants.k * constants.T_ref / (constants.e * {curr_ref} '
-                                      '* {1C_current_density})',
-                          'csmax': '{rho_s_tr} / constants.N_A',
-                          'cap': 'constants.e * {L[tr]} * (1 - {poros[tr]}) '
-                                 ' * {P_L[tr]} * {rho_s_tr}'}
 
     def __repr__(self):
         """
@@ -67,60 +46,51 @@ class DerivedValues:
 
         # calculate value if not already stored
         if item not in values:
-            if item in self.equations:
-                values[item] = self._process_equation(self.equations[item], trode)
-            else:
-                # get the method to calculate the value
-                try:
-                    func = getattr(self, item)
-                except AttributeError:
-                    raise UnknownParameterError(f'Unknown parameter: {item}')
-                values[item] = func(*args)
+            try:
+                func = getattr(self, item)
+            except AttributeError:
+                raise UnknownParameterError(f'Unknown parameter: {item}')
+            values[item] = func(*args)
 
         return values[item]
 
-    def _process_equation(self, equation, trode=None):
-        """
-        Calculate a parameter that is defined in an equation defined as string
+    def Damb(self):
+        zp = self.config['zp']
+        zm = self.config['zm']
+        Dp = self.config['Dp']
+        Dm = self.config['Dm']
+        return ((zp - zm) * Dp * Dm) / (zp * Dp - zm * Dm)
 
-        :param str equation: Equation to evaluate
-        :param str trode: electrode, None for system values
-        """
-        # get parameters that are specified in equation, i.e. everything in curly brackets
-        params = [item[1] for item in StringFormatter().parse(equation) if item[1] is not None]
-        formatter = {}
-        # add tr key to formatter in case param[tr] is used in the string formatting
-        if trode is not None:
-            formatter['tr'] = trode
-        have_electrode_select = False
-        for param in params:
-            # suffixes for electrode parameters
-            electrode_suffix = '_tr'
-            electrode_select = '[tr]'
-            if param.endswith(electrode_suffix):
-                # electrode parameter
-                assert trode is not None, 'Equation requires electrode specification'
-                # remove trailing _tr from param. Don't use .split in case _tr occurs
-                # somewhere in the middle as well
-                param_config = param[:-len(electrode_suffix)]
-                formatter[param] = self.config[trode, param_config]
-            elif param.endswith(electrode_select):
-                # electrode selected from system parameter
-                assert trode is not None, 'Equation requires electrode specification'
-                have_electrode_select = True
-                # remove trailing [tr]
-                param_config = param[:-len(electrode_select)]
-                # put the full parameter dict in the formatter, as the []
-                # operator still works in string formatting
-                formatter[param_config] = self.config[param_config]
-            else:
-                # system parameter
-                formatter[param] = self.config[param]
-        # if there is electrode selection, replace the tr placeholder
-        # by the electrode to use
-        if have_electrode_select:
-            equation = equation.replace('[tr]', f'[{trode}]')
-        return eval(equation.format(**formatter))
+    def tp(self):
+        zp = self.config['zp']
+        zm = self.config['zm']
+        Dp = self.config['Dp']
+        Dm = self.config['Dm']
+        return zp * Dp / (zp * Dp - zm * Dm)
+
+    def t_ref(self):
+        return self.config['L_ref']**2 / self.config['D_ref']
+
+    def curr_ref(self):
+        return 3600. / self.config['t_ref']
+
+    def sigma_s_ref(self):
+        return self.config['L_ref']**2 * constants.F**2 * constants.c_ref \
+            / (self.config['t_ref'] * constants.k * constants.N_A * constants.T_ref)
+
+    def currset(self):
+        return self.config['1C_current_density'] * self.config['Crate']  # A/m^2
+
+    def Rser_ref(self):
+        return constants.k * constants.T_ref \
+            / (constants.e * self.config['curr_ref'] * self.config['1C_current_density'])
+
+    def csmax(self, trode):
+        return self.config[trode, 'rho_s'] / constants.N_A
+
+    def cap(self, trode):
+        return constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
+            * self.config['P_L'][trode] * self.config[trode, 'rho_s']
 
     def numsegments(self):
         """
