@@ -127,7 +127,7 @@ class DerivedValues:
         """
         z
         """
-        if 'a' in self.config.trodes:
+        if 'a' in self.config['trodes']:
             return self.config['c', 'cap'] / self.config['a', 'cap']
         else:
             # flat plate anode with assumed infinite supply of metal
@@ -174,6 +174,6 @@ class DerivedValues:
         reference phi
         """
         d = {}
-        for trode in self.config.trodes:
+        for trode in self.config['trodes']:
             d[trode] = -self.config[trode, 'muR_ref'][0]
         return d

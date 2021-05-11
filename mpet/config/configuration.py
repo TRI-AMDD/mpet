@@ -39,30 +39,21 @@ class Config:
             # read existing dictionaries instead of parameter file
             # paramfile is now folder with input dicts
             self.path = os.path.normpath(paramfile)
-            # set which electrodes there are based on which dict files exist
-            self.trodes = ['c']
-            if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
-                self.trodes.append('a')
-            # create empty parametersets and derived values
+            # create empty system parameter set
             self.D_s = ParameterSet(None, 'system', self.path)
+            # set which electrodes there are based on which dict files exist
+            trodes = ['c']
+            if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
+                trodes.append('a')
+            self['trodes'] = trodes
+            # create empty electrode parametersets
             self.D_c = ParameterSet(None, 'electrode', self.path)
-            if 'a' in self.trodes:
+            if 'a' in self['trodes']:
                 self.D_a = ParameterSet(None, 'electrode', self.path)
             else:
                 self.D_a = None
             # now populate the dicts
             self.read(self.path, full=True)
-            if 's' in self.D_s['Nvol']:
-                self.have_separator = True
-            else:
-                self.have_separator = False
-            self.D_s.have_separator = self.have_separator
-            self.D_c.have_separator = self.have_separator
-            self.D_s.trodes = self.trodes
-            self.D_c.trodes = self.trodes
-            if self.D_a is not None:
-                self.D_a.have_separator = self.have_separator
-                self.D_a.trodes = self.trodes
             self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
         else:
             # store path to config file
@@ -70,13 +61,14 @@ class Config:
             # load system parameters file
             self.D_s = ParameterSet(paramfile, 'system', self.path)
             # the anode and separator are optional: only if there are volumes to simulate
-            self.trodes = ['c']
+            trodes = ['c']
             if self.D_s['Nvol_a'] > 0:
-                self.trodes.append('a')
-            self.trodes = self.trodes
-            self.have_separator = self.D_s['Nvol_s'] > 0
-            self.D_s.params['trodes'] = self.trodes
-            self.D_s.have_separator = self.have_separator
+                trodes.append('a')
+            self['trodes'] = trodes
+            # to check for separator, directly access underlying dict of system config;
+            # self['Nvol']['s'] would not work because that requires have_separator to
+            # be defined already
+            self['have_separator'] = self.D_s['Nvol_s'] > 0
 
             # load electrode parameter file(s)
             self.paramfiles = {}
@@ -86,17 +78,13 @@ class Config:
                 cathode_paramfile = os.path.join(self.path, cathode_paramfile)
                 self.paramfiles['c'] = cathode_paramfile
             self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
-            self.D_c.params['trodes'] = self.trodes
-            self.D_c.have_separator = self.have_separator
 
-            if 'a' in self.trodes:
+            if 'a' in self['trodes']:
                 anode_paramfile = self.D_s['anode']
                 if not os.path.isabs(anode_paramfile):
                     anode_paramfile = os.path.join(self.path, anode_paramfile)
                 self.paramfiles['a'] = anode_paramfile
                 self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
-                self.D_a.params['trodes'] = self.trodes
-                self.D_a.have_separator = self.have_separator
             else:
                 self.D_a = None
 
@@ -181,7 +169,7 @@ class Config:
         # system, derived values, cathode, optionally anode
         dicts = {'system': self.D_s.params, 'derived_values': self.derived_values.values,
                  'cathode': self.D_c.params}
-        if 'a' in self.trodes:
+        if 'a' in self['trodes']:
             dicts['anode'] = self.D_a.params
 
         for section, d in dicts.items():
@@ -207,7 +195,7 @@ class Config:
 
         # system, derived values, cathode, optionally anode
         sections = ['system', 'derived_values', 'cathode']
-        if 'a' in self.trodes:
+        if 'a' in self['trodes']:
             sections.append('anode')
 
         for section in sections:
@@ -341,7 +329,7 @@ class Config:
 
         # scalings per electrode
         self['beta'] = {}
-        for trode in self.trodes:
+        for trode in self['trodes']:
             self['L'][trode] = self['L'][trode] / self['L_ref']
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
@@ -353,12 +341,12 @@ class Config:
                 if value is not None:
                     self[trode, param] = value / kT
         # scalings on separator
-        if self.have_separator:
+        if self['have_separator']:
             self['L']['s'] /= self['L_ref']
 
         # scaling/addition of macroscopic input information
         Vref = self['phiRef']['c']
-        if 'a' in self.trodes:
+        if 'a' in self['trodes']:
             Vref -= self['phiRef']['a']
         factor = constants.e / kT
         self['Vset'] = -(factor * self['Vset'] + Vref)
@@ -437,7 +425,7 @@ class Config:
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
 
-        for trode in self.trodes:
+        for trode in self['trodes']:
             solidType = self[trode, 'type']
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
@@ -511,7 +499,7 @@ class Config:
         Generate Gibbs free energy distribution and store in config.
         """
         self['G'] = {}
-        for trode in self.trodes:
+        for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
             mean = self['G_mean'][trode]
@@ -532,7 +520,7 @@ class Config:
         """
         Generate particle-specific parameter values and store in config.
         """
-        for trode in self.trodes:
+        for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
             self[trode, 'indvPart'] = {}
@@ -589,7 +577,7 @@ class Config:
         Verify configuration parameters.
         """
         # solid type
-        for trode in self.trodes:
+        for trode in self['trodes']:
             solidShape = self[trode, 'shape']
             solidType = self[trode, 'type']
             if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
@@ -648,7 +636,6 @@ class ParameterSet:
         self.path = path
         self.config_type = config_type
 
-        self.have_separator = False
         self.params = {}
 
         if paramfile is not None:
@@ -700,11 +687,13 @@ class ParameterSet:
         if item in self.params:
             return self.params[item]
         elif item in PARAMS_PER_TRODE:
+            # this is only valid for electrode config
+            assert self.config_type == 'system', 'Requested electrode parameter from system config'
             # create a new dict containg the value per electrode
             d = {}
             # some parameters are also defined for the separator
             trodes = self['trodes'][:]  # make a copy here to avoid adding values to the original
-            if item in PARAMS_SEPARATOR and self.have_separator:
+            if item in PARAMS_SEPARATOR and self['have_separator']:
                 trodes.append('s')
             for trode in trodes:
                 # get the value for this electrode/separator and store it

@@ -69,7 +69,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     dxvec = np.array(Nvol["c"] * [dxc])
     porosvec = np.array(Nvol["c"] * [config["poros"]["c"]])
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
-    if config.have_separator:
+    if config["have_separator"]:
         dxs = config["L"]["s"]/Nvol["s"]
         dxvec_s = np.array(Nvol["s"] * [dxs])
         dxvec = np.hstack((dxvec_s, dxvec))
@@ -112,9 +112,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #            print "Actual psd_mean [nm]:", np.mean(psd_len[l])
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
         print("Cell structure:")
-        print(("porous anode | " if "a" in config.trodes else "flat anode | ")
-              + ("sep | " if config.have_separator else "") + "porous cathode")
-        if "a" in config.trodes:
+        print(("porous anode | " if "a" in config["trodes"] else "flat anode | ")
+              + ("sep | " if config["have_separator"] else "") + "porous cathode")
+        if "a" in config["trodes"]:
             print("capacity ratio cathode:anode, 'z':", config["z"])
         for trode in trodes:
             print("solidType_{t}:".format(t=trode), config[trode, 'type'])
@@ -127,7 +127,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             print("current:", currset_dim, "A/m^2")
         else:  # CV
             Vref = config['phiRef']['c']
-            if 'a' in config.trodes:
+            if 'a' in config["trodes"]:
                 Vref -= config['phiRef']['a']
             Vset_dim = -(config['Vset'] * k * Tref / e - Vref)
             print("Vset:", Vset_dim)
@@ -138,13 +138,13 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #        print "reg sln params:"
 #        print ndD["Omga"]
         print("ndim B_c:", config["c", "B"])
-        if config.have_separator:
+        if config["have_separator"]:
             print("Nvol_s:", Nvol["s"])
         print("Nvol_c:", Nvol["c"])
-        if 'a' in config.trodes:
+        if 'a' in config["trodes"]:
             print("Nvol_a:", Nvol["a"])
         print("Npart_c:", Npart["c"])
-        if 'a' in config.trodes:
+        if 'a' in config["trodes"]:
             print("Npart_a:", Npart["a"])
         print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
         print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
@@ -319,7 +319,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
         L_c = config['L']["c"] * Lfac
         Ltot = L_c
-        if config.have_separator:
+        if config["have_separator"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
