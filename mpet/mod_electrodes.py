@@ -21,7 +21,6 @@ import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
-from mpet.config.constants import PARAMS_ALIAS
 from mpet.daeVariableTypes import mole_frac_t
 
 
@@ -81,11 +80,6 @@ class Mod2var(dae.daeModel):
         """
         value = self.config[self.trode, item]
         # check if it is a particle-specific parameter
-        # need to take care of possible alias
-        try:
-            item = PARAMS_ALIAS[item]
-        except KeyError:
-            pass
         if item in self.config.params_per_particle:
             value = value[self.ind]
         return value
@@ -336,11 +330,6 @@ class Mod1var(dae.daeModel):
         """
         value = self.config[self.trode, item]
         # check if it is a particle-specific parameter
-        # need to take care of possible alias
-        try:
-            item = PARAMS_ALIAS[item]
-        except KeyError:
-            pass
         if item in self.config.params_per_particle:
             value = value[self.ind]
         return value

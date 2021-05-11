@@ -53,7 +53,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     e = constants.e                      # Charge of proton, C
     F = constants.F                      # C/mol
     c_ref = constants.c_ref
-    td = config["td"]
+    td = config["t_ref"]
     Etheta = {"a": 0.}
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * config["phiRef"][trode]
@@ -149,7 +149,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
         print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
         print("Damb [m^2/s]:", config['Damb'] * config['D_ref'])
-        print("td [s]:", config["td"])
+        print("td [s]:", config["t_ref"])
         for trode in trodes:
             if trode == "a":
                 k0 = config.D_a["k0"]
@@ -291,7 +291,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if plot_type == "curr":
         theoretical_1C_current = config[config['limtrode'], "cap"] / 3600.  # A/m^2
         current = (utils.get_dict_key(data, pfx + 'current')
-                   * theoretical_1C_current / config['CrateCurr'] * config['curr_ref'])
+                   * theoretical_1C_current / config['1C_current_density'] * config['curr_ref'])
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
         if data_only:
             return times*td, current

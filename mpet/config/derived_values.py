@@ -32,9 +32,9 @@ class DerivedValues:
                           'sigma_s_ref': '{L_ref}**2 * constants.F**2 * constants.c_ref '
                                          '/ ({t_ref} * constants.k * constants.N_A '
                                          '* constants.T_ref)',
-                          'currset': '{CrateCurr} * {Crate}',  # A/m^2
+                          'currset': '{1C_current_density} * {Crate}',  # A/m^2
                           'Rser_ref': 'constants.k * constants.T_ref / (constants.e * {curr_ref} '
-                                      '* {CrateCurr})',
+                                      '* {1C_current_density})',
                           'csmax': '{rho_s_tr} / constants.N_A',
                           'cap': 'constants.e * {L[tr]} * (1 - {poros[tr]}) '
                                  ' * {P_L[tr]} * {rho_s_tr}'}

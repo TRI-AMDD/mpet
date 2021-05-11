@@ -80,7 +80,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         indir, plot_type="params", print_flag=False, save_flag=False,
         data_only=True)
     trodes = config["trodes"]
-    CrateCurr = config["CrateCurr"]  # A/m^2
+    CrateCurr = config["1C_current_density"]  # A/m^2
     psd_len_c = config["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","

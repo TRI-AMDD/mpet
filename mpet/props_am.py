@@ -66,11 +66,6 @@ class muRfuncs():
         """
         value = self.config[self.trode, item]
         # check if it is a particle-specific parameter
-        # need to take care of possible alias
-        try:
-            item = constants.PARAMS_ALIAS[item]
-        except KeyError:
-            pass
         if self.ind is not None and item in self.config.params_per_particle:
             value = value[self.ind]
         return value
@@ -217,7 +212,7 @@ class muRfuncs():
         # Based Omg = 3*k*T_ref
         yL = 0.07072018
         yR = 0.92927982
-        OCV_rs = -self.kToe*self.reg_sln(y, self.get("Omga"), ISfuncs)
+        OCV_rs = -self.kToe*self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         width = 0.005
         OCV = OCV_rs*step_down(y, yL, width) + OCV_rs*step_up(y, yR, width) + 2
         muR = self.get_muR_from_OCV(OCV, muR_ref)
@@ -375,7 +370,7 @@ class muRfuncs():
     def LiFePO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
-        muRhomog = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -386,8 +381,8 @@ class muRfuncs():
         """ Ferguson and Bazant 2014 """
         muRtheta = -self.eokT*0.12
         muR1homog, muR2homog = self.graphite_2param_homog(
-            y, self.get_trode_param("Omga"), self.get_trode_param("Omgb"),
-            self.get_trode_param("Omgc"), self.get_trode_param("EvdW"), ISfuncs)
+            y, self.get_trode_param("Omega_a"), self.get_trode_param("Omega_b"),
+            self.get_trode_param("Omega_c"), self.get_trode_param("EvdW"), ISfuncs)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
@@ -400,7 +395,7 @@ class muRfuncs():
     def LiC6_1param(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*0.12
         muRhomog = self.graphite_1param_homog_3(
-            y, self.get_trode_param("Omga"), self.get_trode_param("Omgb"), ISfuncs)
+            y, self.get_trode_param("Omega_a"), self.get_trode_param("Omega_b"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)
@@ -409,14 +404,14 @@ class muRfuncs():
 
     def testRS(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = 0.
-        muR = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
+        muR = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
 
     def testRS_ps(self, y, ybar, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*2.
-        muRhomog = self.reg_sln(y, self.get_trode_param("Omga"), ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/self.T)

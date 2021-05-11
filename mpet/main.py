@@ -20,7 +20,7 @@ import mpet.utils as utils
 
 
 def run_simulation(config, outdir):
-    tScale = config["td"]
+    tScale = config["t_ref"]
     # Create Log, Solver, DataReporter and Simulation object
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()

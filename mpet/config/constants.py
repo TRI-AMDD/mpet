@@ -23,9 +23,6 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
                     'specified_psd']
 #: subset of PARAMS_PER_TRODE that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
-#: parameters that are used with several names. TODO: can we get rid of these?
-PARAMS_ALIAS = {'CrateCurr': '1C_current_density', 'n_refTrode': 'n', 'Tabs': 'T',
-                'td': 't_ref', 'Omga': 'Omega_a', 'Omgb': 'Omega_b', 'Omgc': 'Omega_c'}
 #: parameters that are defined for each particle, and their type
 PARAMS_PARTICLE = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float, 'E_D': float,

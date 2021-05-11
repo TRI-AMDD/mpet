@@ -14,7 +14,7 @@ import pickle
 import numpy as np
 
 from mpet.config import schemas
-from mpet.config.constants import PARAMS_ALIAS, PARAMS_PER_TRODE, PARAMS_SEPARATOR
+from mpet.config.constants import PARAMS_PER_TRODE, PARAMS_SEPARATOR
 
 from mpet.config.derived_values import DerivedValues
 from mpet.config import constants
@@ -159,13 +159,6 @@ class Config:
             trode = None
             item = items
             d = self.D_s
-
-        # get alias of item in case it is defined
-        try:
-            item = PARAMS_ALIAS[item]
-        except KeyError:
-            # no alias for this item
-            pass
 
         # select individual particle settings if requested
         if item in self.params_per_particle:
@@ -322,7 +315,7 @@ class Config:
         if self.D_s['randomSeed']:
             np.random.seed(self.D_s['seed'])
 
-        # set default CrateCurr = 1C_current_density
+        # set default 1C_current_density
         limtrode = self['limtrode']
         theoretical_1C_current = self[limtrode, 'cap'] / 3600.  # A/m^2
         param = '1C_current_density'
@@ -332,14 +325,14 @@ class Config:
 
         # non-dimensional scalings
         kT = constants.k * constants.T_ref
-        self['T'] = self['Tabs'] / constants.T_ref
+        self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
-        self['k0_foil'] = self['k0_foil'] / (self['CrateCurr'] * self['curr_ref'])
+        self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
 
         # scalings per electrode
@@ -351,7 +344,7 @@ class Config:
 
             self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
-            for param in ['Omga', 'Omgb', 'Omgc', 'EvdW']:
+            for param in ['Omega_a', 'Omega_b', 'Omega_c', 'EvdW']:
                 value = self[trode, param]
                 if value is not None:
                     self[trode, param] = value / kT
@@ -372,7 +365,7 @@ class Config:
         segments = []
         if self['profileType'] == 'CCsegments':
             for i in range(len(self['segments'])):
-                segments.append((self["segments"][i][0]*self["CrateCurr"]
+                segments.append((self["segments"][i][0]*self["1C_current_density"]
                                 / theoretical_1C_current/self['curr_ref'],
                                 self["segments"][i][1]*60/self['t_ref']))
         elif self['profileType'] == 'CVsegments':
