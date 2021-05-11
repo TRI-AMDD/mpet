@@ -260,12 +260,12 @@ class Config:
         # select config
         d, item, trode = self._retrieve_config(items)
 
-        try:
-            value = d[item]
-        except UnknownParameterError:
-            # not known in config, assume it is a derived value
-            # this will raise an UnknownParameterError if still not found
+        # check if the item is a derived value
+        if item in self.derived_values.available_values:
             value = self.derived_values[self, item, trode]
+        else:
+            # not a derived value, can be read from config
+            value = d[item]
 
         return value
 
