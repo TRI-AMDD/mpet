@@ -279,7 +279,11 @@ class Config:
         """
         # select config, ignore returned trode value as we don't need it
         d, item, _ = self._retrieve_config(items)
-        d[item] = value
+        # make sure to update derived value if that is where the value originally came from
+        if item in self.derived_values.available_values:
+            self.derived_values.values[item] = value
+        else:
+            d[item] = value
 
     def __delitem__(self, items):
         """
