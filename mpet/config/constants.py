@@ -8,13 +8,13 @@ k = 1.381e-23
 e = 1.602e-19
 #: Avogadro constant, particle / mol
 N_A = 6.022e23
-#: TODO: this parameter needs a name, C/mol
+#: Reference flux, C/mol
 F = e * N_A
 #: General particle classification (1 var)
 two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
 #: General particle classification (2 var)
 one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
-#: Concentration, mol/m^3 = 1M
+#: Reference concentration, mol/m^3 = 1M
 c_ref = 1000.
 
 #: parameter that are defined per electrode with a _{electrode} suffix
