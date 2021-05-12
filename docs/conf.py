@@ -13,7 +13,7 @@
 
 import os
 import sys
-from unittest.mock import MagicMock
+# from unittest.mock import MagicMock
 
 
 autodoc_mock_imports = [
