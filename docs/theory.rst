@@ -1,0 +1,38 @@
+Theory
+===========================================
+
+
+This software is designed to run simulations of batteries with porous electrodes using porous electrode theory,
+which is a volume-averaged, multiscale approach to capture the coupled behavior of electrolyte and active material
+within electrodes. As a result, with physical parameter inputs and run protocols (specified current or voltage
+profiles), it makes predictions about the internal dynamics within a battery (electrolyte concentration and potential,
+solid phase concentrations, reaction rates, etc.) and also macroscopic, easily measurable electrochemical quantities
+such as total current and voltage. In this way, it is similar to the dualfoil code released by Newman and coworkers
+from Berkeley. This software has much of the functionality contained in dualfoil (it is currently missing, e.g.,
+temperature dependence). However, beyond the standard porous electrode theory simulations, this software can also
+simulate electrodes in which the active materials phase separate using non-equilibrium thermodynamics within a phase
+field modeling framework. Such behavior is common in widely used electrode materials, including graphite and LiFePO4.
+
+If you use this software in academic work, please cite the relevant references detailing
+its development as presented in the LICENSE file.
+
+Reference
+------------------------------------------------------------
+
+For more details on the theory implemeneted in the code, see: ::
+
+    Smith, R. B., and Bazant M. Z.,
+    Multiphase Porous Electrode Theory,
+    Journal of the Electrochemical Society, 2017, 164 (11) E3291-E3310
+    https://iopscience.iop.org/article/10.1149/2.0171711jes
+
+
+
+Model
+------------------------------
+
+Electrode scale equations
+
+.. math::
+
+    \frac{\partial (\epsilon c_{l,i})}{\partial t} = -\nabla \cdot \mathbf{F}_{l,i} + R_{V,i}
