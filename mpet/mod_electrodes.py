@@ -78,7 +78,7 @@ class Mod2var(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"]  # number of grid points in particle
-        T = self.ndD_s["T"]  # nondimensional temperature
+        T = self.ndD_s["T0"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
@@ -151,7 +151,7 @@ class Mod2var(dae.daeModel):
 
     def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
-        T = self.ndD_s["T"]
+        T = self.ndD_s["T0"]
         c1_surf = c1
         c2_surf = c2
         (mu1R_surf, mu2R_surf), (act1R_surf, act2R_surf) = (calc_muR(
@@ -183,7 +183,7 @@ class Mod2var(dae.daeModel):
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         N = ndD["N"]
-        T = self.ndD_s["T"]
+        T = self.ndD_s["T0"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -314,7 +314,7 @@ class Mod1var(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"]  # number of grid points in particle
-        T = self.ndD_s["T"]  # nondimensional temperature
+        T = self.ndD_s["T0"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
@@ -369,7 +369,7 @@ class Mod1var(dae.daeModel):
 
     def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
-        T = self.ndD_s["T"]
+        T = self.ndD_s["T0"]
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
@@ -388,7 +388,7 @@ class Mod1var(dae.daeModel):
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
-        T = self.ndD_s["T"]
+        T = self.ndD_s["T0"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)

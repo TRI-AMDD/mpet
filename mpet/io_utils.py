@@ -91,7 +91,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
             ndD_s["prevDir"] = os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
 
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
-    Tabs = dD_s["Tabs"] = P_s.getfloat('Sim Params', 'T')
+    T0abs = dD_s["T0abs"] = P_s.getfloat('Sim Params', 'T0')
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
     ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback='mat')
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
@@ -256,7 +256,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     Rser_ref = dD_s["Rser_ref"] = (k*T_ref/e) / (curr_ref*dD_s["CrateCurr"])
 
     # Some nondimensional parameters
-    ndD_s["T"] = Tabs / T_ref
+    ndD_s["T0"] = T0abs / T_ref
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
@@ -326,7 +326,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*N_A*dD_e[trode]['cs_ref'])
         if dD_e[trode]["EvdW"] is not None:
             ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
-        muRfunc = props_am.muRfuncs(ndD_s["T"], ndD_e[trode]).muRfunc
+        muRfunc = props_am.muRfuncs(ndD_s["T0"], ndD_e[trode]).muRfunc
         cs0bar = ndD_s["cs0"][trode]
         cs0 = np.array([cs0bar])
         Type = ndD_e[trode]['type']

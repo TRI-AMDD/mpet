@@ -329,7 +329,7 @@ class ModCell(dae.daeModel):
                 # phiWall = -eta + phi_cell [- T*ln(c)]
                 phiWall = -eta + self.phi_cell()
                 if ndD["elyteModelType"] == "dilute":
-                    phiWall -= ndD["T"]*np.log(cWall)
+                    phiWall -= ndD["T0"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
             # We have a porous anode -- no flux of charge or anions through current collector
@@ -465,7 +465,7 @@ class ModCell(dae.daeModel):
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
     nu = nup + num
-    T = ndD["T"]
+    T = ndD["T0"]
     dxd1 = disc["dxd1"]
     eps_o_tau = disc["eps_o_tau"]
 
