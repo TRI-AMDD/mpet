@@ -10,3 +10,6 @@ conc_t = dae.daeVariableType(
 elec_pot_t = dae.daeVariableType(
     name="elec_pot_t", units=dae.unit(), lowerBound=-1e20,
     upperBound=1e20, initialGuess=0, absTolerance=1.e-6)
+temp_t = dae.daeVariableType(
+    name="temp_t", units=dae.unit(), lowerBound=0,
+    upperBound=1e20, initialGuess=1, absTolerance=1.e-6)
