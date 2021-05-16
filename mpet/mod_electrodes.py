@@ -71,6 +71,7 @@ class Mod2var(dae.daeModel):
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte
+        self.T_lyte = self.portInLyte.T_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
@@ -307,6 +308,7 @@ class Mod1var(dae.daeModel):
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte
+        self.T_lyte = self.portInLyte.T_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 

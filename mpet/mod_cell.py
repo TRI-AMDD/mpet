@@ -215,6 +215,10 @@ class ModCell(dae.daeModel):
                 eq.Residual = (self.c_lyte[trode](vInd)
                                - self.portsOutLyte[trode][vInd].c_lyte())
                 eq = self.CreateEquation(
+                    "portout_T_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq.Residual = (self.T_lyte[trode](vInd)
+                               - self.portsOutLyte[trode][vInd].T_lyte())
+                eq = self.CreateEquation(
                     "portout_p_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 phi_lyte = self.phi_lyte[trode](vInd)
                 eq.Residual = (phi_lyte - self.portsOutLyte[trode][vInd].phi_lyte())

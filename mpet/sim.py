@@ -158,7 +158,7 @@ class SimMPET(dae.daeSimulation):
 
                         # Set the inlet port variables for each particle
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
-                       # part.T_lyte.SetInitialGuess(data["T_lyte_" + tr][-1,i])
+                        part.T_lyte.SetInitialGuess(data["T_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
 
