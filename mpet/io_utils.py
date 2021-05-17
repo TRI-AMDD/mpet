@@ -326,7 +326,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         ndD_e[trode]["B"] = dD_e[trode]['B']/(k*T_ref*N_A*dD_e[trode]['cs_ref'])
         if dD_e[trode]["EvdW"] is not None:
             ndD_e[trode]["EvdW"] = dD_e[trode]["EvdW"] / (k*T_ref)
-        muRfunc = props_am.muRfuncs(ndD_s["T0"], ndD_e[trode]).muRfunc
+        muRfunc = props_am.muRfuncs(ndD_e[trode]).muRfunc
         cs0bar = ndD_s["cs0"][trode]
         cs0 = np.array([cs0bar])
         Type = ndD_e[trode]['type']
@@ -334,9 +334,9 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
             cs0 = (cs0, cs0)
             cs0bar = (cs0bar, cs0bar)
         if Type in ndD_s["2varTypes"]:
-            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0][0]
+            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, ndD_s["T0"], 0.)[0][0]
         elif Type in ndD_s["1varTypes"]:
-            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, 0.)[0]
+            ndD_e[trode]["muR_ref"] = -muRfunc(cs0, cs0bar, ndD_s["T0"], 0.)[0]
         ndD_s["phiRef"][trode] = -ndD_e[trode]["muR_ref"][0]
         Nvol, Npart = psd_raw[trode].shape
         # Electrode parameters which depend on the individual

@@ -525,9 +525,9 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
 
 
 def calc_muR(c, cbar, T, ndD, ISfuncs=None):
-    muRfunc = props_am.muRfuncs(T, ndD).muRfunc
+    muRfunc = props_am.muRfuncs(ndD).muRfunc
     muR_ref = ndD["muR_ref"]
-    muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
+    muR, actR = muRfunc(c, cbar, T, muR_ref, ISfuncs)
     return muR, actR
 
 
