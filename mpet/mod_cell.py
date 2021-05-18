@@ -369,8 +369,8 @@ class ModCell(dae.daeModel):
                 eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
                 # Energy Conservation
                 eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = disc["porosvec"][vInd]*dTdtvec[vInd] - dvgq[vInd] # do we add heat generation from current blah?
-
+                eq.Residual = disc["porosvec"][vInd]*dTdtvec[vInd] - \
+                    dvgq[vInd]  # do we add heat generation from current blah?
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -503,13 +503,13 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, ndD):
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         Dp = eps_o_tau_edges * ndD["Dp"]
         Dm = eps_o_tau_edges * ndD["Dm"]
-        #neglecting soret diffusion
+        # neglecting soret diffusion
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
                             - Dm/T_edges_int*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
-        i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup*zp**2*Dp + num*zm**2*Dm)/T_edges_int*c_edges_int*np.diff(phi_lyte)/dxd1)
+        i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1) - (nup*zp
+                       ** 2*Dp + num*zm**2*Dm)/T_edges_int*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
         q_edges_int = 0*np.diff(c_lyte)
     elif ndD["elyteModelType"] == "SM":

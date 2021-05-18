@@ -234,7 +234,8 @@ class Mod2var(dae.daeModel):
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
-                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc, Flux2_bc, dr, self.T_lyte())
+                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc,
+                    Flux2_bc, dr, self.T_lyte())
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -428,9 +429,11 @@ class Mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
+                Flux_vec = calc_flux_diffn(
+                    c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
+                Flux_vec = calc_flux_CHR(
+                    c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
