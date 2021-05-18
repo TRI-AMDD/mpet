@@ -79,7 +79,6 @@ class Mod2var(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"]  # number of grid points in particle
-        T = self.ndD_s["T0"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
@@ -116,7 +115,7 @@ class Mod2var(dae.daeModel):
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(
-            self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+            self.c_lyte(), self.phi_lyte(), self.phi_m(), self.T_lyte(),
             self.ndD_s["elyteModelType"])
 
         # Define average filling fractions in particle
@@ -152,20 +151,19 @@ class Mod2var(dae.daeModel):
 
     def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
-        T = self.ndD_s["T0"]
         c1_surf = c1
         c2_surf = c2
         (mu1R_surf, mu2R_surf), (act1R_surf, act2R_surf) = (calc_muR(
-            (c1_surf, c2_surf), (self.c1bar(), self.c2bar()), T, ndD, ISfuncs))
+            (c1_surf, c2_surf), (self.c1bar(), self.c2bar()), self.T_lyte(), ndD, ISfuncs))
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
         eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
         eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq1 = self.CreateEquation("Rxn1")
         eq2 = self.CreateEquation("Rxn2")
@@ -184,7 +182,6 @@ class Mod2var(dae.daeModel):
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         ndD = self.ndD
         N = ndD["N"]
-        T = self.ndD_s["T0"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -193,7 +190,7 @@ class Mod2var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if ndD["type"] in ["diffn2", "CHR2"]:
             (mu1R, mu2R), (act1R, act2R) = calc_muR(
-                (c1, c2), (self.c1bar(), self.c2bar()), T, ndD, ISfuncs)
+                (c1, c2), (self.c1bar(), self.c2bar()), self.T_lyte(), ndD, ISfuncs)
             c1_surf = c1[-1]
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
@@ -207,10 +204,10 @@ class Mod2var(dae.daeModel):
             eta1_eff = eta1 + self.Rxn1()*ndD["Rfilm"]
             eta2_eff = eta2 + self.Rxn2()*ndD["Rfilm"]
         Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta1_eff, c1_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             act1R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta2_eff, c2_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             act2R_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR2"]:
             for i in range(N):
@@ -237,7 +234,7 @@ class Mod2var(dae.daeModel):
 #                    c1, c2, ndD["D"], Flux1_bc, Flux2_bc, dr, T)
             elif ndD["type"] == "CHR2":
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
-                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc, Flux2_bc, dr, T)
+                    c1, c2, mu1R, mu2R, ndD["D"], Dfunc, ndD["E_D"], Flux1_bc, Flux2_bc, dr, self.T_lyte())
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
@@ -316,7 +313,6 @@ class Mod1var(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         ndD = self.ndD
         N = ndD["N"]  # number of grid points in particle
-        T = self.ndD_s["T0"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(ndD['shape'], N)
 
         # Prepare the Ideal Solution log ratio terms
@@ -342,7 +338,7 @@ class Mod1var(dae.daeModel):
                 for _position_ in range(N)]
 
         # Figure out mu_O, mu of the oxidized state
-        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), self.T_lyte(),
                                    self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -371,13 +367,12 @@ class Mod1var(dae.daeModel):
 
     def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
-        T = self.ndD_s["T0"]
         c_surf = c
-        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.T_lyte(), ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
@@ -390,7 +385,6 @@ class Mod1var(dae.daeModel):
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         N = ndD["N"]
-        T = self.ndD_s["T0"]
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(ndD['shape'], N)
@@ -400,9 +394,9 @@ class Mod1var(dae.daeModel):
         if ndD["type"] in ["ACR"]:
             c_surf = c
             muR_surf, actR_surf = calc_muR(
-                c_surf, self.cbar(), T, ndD, ISfuncs)
+                c_surf, self.cbar(), self.T_lyte(), ndD, ISfuncs)
         elif ndD["type"] in ["diffn", "CHR"]:
-            muR, actR = calc_muR(c, self.cbar(), T, ndD, ISfuncs)
+            muR, actR = calc_muR(c, self.cbar(), self.T_lyte(), ndD, ISfuncs)
             c_surf = c[-1]
             muR_surf = muR[-1]
             if actR is None:
@@ -415,7 +409,7 @@ class Mod1var(dae.daeModel):
         else:
             eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], ndD["E_A"], self.T_lyte(),
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         if ndD["type"] in ["ACR"]:
             for i in range(N):
@@ -434,9 +428,9 @@ class Mod1var(dae.daeModel):
             Flux_bc = -self.Rxn()
             Dfunc = props_am.Dfuncs(ndD["Dfunc"]).Dfunc
             if ndD["type"] == "diffn":
-                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
+                Flux_vec = calc_flux_diffn(c, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
             elif ndD["type"] == "CHR":
-                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, T)
+                Flux_vec = calc_flux_CHR(c, muR, ndD["D"], Dfunc, ndD["E_D"], Flux_bc, dr, self.T_lyte())
             if ndD["shape"] == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif ndD["shape"] == "cylinder":
