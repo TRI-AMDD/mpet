@@ -91,7 +91,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
             ndD_s["prevDir"] = os.path.normpath(os.path.join(dir,ndD_s["prevDir"]))
 
     ndD_s["tsteps"] = P_s.getint('Sim Params', 'tsteps')
-    T0abs = dD_s["T0abs"] = P_s.getfloat('Sim Params', 'T0')
+    T0abs = dD_s["T0abs"] = P_s.getfloat('Sim Params', 'T0', fallback=298)
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
     ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback='mat')
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
