@@ -302,7 +302,7 @@ class muRfuncs():
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def non_homog_rect_fixed_csurf(self, y, T, ybar, B, kappa, ywet):
+    def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
         N = len(y)
         ytmp = np.empty(N+2, dtype=object)
@@ -314,7 +314,7 @@ class muRfuncs():
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
 
-    def non_homog_round_wetting(self, y, ybar, T, B, kappa, beta_s, shape, r_vec):
+    def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
         Rs = 1.
@@ -322,7 +322,7 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-    def general_non_homog(self, y, T, ybar):
+    def general_non_homog(self, y, ybar):
         """ Helper function """
         ptype = self.ndD["type"]
         mod1var, mod2var = False, False
@@ -343,7 +343,7 @@ class muRfuncs():
                 if mod1var:
                     cwet = self.ndD["cwet"]
                     muR_nh = self.non_homog_rect_fixed_csurf(
-                        y, ybar, T, B, kappa, cwet)
+                        y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
@@ -351,12 +351,12 @@ class muRfuncs():
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
                     muR_nh = self.non_homog_round_wetting(
-                        y, ybar, T, B, kappa, beta_s, shape, r_vec)
+                        y, ybar, B, kappa, beta_s, shape, r_vec)
                 elif mod2var:
                     muR1_nh = self.non_homog_round_wetting(
-                        y[0], ybar[0], T, B, kappa, beta_s, shape, r_vec)
+                        y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
                     muR2_nh = self.non_homog_round_wetting(
-                        y[1], ybar[1], T, B, kappa, beta_s, shape, r_vec)
+                        y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
                     muR_nh = (muR1_nh, muR2_nh)
         else:  # homogeneous particle
             if mod1var:
@@ -369,7 +369,7 @@ class muRfuncs():
         """ Bai, Cogswell, Bazant 2011 """
         muRtheta = -self.eokT*3.422
         muRhomog = self.reg_sln(y, T, self.ndD["Omga"], ISfuncs)
-        muRnonHomog = self.general_non_homog(y, ybar, T)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/T)
         muR += muRtheta + muR_ref
@@ -381,7 +381,7 @@ class muRfuncs():
         ndD = self.ndD
         muR1homog, muR2homog = self.graphite_2param_homog(
             y, T, ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"], ISfuncs)
-        muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar, T)
+        muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 = muR1homog + muR1nonHomog
         muR2 = muR2homog + muR2nonHomog
         actR1 = np.exp(muR1/T)
@@ -395,7 +395,7 @@ class muRfuncs():
         ndD = self.ndD
         muRhomog = self.graphite_1param_homog_3(
             y, T, ndD["Omga"], ndD["Omgb"], ISfuncs)
-        muRnonHomog = self.general_non_homog(y, ybar, T)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/T)
         muR += muRtheta + muR_ref
@@ -411,7 +411,7 @@ class muRfuncs():
     def testRS_ps(self, y, ybar, T, muR_ref, ISfuncs=None):
         muRtheta = -self.eokT*2.
         muRhomog = self.reg_sln(y, T, self.ndD["Omga"], ISfuncs)
-        muRnonHomog = self.general_non_homog(y, ybar, T)
+        muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/T)
         muR += muRtheta + muR_ref
