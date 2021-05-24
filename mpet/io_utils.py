@@ -94,6 +94,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     T0abs = dD_s["T0abs"] = P_s.getfloat('Sim Params', 'T0', fallback=298)
     dD_s["Rser"] = P_s.getfloat('Sim Params', 'Rser')
     ndD_s["dataReporter"] = P_s.get('Sim Params', 'dataReporter', fallback='mat')
+    ndD_s["nonisothermal"] = P_s.getboolean('Sim Params', 'nonisothermal', fallback='false')
     ndD_s["Nvol"] = {"a": P_s.getint('Sim Params', 'Nvol_a'),
                      "c": P_s.getint('Sim Params', 'Nvol_c'),
                      "s": P_s.getint('Sim Params', 'Nvol_s')}
@@ -152,11 +153,14 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["num"] = P_s.getfloat('Electrolyte', 'num')
     ndD_s["elyteModelType"] = P_s.get('Electrolyte', 'elyteModelType')
     SMset = ndD_s["SMset"] = P_s.get('Electrolyte', 'SMset')
-    D_ref = dD_s["D_ref"] = dD_s["Dref"] = getattr(props_elyte,SMset)()[-1]
+    D_ref = dD_s["D_ref"] = dD_s["Dref"] = getattr(props_elyte,SMset)()[-2]
+    k_h_ref = dD_s["k_h_ref"] = dD_s["k_h_ref"] = getattr(props_elyte,SMset)()[-1]
     ndD_s["n_refTrode"] = P_s.getfloat('Electrolyte', 'n')
     ndD_s["sp"] = P_s.getfloat('Electrolyte', 'sp')
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
+    k_h = dD_s["k_h"] = P_s.getfloat('Electrolyte', 'k_h')
+    cp = dD_s["cp"] = P_s.getfloat('Electrolyte', 'cp')
 
     # Constants
     k = dD_s["k"] = 1.381e-23  # J/(K particle)
@@ -226,6 +230,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     # Diffusive time scale
     if ndD_s["elyteModelType"] == "dilute":
         D_ref = dD_s["D_ref"] = Damb
+        k_h_ref = dD_s["k_h_ref"] = dD_s["k_h"]
     t_ref = dD_s["t_ref"] = dD_s["td"] = L_ref**2 / D_ref
     curr_ref = dD_s["curr_ref"] = 3600. / t_ref
     dD_s["sigma_s_ref"] = (L_ref**2 * F**2 * c_ref) / (t_ref * k * N_A * T_ref)
@@ -260,6 +265,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["Rser"] = dD_s["Rser"] / Rser_ref
     ndD_s["Dp"] = Dp / D_ref
     ndD_s["Dm"] = Dm / D_ref
+    ndD_s["k_h"] = k_h / k_h_ref
+    ndD_s["cp"] = cp/(k_h_ref*t_ref / L_ref**3)
     ndD_s["c0"] = c0 / c_ref
     ndD_s["phi_cathode"] = 0.
     ndD_s["currset"] = dD_s["currset"] / theoretical_1C_current / curr_ref

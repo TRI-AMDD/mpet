@@ -35,6 +35,9 @@ def LiClO4_PC():
     def therm_fac(c, T):
         return 1.
 
+    def k_h(c, T):
+        return 1e-10  # W/(m*K)
+
     def sigma(cin, T):
         c = cin * 1000  # mol/m^3
         p_max = 0.542
@@ -48,6 +51,7 @@ def LiClO4_PC():
                      - (a/p_u)*(c/rho - p_u)))  # S/m
         return out
     Dref = D(cref, 1)
+    khref = k_h(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -55,7 +59,11 @@ def LiClO4_PC():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+    def k_h_ndim(c, T):
+        return k_h(c,T) / khref
+
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref
 
 
 def valoen_reimers():
@@ -71,6 +79,9 @@ def valoen_reimers():
         tmp = 0.601 - 0.24*c**(0.5) + 0.982*(1 - 0.0052*((T*Tref) - 294))*c**(1.5)
         return tmp/(1-tp0(c, T))
 
+    def k_h(c, T):
+        return 1e-10  # W/(m*K)
+
     def sigma(c, T):
         (k00, k01, k02,
          k10, k11, k12,
@@ -84,6 +95,7 @@ def valoen_reimers():
         out *= 0.1  # S/m
         return out
     Dref = D(cref, 1)
+    khref = k_h(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -91,7 +103,11 @@ def valoen_reimers():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+    def k_h_ndim(c, T):
+        return k_h(c,T) / khref
+
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref
 
 
 def valoen_bernardi():
@@ -99,7 +115,7 @@ def valoen_bernardi():
     Valoen and Reimers 2005. The only change from Valoen and Reimers
     is the conductivity.
     """
-    D_ndim, Ign, therm_fac, tp0, Dref = valoen_reimers()
+    D_ndim, Ign, k_h_ndim, therm_fac, tp0, Dref, khref = valoen_reimers()
 
     def sigma(c, T):
         (k00, k01, k02,
@@ -117,7 +133,7 @@ def valoen_bernardi():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref
 
 
 def test1():
@@ -134,12 +150,16 @@ def test1():
     def therm_fac(c, T):
         return 1.
 
+    def k_h(c, T):
+        return 1e-10  # W/(m*K)
+
     def tp0(c, T):
         return Dp/(Dp+Dm)
 
     def sigma(c, T):
         return Dm*(1000*c)*N_A*e**2/(k*T*Tref*(1-tp0(c)))  # S/m
     Dref = D(cref, 1)
+    khref = k_h(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -147,7 +167,11 @@ def test1():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+    def k_h_ndim(c, T):
+        return k_h(c,T) / khref
+
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref
 
 
 def LIONSIMBA_nonisothermal():
@@ -187,7 +211,11 @@ def LIONSIMBA_nonisothermal():
     def therm_fac(c, T):
         return 1.
 
+    def k_h(c, T):
+        return 1e-10  # W/(m*K)
+
     Dref = D(cref, 1)
+    khref = k_h(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -195,7 +223,11 @@ def LIONSIMBA_nonisothermal():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+    def k_h_ndim(c, T):
+        return k_h(c,T) / khref
+
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref
 
 
 def LIONSIMBA_isothermal():
@@ -216,7 +248,11 @@ def LIONSIMBA_isothermal():
     def therm_fac(c, T):
         return 1.
 
+    def k_h(c, T):
+        return 1e-10  # W/(m*K)
+
     Dref = D(cref, 1)
+    khref = k_h(cref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
@@ -224,4 +260,8 @@ def LIONSIMBA_isothermal():
     def sigma_ndim(c, T):
         return sigma(c, T) * (
             k*Tref/(e**2*Dref*N_A*(1000*cref)))
-    return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
+    def k_h_ndim(c, T):
+        return k_h(c,T) / khref
+
+    return D_ndim, sigma_ndim, k_h_ndim, therm_fac, tp0, Dref, khref

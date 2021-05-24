@@ -368,9 +368,16 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
                 # Energy Conservation
-                eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = disc["porosvec"][vInd]*dTdtvec[vInd] - \
-                    dvgq[vInd]  # do we add heat generation from current blah?
+                if ndD['nonisothermal']:
+                    # if heat generation is turned on
+                    eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
+                    eq.Residual = disc["dxvec"][vInd]*disc["porosvec"][vInd] * \
+                        ndD["cp"]*dTdtvec[vInd] - dvgq[vInd]
+                else:
+                    # if heat generation is turned off
+                    eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
+                    eq.Residual = dTdtvec[vInd] - 0
+                # add heat generation from reaction later
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -502,6 +509,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, ndD):
         # Get porosity at cell edges using weighted harmonic mean
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         Dp = eps_o_tau_edges * ndD["Dp"]
+        k_h = eps_o_tau_edges * ndD["k_h"]
         Dm = eps_o_tau_edges * ndD["Dm"]
         # neglecting soret diffusion
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
@@ -511,12 +519,13 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, ndD):
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1) - (nup*zp
                        ** 2*Dp + num*zm**2*Dm)/T_edges_int*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
-        q_edges_int = 0*np.diff(c_lyte)
+        q_edges_int = -k_h*np.diff(T_lyte)/dxd1
     elif ndD["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
+        D_fs, sigma_fs, k_h_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-2]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T_lyte), wt)
+        k_h_edges = utils.weighted_harmonic_mean(eps_o_tau*k_h_fs(c_lyte, T_lyte), wt)
         sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T_lyte), wt)
 
         sp, n = ndD["sp"], ndD["n_refTrode"]
@@ -530,5 +539,5 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, ndD):
             )
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int, T_edges_int))*i_edges_int))
-        q_edges_int = 0*np.diff(c_lyte)
+        q_edges_int = -k_h_edges*np.diff(T_lyte)/dxd1
     return Nm_edges_int, i_edges_int, q_edges_int
