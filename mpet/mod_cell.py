@@ -368,7 +368,7 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
                 # Energy Conservation
-                if ndD['nonisothermal']:
+                if ndD['nonisothermal'] == True:
                     # if heat generation is turned on
                     eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
                     eq.Residual = disc["dxvec"][vInd]*disc["porosvec"][vInd] * \
