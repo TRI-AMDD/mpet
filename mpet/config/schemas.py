@@ -35,16 +35,18 @@ def check_allowed_values(value, allowed_values):
     :return: True if value appears in allowed_values, else and AssertionError is raised
     """
     assert value in allowed_values, f"{value} is invalid, options are: {allowed_values}"
+    # Schema needs a True return value if the check passes
     return True
 
 
 def tobool(value):
     """
-    Convert value to boolean
+    Convert string value (y/yes/t/true/1/on, n/no/f/false/0/off) to boolean
 
     :param str value: Value to convert to bool
     :return: Boolean representation of value
     """
+    # strtobool returns 0 or 1, use bool() to convert to actual boolean type
     return bool(strtobool(value))
 
 

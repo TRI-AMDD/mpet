@@ -1,5 +1,4 @@
-"""Helper functions for interacting with system parameters.
-
+"""
 This module provides functions for various data format exchanges:
  - config files (on disk) <--> dictionaries of parameters (in memory)
  - dictionaries of parameters (in memory) <--> dictionaries of parameters ('pickled' on disk)
@@ -25,16 +24,57 @@ class Config:
     def __init__(self, paramfile='params.cfg', from_dicts=False):
         """
         Hold values from system and electrode configuration files, as well as
-        derived values.
+        derived values. When initializing a new Config object, the invididual
+        particle distributions are generated and any non-dimensionalization is
+        performed *in-place*.
 
-        :param str paramfile: Path to .cfg file on disk
-        :param bool from_dicts: Whether to read existing config dicts from disk
+        The actual parameters are stored in up to four separate dictionary-like objects:
+
+        * ``D_s`` holds the system config
+        * ``D_c`` holds the cathode config
+        * ``D_a`` holds the anode config (only if anode is simulated)
+        * ``derived_values`` holds the values that can be derived from (a combination of) the other
+          configs
+
+        All parameter values can be accessed directly from the Config object
+        with the ``[]`` operator, like one would access values from a dictionary.
+        For parameters that are defined for every individual particle, the values for
+        all particles are returned, i.e. an array with shape ``(Nvol, Npart)``.
+        See :meth:`__getitem__`
+        for example usage of the ``[]`` operator.
+
+        Note that if needed, the underlying dictionaries can be accessed directly,
+        e.g. ``config.D_s``.
+
+        :param str paramfile: Path to .cfg file on disk, or folder with dictionaries
+            on disk if from_dicts=True
+        :param bool from_dicts: Whether to read existing config dicts from disk.
+            Instead of using from_dicts=True, consider using the Config.from_dicts function instead
 
         :return: Config object
+
+        Examples:
+
+        To read the config from a set of .cfg files:
+
+        >>> from mpet.config.configuration import Config
+        >>> config = Config('configs/params_system.cfg')
+
+        To create config from a previous run of MPET
+        (See also :meth:`from_dicts`):
+
+        >>> from mpet.config.configuration import Config
+        >>> config = Config.from_dicts('/path/to/previous/run/sim_output')
+
+        .. make sure to document methods related to [] operator
+        .. automethod:: __getitem__
+        .. automethod:: __setitem__
+        .. automethod:: __delitem__
         """
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
         self.params_per_particle = []
+
         if from_dicts:
             # read existing dictionaries instead of parameter file
             # paramfile is now folder with input dicts
@@ -111,17 +151,22 @@ class Config:
         :param str path: folder containing previously-saved config dicts
 
         :return: Config object
+
+        Example usage:
+
+        >>> from mpet.config.configuration import Config
+        >>> config = Config.from_dicts('/path/to/previous/run/sim_output')
         """
         return cls(path, from_dicts=True)
 
     def _retrieve_config(self, items):
         """
         Select system or electrode config based on reqested parameter(s) and
-        retrieve the parameter value
+        return the parameter and selected electrode
 
         :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
-        `electrode` config, or a single string to retrieve item from system config.
-        `electrode` must be one of a, c.
+            `electrode` config, or a single string to retrieve item from system config.
+            `electrode` must be one of a, c.
 
         :return: config subset (system/chosen electrode/individual particle in electrode),
             item, electrode (None if system config)
@@ -181,13 +226,13 @@ class Config:
         Read previously processed config from disk. This also sets the numpy random seed
         if enabled in the config.
 
-        :param str folder: Folder in from which to read the config (default: current folder)
+        :param str folder: Folder from which to read the config (default: current folder)
         :param str filenamebase: prefix of filenames. These are appended with _system,
             _cathode, _anode, and _derived_values to read the four config dicts from disk
         :param bool full: If true, all values from the dictionaries on disk are read.
             If false, only the generated particle distributions are read from the config dicts,
-            i.e. the psd_* and G values in the system config, and the indvPart section of the
-            electrode configs
+            i.e. the ``psd_*`` and ``G`` values in the system config, and the ``indvPart``
+            section of the electrode configs
         """
 
         if folder:
@@ -236,14 +281,65 @@ class Config:
 
     def __getitem__(self, items):
         """
-        Get the value of a parameter. If the value is found in none of the configs,
-        it is assumed to be a derived parameter that can be calculated from the config values.
+        ``__getitem__`` is the ``[]`` operator. It is used to retrieve the value of a parameter.
+        If the parameter is found in the available derived values, it is extracted from there.
+        Else, it is read from the config files.
+        :meth:`_retrieve_config` is called to automatically
+        selected the right config file. If the requested parameter does not exist,
+        an ``UnknownParameterError`` is raised.
 
         :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
             `electrode` config, or a single string to retrieve item from system config.
             `electrode` must be one of a, c.
 
         :return: parameter value
+
+        Example usage:
+
+        Extract the profileType parameter from the system config:
+
+        >>> config['profileType']
+        'CC'
+
+        To access an electrode parameter, add 'c' for cathode or 'a' for anode as first argument.
+        The requested parameter should be the second argument. To read the type parameter from the
+        cathode config:
+
+        >>> config['c', 'type']
+        'ACR'
+
+        The same parameter for the anode:
+
+        >>> config['a', 'type']
+        'CHR'
+
+        Note that if the anode is not simulated, trying to access an anode parameter will result
+        in an error:
+
+        >>> config['a', 'type']  # from a config where Nvol_a = 0
+        AssertionError: Anode parameter requested but anode is not simulated
+
+        A parameter defined for each particle, delta_L:
+
+        >>> config['c', 'delta_L']
+        array([[10.1, 10.1],
+               [10. , 10. ],
+               [10.1,  9.9],
+               [10.1,  9.9],
+               [ 9.9, 10.2],
+               [ 9.9, 10.2],
+               [10.3, 10. ],
+               [10. , 10.1],
+               [10.1, 10.1],
+               [ 9.9,  9.9]])
+
+        Finally, derived values are handled transparently. The csmax parameter from
+        both the cathode and anode:
+
+        >>> config['c', 'csmax']
+        22904.35071404849
+        >>> config['a', 'csmax']
+        28229.8239787446
         """
         # select config
         d, item, trode = self._retrieve_config(items)
@@ -253,13 +349,17 @@ class Config:
             value = self.derived_values[self, item, trode]
         else:
             # not a derived value, can be read from config
+            # raises UnknownParameterError if not found
             value = d[item]
 
         return value
 
     def __setitem__(self, items, value):
         """
-        Set a parameter value.
+        ``__setitem__`` is the ``[]`` operator when used in an assignment, e.g.
+        ``config['parameter'] = 2``.
+        It can be used to store a parameter in one of the config dicts. The dictionary is selected
+        automatically in the same way as ``__getitem__`` does.
 
         :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
             `electrode` config, or a single string to retrieve item from system config.
@@ -275,7 +375,9 @@ class Config:
 
     def __delitem__(self, items):
         """
-        Delete a parameter value.
+        ``__delitem__`` is the ``[]`` operator when used to delete a value,
+        e.g. ``del config['parameter']``. The specified item is automatically deleted from
+        the config dictionary where it was originally stored.
 
         :param str/tuple items: tuple of (electrode, item) to retrieve `item` from
             `electrode` config, or a single string to retrieve item from system config.
@@ -288,9 +390,11 @@ class Config:
 
     def _process_config(self, prevDir=None):
         """
-        Process raw config:
+        Process raw config after loading files from disk. This can only be done once per
+        instance of ``Config``, as parameters are scaled in-place. Attempting to run it a
+        second time results in an error. The processing consists of several steps:
 
-        #. Set numpy random seed
+        #. Set numpy random seed (if enabled in config)
         #. Set default values
         #. Scale to non-dimensional values
         #. Parse current/voltage segments
@@ -631,6 +735,11 @@ class ParameterSet:
         :param str paramfile: Full path to .cfg file on disk
         :param str config_type: "system" or "electrode"
         :param str path: Folder containing the .cfg file
+
+        .. make sure to document methods related to [] operator
+        .. automethod:: __getitem__
+        .. automethod:: __setitem__
+        .. automethod:: __delitem__
         """
         assert config_type in ['system', 'electrode'], f'Invalid config type: {config_type}'
         self.path = path
@@ -678,7 +787,8 @@ class ParameterSet:
 
     def __getitem__(self, item):
         """
-        Get a parameter.
+        Get a parameter using the ``[]`` operator.
+        See ``Config.__getitem__`` for example usage of the ``[]`` operator.
 
         :param str item: Name of the parameter
 

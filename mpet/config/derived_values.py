@@ -10,7 +10,23 @@ class DerivedValues:
         """
         DerivedValues holds the functions and equations required
         to calculate a parameter that is derived from other parameters.
-        Results are cached, so each parameter is calculated only once
+        Results are cached, so each parameter is calculated only once.
+        This class is meant to be used from within :class:`mpet.config.configuration.Config`.
+
+        Like :class:`mpet.config.configuration.Config`, the ``[]`` operator
+        can be used to access values.
+
+        Each method of this class that does not start with an underscore
+        is a derived value that can be calculated. If it has a ``trode``
+        argument, the parameter is electrode-specific and the name
+        of the electrode should be specified (either 'a' or 'c').
+
+        A list of the available parameters is stored in ``self.available_values``.
+
+        Where applicable, all parameters are scaled to their non-dimensional values.
+
+        .. make sure to document methods related to [] operator
+        .. automethod:: __getitem__
         """
         # to keep track of values that were already calculated
         # initialize with empty dicts for electrodes
@@ -34,13 +50,44 @@ class DerivedValues:
 
     def __getitem__(self, args):
         """
-        Retrieve a derived parameter
+        Retrieve a derived parameter using the ``[]`` operator.
 
         :param tuple args: Tuple with 3 items: Config object, name of parameter
             to retrieve, electrode to retrieve parameter for (None for system values)
 
         :return: value of derived parameter
+
+        Example usage:
+
+        Initialize config and derived values objects:
+        Note that ``DerivedValues`` is meant to be used from within the
+        :class:`mpet.config.configuration.Config` class. Passing the entire
+        ``Config`` object is then achieved by passing ``self``, instead of ``config``
+        to ``DerivedValues``.
+
+        >>> config = Config('/path/to/params_system.cfg')
+        >>> dv = DerivedValues()
+
+        Parameter that does not need electrode, ``t_ref``:
+
+        >>> dv[config, 't_ref', None]
+        7.792736808950305
+
+        Parameter that does need electrode:
+
+        >>> dv[config, 'csmax', 'c']
+        22904.35071404849
+
+        If a parameter that needs and electrode is accessed without electrode,
+        or vice-versa, an error is raised:
+
+        >>> dv[config, 'csmax', None]
+        TypeError: csmax() missing 1 required positional argument: 'trode'
+
+        >>> dv[config, 't_ref', 'c']
+        TypeError: t_ref() takes 1 positional argument but 2 were given
         """
+
         config, item, trode = args
 
         # set config class-wide for easy access in methods
@@ -52,6 +99,7 @@ class DerivedValues:
             func_args = ()
         else:
             values = self.values[trode]
+            # the electrode should be given to the function as argument
             func_args = (trode, )
 
         # calculate value if not already stored
@@ -103,30 +151,18 @@ class DerivedValues:
             * self.config['P_L'][trode] * self.config[trode, 'rho_s']
 
     def numsegments(self):
-        """
-        Number of segments
-        """
         return len(self.config['segments'])
 
     def L_ref(self):
-        """
-        reference L
-        """
         return self.config['L']['c']
 
     def D_ref(self):
-        """
-        reference D
-        """
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
             return getattr(props_elyte, self.config['SMset'])()[-1]
 
     def z(self):
-        """
-        z
-        """
         if 'a' in self.config['trodes']:
             return self.config['c', 'cap'] / self.config['a', 'cap']
         else:
@@ -134,18 +170,12 @@ class DerivedValues:
             return 0.
 
     def limtrode(self):
-        """
-        limtrode
-        """
         if self.config['z'] < 1:
             return 'c'
         else:
             return 'a'
 
     def cs_ref(self, trode):
-        """
-        reference cs
-        """
         if self.config[trode, 'type'] in constants.one_var_types:
             prefac = 1
         elif self.config[trode, 'type'] in constants.two_var_types:
@@ -153,9 +183,6 @@ class DerivedValues:
         return prefac * self.config[trode, 'csmax']
 
     def muR_ref(self, trode):
-        """
-        reference muR
-        """
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
         cs0bar = self.config['cs0'][trode]
         cs0 = np.array([cs0bar])
@@ -170,9 +197,6 @@ class DerivedValues:
         return muR_ref
 
     def phiRef(self):
-        """
-        reference phi
-        """
         d = {}
         for trode in self.config['trodes']:
             d[trode] = -self.config[trode, 'muR_ref'][0]
