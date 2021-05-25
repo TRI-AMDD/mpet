@@ -419,8 +419,35 @@ class Config:
             # set to theoretical value
             self[param] = theoretical_1C_current
 
+        # apply scalings
+        self._scale_system_parameters(theoretical_1C_current)
+        self._scale_electrode_parameters()  # includes separator
+        # reference voltage, should only be calculated after scaling of system and trode parameters
+        Vref = self['phiRef']['c']
+        if 'a' in self['trodes']:
+            Vref -= self['phiRef']['a']
+        self._scale_macroscopic_parameters(Vref)
+        self._scale_current_voltage_segments(theoretical_1C_current, Vref)
+
+        if prevDir:
+            # load particle distrubtions etc. from previous run
+            self.read(prevDir, full=False)
+            # Set params per particle as would be done in _invdPart when generating distributions
+            self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
+        else:
+            # particle distributions
+            self._distr_part()
+            # Gibss free energy, must be done after distr_part
+            self._G()
+            # Electrode parameters that depend on invidividual particle
+            self._indvPart()
+
+    def _scale_system_parameters(self, theoretical_1C_current):
+        """
+        Scale system parameters to non-dimensional values. This method should be called only once,
+        from :meth:`_process_config`.
+        """
         # non-dimensional scalings
-        kT = constants.k * constants.T_ref
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
@@ -430,6 +457,13 @@ class Config:
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
+
+    def _scale_electrode_parameters(self):
+        """
+        Scale electrode and separator parameters to non-dimensional values.
+        This method should be called only once, from :meth:`_process_config`.
+        """
+        kT = constants.k * constants.T_ref
 
         # scalings per electrode
         self['beta'] = {}
@@ -444,18 +478,30 @@ class Config:
                 value = self[trode, param]
                 if value is not None:
                     self[trode, param] = value / kT
+
         # scalings on separator
         if self['have_separator']:
             self['L']['s'] /= self['L_ref']
 
+    def _scale_macroscopic_parameters(self, Vref):
+        """
+        Scale macroscopic input parameters to non-dimensional values and add
+        reference values.
+        This method should be called only once, from :meth:`_process_config`.
+        """
+
         # scaling/addition of macroscopic input information
-        Vref = self['phiRef']['c']
-        if 'a' in self['trodes']:
-            Vref -= self['phiRef']['a']
-        factor = constants.e / kT
+        factor = constants.e / (constants.k * constants.T_ref)
         self['Vset'] = -(factor * self['Vset'] + Vref)
         self['phimin'] = -(factor * self['Vmax'] + Vref)
         self['phimax'] = -(factor * self['Vmin'] + Vref)
+
+    def _scale_current_voltage_segments(self, theoretical_1C_current, Vref):
+        """
+        Process current or voltage segments. This method should be called only once,
+        from :meth:`_process_config`.
+        """
+        kT = constants.k * constants.T_ref
 
         # Scaling of current and voltage segments
         segments = []
@@ -504,19 +550,6 @@ class Config:
         self['segments_setvec'] = segments_setvec
         if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
             self['tend'] = np.abs(self['capFrac'] / self['currset'])
-
-        if prevDir:
-            # load particle distrubtions etc. from previous run
-            self.read(prevDir, full=False)
-            # Set params per particle as would be done in _invdPart when generating distributions
-            self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
-        else:
-            # particle distributions
-            self._distr_part()
-            # Gibss free energy, must be done after distr_part
-            self._G()
-            # Electrode parameters that depend on invidividual particle
-            self._indvPart()
 
     def _distr_part(self):
         """
