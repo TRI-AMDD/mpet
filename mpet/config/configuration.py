@@ -73,74 +73,20 @@ class Config:
         """
         # initialize class to calculate and hold derived values
         self.derived_values = DerivedValues()
+        # Parameters defined per particle in an (Nvol, Npart) array.
+        # initially this list is empty. When the individual particle values
+        # are calculated, the list is populated.
         self.params_per_particle = []
 
         if from_dicts:
             # read existing dictionaries instead of parameter file
             # paramfile is now folder with input dicts
             self.path = os.path.normpath(paramfile)
-            # create empty system parameter set
-            self.D_s = ParameterSet(None, 'system', self.path)
-            # set which electrodes there are based on which dict files exist
-            trodes = ['c']
-            if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
-                trodes.append('a')
-            self['trodes'] = trodes
-            # create empty electrode parametersets
-            self.D_c = ParameterSet(None, 'electrode', self.path)
-            if 'a' in self['trodes']:
-                self.D_a = ParameterSet(None, 'electrode', self.path)
-            else:
-                self.D_a = None
-            # now populate the dicts
-            self.read(self.path, full=True)
-            self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
+            self._init_from_dicts()
         else:
             # store path to config file
             self.path = os.path.dirname(paramfile)
-            # load system parameters file
-            self.D_s = ParameterSet(paramfile, 'system', self.path)
-            # the anode and separator are optional: only if there are volumes to simulate
-            trodes = ['c']
-            if self.D_s['Nvol_a'] > 0:
-                trodes.append('a')
-            self['trodes'] = trodes
-            # to check for separator, directly access underlying dict of system config;
-            # self['Nvol']['s'] would not work because that requires have_separator to
-            # be defined already
-            self['have_separator'] = self.D_s['Nvol_s'] > 0
-
-            # load electrode parameter file(s)
-            self.paramfiles = {}
-
-            cathode_paramfile = self.D_s['cathode']
-            if not os.path.isabs(cathode_paramfile):
-                cathode_paramfile = os.path.join(self.path, cathode_paramfile)
-                self.paramfiles['c'] = cathode_paramfile
-            self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
-
-            if 'a' in self['trodes']:
-                anode_paramfile = self.D_s['anode']
-                if not os.path.isabs(anode_paramfile):
-                    anode_paramfile = os.path.join(self.path, anode_paramfile)
-                self.paramfiles['a'] = anode_paramfile
-                self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
-            else:
-                self.D_a = None
-
-            # set defaults and scale values that should be non-dim
-            self.config_processed = False
-            # either process the config, or read already processed config from disk
-            prevDir = self['prevDir']
-            if prevDir and prevDir != 'false':
-                if not os.path.isabs(prevDir):
-                    # assume it is relative to the input parameter files
-                    self['prevDir'] = os.path.normpath(os.path.join(self.path, prevDir))
-                self._process_config(self['prevDir'])
-            else:
-                self._process_config()
-
-            self._verify_config()
+            self._init_from_cfg(paramfile)
 
     @classmethod
     def from_dicts(cls, path):
@@ -158,6 +104,82 @@ class Config:
         >>> config = Config.from_dicts('/path/to/previous/run/sim_output')
         """
         return cls(path, from_dicts=True)
+
+    def _init_from_dicts(self):
+        """
+        Initialize configuration from a set of dictionaries on disk, generated
+        from a previous run. This method should only be called from the
+        ``__init__`` of :class:`Config`.
+        """
+        # create empty system parameter set
+        self.D_s = ParameterSet(None, 'system', self.path)
+        # set which electrodes there are based on which dict files exist
+        trodes = ['c']
+        if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
+            trodes.append('a')
+        self['trodes'] = trodes
+        # create empty electrode parametersets
+        self.D_c = ParameterSet(None, 'electrode', self.path)
+        if 'a' in self['trodes']:
+            self.D_a = ParameterSet(None, 'electrode', self.path)
+        else:
+            self.D_a = None
+        # now populate the dicts
+        self.read(self.path, full=True)
+        self.params_per_particle = list(constants.PARAMS_PARTICLE.keys())
+        self.config_processed = True
+
+    def _init_from_cfg(self, paramfile):
+        """
+        Initialize configuration from a set of .cfg files on disk.
+        This method should only be called from the
+        ``__init__`` of :class:`Config`.
+
+        :param str paramfile: Path to system parameter .cfg file
+        """
+        # load system parameters file
+        self.D_s = ParameterSet(paramfile, 'system', self.path)
+        # the anode and separator are optional: only if there are volumes to simulate
+        trodes = ['c']
+        if self.D_s['Nvol_a'] > 0:
+            trodes.append('a')
+        self['trodes'] = trodes
+        # to check for separator, directly access underlying dict of system config;
+        # self['Nvol']['s'] would not work because that requires have_separator to
+        # be defined already
+        self['have_separator'] = self.D_s['Nvol_s'] > 0
+
+        # load electrode parameter file(s)
+        self.paramfiles = {}
+
+        cathode_paramfile = self.D_s['cathode']
+        if not os.path.isabs(cathode_paramfile):
+            cathode_paramfile = os.path.join(self.path, cathode_paramfile)
+            self.paramfiles['c'] = cathode_paramfile
+        self.D_c = ParameterSet(cathode_paramfile, 'electrode', self.path)
+
+        if 'a' in self['trodes']:
+            anode_paramfile = self.D_s['anode']
+            if not os.path.isabs(anode_paramfile):
+                anode_paramfile = os.path.join(self.path, anode_paramfile)
+            self.paramfiles['a'] = anode_paramfile
+            self.D_a = ParameterSet(anode_paramfile, 'electrode', self.path)
+        else:
+            self.D_a = None
+
+        # set defaults and scale values that should be non-dim
+        self.config_processed = False
+        # either process the config, or read already processed config from disk
+        prevDir = self['prevDir']
+        if prevDir and prevDir != 'false':
+            if not os.path.isabs(prevDir):
+                # assume it is relative to the input parameter files
+                self['prevDir'] = os.path.normpath(os.path.join(self.path, prevDir))
+            self._process_config(self['prevDir'])
+        else:
+            self._process_config()
+
+        self._verify_config()
 
     def _retrieve_config(self, items):
         """
