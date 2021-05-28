@@ -14,7 +14,7 @@ import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
-from mpet.config.configuration import Config
+from mpet.config import Config
 import mpet.sim as sim
 import mpet.utils as utils
 
@@ -94,8 +94,6 @@ def main(paramfile, keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    # P_s, P_e = IO.get_configs(paramfile)
-    # dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e, paramfile)
     config = Config(paramfile)
 
     # Directories we'll store output in.

@@ -10,8 +10,7 @@ import h5py
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
 import mpet.utils as utils
-from mpet.config.configuration import Config
-from mpet.config import constants
+from mpet.config import Config, constants
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18

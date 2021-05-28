@@ -52,8 +52,9 @@ class DerivedValues:
         """
         Retrieve a derived parameter using the ``[]`` operator.
 
-        :param tuple args: Tuple with 3 items: Config object, name of parameter
-            to retrieve, electrode to retrieve parameter for (None for system values)
+        :param tuple args: Tuple with 2 or 3 items: Config object, name of parameter
+            to retrieve, optionally electrode to retrieve parameter for (system
+            config is selected if no electrode is provided or value is set to None)
 
         :return: value of derived parameter
 
@@ -88,7 +89,13 @@ class DerivedValues:
         TypeError: t_ref() takes 1 positional argument but 2 were given
         """
 
-        config, item, trode = args
+        if len(args) == 2:
+            config, item = args
+            trode = None
+        elif len(args) == 3:
+            config, item, trode = args
+        else:
+            raise ValueError(f"There should be 2 or 3 arguments, got {len(args)}")
 
         # set config class-wide for easy access in methods
         self.config = config

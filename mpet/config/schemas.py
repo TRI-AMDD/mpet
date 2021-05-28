@@ -46,6 +46,7 @@ def tobool(value):
     :param str value: Value to convert to bool
     :return: Boolean representation of value
     """
+    assert isinstance(value, str), f"{value} must be a string"
     # strtobool returns 0 or 1, use bool() to convert to actual boolean type
     return bool(strtobool(value))
 
