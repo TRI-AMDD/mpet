@@ -441,9 +441,9 @@ class Config:
         self._scale_system_parameters(theoretical_1C_current)
         self._scale_electrode_parameters()  # includes separator
         # reference voltage, should only be calculated after scaling of system and trode parameters
-        Vref = self['phiRef']['c']
+        Vref = self['c', 'phiRef']
         if 'a' in self['trodes']:
-            Vref -= self['phiRef']['a']
+            Vref -= self['a', 'phiRef']
         self._scale_macroscopic_parameters(Vref)
         self._scale_current_voltage_segments(theoretical_1C_current, Vref)
 

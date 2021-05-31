@@ -72,7 +72,7 @@ class SimMPET(dae.daeSimulation):
                     # Guess initial value for the potential of the
                     # electrodes
                     if tr == "a":  # anode
-                        self.m.phi_bulk[tr].SetInitialGuess(i, config["phiRef"]["a"])
+                        self.m.phi_bulk[tr].SetInitialGuess(i, config["a", "phiRef"])
                     else:  # cathode
                         self.m.phi_bulk[tr].SetInitialGuess(i, phi_cathode)
                     for j in range(Npart[tr]):

@@ -165,12 +165,12 @@ class DerivedValues:
             / (constants.e * self.config['curr_ref'] * self.config['1C_current_density'])
 
     def csmax(self, trode):
-        """Maximum concentration
+        """Maximum concentration for given electrode
         """
         return self.config[trode, 'rho_s'] / constants.N_A
 
     def cap(self, trode):
-        """Theoretical capacity
+        """Theoretical capacity of given electrode
         """
         return constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
             * self.config['P_L'][trode] * self.config[trode, 'rho_s']
@@ -220,7 +220,7 @@ class DerivedValues:
         return prefac * self.config[trode, 'csmax']
 
     def muR_ref(self, trode):
-        """Reference chemical potential
+        """Reference chemical potential of given electrode
         """
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
         cs0bar = self.config['cs0'][trode]
@@ -235,10 +235,7 @@ class DerivedValues:
             raise ValueError(f'Unknown solid type: {solidType}')
         return muR_ref
 
-    def phiRef(self):
-        """Reference electrostatic potential, per electrode
+    def phiRef(self, trode):
+        """Reference electrostatic potential of given electrode
         """
-        d = {}
-        for trode in self.config['trodes']:
-            d[trode] = -self.config[trode, 'muR_ref'][0]
-        return d
+        return -self.config[trode, 'muR_ref'][0]

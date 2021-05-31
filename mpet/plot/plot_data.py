@@ -55,7 +55,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     td = config["t_ref"]
     Etheta = {"a": 0.}
     for trode in trodes:
-        Etheta[trode] = -(k*Tref/e) * config["phiRef"][trode]
+        Etheta[trode] = -(k*Tref/e) * config[trode, "phiRef"]
     Vstd = Etheta["c"] - Etheta["a"]
     dataReporter = config["dataReporter"]
     Nvol = config["Nvol"]
@@ -125,9 +125,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
             print("current:", currset_dim, "A/m^2")
         else:  # CV
-            Vref = config['phiRef']['c']
+            Vref = config['c', 'phiRef']
             if 'a' in config["trodes"]:
-                Vref -= config['phiRef']['a']
+                Vref -= config['a', 'phiRef']
             Vset_dim = -(config['Vset'] * k * Tref / e - Vref)
             print("Vset:", Vset_dim)
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
