@@ -120,6 +120,8 @@ class DerivedValues:
         return values[item]
 
     def Damb(self):
+        """Ambipolar diffusivity
+        """
         zp = self.config['zp']
         zm = self.config['zm']
         Dp = self.config['Dp']
@@ -127,6 +129,8 @@ class DerivedValues:
         return ((zp - zm) * Dp * Dm) / (zp * Dp - zm * Dm)
 
     def tp(self):
+        """Cation transference number
+        """
         zp = self.config['zp']
         zm = self.config['zm']
         Dp = self.config['Dp']
@@ -134,42 +138,64 @@ class DerivedValues:
         return zp * Dp / (zp * Dp - zm * Dm)
 
     def t_ref(self):
+        """Reference time scale
+        """
         return self.config['L_ref']**2 / self.config['D_ref']
 
     def curr_ref(self):
+        """Reference current
+        """
         return 3600. / self.config['t_ref']
 
     def sigma_s_ref(self):
+        """Reference conductivity
+        """
         return self.config['L_ref']**2 * constants.F**2 * constants.c_ref \
             / (self.config['t_ref'] * constants.k * constants.N_A * constants.T_ref)
 
     def currset(self):
+        """Total current
+        """
         return self.config['1C_current_density'] * self.config['Crate']  # A/m^2
 
     def Rser_ref(self):
+        """Reference series resistance
+        """
         return constants.k * constants.T_ref \
             / (constants.e * self.config['curr_ref'] * self.config['1C_current_density'])
 
     def csmax(self, trode):
+        """Maximum concentration
+        """
         return self.config[trode, 'rho_s'] / constants.N_A
 
     def cap(self, trode):
+        """Theoretical capacity
+        """
         return constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
             * self.config['P_L'][trode] * self.config[trode, 'rho_s']
 
     def numsegments(self):
+        """Number of segments in voltage/current profile
+        """
         return len(self.config['segments'])
 
     def L_ref(self):
+        """Reference length scale
+        """
         return self.config['L']['c']
 
     def D_ref(self):
+        """Reference diffusivity
+        """
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
             return getattr(props_elyte, self.config['SMset'])()[-1]
 
     def z(self):
+        """Electrode capacity ratio
+        """
         if 'a' in self.config['trodes']:
             return self.config['c', 'cap'] / self.config['a', 'cap']
         else:
@@ -177,12 +203,16 @@ class DerivedValues:
             return 0.
 
     def limtrode(self):
+        """Capacity-limiting electrode
+        """
         if self.config['z'] < 1:
             return 'c'
         else:
             return 'a'
 
     def cs_ref(self, trode):
+        """Reference concentration
+        """
         if self.config[trode, 'type'] in constants.one_var_types:
             prefac = 1
         elif self.config[trode, 'type'] in constants.two_var_types:
@@ -190,6 +220,8 @@ class DerivedValues:
         return prefac * self.config[trode, 'csmax']
 
     def muR_ref(self, trode):
+        """Reference chemical potential
+        """
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
         cs0bar = self.config['cs0'][trode]
         cs0 = np.array([cs0bar])
@@ -204,6 +236,8 @@ class DerivedValues:
         return muR_ref
 
     def phiRef(self):
+        """Reference electrostatic potential, per electrode
+        """
         d = {}
         for trode in self.config['trodes']:
             d[trode] = -self.config[trode, 'muR_ref'][0]
