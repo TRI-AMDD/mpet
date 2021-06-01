@@ -79,14 +79,6 @@ class InterfaceRegion(dae.daeModel):
 
         Nm_edges, i_edges = get_interface_internal_fluxes(ctmp, phitmp, disc, ndD)
 
-        # TODO: there are too many equations / too few variables
-        # When removing these two eqs, the number of eqs is ok
-        # Does this make sense?
-        # eqC = self.CreateEquation("InterfaceGhostPointC_L")
-        # eqP = self.CreateEquation("InterfaceGhostPointP_L")
-        # eqC.Residual = ctmp[0] - ctmp[1]
-        # eqP.Residual = phitmp[0] - phitmp[1]
-
         dvgNm = np.diff(Nm_edges) / disc["dxvec"]
         dvgi = np.diff(i_edges) / disc["dxvec"]
 
@@ -97,6 +89,7 @@ class InterfaceRegion(dae.daeModel):
             if ndD["interfaceModelType"] == "solid":
                 eq.Residual += -ndD["kd"] * (ndD["cmax"] - cvec[vInd]) \
                     + ndD["kr"] * cvec[vInd] ** 2
+
             # Charge Conservation
             eq = self.CreateEquation("interface_charge_cons_vol{vInd}".format(vInd=vInd))
             eq.Residual = -dvgi[vInd]

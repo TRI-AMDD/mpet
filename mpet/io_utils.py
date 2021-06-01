@@ -171,15 +171,19 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     Dp = dD_s["Dp"] = P_s.getfloat('Electrolyte', 'Dp')
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
 
+    # reference length scale
+    L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
+
     # Interface region
     ndD_s["simInterface"] = P_s.getboolean('Interface', 'simInterface', fallback=False)
     if ndD_s["simInterface"]:
         for key in ['Nvol_i']:
             ndD_s[key] = P_s.getint('Interface', key)
-        for key in ['L_i', 'poros_i', 'BruggExp_i']:
+        for key in ['poros_i', 'BruggExp_i']:
             ndD_s[key] = P_s.getfloat('Interface', key)
         for key in ['interfaceModelType', 'interfaceSMset']:
             ndD_s[key] = P_s.get('Interface', key)
+        ndD_s['L_i'] = P_s.getfloat('Interface', 'L_i') / L_ref
 
     # Constants
     k = dD_s["k"] = 1.381e-23  # J/(K particle)
@@ -238,7 +242,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     G = distr_G(dD_s, ndD_s)
 
     # Various calculated and defined parameters
-    L_ref = dD_s["L_ref"] = dD_s["Lref"] = dD_s["L"]["c"]
     try:
         c_ref = dD_s["c_ref"] = dD_s["cref"] = ndD_s["c0_fac"] * c0  # mol/m^3 = 1 M
     except KeyError:
