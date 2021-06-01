@@ -1,4 +1,4 @@
-Analyze the results with built-in Tools
+Analyze the results with built-in tools
 =============================================
 
 

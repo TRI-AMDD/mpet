@@ -13,6 +13,7 @@
 
 import os
 import sys
+from mpet.version import __version__
 # from unittest.mock import MagicMock
 
 
@@ -37,7 +38,7 @@ copyright = '2021, Daniel Cogswell'
 author = 'Daniel Cogswell'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.6'
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -135,7 +136,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'mpet.tex', 'MPET Documentation',
-     'Daniel Cogswell', 'manual'),
+     author, 'manual'),
 ]
 
 
@@ -156,15 +157,14 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'MPET', 'MPET Documentation',
-     author, 'MPET', 'One line description of project.',
+     author, 'MPET', 'Multiphase Porous Electrode Theory',
      'Miscellaneous'),
 ]
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('https://docs.python.org/', None),
-    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'pytorch': ('http://pytorch.org/docs/1.4.0/', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None)
 }
 
 autoclass_content = 'init'

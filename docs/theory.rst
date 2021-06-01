@@ -31,7 +31,7 @@ For more details on the theory implemeneted in the code, see: ::
 Model
 ------------------------------
 
-Electrode scale equations
+[To Do] In that section we could quickly introduce the theoretical background. Equation can easily be displayed :
 
 .. math::
 
