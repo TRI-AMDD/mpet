@@ -66,7 +66,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
 #        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
     Vstd = Etheta["c"] - Etheta["a"]
-    dataReporter = ndD_s["dataReporter"]
+    dataReporter = "mat"
+    if 'dataReporter' in ndD_s.keys():
+        dataReporter = ndD_s["dataReporter"]
     Nvol = ndD_s["Nvol"]
     Npart = ndD_s["Npart"]
     psd_len = dD_s["psd_len"]

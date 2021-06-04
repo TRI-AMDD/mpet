@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.1.6] - 2021-04-23
+### Added
+- Implemented hdf5 file output using new 'dataReporter' option, and added an 'hdf5Fast' option which saves fewer variables for smaller file size.
+- Coupled ion electron transfer (CIET) added as an intercalation reaction rate.
+- Input parameters 'specified_psd_a' and 'specified_psd_c' added for specifying particle radii.
+- New '1C_current_density' parameter added for defining a nominal 1C current.
+- Example config file added for the LiCoO2/graphite cell from the LIONSIMBA benchmark problem.
+
+### Changed
+- Fixed temperature now fully implemented (without heat generation). Activation energy added as a reaction input parameter.
+- Code style now conforms to pep8 standards.
+
+### Fixed
+- Finite volumes discretization now properly accounts for variable cell size when computing face values. Harmonic mean only used for transport properties at faces.
+- Improved stability during initializtion with larger MaxNumItersIC.
+- Updated lambda parameter for graphite & LFP with more physical estimates.
+
+
 ## [0.1.5] - 2021-01-19
 ### Added
 - Improved regression test suite based on pytest.
