@@ -62,7 +62,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["profileType"] = P_s.get('Sim Params', 'profileType')
     dD_s["Crate"] = P_s.getfloat('Sim Params', 'Crate')
     dD_s["CrateCurr"] = P_s.getfloat('Sim Params', '1C_current_density',fallback=None)
-    dD_s["power"] = P_s.getfloat('Sim Params', 'power', fallback=0)
+    dD_s["power"] = P_s.getfloat('Sim Params', 'power')
     segs = dD_s["segments"] = ast.literal_eval(
         P_s.get('Sim Params', 'segments'))
     ndD_s["tramp"] = dD_s["tramp"] = P_s.getfloat('Sim Params', 'tramp', fallback=0)
