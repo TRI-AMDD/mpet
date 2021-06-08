@@ -307,7 +307,7 @@ class muRfuncs():
         return muR
 
     def SEI_early(self, y, ybar, muR_ref, ISfuncs=None):
-        OCV = 0.73 #+ self.kToe*np.log(y**2) # Das  et al. JES 166(4) 2019
+        OCV = 0.505 #+ self.kToe*np.log(y**2) # Das  et al. JES 166(4) 2019
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR

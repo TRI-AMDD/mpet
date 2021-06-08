@@ -384,7 +384,7 @@ class Mod1var(dae.daeModel):
 
            #resistance of the SEI layer to electrons
            eq = self.CreateEquation("resistance_SEI")
-           eq.Residual = (self.phi_SEI_L0() - self.phi_SEI_L1()) + self.Rxn_SEI()*R_SEI
+           eq.Residual = (self.phi_SEI_L0() - self.phi_SEI_L1()) - self.Rxn_SEI()*R_SEI
 
            #stern layer-double layer equilibrium between c_lyte and c_L1
            c_avg_1 = (self.c_eff_lyte()+self.c_lyte())/2
@@ -399,7 +399,7 @@ class Mod1var(dae.daeModel):
 
            #ionic flux between lithium 
            eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = (self.phi_SEI_L1()-self.phi_SEI_L0()) - self.Rxn()*ndD["R0SEILi"]
+           eq.Residual = (self.phi_SEI_L0()-self.phi_SEI_L1()) - self.Rxn()*ndD["R0SEILi"]
 
         else:
 
