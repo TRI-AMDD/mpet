@@ -47,9 +47,13 @@ class InterfaceRegion(dae.daeModel):
         # interface to the particles transfers the same variables as
         # the port from the elyte to the interface, hence the same
         # class can be used
-        self.portOutInterface = ports.portFromElyte(
-            "portOutInterface", dae.eOutletPort, self,
+        self.portOutInterfaceParticle = ports.portFromElyte(
+            "portOutInterfaceParticle", dae.eOutletPort, self,
             "Port from interface to particles")
+
+        self.portOutInterfaceElyte = ports.portFromInterface(
+            "portOutInterfaceElyte", dae.eOutletPort, self,
+            "Port from interface to elyte")
 
         # Particle
         self.particle = particle
@@ -102,10 +106,16 @@ class InterfaceRegion(dae.daeModel):
 
         # last grid point of interface is output to particle
         eq = self.CreateEquation("c_interface_to_particle")
-        eq.Residual = self.portOutInterface.c_lyte() - ctmp[-1]
+        eq.Residual = self.portOutInterfaceParticle.c_lyte() - ctmp[-1]
 
         eq = self.CreateEquation("phi_interface_to_particle")
-        eq.Residual = self.portOutInterface.phi_lyte() - phitmp[-1]
+        eq.Residual = self.portOutInterfaceParticle.phi_lyte() - phitmp[-1]
+
+        eq = self.CreateEquation("Nm0_interface_to_elyte")
+        eq.Residual = self.portOutInterfaceElyte.Nm0() - Nm_edges[0]
+
+        eq = self.CreateEquation("i0_interface_to_elyte")
+        eq.Residual = self.portOutInterfaceElyte.i0() - i_edges[0]
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

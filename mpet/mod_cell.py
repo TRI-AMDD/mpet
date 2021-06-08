@@ -124,6 +124,7 @@ class ModCell(dae.daeModel):
         # volumes and ports with which to talk to them.
         self.portsOutLyte = {}
         self.portsOutBulk = {}
+        self.portsInInterface = {}
         self.particles = {}
         self.interfaces = {}
         for trode in trodes:
@@ -131,6 +132,7 @@ class ModCell(dae.daeModel):
             Np = Npart[trode]
             self.portsOutLyte[trode] = np.empty(Nv, dtype=object)
             self.portsOutBulk[trode] = np.empty((Nv, Np), dtype=object)
+            self.portsInInterface[trode] = np.empty((Nv, Np), dtype=object)
             self.particles[trode] = np.empty((Nv, Np), dtype=object)
             self.interfaces[trode] = np.empty((Nv, Np), dtype=object)
             for vInd in range(Nv):
@@ -166,12 +168,22 @@ class ModCell(dae.daeModel):
                             particle=self.particles[trode][vInd,pInd],
                             vInd=vInd,pInd=pInd,trode=trode)
 
+                        self.portsInInterface[trode][vInd,pInd] = ports.portFromInterface(
+                            "portIface{trode}vol{vInd}part{pInd}".format(
+                                trode=trode, vInd=vInd, pInd=pInd),
+                            dae.eInletPort, self,
+                            "Interface region port to elyte")
+
                         # connect elyte to interface, then interface to particle
                         self.ConnectPorts(self.portsOutLyte[trode][vInd],
                                           self.interfaces[trode][vInd,pInd].portInLyte)
 
-                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutInterface,
+                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutInterfaceParticle,
                                           self.particles[trode][vInd,pInd].portInLyte)
+
+                        # connect interface to elyte
+                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutInterfaceElyte,
+                                          self.portsInInterface[trode][vInd,pInd])
 
                         # connect particle to interface
                         self.ConnectPorts(self.particles[trode][vInd,pInd].portOutParticle,
@@ -223,8 +235,10 @@ class ModCell(dae.daeModel):
                     Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
                     if self.ndD["simInterface"]:
                         # TODO: how does the interface region affect the reaction rate?
-                        RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
-                                 * Vj * self.particles[trode][vInd,pInd].dcbardt())
+                        Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
+                        i0 = self.portsInInterface[trode][vInd,pInd].i0()
+                        # TODO: what is the reaction rate?
+                        RHS += -i0
                     else:
                         RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
                                  * Vj * self.particles[trode][vInd,pInd].dcbardt())
