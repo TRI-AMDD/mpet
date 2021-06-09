@@ -1,12 +1,12 @@
 import os.path as osp
 import shutil
 
+import configparser
 import numpy as np
 import scipy.special as spcl
 
 import tests.compare_plots as cmpr
 import mpet.main as main
-import mpet.io_utils as IO
 import re
 
 
@@ -36,13 +36,26 @@ def getNumberOfTests():
     return n
 
 
+def get_config(inFile):
+    P = configparser.RawConfigParser()
+    P.optionxform = str
+    P.read(inFile)
+    return P
+
+
+def write_config_file(P, filename="input_params.cfg"):
+    with open(filename, "w") as fo:
+        P.write(fo)
+
+
 def testAnalytSphDifn(testDir, dirDict):
     """ Analytical test for diffusion in a sphere """
     shutil.copy(osp.join(dirDict["baseConfig"], "params_system.cfg"), testDir)
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.get_config(psys)
+
+    P_s = get_config(psys)
     P_s.set("Sim Params", "profileType", "CV")
     P_s.set("Sim Params", "Vset", "0.10")
     P_s.set("Sim Params", "tend", "1e+6")
@@ -52,8 +65,8 @@ def testAnalytSphDifn(testDir, dirDict):
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "cs0_c", "0.5")
-    IO.write_config_file(P_s, psys)
-    P = IO.get_config(ptrode)
+    write_config_file(P_s, psys)
+    P = get_config(ptrode)
     P.set("Particles", "type", "diffn")
     P.set("Particles", "discretization", "3e-10")
     P.set("Particles", "shape", "sphere")
@@ -61,7 +74,7 @@ def testAnalytSphDifn(testDir, dirDict):
     P.set("Material", "D", "1e-20")
     P.set("Reactions", "rxnType", "BV_raw")
     P.set("Reactions", "k0", "1e+1")
-    IO.write_config_file(P, ptrode)
+    write_config_file(P, ptrode)
     main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 
@@ -72,7 +85,7 @@ def testAnalytCylDifn(testDir, dirDict):
     shutil.copy(osp.join(dirDict["baseConfig"], "params_c.cfg"), testDir)
     psys = osp.join(testDir, "params_system.cfg")
     ptrode = osp.join(testDir, "params_c.cfg")
-    P_s = IO.get_config(psys)
+    P_s = get_config(psys)
     P_s.set("Sim Params", "profileType", "CV")
     P_s.set("Sim Params", "Vset", "0.10")
     P_s.set("Sim Params", "tend", "1e+6")
@@ -82,8 +95,8 @@ def testAnalytCylDifn(testDir, dirDict):
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "mean_c", "100e-9")
     P_s.set("Particles", "cs0_c", "0.5")
-    IO.write_config_file(P_s, psys)
-    P = IO.get_config(ptrode)
+    write_config_file(P_s, psys)
+    P = get_config(ptrode)
     P.set("Particles", "type", "diffn")
     P.set("Particles", "discretization", "3e-10")
     P.set("Particles", "shape", "cylinder")
@@ -91,7 +104,7 @@ def testAnalytCylDifn(testDir, dirDict):
     P.set("Material", "D", "1e-20")
     P.set("Reactions", "rxnType", "BV_raw")
     P.set("Reactions", "k0", "1e+1")
-    IO.write_config_file(P, ptrode)
+    write_config_file(P, ptrode)
     main.main(psys, keepArchive=False)
     shutil.move(dirDict["simOut"], testDir)
 

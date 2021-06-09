@@ -6,3 +6,5 @@
 ignore = W503,E226,E123,E231
 exclude = mpetLogTimeSpace.py,mpetMaterialsMHC.py,mod_cell_M.py,bin/workdir
 max-line-length = 99
+# ignore unused imports in __init__.py files
+per-file-ignores = __init__.py:F401
