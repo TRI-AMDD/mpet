@@ -161,6 +161,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
     k_h = dD_s["k_h"] = P_s.getfloat('Electrolyte', 'k_h')
     cp = dD_s["cp"] = P_s.getfloat('Electrolyte', 'cp')
+    sigma_lyte = dD_s["sigma_lyte"] = P_s.getfloat('Electrolyte', 'sigma_lyte', fallback = 0.1)
 
     # Constants
     k = dD_s["k"] = 1.381e-23  # J/(K particle)
@@ -267,6 +268,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     ndD_s["Dm"] = Dm / D_ref
     ndD_s["k_h"] = k_h / k_h_ref
     ndD_s["cp"] = cp/(k_h_ref*t_ref / L_ref**3)
+    ndD_s["sigma_lyte"] = sigma_lyte*k*T_ref/(e**2*D_ref*N_A*c_ref)
     ndD_s["c0"] = c0 / c_ref
     ndD_s["phi_cathode"] = 0.
     ndD_s["currset"] = dD_s["currset"] / theoretical_1C_current / curr_ref

@@ -360,6 +360,7 @@ class ModCell(dae.daeModel):
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
             dvgq = np.diff(q_edges)/disc["dxvec"]
+            q_ohm = get_ohmic_heat(cvec, Tvec, i_edges, disc, ndD)
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
@@ -372,7 +373,7 @@ class ModCell(dae.daeModel):
                     # if heat generation is turned on
                     eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
                     eq.Residual = disc["dxvec"][vInd]*disc["porosvec"][vInd] * \
-                        ndD["cp"]*dTdtvec[vInd] - dvgq[vInd]
+                        ndD["cp"]*dTdtvec[vInd] - dvgq[vInd] - q_ohm[vInd]
                 else:
                     # if heat generation is turned off
                     eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
@@ -541,3 +542,22 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, ndD):
                             + (1./(num*zm)*(1-tp0(c_edges_int, T_edges_int))*i_edges_int))
         q_edges_int = -k_h_edges*np.diff(T_lyte)/dxd1
     return Nm_edges_int, i_edges_int, q_edges_int
+
+
+def get_ohmic_heat(c_lyte, T_lyte, i_edges_int, disc, ndD):
+    eps_o_tau = disc["eps_o_tau"][1:-1]
+
+    #get average current
+    i_cent = utils.mean_linear(i_edges_int) 
+
+    #initialize sigma
+    sigma = 0
+
+    if ndD["elyteModelType"] == "dilute":
+        sigma = eps_o_tau * ndD["sigma_lyte"]
+    elif ndD["elyteModelType"] == "SM":
+        sigma_fs = getattr(props_elyte,ndD["SMset"])()[1]
+        # Get diffusivity and conductivity at cell edges using weighted harmonic mean
+        sigma = eps_o_tau*sigma_fs(c_lyte, T_lyte)
+    q_ohmic = i_cent**2/sigma
+    return q_ohmic
