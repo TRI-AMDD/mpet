@@ -1,0 +1,2 @@
+class UnknownParameterError(Exception):
+    pass

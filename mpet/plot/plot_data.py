@@ -8,9 +8,9 @@ import numpy as np
 import h5py
 
 import mpet.geometry as geom
-import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
 import mpet.utils as utils
+from mpet.config import Config, constants
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18
@@ -43,66 +43,58 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
-    dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
+    config = Config.from_dicts(indir)
     # simulated (porous) electrodes
-    Nvol = ndD_s["Nvol"]
-    trodes = ndD_s["trodes"]
-    dD_e = {}
-    ndD_e = {}
-    for trode in trodes:
-        dD_e[trode], ndD_e[trode] = IO.read_dicts(
-            os.path.join(indir, "input_dict_{t}".format(t=trode)))
-    # Pick out some useful constants/calculated values
-    k = dD_s['k']                      # Boltzmann constant, J/(K Li)
-    Tref = dD_s['Tref']                # Temp, K
-    e = dD_s['e']                      # Charge of proton, C
-    F = dD_s['F']                      # C/mol
-    td = dD_s["td"]
+    trodes = config["trodes"]
+    # Pick out some useful calculated values
+    k = constants.k                      # Boltzmann constant, J/(K Li)
+    Tref = constants.T_ref               # Temp, K
+    e = constants.e                      # Charge of proton, C
+    F = constants.F                      # C/mol
+    c_ref = constants.c_ref
+    td = config["t_ref"]
     Etheta = {"a": 0.}
     for trode in trodes:
-        Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
-#        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
+        Etheta[trode] = -(k*Tref/e) * config[trode, "phiRef"]
     Vstd = Etheta["c"] - Etheta["a"]
-    dataReporter = "mat"
-    if 'dataReporter' in ndD_s.keys():
-        dataReporter = ndD_s["dataReporter"]
-    Nvol = ndD_s["Nvol"]
-    Npart = ndD_s["Npart"]
-    psd_len = dD_s["psd_len"]
+    dataReporter = config["dataReporter"]
+    Nvol = config["Nvol"]
+    Npart = config["Npart"]
+    psd_len = config["psd_len"]
     # Discretization (and associated porosity)
     Lfac = 1e6
     Lunit = r"$\mu$m"
-    dxc = ndD_s["L"]["c"]/Nvol["c"]
+    dxc = config["L"]["c"]/Nvol["c"]
     dxvec = np.array(Nvol["c"] * [dxc])
-    porosvec = np.array(Nvol["c"] * [ndD_s["poros"]["c"]])
+    porosvec = np.array(Nvol["c"] * [config["poros"]["c"]])
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
-    if Nvol["s"]:
-        dxs = ndD_s["L"]["s"]/Nvol["s"]
+    if config["have_separator"]:
+        dxs = config["L"]["s"]/Nvol["s"]
         dxvec_s = np.array(Nvol["s"] * [dxs])
         dxvec = np.hstack((dxvec_s, dxvec))
-        poros_s = np.array(Nvol["s"] * [ndD_s["poros"]["s"]])
+        poros_s = np.array(Nvol["s"] * [config["poros"]["s"]])
         porosvec = np.hstack((poros_s, porosvec))
-        cellsvec += dD_s["L"]["s"] / dD_s["L"]["c"]
+        cellsvec += config["L"]["s"] / config["L"]["c"]
         cellsvec_s = dxs*np.arange(Nvol["s"]) + dxs/2.
         cellsvec = np.hstack((cellsvec_s, cellsvec))
     if "a" in trodes:
-        dxa = ndD_s["L"]["a"]/Nvol["a"]
+        dxa = config["L"]["a"]/Nvol["a"]
         dxvec_a = np.array(Nvol["a"] * [dxa])
         dxvec = np.hstack((dxvec_a, dxvec))
-        poros_a = np.array(Nvol["a"] * [ndD_s["poros"]["a"]])
+        poros_a = np.array(Nvol["a"] * [config["poros"]["a"]])
         porosvec = np.hstack((poros_a, porosvec))
-        cellsvec += dD_s["L"]["a"] / dD_s["L"]["c"]
+        cellsvec += config["L"]["a"] / config["L"]["c"]
         cellsvec_a = dxa*np.arange(Nvol["a"]) + dxa/2.
         cellsvec = np.hstack((cellsvec_a, cellsvec))
-    cellsvec *= dD_s["Lref"] * Lfac
-    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * dD_s["Lref"] * Lfac
+    cellsvec *= config["L_ref"] * Lfac
+    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * config["L_ref"] * Lfac
     # Extract the reported simulation times
     times = utils.get_dict_key(data, pfx + 'phi_applied_times')
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
     # Simulation type
-    profileType = ndD_s['profileType']
+    profileType = config['profileType']
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
@@ -119,55 +111,68 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #            print "Actual psd_mean [nm]:", np.mean(psd_len[l])
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
         print("Cell structure:")
-        print(("porous anode | " if Nvol["a"] else "flat anode | ")
-              + ("sep | " if Nvol["s"] else "") + "porous cathode")
-        if Nvol["a"]:
-            print("capacity ratio cathode:anode, 'z':", ndD_s["z"])
+        print(("porous anode | " if "a" in config["trodes"] else "flat anode | ")
+              + ("sep | " if config["have_separator"] else "") + "porous cathode")
+        if "a" in config["trodes"]:
+            print("capacity ratio cathode:anode, 'z':", config["z"])
         for trode in trodes:
-            print("solidType_{t}:".format(t=trode), ndD_e[trode]['type'])
-            print("solidShape_{t}".format(t=trode), ndD_e[trode]['shape'])
-            print("rxnType_{t}:".format(t=trode), ndD_e[trode]['rxnType'])
+            print("solidType_{t}:".format(t=trode), config[trode, 'type'])
+            print("solidShape_{t}".format(t=trode), config[trode, 'shape'])
+            print("rxnType_{t}:".format(t=trode), config[trode, 'rxnType'])
         if profileType == "CC":
-            print("C_rate:", dD_s['Crate'])
-            print("current:", dD_s['currset'], "A/m^2")
+            print("C_rate:", config['Crate'])
+            theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
+            currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
+            print("current:", currset_dim, "A/m^2")
         else:  # CV
-            print("Vset:", dD_s['Vset'])
+            Vref = config['c', 'phiRef']
+            if 'a' in config["trodes"]:
+                Vref -= config['a', 'phiRef']
+            Vset_dim = -(config['Vset'] * k * Tref / e - Vref)
+            print("Vset:", Vset_dim)
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
-              np.array(dD_s['psd_mean']["c"])*Lfac)
+              np.array(config['mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
-              np.array(dD_s['psd_stddev']["c"])*Lfac)
+              np.array(config['stddev']["c"])*Lfac)
 #        print "reg sln params:"
 #        print ndD["Omga"]
-        print("ndim B_c:", ndD_e["c"]["B"])
-        if Nvol["s"]:
+        print("ndim B_c:", config["c", "B"])
+        if config["have_separator"]:
             print("Nvol_s:", Nvol["s"])
         print("Nvol_c:", Nvol["c"])
-        if Nvol["a"]:
+        if 'a' in config["trodes"]:
             print("Nvol_a:", Nvol["a"])
         print("Npart_c:", Npart["c"])
-        if Nvol["a"]:
+        if 'a' in config["trodes"]:
             print("Npart_a:", Npart["a"])
-        print("Dp [m^2/s]:", dD_s['Dp'])
-        print("Dm [m^2/s]:", dD_s['Dm'])
-        print("Damb [m^2/s]:", dD_s['Damb'])
-        print("td [s]:", dD_s["td"])
+        print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
+        print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
+        print("Damb [m^2/s]:", config['Damb'] * config['D_ref'])
+        print("td [s]:", config["t_ref"])
         for trode in trodes:
-            print("k0_{t} [A/m^2]:".format(t=trode), dD_e[trode]['k0'])
-            rxnType = ndD_e[trode]['rxnType']
+            if trode == "a":
+                k0 = config.D_a["k0"]
+            elif trode == "c":
+                k0 = config.D_c["k0"]
+            else:
+                raise Exception(f"Unknown trode: {trode}")
+            print("k0_{t} [A/m^2]:".format(t=trode), k0)
+            rxnType = config[trode, 'rxnType']
             if rxnType == "BV":
-                print("alpha_" + trode + ":", ndD_e[trode]['alpha'])
+                print("alpha_" + trode + ":", config[trode, 'alpha'])
             elif rxnType in ["Marcus", "MHC"]:
-                print("lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"])
-            if ndD_s['simBulkCond'][trode]:
+                print("lambda_" + trode + "/(kTref):", config[trode, "lambda"]
+                      * k * Tref)
+            if config['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- "
-                      + "sigma_s [S/m]: " + str(dD_s['sigma_s'][trode]))
+                      + "sigma_s [S/m]: " + str(config['sigma_s'][trode] * config['sigma_s_ref']))
             else:
                 print(trode + " bulk conductivity loss: No")
             try:
-                simSurfCond = ndD_e[trode]['simSurfCond']
+                simSurfCond = config[trode, 'simSurfCond']
                 if simSurfCond:
                     print(trode + " surface conductivity loss: Yes -- "
-                          + "dim_scond [S]: " + str(dD_e[trode]['scond']))
+                          + "dim_scond [S]: " + str(config[trode, 'scond']))
                 else:
                     print(trode + " surface conductivity loss: No")
             except Exception:
@@ -179,7 +184,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #                print l + " surface conductivity loss: No"
 
     if plot_type in ["params"]:
-        return ndD_s, dD_s, ndD_e, dD_e
+        # return ndD_s, dD_s, ndD_e, dD_e
+        return config
     if plot_type in ["discData"]:
         return cellsvec/Lfac, facesvec/Lfac
 
@@ -282,10 +288,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot current profile
     if plot_type == "curr":
-        limtrode = ("c" if ndD_s["z"] < 1 else "a")
-        theoretical_1C_current = dD_e[limtrode]["cap"] / 3600.  # A/m^2
+        theoretical_1C_current = config[config['limtrode'], "cap"] / 3600.  # A/m^2
         current = (utils.get_dict_key(data, pfx + 'current')
-                   * theoretical_1C_current / dD_s['CrateCurr'] * dD_s['curr_ref'])
+                   * theoretical_1C_current / config['1C_current_density'] * config['curr_ref'])
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
         if data_only:
             return times*td, current
@@ -311,14 +316,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
         datay_c = utils.get_dict_key(data, c_cath, squeeze=False)
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
-        L_c = dD_s['L']["c"] * Lfac
+        L_c = config['L']["c"] * Lfac
         Ltot = L_c
-        if Nvol["s"]:
+        if config["have_separator"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
-            L_s = dD_s['L']["s"] * Lfac
+            L_s = config['L']["s"] * Lfac
             Ltot += L_s
         else:
             L_s = 0
@@ -327,7 +332,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datay_a_p = utils.get_dict_key(data, p_anode, squeeze=False)
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
-            L_a = dD_s['L']["a"] * Lfac
+            L_a = config['L']["a"] * Lfac
             Ltot += L_a
         else:
             L_a = 0
@@ -335,7 +340,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         xmax = Ltot
         if plot_type in ["elytec", "elytecf"]:
             ylbl = 'Concentration of electrolyte [M]'
-            datay = datay_c * dD_s["cref"] / 1000.
+            datay = datay_c * c_ref / 1000.
         elif plot_type in ["elytep", "elytepf"]:
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
@@ -345,20 +350,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
             pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
             disc = geom.get_elyte_disc(
-                Nvol, ndD_s["L"], ndD_s["poros"], ndD_s["BruggExp"])
+                Nvol, config["L"], config["poros"], config["BruggExp"])
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-                    cmat[tInd, :], pmat[tInd, :], disc, ndD_s)[1]
+                    cmat[tInd, :], pmat[tInd, :], disc, config)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
-                datay = i_edges * (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"])
+                datay = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
             elif plot_type in ["elytedivi", "elytedivif"]:
                 ylbl = r'Divergence of electrolyte current density [A/m$^3$]'
                 datax = cellsvec
                 datay = np.diff(i_edges, axis=1) / disc["dxvec"]
-                datay *= (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"]**2)
+                datay *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
         if fplot:
             datay = datay[t0ind]
         if data_only:
@@ -409,12 +414,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                figsize=figsize)
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         type2c = False
-        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
+        if config[trode, "type"] in constants.one_var_types:
             if plot_type[:-2] in ["cbarLine"]:
                 str_base = pfx + partStr + "cbar"
             elif plot_type[:-2] in ["dcbardtLine"]:
                 str_base = pfx + partStr + "dcbardt"
-        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
+        elif config[trode, "type"] in constants.two_var_types:
             type2c = True
             if plot_type[:-2] in ["cbarLine"]:
                 str1_base = pfx + partStr + "c1bar"
@@ -491,9 +496,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             plt_cavg = False
         plt_legend = True
         plt_axlabels = True
-        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
+        if config[trode, "type"] in constants.one_var_types:
             type2c = False
-        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
+        elif config[trode, "type"] in constants.two_var_types:
             type2c = True
         Nv, Np = Nvol[trode], Npart[trode]
         partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr

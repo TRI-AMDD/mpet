@@ -178,19 +178,19 @@ class MyMATDataReporter(daeMatlabMATFileDataReporter):
                     oned_as='row')
 
 
-def setup_data_reporters(simulation, ndD_s, outdir):
+def setup_data_reporters(simulation, config, outdir):
     """Create daeDelegateDataReporter and add data reporter."""
     datareporter = dae.daeDelegateDataReporter()
     # if default, use mat data reporter
     simulation.dr = MyMATDataReporter()
     # else if specified, we use hdf5 data reporter
-    if ndD_s["dataReporter"] == "hdf5":
+    if config["dataReporter"] == "hdf5":
         simulation.dr = Myhdf5DataReporter()
-    elif ndD_s["dataReporter"] == "hdf5Fast":
+    elif config["dataReporter"] == "hdf5Fast":
         simulation.dr = Myhdf5DataReporterFast()
-    elif ndD_s["dataReporter"] != "mat":
+    elif config["dataReporter"] != "mat":
         # if the data reporter called hasn't been implemented yet
-        raise Exception("Data Reporter " + ndD_s["dataReporter"] + " not installed")
+        raise Exception("Data Reporter " + config["dataReporter"] + " not installed")
 
     datareporter.AddDataReporter(simulation.dr)
     # Connect data reporters

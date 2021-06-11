@@ -6,6 +6,7 @@ import h5py
 
 import mpet.plot.plot_data as plot_data
 import mpet.utils as utils
+from mpet.config import constants
 
 # Strings to be used
 RowsStr = "Rows correspond to time points (see generalData.txt).\n"
@@ -75,19 +76,19 @@ fnameBulkpBase = "bulkPot{l}Data.txt"
 
 def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
-    ndD_s, dD_s, ndD_e, dD_e = plot_data.show_data(
+    config = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
         data_only=True)
-    trodes = ndD_s["trodes"]
-    CrateCurr = dD_s["CrateCurr"]  # A/m^2
-    psd_len_c = dD_s["psd_len"]["c"]
+    trodes = config["trodes"]
+    CrateCurr = config["1C_current_density"]  # A/m^2
+    psd_len_c = config["psd_len"]["c"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
 
     def get_trode_str(tr):
         return ("Anode" if tr == "a" else "Cathode")
     if "a" in trodes:
-        psd_len_a = dD_s["psd_len"]["a"]
+        psd_len_a = config["psd_len"]["a"]
         Nv_a, Np_a = psd_len_a.shape
     tVec, vVec = plot_data.show_data(
         indir, plot_type="vt", print_flag=False, save_flag=False,
@@ -146,11 +147,11 @@ def main(indir, genData=True, discData=True, elyteData=True,
                 print(file=fo)
                 Trode = get_trode_str(tr)
                 print((Trode + " particle sizes [m]"), file=fo)
-                for vind in range(ndD_s["Nvol"][tr]):
-                    print(",".join(map(str, dD_s["psd_len"][tr][vind,:])), file=fo)
+                for vind in range(config["Nvol"][tr]):
+                    print(",".join(map(str, config["psd_len"][tr][vind,:])), file=fo)
                 print("\n" + Trode + " particle number of discr. points", file=fo)
-                for vind in range(ndD_s["Nvol"][tr]):
-                    print(",".join(map(str, ndD_s["psd_num"][tr][vind,:])), file=fo)
+                for vind in range(config["Nvol"][tr]):
+                    print(",".join(map(str, config["psd_num"][tr][vind,:])), file=fo)
 
     if elyteData:
         valid_current = True
@@ -190,14 +191,14 @@ def main(indir, genData=True, discData=True, elyteData=True,
         for tr in trodes:
             Trode = get_trode_str(tr)
             type2c = False
-            if ndD_e[tr]["type"] in ndD_s["1varTypes"]:
+            if config[tr, "type"] in constants.one_var_types:
                 str_base = partStr + "c"
-            elif ndD_e[tr]["type"] in ndD_s["2varTypes"]:
+            elif config[tr, "type"] in constants.two_var_types:
                 type2c = True
                 str1_base = partStr + "c1"
                 str2_base = partStr + "c2"
-            for i in range(ndD_s["Npart"][tr]):
-                for j in range(ndD_s["Nvol"][tr]):
+            for i in range(config["Npart"][tr]):
+                for j in range(config["Nvol"][tr]):
                     if type2c:
                         sol1 = str1_base.format(l=tr, i=i, j=j)
                         sol2 = str2_base.format(l=tr, i=i, j=j)
@@ -227,7 +228,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         for tr in trodes:
             Trode = get_trode_str(tr)
             fname = "cbar{l}Data.txt".format(l=Trode)
-            Nv, Np = ndD_s["Nvol"][tr], ndD_s["Npart"][tr]
+            Nv, Np = config["Nvol"][tr], config["Npart"][tr]
             NpartTot = Nv*Np
             cbarMat = np.zeros((ntimes, NpartTot))
             cbarHdr = cbarHdrBase

@@ -6,6 +6,7 @@ import shutil
 import subprocess as subp
 import sys
 import time
+from shutil import copyfile
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
@@ -13,17 +14,18 @@ import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
-import mpet.io_utils as IO
+from mpet.config import Config
 import mpet.sim as sim
 import mpet.utils as utils
 
 
-def run_simulation(ndD_s, ndD_e, tScale, outdir):
+def run_simulation(config, outdir):
+    tScale = config["t_ref"]
     # Create Log, Solver, DataReporter and Simulation object
     log = dae.daePythonStdOutLog()
     daesolver = dae.daeIDAS()
-    simulation = sim.SimMPET(ndD_s, ndD_e, tScale)
-    datareporter = data_reporting.setup_data_reporters(simulation, ndD_s, outdir)
+    simulation = sim.SimMPET(config, tScale)
+    datareporter = data_reporting.setup_data_reporters(simulation, config, outdir)
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
@@ -50,12 +52,12 @@ def run_simulation(ndD_s, ndD_e, tScale, outdir):
             var.ReportingOn = False
 
     # Set relative tolerances
-    daesolver.RelativeTolerance = ndD_s["relTol"]
+    daesolver.RelativeTolerance = config["relTol"]
 
     # Set the time horizon and the reporting interval
-    simulation.TimeHorizon = ndD_s["tend"]
+    simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
-    simulation.ReportingTimes = list(np.linspace(0, ndD_s["tend"], ndD_s["tsteps"] + 1))[1:]
+    simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
     # Example logspacing for output times:
     # simulation.ReportingTimes = list(
     #     np.logspace(-4, np.log10(simulation.TimeHorizon), ndD_s['tsteps']))
@@ -92,8 +94,7 @@ def main(paramfile, keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
-    P_s, P_e = IO.get_configs(paramfile)
-    dD_s, ndD_s, dD_e, ndD_e = IO.get_dicts_from_configs(P_s, P_e, paramfile)
+    config = Config(paramfile)
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -110,15 +111,14 @@ def main(paramfile, keepArchive=True):
             raise
     paramFileName = "input_params_system.cfg"
     paramFile = os.path.join(outdir, paramFileName)
-    IO.write_config_file(P_s, filename=paramFile)
-    dictFile = os.path.join(outdir, "input_dict_system")
-    IO.write_dicts(dD_s, ndD_s, filenamebase=dictFile)
-    for trode in ndD_s["trodes"]:
+    copyfile(paramfile, paramFile)
+
+    for trode in config["trodes"]:
         paramFileName = "input_params_{t}.cfg".format(t=trode)
         paramFile = os.path.join(outdir, paramFileName)
-        IO.write_config_file(P_e[trode], filename=paramFile)
-        dictFile = os.path.join(outdir, "input_dict_{t}".format(t=trode))
-        IO.write_dicts(dD_e[trode], ndD_e[trode], filenamebase=dictFile)
+        copyfile(config.paramfiles[trode], paramFile)
+
+    config.write(outdir)
 
     # Store info about this script
     # mpet.py script directory
@@ -172,10 +172,10 @@ def main(paramfile, keepArchive=True):
     # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    noise = ndD_e['c']['noise']
-    logPad = ndD_e['c']['logPad']
-    segments = ndD_s["profileType"] in ["CCsegments","CVsegments"]
-    if (noise or logPad or (segments and ndD_s["tramp"] > 0)) \
+    noise = config['c', 'noise']
+    logPad = config['c', 'logPad']
+    segments = config["profileType"] in ["CCsegments","CVsegments"]
+    if (noise or logPad or (segments and config["tramp"] > 0)) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
@@ -185,7 +185,7 @@ def main(paramfile, keepArchive=True):
     cfg.SetString('daetools.activity.printStats','false')
 
     # Carry out the simulation
-    run_simulation(ndD_s, ndD_e, dD_s["td"], outdir)
+    run_simulation(config, outdir)
 
     # Final output for user
     print("\n\nUsed parameter file ""{fname}""\n\n".format(fname=paramfile))
