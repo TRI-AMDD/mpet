@@ -161,7 +161,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
     Dm = dD_s["Dm"] = P_s.getfloat('Electrolyte', 'Dm')
     k_h = dD_s["k_h"] = P_s.getfloat('Electrolyte', 'k_h')
     cp = dD_s["cp"] = P_s.getfloat('Electrolyte', 'cp')
-    h_h = dD_s["h_h"] = P_s.getfloat('Electrolyte', 'h_h')
+    h_h = dD_s["h_h"] = P_s.getfloat('Electrolyte', 'h_h', fallback = 500)
     sigma_lyte = dD_s["sigma_lyte"] = P_s.getfloat('Electrolyte', 'sigma_lyte', fallback = 0.1)
 
     # Constants
