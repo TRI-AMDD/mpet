@@ -12,14 +12,11 @@ Model for the interface between the electrolyte and active particles
 
 
 class InterfaceRegion(dae.daeModel):
-    def __init__(self, Name, Parent=None, Description="", ndD=None,
-                 ndD_s=None, cell=None, particle=None, vInd=None, pInd=None,
+    def __init__(self, config, Name, Parent=None, Description="",
+                 cell=None, particle=None, vInd=None, pInd=None,
                  trode=None):
         super().__init__(Name, Parent, Description)
-        if (ndD is None) or (ndD_s is None):
-            raise Exception("Need input parameter dictionary")
-        self.ndD = ndD
-        self.ndD_s = ndD_s
+        self.config = config
 
         # Domain
         self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
@@ -68,10 +65,11 @@ class InterfaceRegion(dae.daeModel):
 
     def DeclareEquations(self):
         super().DeclareEquations()
-        ndD = self.ndD_s
-        Nvol = ndD["Nvol_i"]
+        config = self.config
+        Nvol = config["Nvol_i"]
 
-        disc = geom.get_interface_disc(Nvol, ndD["L_i"], ndD["poros_i"], ndD["BruggExp_i"])
+        disc = geom.get_interface_disc(Nvol, config["L_i"],
+                                       config["poros_i"], config["BruggExp_i"])
         cvec = utils.get_var_vec(self.c, Nvol)
         dcdtvec = utils.get_var_vec(self.c, Nvol, dt=True)
         phivec = utils.get_var_vec(self.phi, Nvol)
@@ -81,7 +79,7 @@ class InterfaceRegion(dae.daeModel):
         ctmp = np.hstack((self.portInLyte.c_lyte(), cvec, cvec[-1]))
         phitmp = np.hstack((self.portInLyte.phi_lyte(), phivec, phivec[-1]))
 
-        Nm_edges, i_edges = get_interface_internal_fluxes(ctmp, phitmp, disc, ndD)
+        Nm_edges, i_edges = get_interface_internal_fluxes(ctmp, phitmp, disc, config)
 
         dvgNm = np.diff(Nm_edges) / disc["dxvec"]
         dvgi = np.diff(i_edges) / disc["dxvec"]
@@ -89,20 +87,21 @@ class InterfaceRegion(dae.daeModel):
         for vInd in range(Nvol):
             # Mass Conservation (done with the anion, although "c" is neutral salt conc)
             eq = self.CreateEquation("interface_mass_cons_vol{vInd}".format(vInd=vInd))
-            eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
-            if ndD["interfaceModelType"] == "solid":
-                eq.Residual += -ndD["kd"] * (ndD["cmax"] - cvec[vInd]) \
-                    + ndD["kr"] * cvec[vInd] ** 2
+            eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./config["num"])*dvgNm[vInd]
+            if config["interfaceModelType"] == "solid":
+                eq.Residual += -config["kd"] * (config["cmax"] - cvec[vInd]) \
+                    + config["kr"] * cvec[vInd] ** 2
 
             # Charge Conservation
             eq = self.CreateEquation("interface_charge_cons_vol{vInd}".format(vInd=vInd))
             eq.Residual = -dvgi[vInd]
             if vInd == Nvol - 1:
                 # The volume of this particular particle
-                Vj = ndD["psd_vol_FracVol"][self.trode][self.vInd,self.pInd]
-                eq.Residual += ndD["zp"] * -(ndD["beta"][self.trode] * (1-ndD["poros"][self.trode])
-                                             * ndD["P_L"][self.trode] * Vj
-                                             * self.portInParticle.dcbardt())
+                Vj = config["psd_vol_FracVol"][self.trode][self.vInd,self.pInd]
+                eq.Residual += config["zp"] * -(config["beta"][self.trode]
+                                                * (1-config["poros"][self.trode])
+                                                * config["P_L"][self.trode] * Vj
+                                                * self.portInParticle.dcbardt())
 
         # last grid point of interface is output to particle
         eq = self.CreateEquation("c_interface_to_particle")
@@ -121,10 +120,10 @@ class InterfaceRegion(dae.daeModel):
             eq.CheckUnitsConsistency = False
 
 
-def get_interface_internal_fluxes(c, phi, disc, ndD):
-    zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
+def get_interface_internal_fluxes(c, phi, disc, config):
+    zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
     nu = nup + num
-    T = ndD["T"]
+    T = config["T"]
     dxd1 = disc["dxd1"]
     eps_o_tau = disc["eps_o_tau"]
 
@@ -132,11 +131,11 @@ def get_interface_internal_fluxes(c, phi, disc, ndD):
     wt = utils.pad_vec(disc["dxvec"])
     c_edges_int = utils.weighted_linear_mean(c, wt)
 
-    if ndD["interfaceModelType"] == "dilute":
+    if config["interfaceModelType"] == "dilute":
         # Get porosity at cell edges using weighted harmonic mean
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
-        Dp = eps_o_tau_edges * ndD["Dp"]
-        Dm = eps_o_tau_edges * ndD["Dm"]
+        Dp = eps_o_tau_edges * config["Dp"]
+        Dm = eps_o_tau_edges * config["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c)/dxd1
@@ -144,14 +143,14 @@ def get_interface_internal_fluxes(c, phi, disc, ndD):
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c)/dxd1)
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
-    elif ndD["interfaceModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["interfaceSMset"])()[:-1]
+    elif config["interfaceModelType"] == "SM":
+        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["interfaceSMset"])()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c), wt)
         sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c), wt)
 
-        sp, n = ndD["sp"], ndD["n_refTrode"]
+        sp, n = config["sp"], config["n_refTrode"]
         i_edges_int = -sigma_edges/T * (
             np.diff(phi)/dxd1
             + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
@@ -160,16 +159,16 @@ def get_interface_internal_fluxes(c, phi, disc, ndD):
             )
         Nm_edges_int = num*(-D_edges*np.diff(c)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
-    elif ndD["interfaceModelType"] == "solid":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, ndD["interfaceSMset"])()[:-1]
+    elif config["interfaceModelType"] == "solid":
+        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["interfaceSMset"])()[:-1]
 
         # Get diffusivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau * D_fs(c), wt)
 
-        # sp, n = ndD["sp"], ndD["n_refTrode"]
+        # sp, n = config["sp"], config["n_refTrode"]
         # D_fs is specified in solid_elyte_func in props_elyte.py
-        Dm = ndD["Dm"]
-        a_slyte = ndD["a_slyte"]
+        Dm = config["Dm"]
+        a_slyte = config["a_slyte"]
         k = 1.381e-23
 
         i_edges_int = (-((nup*zp*D_edges*(1/(1-c_edges_int)-a_slyte/(k*T)*2*c_edges_int)

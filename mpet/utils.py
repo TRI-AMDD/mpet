@@ -1,6 +1,9 @@
 import subprocess as subp
 
+import os
 import numpy as np
+import h5py
+import scipy.io as sio
 
 import daetools.pyDAE as dae
 
@@ -74,18 +77,21 @@ def get_asc_vec(var, Nvol, dt=False):
                 varout[sectn] = get_const_vec(var[sectn], Nvol[sectn])
         # Otherwise, fill with zeros
         else:
-            varout[sectn] = np.zeros(Nvol[sectn])
+            try:
+                varout[sectn] = np.zeros(Nvol[sectn])
+            except KeyError:
+                varout[sectn] = np.zeros(0)
     out = np.hstack((varout["a"], varout["s"], varout["c"]))
     return out
 
 
 def get_dxvec(L, Nvol):
     """Get a vector of cell widths spanning the full cell."""
-    if Nvol["a"]:
+    if "a" in Nvol:
         dxa = Nvol["a"] * [L["a"]/Nvol["a"]]
     else:
         dxa = []
-    if Nvol["s"]:
+    if "s" in Nvol:
         dxs = Nvol["s"] * [L["s"]/Nvol["s"]]
     else:
         dxs = []
@@ -103,3 +109,34 @@ def get_git_info(local_dir, shell=False):
         ['git', '-C', local_dir, 'rev-parse', '--abbrev-ref', 'HEAD'],
         stderr=subp.STDOUT, universal_newlines=True)
     return branch_name, commit_hash, commit_diff
+
+
+def open_data_file(dataFile):
+    """Load hdf5/mat file output.
+    Always defaults to .mat file, else opens .hdf5 file.
+    Takes in dataFile (path of file without .mat or .hdf5), returns data (output of array)"""
+    data = []
+    if os.path.isfile(dataFile + ".mat"):
+        data = sio.loadmat(dataFile + ".mat")
+    elif os.path.isfile(dataFile + ".hdf5"):
+        data = h5py.File(dataFile + ".hdf5", 'r')
+    else:
+        raise Exception("Data output file not found for either mat or hdf5 in " + dataFile)
+    return data
+
+
+def get_dict_key(data, string, squeeze=True, final=False):
+    """Gets the values in a 1D array, which is formatted slightly differently
+    depending on whether it is a h5py file or a mat file
+    Takes in data array and the string whose value we want to get. Final is a
+    boolean that determines whether or not it only returns the final value of the array.
+    If final is true, then it only returns the last value, otherwise it returns the entire array.
+    Final overwrites squeeze--if final is true, then the array will always be squeezed.
+    Squeeze squeezes into 1D array if is true, otherwise false"""
+    # do not call both squeeze false and final true!!!
+    if final:  # only returns last value
+        return data[string][...,-1].item()
+    elif squeeze:
+        return np.squeeze(data[string][...])
+    else:  # returns entire array
+        return data[string][...]

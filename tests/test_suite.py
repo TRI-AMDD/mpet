@@ -1,7 +1,6 @@
 import errno
 import os
 import os.path as osp
-from os import walk
 import shutil
 import time
 
@@ -10,7 +9,7 @@ import numpy as np
 import scipy.io as sio
 
 import mpet.main
-import mpet.io_utils as IO
+from mpet.config.configuration import Config
 import tests.test_defs as defs
 
 
@@ -21,7 +20,7 @@ def run_test_sims(runInfo, dirDict, pflag=True):
 
         # Copy config files from ref_outputs
         refDir = osp.join(dirDict["suite"],"ref_outputs",testStr)
-        _, _, filenames = next(walk(osp.join(refDir)))
+        _, _, filenames = next(os.walk(osp.join(refDir)))
         for f in filenames:
             if ".cfg" in f:
                 shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
@@ -63,11 +62,8 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     for testStr in sorted(runInfo.keys()):
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
         newDataFile = osp.join(newDir, "output_data.mat")
-        dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
-        tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
-        dD_e = {}
-        ndD_e = {}
-        dD_e["c"], ndD_e["c"] = tmp
+        config = Config.from_dicts(newDir)
+
         try:
             newData = sio.loadmat(newDataFile)
         except IOError as exception:
@@ -77,10 +73,10 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             print("No simulation data for " + testStr)
             continue
         if "Difn" in testStr:
-            t_ref = dD_s["t_ref"]
-            L_part = dD_s["psd_len"]["c"][0,0]
-            nx_part = ndD_s["psd_num"]["c"][0,0]
-            t_refPart = L_part**2 / dD_e["c"]["D"]
+            t_ref = config["t_ref"]
+            L_part = config["psd_len"]["c"][0,0]
+            nx_part = config["psd_num"]["c"][0,0]
+            t_refPart = L_part**2 / config["c", "D"]
             # Skip first time point: analytical solution fails at t=0.
             t0ind = 2
             r0ind = 1

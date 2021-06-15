@@ -1,0 +1,1418 @@
+diff --git a/mpet/data_reporting.py b/mpet/data_reporting.py
+index 92da3bb..36819f9 100644
+--- a/mpet/data_reporting.py
++++ b/mpet/data_reporting.py
+@@ -32,18 +32,11 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
+                 # Remove dots from variable keys. This enables the mat
+                 # file to be read by, e.g., MATLAB.
+                 dkeybase = dkeybase.replace(".", "_")
+-                mdict[dkeybase] = var.Values
+-                #if we are not in a continuation directory
+-                if dkeybase == 'phi_applied' and continued_sim == 0:
+-                    #only save times for voltage
+-                    mdict['times'] = var.TimeValues
+-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
++                mdict[dkeybase] = var.Values #mdict stores the new data
+                 #if we are in a directory that has continued simulations (maccor reader)
+                 if continued_sim == 1:
+                     #increment time by the previous end time of the last simulation
+                     tend = mat_dat['phi_applied_times'][-1]
+-                    #get previous values from old output_mat
+-                    mdict[dkeybase] = mdict[dkeybase]
+ 
+                     #if particle concentrations, remove and overwrite, but not if its cbar
+                     if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
+@@ -62,11 +55,24 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
+                         del mat_dat[dkeybase]
+                         mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:,:])
+ 
+-                else:
+-                    #create dataset if continued_sim == 0
+-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
+-                    shape = len(mdict[dkeybase].shape)
+-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
++                else: #(continued_sim == 1)
++                    #if cwe are not in a continuation directory
++                    #if particle concentrations, remove and overwrite, but not if its cbar
++                    if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
++                        #create dataset if continued_sim == 0
++                        #maxshape is set dpeending on whether its a 2D array or a 1D array
++                        shape = len(mdict[dkeybase].shape)
++                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
++
++                        if dkeybase == 'phi_applied':
++                            #only save times for voltage
++                            mdict['times'] = var.TimeValues
++                            mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
++
++                    else:
++                        #only save the last two points
++                        shape = len(mdict[dkeybase].shape)
++                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:], maxshape = (None,)*shape)
+ 
+ 
+ class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
+@@ -89,33 +95,30 @@ class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
+                 # file to be read by, e.g., MATLAB.
+                 dkeybase = dkeybase.replace(".", "_")
+                 mdict[dkeybase] = var.Values
+-                #if we are not in a continuation directory
+-                if dkeybase == 'phi_applied' and continued_sim == 0:
+-                    #only save times for voltage
+-                    mdict['times'] = var.TimeValues
+-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+                 #if we are in a directory that has continued simulations (maccor reader)
+                 if continued_sim == 1:
+                     #increment time by the previous end time of the last simulation
+                     tend = mat_dat['phi_applied_times'][-1]
+-                    #get previous values from old output_mat
+-                    mdict[dkeybase] = mdict[dkeybase] 
+ 
+-                    #resize and append dkeybase variable 
+                     mat_dat[dkeybase].resize((mat_dat[dkeybase].shape[0] + mdict[dkeybase].shape[0]), axis = 0)
+                     mat_dat[dkeybase][-mdict[dkeybase].shape[0]:] = mdict[dkeybase]
+ 
+                     if dkeybase == 'phi_applied':
+                         mdict['times'] = var.TimeValues + tend
+                         #resize and append dkeybase varibale
+-                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0) 
++                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0)             
+                         mat_dat['phi_applied_times'][-mdict['times'].shape[0]:] = mdict['times']
+ 
+-                else:
+-                    #create dataset if continued_sim == 0
+-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
+-                    shape = len(mdict[dkeybase].shape)
+-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
++                else: #(continued_sim == 0)
++                     #create dataset if continued_sim == 0
++                     #maxshape is set dpeending on whether its a 2D array or a 1D array
++                     shape = len(mdict[dkeybase].shape)
++                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
++
++                     if dkeybase == 'phi_applied':
++                         #only save times for voltage
++                         mdict['times'] = var.TimeValues
++                         mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+ 
+ 
+ class MyMATDataReporter(daeMatlabMATFileDataReporter):
+diff --git a/tests/ref_outputs/test011/sim_output/commit.diff b/tests/ref_outputs/test011/sim_output/commit.diff
+index 48a5da9..5c938be 100644
+--- a/tests/ref_outputs/test011/sim_output/commit.diff
++++ b/tests/ref_outputs/test011/sim_output/commit.diff
+@@ -1,183 +1,783 @@
+ diff --git a/mpet/data_reporting.py b/mpet/data_reporting.py
+-index 92da3bb..887fa0b 100644
++index 92da3bb..313646a 100644
+ --- a/mpet/data_reporting.py
+ +++ b/mpet/data_reporting.py
+-@@ -45,6 +45,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
++@@ -33,17 +33,12 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
++                 # file to be read by, e.g., MATLAB.
++                 dkeybase = dkeybase.replace(".", "_")
++                 mdict[dkeybase] = var.Values
++-                #if we are not in a continuation directory
++-                if dkeybase == 'phi_applied' and continued_sim == 0:
++-                    #only save times for voltage
++-                    mdict['times'] = var.TimeValues
++-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
++                 #if we are in a directory that has continued simulations (maccor reader)
++                 if continued_sim == 1:
++                     #increment time by the previous end time of the last simulation
++                     tend = mat_dat['phi_applied_times'][-1]
+                      #get previous values from old output_mat
+-                     mdict[dkeybase] = mdict[dkeybase]
++-                    mdict[dkeybase] = mdict[dkeybase]
+++                    mdict[dkeybase] = mat_dat[dkeybase]
+  
+-+                    print(dkeybase)
+                      #if particle concentrations, remove and overwrite, but not if its cbar
+                      if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
+-                         #resize and append dkeybase variable
+-@@ -69,6 +70,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
+-                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+- 
++@@ -62,11 +57,24 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
++                         del mat_dat[dkeybase]
++                         mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:,:])
+  
++-                else:
++-                    #create dataset if continued_sim == 0
++-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
++-                    shape = len(mdict[dkeybase].shape)
++-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+++                else: #(continued_sim == 1)
+++                    #if cwe are not in a continuation directory
+++                    #if particle concentrations, remove and overwrite, but not if its cbar
+++                    if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
+++                         #create dataset if continued_sim == 0
+++                         #maxshape is set dpeending on whether its a 2D array or a 1D array
+++                         shape = len(mdict[dkeybase].shape)
+++                         mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+++
+++                         if dkeybase == 'phi_applied':
+++                             #only save times for voltage
+++                             mdict['times'] = var.TimeValues
+++                             mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
+ +
+++                    else:
+++                        #only save the last two points
+++                        shape = len(mdict[dkeybase].shape)
+++                        mat_dat.create_dataset(dkeybase, data = mdict[dkeybase][-2:], maxshape = (None,)*shape)
++ 
++ 
+  class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
+-     """Reports hdf5 file outputs in full, otherwise ignores internal particle concentrations"""
+-     def WriteDataToFile(self):
+-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
+-index b9c9ce5..6064399 100644
+---- a/mpet/plot/plot_data.py
+-+++ b/mpet/plot/plot_data.py
+-@@ -831,7 +831,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
+-             datax = cellsvec[-Nvol["c"]:]
+-         if data_only:
+-             plt.close(fig)
+--            return datax, datay[t0ind]
+-+            print(datax, np.array(datay[t0ind]))
+-+            return np.array(datax), np.array(datay[t0ind])
+-         # returns tuble of line objects, thus comma
+-         line1, = ax.plot(datax, datay[t0ind])
++@@ -89,33 +97,32 @@ class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
++                 # file to be read by, e.g., MATLAB.
++                 dkeybase = dkeybase.replace(".", "_")
++                 mdict[dkeybase] = var.Values
++-                #if we are not in a continuation directory
++-                if dkeybase == 'phi_applied' and continued_sim == 0:
++-                    #only save times for voltage
++-                    mdict['times'] = var.TimeValues
++-                    mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
++                 #if we are in a directory that has continued simulations (maccor reader)
++                 if continued_sim == 1:
++                     #increment time by the previous end time of the last simulation
++                     tend = mat_dat['phi_applied_times'][-1]
++                     #get previous values from old output_mat
++-                    mdict[dkeybase] = mdict[dkeybase] 
+++                    mdict[dkeybase] = mat_dat[dkeybase]
+  
+-diff --git a/tests/ref_outputs/test011/params_system.cfg b/tests/ref_outputs/test011/params_system.cfg
+-index 5f64e86..8cf3622 100644
+---- a/tests/ref_outputs/test011/params_system.cfg
+-+++ b/tests/ref_outputs/test011/params_system.cfg
+-@@ -17,6 +17,7 @@ relTol = 1e-7
+- absTol = 1e-7
+- T = 298
+- randomSeed = true
+-+dataReporter = hdf5
+- seed = 10
+- Rser = 0.
+- Nvol_c = 1
+-diff --git a/tests/ref_outputs/test020/params_c.cfg b/tests/ref_outputs/test020/params_c.cfg
+-deleted file mode 100644
+-index 2579955..0000000
+---- a/tests/ref_outputs/test020/params_c.cfg
+-+++ /dev/null
+-@@ -1,31 +0,0 @@
+--[Particles]
+--type = ACR
+--discretization = 1e-9
+--shape = C3
+--thickness = 20e-9
+--
+--[Material]
+--muRfunc = LiFePO4
+--logPad = false
+--noise = false
+--noise_prefac = 1e-6
+--numnoise = 200
+--Omega_a = 1.8560e-20
+--Omega_b = 5.761532e-21
+--Omega_c = 8.23076e-20
+--kappa = 5.0148e-10
+--B = 0.1916e9
+--EvdW = 0.0
+--rho_s = 1.3793e28
+--D = 5.3e-19
+--Dfunc = constant
+--dgammadc = 0e-30
+--cwet = 0.98
+--
+--[Reactions]
+--rxnType = BV
+--k0 = 1.6e-1
+--alpha = 0.5
+--lambda = 6.26e-20
+--Rfilm = 0e-0
+--
+-diff --git a/tests/ref_outputs/test020/params_system.cfg b/tests/ref_outputs/test020/params_system.cfg
+-deleted file mode 100644
+-index 4692866..0000000
+---- a/tests/ref_outputs/test020/params_system.cfg
+-+++ /dev/null
+-@@ -1,80 +0,0 @@
+--[Sim Params]
+--profileType = CC
+--Crate = 1e-2
+--Vmax = 1e10
+--Vmin = -1e10
+--capFrac = 0.98
+--Vset = 0.12
+--segments = [
+--	(0.3, 0.4),
+--	(-0.5, 0.1),
+--	]
+--tramp = 1e-3
+--prevDir = false
+--tend = 1.2e3
+--tsteps = 35
+--relTol = 1e-6
+--absTol = 1e-6
+--T = 298
+--randomSeed = true
+--dataReporter = hdf5Fast
+--seed = 10
+--Rser = 0.
+--Nvol_c = 1
+--Nvol_s = 0
+--Nvol_a = 0
+--Npart_c = 1
+--Npart_a = 1
+--
+--[Electrodes]
+--cathode = params_c.cfg
+--anode = params_a.cfg
+--k0_foil = 1e3
+--Rfilm_foil = 0e-0
+--
+--[Particles]
+--mean_c = 40e-9
+--stddev_c = 0e-9
+--mean_a = 100e-9
+--stddev_a = 0e-9
+--cs0_c = 0.01
+--cs0_a = 0.99
+--
+--[Conductivity]
+--simBulkCond_c = false
+--simBulkCond_a = false
+--sigma_s_c = 1e-1
+--sigma_s_a = 1e-1
+--simPartCond_c = false
+--simPartCond_a = false
+--G_mean_c = 1e-14
+--G_stddev_c = 0
+--G_mean_a = 1e-14
+--G_stddev_a = 0
+--
+--[Geometry]
+--L_c = 50e-6
+--L_a = 50e-6
+--L_s = 25e-6
+--P_L_c = 0.69
+--P_L_a = 0.95
+--poros_c = 0.3
+--poros_a = 0.3
+--poros_s = 0.7
+--BruggExp_c = -0.5
+--BruggExp_a = -0.5
+--BruggExp_s = -0.5
+--
+--[Electrolyte]
+--c0 = 1000
+--zp = 1
+--zm = -1
+--nup = 1
+--num = 1
+--elyteModelType = dilute
+--SMset = valoen_bernardi
+--n = 1
+--sp = -1
+--Dp = 2.2e-10
+--Dm = 2.94e-10
+--
+-diff --git a/tests/ref_outputs/test020/sim_output/commit.diff b/tests/ref_outputs/test020/sim_output/commit.diff
++-                    #resize and append dkeybase variable 
++                     mat_dat[dkeybase].resize((mat_dat[dkeybase].shape[0] + mdict[dkeybase].shape[0]), axis = 0)
++                     mat_dat[dkeybase][-mdict[dkeybase].shape[0]:] = mdict[dkeybase]
++ 
++                     if dkeybase == 'phi_applied':
++                         mdict['times'] = var.TimeValues + tend
++                         #resize and append dkeybase varibale
++-                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0) 
+++                        mat_dat['phi_applied_times'].resize((mat_dat['phi_applied_times'].shape[0] + mdict['times'].shape[0]), axis = 0)             
++                         mat_dat['phi_applied_times'][-mdict['times'].shape[0]:] = mdict['times']
++ 
++-                else:
++-                    #create dataset if continued_sim == 0
++-                    #maxshape is set dpeending on whether its a 2D array or a 1D array
++-                    shape = len(mdict[dkeybase].shape)
++-                    mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+++                else: #(continued_sim == 0)
+++                     #create dataset if continued_sim == 0
+++                     #maxshape is set dpeending on whether its a 2D array or a 1D array
+++                     shape = len(mdict[dkeybase].shape)
+++                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
+++
+++                     if dkeybase == 'phi_applied':
+++                         #only save times for voltage
+++                         mdict['times'] = var.TimeValues
+++                         mat_dat.create_dataset('phi_applied_times', data = mdict['times'], maxshape = (None,))
++ 
++ 
++ class MyMATDataReporter(daeMatlabMATFileDataReporter):
++diff --git a/tests/ref_outputs/test011/sim_output/commit.diff b/tests/ref_outputs/test011/sim_output/commit.diff
+ deleted file mode 100644
+-index 8b13789..0000000
+---- a/tests/ref_outputs/test020/sim_output/commit.diff
++index 48a5da9..0000000
++--- a/tests/ref_outputs/test011/sim_output/commit.diff
+ +++ /dev/null
+-@@ -1 +0,0 @@
++@@ -1,671 +0,0 @@
++-diff --git a/mpet/data_reporting.py b/mpet/data_reporting.py
++-index 92da3bb..887fa0b 100644
++---- a/mpet/data_reporting.py
++-+++ b/mpet/data_reporting.py
++-@@ -45,6 +45,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
++-                     #get previous values from old output_mat
++-                     mdict[dkeybase] = mdict[dkeybase]
++- 
++-+                    print(dkeybase)
++-                     #if particle concentrations, remove and overwrite, but not if its cbar
++-                     if (re.match("partTrode.vol.part._c", dkeybase) is None) or (re.search("cbar", dkeybase) is not None):
++-                         #resize and append dkeybase variable
++-@@ -69,6 +70,7 @@ class Myhdf5DataReporterFast(daeMatlabMATFileDataReporter):
++-                     mat_dat.create_dataset(dkeybase, data = mdict[dkeybase], maxshape = (None,)*shape)
++- 
++- 
++-+
++- class Myhdf5DataReporter(daeMatlabMATFileDataReporter):
++-     """Reports hdf5 file outputs in full, otherwise ignores internal particle concentrations"""
++-     def WriteDataToFile(self):
++-diff --git a/mpet/plot/plot_data.py b/mpet/plot/plot_data.py
++-index b9c9ce5..6064399 100644
++---- a/mpet/plot/plot_data.py
++-+++ b/mpet/plot/plot_data.py
++-@@ -831,7 +831,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
++-             datax = cellsvec[-Nvol["c"]:]
++-         if data_only:
++-             plt.close(fig)
++--            return datax, datay[t0ind]
++-+            print(datax, np.array(datay[t0ind]))
++-+            return np.array(datax), np.array(datay[t0ind])
++-         # returns tuble of line objects, thus comma
++-         line1, = ax.plot(datax, datay[t0ind])
++- 
++-diff --git a/tests/ref_outputs/test011/params_system.cfg b/tests/ref_outputs/test011/params_system.cfg
++-index 5f64e86..8cf3622 100644
++---- a/tests/ref_outputs/test011/params_system.cfg
++-+++ b/tests/ref_outputs/test011/params_system.cfg
++-@@ -17,6 +17,7 @@ relTol = 1e-7
++- absTol = 1e-7
++- T = 298
++- randomSeed = true
++-+dataReporter = hdf5
++- seed = 10
++- Rser = 0.
++- Nvol_c = 1
++-diff --git a/tests/ref_outputs/test020/params_c.cfg b/tests/ref_outputs/test020/params_c.cfg
++-deleted file mode 100644
++-index 2579955..0000000
++---- a/tests/ref_outputs/test020/params_c.cfg
++-+++ /dev/null
++-@@ -1,31 +0,0 @@
++--[Particles]
++--type = ACR
++--discretization = 1e-9
++--shape = C3
++--thickness = 20e-9
++--
++--[Material]
++--muRfunc = LiFePO4
++--logPad = false
++--noise = false
++--noise_prefac = 1e-6
++--numnoise = 200
++--Omega_a = 1.8560e-20
++--Omega_b = 5.761532e-21
++--Omega_c = 8.23076e-20
++--kappa = 5.0148e-10
++--B = 0.1916e9
++--EvdW = 0.0
++--rho_s = 1.3793e28
++--D = 5.3e-19
++--Dfunc = constant
++--dgammadc = 0e-30
++--cwet = 0.98
++--
++--[Reactions]
++--rxnType = BV
++--k0 = 1.6e-1
++--alpha = 0.5
++--lambda = 6.26e-20
++--Rfilm = 0e-0
++--
++-diff --git a/tests/ref_outputs/test020/params_system.cfg b/tests/ref_outputs/test020/params_system.cfg
++-deleted file mode 100644
++-index 4692866..0000000
++---- a/tests/ref_outputs/test020/params_system.cfg
++-+++ /dev/null
++-@@ -1,80 +0,0 @@
++--[Sim Params]
++--profileType = CC
++--Crate = 1e-2
++--Vmax = 1e10
++--Vmin = -1e10
++--capFrac = 0.98
++--Vset = 0.12
++--segments = [
++--	(0.3, 0.4),
++--	(-0.5, 0.1),
++--	]
++--tramp = 1e-3
++--prevDir = false
++--tend = 1.2e3
++--tsteps = 35
++--relTol = 1e-6
++--absTol = 1e-6
++--T = 298
++--randomSeed = true
++--dataReporter = hdf5Fast
++--seed = 10
++--Rser = 0.
++--Nvol_c = 1
++--Nvol_s = 0
++--Nvol_a = 0
++--Npart_c = 1
++--Npart_a = 1
++--
++--[Electrodes]
++--cathode = params_c.cfg
++--anode = params_a.cfg
++--k0_foil = 1e3
++--Rfilm_foil = 0e-0
++--
++--[Particles]
++--mean_c = 40e-9
++--stddev_c = 0e-9
++--mean_a = 100e-9
++--stddev_a = 0e-9
++--cs0_c = 0.01
++--cs0_a = 0.99
++--
++--[Conductivity]
++--simBulkCond_c = false
++--simBulkCond_a = false
++--sigma_s_c = 1e-1
++--sigma_s_a = 1e-1
++--simPartCond_c = false
++--simPartCond_a = false
++--G_mean_c = 1e-14
++--G_stddev_c = 0
++--G_mean_a = 1e-14
++--G_stddev_a = 0
++--
++--[Geometry]
++--L_c = 50e-6
++--L_a = 50e-6
++--L_s = 25e-6
++--P_L_c = 0.69
++--P_L_a = 0.95
++--poros_c = 0.3
++--poros_a = 0.3
++--poros_s = 0.7
++--BruggExp_c = -0.5
++--BruggExp_a = -0.5
++--BruggExp_s = -0.5
++--
++--[Electrolyte]
++--c0 = 1000
++--zp = 1
++--zm = -1
++--nup = 1
++--num = 1
++--elyteModelType = dilute
++--SMset = valoen_bernardi
++--n = 1
++--sp = -1
++--Dp = 2.2e-10
++--Dm = 2.94e-10
++--
++-diff --git a/tests/ref_outputs/test020/sim_output/commit.diff b/tests/ref_outputs/test020/sim_output/commit.diff
++-deleted file mode 100644
++-index 8b13789..0000000
++---- a/tests/ref_outputs/test020/sim_output/commit.diff
++-+++ /dev/null
++-@@ -1 +0,0 @@
++--
++-diff --git a/tests/ref_outputs/test020/sim_output/daetools_config_options.txt b/tests/ref_outputs/test020/sim_output/daetools_config_options.txt
++-deleted file mode 100644
++-index e2f40ff..0000000
++---- a/tests/ref_outputs/test020/sim_output/daetools_config_options.txt
++-+++ /dev/null
++-@@ -1,133 +0,0 @@
++--{
++--    "daetools": {
++--        "core": {
++--            "checkForInfiniteNumbers": "false",
++--            "eventTolerance": "1E-7",
++--            "logIndent": "    ",
++--            "pythonIndent": "    ",
++--            "checkUnitsConsistency": "true",
++--            "resetLAMatrixAfterDiscontinuity": "true",
++--            "printInfo": "false",
++--            "deepCopyClonedNodes": "true",
++--            "equations": {
++--                "info": [
++--                    "If simplifyExpressions is true equation expressions will be simplified.",
++--                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
++--                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
++--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
++--                ],
++--                "simplifyExpressions": "false",
++--                "evaluationMode": "computeStack_OpenMP",
++--                "evaluationTree_OpenMP": {
++--                    "numThreads": "0"
++--                },
++--                "computeStack_OpenMP": {
++--                    "numThreads": "0"
++--                }
++--            }
++--        },
++--        "activity": {
++--            "printHeader": "false",
++--            "printStats": "true",
++--            "timeHorizon": "100.0",
++--            "reportingInterval": "1.0",
++--            "reportTimeDerivatives": "false",
++--            "reportSensitivities": "false",
++--            "stopAtModelDiscontinuity": "true",
++--            "reportDataAroundDiscontinuities": "true",
++--            "objFunctionAbsoluteTolerance": "1E-8",
++--            "constraintsAbsoluteTolerance": "1E-8",
++--            "measuredVariableAbsoluteTolerance": "1E-8"
++--        },
++--        "datareporting": {
++--            "tcpipDataReceiverAddress": "127.0.0.1",
++--            "tcpipDataReceiverPort": "50000",
++--            "tcpipNumberOfRetries": "10",
++--            "tcpipRetryAfterMilliSecs": "1000"
++--        },
++--        "logging": {
++--            "tcpipLogAddress": "127.0.0.1",
++--            "tcpipLogPort": "51000"
++--        },
++--        "minlpsolver": {
++--            "printInfo": "false"
++--        },
++--        "IDAS": {
++--            "SolveMode": "normal",
++--            "relativeTolerance": "1E-5",
++--            "nextTimeAfterReinitialization": "1E-7",
++--            "printInfo": "false",
++--            "numberOfSTNRebuildsDuringInitialization": "1000",
++--            "SensitivitySolutionMethod": "Staggered",
++--            "SensErrCon": "false",
++--            "sensRelativeTolerance": "1E-5",
++--            "sensAbsoluteTolerance": "1E-5",
++--            "MaxOrd": "5",
++--            "MaxNumSteps": "2000",
++--            "InitStep": "0.0",
++--            "MaxStep": "0.0",
++--            "MaxErrTestFails": "10",
++--            "MaxNonlinIters": "4",
++--            "MaxConvFails": "10",
++--            "NonlinConvCoef": "0.33",
++--            "SuppressAlg": "false",
++--            "NoInactiveRootWarn": "false",
++--            "NonlinConvCoefIC": "0.0033",
++--            "MaxNumStepsIC": "5",
++--            "MaxNumJacsIC": "4",
++--            "MaxNumItersIC": "10",
++--            "LineSearchOffIC": "false",
++--            "gmres": {
++--                "kspace": "30",
++--                "EpsLin": "0.05",
++--                "JacTimesVecFn": "DifferenceQuotient",
++--                "DQIncrementFactor": "1.0",
++--                "MaxRestarts": "5",
++--                "GSType": "MODIFIED_GS"
++--            }
++--        },
++--        "superlu": {
++--            "factorizationMethod": "SamePattern_SameRowPerm",
++--            "useUserSuppliedWorkSpace": "false",
++--            "workspaceSizeMultiplier": "3.0",
++--            "workspaceMemoryIncrement": "1.5"
++--        },
++--        "superlu_mt": {
++--            "numThreads": "0"
++--        },
++--        "intel_pardiso": {
++--            "numThreads": "0"
++--        },
++--        "BONMIN": {
++--            "IPOPT": {
++--                "print_level": "0",
++--                "tol": "1E-5",
++--                "linear_solver": "mumps",
++--                "hessianApproximation": "limited-memory",
++--                "mu_strategy": "adaptive"
++--            }
++--        },
++--        "NLOPT": {
++--            "printInfo": "false",
++--            "xtol_rel": "1E-6",
++--            "xtol_abs": "1E-6",
++--            "ftol_rel": "1E-6",
++--            "ftol_abs": "1E-6",
++--            "constr_tol": "1E-6"
++--        },
++--        "deal_II": {
++--            "printInfo": "false",
++--            "assembly": {
++--                "info": [
++--                    "parallelAssembly can be: Sequential or OpenMP.",
++--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
++--                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
++--                ],
++--                "parallelAssembly": "OpenMP",
++--                "numThreads": "0",
++--                "queueSize": "32"
++--            }
++--        }
++--    }
++--}
++--
++-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p
++-deleted file mode 100644
++-index b51716c..0000000
++-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p
++-deleted file mode 100644
++-index 553326c..0000000
++-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p
++-deleted file mode 100644
++-index d34676d..0000000
++-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p
++-deleted file mode 100644
++-index 84cb196..0000000
++-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test020/sim_output/output_data.hdf5 b/tests/ref_outputs/test020/sim_output/output_data.hdf5
++-deleted file mode 100644
++-index 954c6bf..0000000
++-Binary files a/tests/ref_outputs/test020/sim_output/output_data.hdf5 and /dev/null differ
++-diff --git a/tests/ref_outputs/test020/sim_output/run_info.txt b/tests/ref_outputs/test020/sim_output/run_info.txt
++-deleted file mode 100644
++-index 58f7743..0000000
++---- a/tests/ref_outputs/test020/sim_output/run_info.txt
++-+++ /dev/null
++-@@ -1,17 +0,0 @@
++--mpet version:
++--0.1.5
++--
++--branch name:
++--fix/hdf5
++--
++--commit hash:
++--2b3981d
++--
++--to run, from the root repo directory, copy relevant files there,
++--edit input_params_system.cfg to point to correct material
++--params files, and:
++--$ git checkout [commit hash]
++--$ patch -p1 < commit.diff:
++--$ python[3] mpetrun.py input_params_system.cfg
++--
++--Total run time: 1.6647062301635742 s
++-diff --git a/tests/ref_outputs/test021/params_c.cfg b/tests/ref_outputs/test021/params_c.cfg
++-deleted file mode 100644
++-index 2579955..0000000
++---- a/tests/ref_outputs/test021/params_c.cfg
++-+++ /dev/null
++-@@ -1,31 +0,0 @@
++--[Particles]
++--type = ACR
++--discretization = 1e-9
++--shape = C3
++--thickness = 20e-9
++--
++--[Material]
++--muRfunc = LiFePO4
++--logPad = false
++--noise = false
++--noise_prefac = 1e-6
++--numnoise = 200
++--Omega_a = 1.8560e-20
++--Omega_b = 5.761532e-21
++--Omega_c = 8.23076e-20
++--kappa = 5.0148e-10
++--B = 0.1916e9
++--EvdW = 0.0
++--rho_s = 1.3793e28
++--D = 5.3e-19
++--Dfunc = constant
++--dgammadc = 0e-30
++--cwet = 0.98
++--
++--[Reactions]
++--rxnType = BV
++--k0 = 1.6e-1
++--alpha = 0.5
++--lambda = 6.26e-20
++--Rfilm = 0e-0
++--
++-diff --git a/tests/ref_outputs/test021/params_system.cfg b/tests/ref_outputs/test021/params_system.cfg
++-deleted file mode 100644
++-index 188bf53..0000000
++---- a/tests/ref_outputs/test021/params_system.cfg
++-+++ /dev/null
++-@@ -1,80 +0,0 @@
++--[Sim Params]
++--profileType = CC
++--Crate = -1e-2
++--Vmax = 1e10
++--Vmin = -1e10
++--capFrac = 0.98
++--Vset = 0.12
++--segments = [
++--	(0.3, 0.4),
++--	(-0.5, 0.1),
++--	]
++--tramp = 1e-3
++--prevDir = ../test020/sim_output
++--tend = 1.2e3
++--tsteps = 35
++--relTol = 1e-6
++--absTol = 1e-6
++--T = 298
++--randomSeed = true
++--dataReporter = hdf5
++--seed = 10
++--Rser = 0.
++--Nvol_c = 1
++--Nvol_s = 0
++--Nvol_a = 0
++--Npart_c = 1
++--Npart_a = 1
++--
++--[Electrodes]
++--cathode = params_c.cfg
++--anode = params_a.cfg
++--k0_foil = 1e3
++--Rfilm_foil = 0e-0
++--
++--[Particles]
++--mean_c = 40e-9
++--stddev_c = 0e-9
++--mean_a = 100e-9
++--stddev_a = 0e-9
++--cs0_c = 0.99
++--cs0_a = 0.01
++--
++--[Conductivity]
++--simBulkCond_c = false
++--simBulkCond_a = false
++--sigma_s_c = 1e-1
++--sigma_s_a = 1e-1
++--simPartCond_c = false
++--simPartCond_a = false
++--G_mean_c = 1e-14
++--G_stddev_c = 0
++--G_mean_a = 1e-14
++--G_stddev_a = 0
++--
++--[Geometry]
++--L_c = 50e-6
++--L_a = 50e-6
++--L_s = 25e-6
++--P_L_c = 0.69
++--P_L_a = 0.95
++--poros_c = 0.3
++--poros_a = 0.3
++--poros_s = 0.7
++--BruggExp_c = -0.5
++--BruggExp_a = -0.5
++--BruggExp_s = -0.5
++--
++--[Electrolyte]
++--c0 = 1000
++--zp = 1
++--zm = -1
++--nup = 1
++--num = 1
++--elyteModelType = dilute
++--SMset = valoen_bernardi
++--n = 1
++--sp = -1
++--Dp = 2.2e-10
++--Dm = 2.94e-10
++--
++-diff --git a/tests/ref_outputs/test021/sim_output/commit.diff b/tests/ref_outputs/test021/sim_output/commit.diff
++-deleted file mode 100644
++-index 8b13789..0000000
++---- a/tests/ref_outputs/test021/sim_output/commit.diff
++-+++ /dev/null
++-@@ -1 +0,0 @@
++--
++-diff --git a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt b/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
++-deleted file mode 100644
++-index e2f40ff..0000000
++---- a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
++-+++ /dev/null
++-@@ -1,133 +0,0 @@
++--{
++--    "daetools": {
++--        "core": {
++--            "checkForInfiniteNumbers": "false",
++--            "eventTolerance": "1E-7",
++--            "logIndent": "    ",
++--            "pythonIndent": "    ",
++--            "checkUnitsConsistency": "true",
++--            "resetLAMatrixAfterDiscontinuity": "true",
++--            "printInfo": "false",
++--            "deepCopyClonedNodes": "true",
++--            "equations": {
++--                "info": [
++--                    "If simplifyExpressions is true equation expressions will be simplified.",
++--                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
++--                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
++--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
++--                ],
++--                "simplifyExpressions": "false",
++--                "evaluationMode": "computeStack_OpenMP",
++--                "evaluationTree_OpenMP": {
++--                    "numThreads": "0"
++--                },
++--                "computeStack_OpenMP": {
++--                    "numThreads": "0"
++--                }
++--            }
++--        },
++--        "activity": {
++--            "printHeader": "false",
++--            "printStats": "true",
++--            "timeHorizon": "100.0",
++--            "reportingInterval": "1.0",
++--            "reportTimeDerivatives": "false",
++--            "reportSensitivities": "false",
++--            "stopAtModelDiscontinuity": "true",
++--            "reportDataAroundDiscontinuities": "true",
++--            "objFunctionAbsoluteTolerance": "1E-8",
++--            "constraintsAbsoluteTolerance": "1E-8",
++--            "measuredVariableAbsoluteTolerance": "1E-8"
++--        },
++--        "datareporting": {
++--            "tcpipDataReceiverAddress": "127.0.0.1",
++--            "tcpipDataReceiverPort": "50000",
++--            "tcpipNumberOfRetries": "10",
++--            "tcpipRetryAfterMilliSecs": "1000"
++--        },
++--        "logging": {
++--            "tcpipLogAddress": "127.0.0.1",
++--            "tcpipLogPort": "51000"
++--        },
++--        "minlpsolver": {
++--            "printInfo": "false"
++--        },
++--        "IDAS": {
++--            "SolveMode": "normal",
++--            "relativeTolerance": "1E-5",
++--            "nextTimeAfterReinitialization": "1E-7",
++--            "printInfo": "false",
++--            "numberOfSTNRebuildsDuringInitialization": "1000",
++--            "SensitivitySolutionMethod": "Staggered",
++--            "SensErrCon": "false",
++--            "sensRelativeTolerance": "1E-5",
++--            "sensAbsoluteTolerance": "1E-5",
++--            "MaxOrd": "5",
++--            "MaxNumSteps": "2000",
++--            "InitStep": "0.0",
++--            "MaxStep": "0.0",
++--            "MaxErrTestFails": "10",
++--            "MaxNonlinIters": "4",
++--            "MaxConvFails": "10",
++--            "NonlinConvCoef": "0.33",
++--            "SuppressAlg": "false",
++--            "NoInactiveRootWarn": "false",
++--            "NonlinConvCoefIC": "0.0033",
++--            "MaxNumStepsIC": "5",
++--            "MaxNumJacsIC": "4",
++--            "MaxNumItersIC": "10",
++--            "LineSearchOffIC": "false",
++--            "gmres": {
++--                "kspace": "30",
++--                "EpsLin": "0.05",
++--                "JacTimesVecFn": "DifferenceQuotient",
++--                "DQIncrementFactor": "1.0",
++--                "MaxRestarts": "5",
++--                "GSType": "MODIFIED_GS"
++--            }
++--        },
++--        "superlu": {
++--            "factorizationMethod": "SamePattern_SameRowPerm",
++--            "useUserSuppliedWorkSpace": "false",
++--            "workspaceSizeMultiplier": "3.0",
++--            "workspaceMemoryIncrement": "1.5"
++--        },
++--        "superlu_mt": {
++--            "numThreads": "0"
++--        },
++--        "intel_pardiso": {
++--            "numThreads": "0"
++--        },
++--        "BONMIN": {
++--            "IPOPT": {
++--                "print_level": "0",
++--                "tol": "1E-5",
++--                "linear_solver": "mumps",
++--                "hessianApproximation": "limited-memory",
++--                "mu_strategy": "adaptive"
++--            }
++--        },
++--        "NLOPT": {
++--            "printInfo": "false",
++--            "xtol_rel": "1E-6",
++--            "xtol_abs": "1E-6",
++--            "ftol_rel": "1E-6",
++--            "ftol_abs": "1E-6",
++--            "constr_tol": "1E-6"
++--        },
++--        "deal_II": {
++--            "printInfo": "false",
++--            "assembly": {
++--                "info": [
++--                    "parallelAssembly can be: Sequential or OpenMP.",
++--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
++--                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
++--                ],
++--                "parallelAssembly": "OpenMP",
++--                "numThreads": "0",
++--                "queueSize": "32"
++--            }
++--        }
++--    }
++--}
++--
++-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p
++-deleted file mode 100644
++-index b51716c..0000000
++-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p
++-deleted file mode 100644
++-index 87d2415..0000000
++-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p
++-deleted file mode 100644
++-index 8396ad8..0000000
++-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p
++-deleted file mode 100644
++-index fc44ff4..0000000
++-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p and /dev/null differ
++-diff --git a/tests/ref_outputs/test021/sim_output/output_data.hdf5 b/tests/ref_outputs/test021/sim_output/output_data.hdf5
++-deleted file mode 100644
++-index def260a..0000000
++-Binary files a/tests/ref_outputs/test021/sim_output/output_data.hdf5 and /dev/null differ
++-diff --git a/tests/ref_outputs/test021/sim_output/run_info.txt b/tests/ref_outputs/test021/sim_output/run_info.txt
++-deleted file mode 100644
++-index cfdf641..0000000
++---- a/tests/ref_outputs/test021/sim_output/run_info.txt
++-+++ /dev/null
++-@@ -1,17 +0,0 @@
++--mpet version:
++--0.1.5
++--
++--branch name:
++--fix/hdf5
++--
++--commit hash:
++--2b3981d
++--
++--to run, from the root repo directory, copy relevant files there,
++--edit input_params_system.cfg to point to correct material
++--params files, and:
++--$ git checkout [commit hash]
++--$ patch -p1 < commit.diff:
++--$ python[3] mpetrun.py input_params_system.cfg
++--
++--Total run time: 1.7362911701202393 s
+ -
+-diff --git a/tests/ref_outputs/test020/sim_output/daetools_config_options.txt b/tests/ref_outputs/test020/sim_output/daetools_config_options.txt
++diff --git a/tests/ref_outputs/test011/sim_output/daetools_config_options.txt b/tests/ref_outputs/test011/sim_output/daetools_config_options.txt
+ deleted file mode 100644
+ index e2f40ff..0000000
+---- a/tests/ref_outputs/test020/sim_output/daetools_config_options.txt
++--- a/tests/ref_outputs/test011/sim_output/daetools_config_options.txt
+ +++ /dev/null
+ @@ -1,133 +0,0 @@
+ -{
+@@ -313,63 +913,36 @@ index e2f40ff..0000000
+ -    }
+ -}
+ -
+-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p
+-deleted file mode 100644
+-index b51716c..0000000
+-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_c_dD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p
++diff --git a/tests/ref_outputs/test011/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test011/sim_output/input_dict_c_dD.p
+ deleted file mode 100644
+-index 553326c..0000000
+-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_c_ndD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p
++index 1c25cbc..0000000
++Binary files a/tests/ref_outputs/test011/sim_output/input_dict_c_dD.p and /dev/null differ
++diff --git a/tests/ref_outputs/test011/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test011/sim_output/input_dict_c_ndD.p
+ deleted file mode 100644
+-index d34676d..0000000
+-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_system_dD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p
++index 8272fea..0000000
++Binary files a/tests/ref_outputs/test011/sim_output/input_dict_c_ndD.p and /dev/null differ
++diff --git a/tests/ref_outputs/test011/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test011/sim_output/input_dict_system_dD.p
+ deleted file mode 100644
+-index 84cb196..0000000
+-Binary files a/tests/ref_outputs/test020/sim_output/input_dict_system_ndD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test020/sim_output/output_data.hdf5 b/tests/ref_outputs/test020/sim_output/output_data.hdf5
++index 3873eba..0000000
++Binary files a/tests/ref_outputs/test011/sim_output/input_dict_system_dD.p and /dev/null differ
++diff --git a/tests/ref_outputs/test011/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test011/sim_output/input_dict_system_ndD.p
+ deleted file mode 100644
+-index 954c6bf..0000000
+-Binary files a/tests/ref_outputs/test020/sim_output/output_data.hdf5 and /dev/null differ
+-diff --git a/tests/ref_outputs/test020/sim_output/run_info.txt b/tests/ref_outputs/test020/sim_output/run_info.txt
++index 0f3d05a..0000000
++Binary files a/tests/ref_outputs/test011/sim_output/input_dict_system_ndD.p and /dev/null differ
++diff --git a/tests/ref_outputs/test011/sim_output/input_params_c.cfg b/tests/ref_outputs/test011/sim_output/input_params_c.cfg
+ deleted file mode 100644
+-index 58f7743..0000000
+---- a/tests/ref_outputs/test020/sim_output/run_info.txt
+-+++ /dev/null
+-@@ -1,17 +0,0 @@
+--mpet version:
+--0.1.5
+--
+--branch name:
+--fix/hdf5
+--
+--commit hash:
+--2b3981d
+--
+--to run, from the root repo directory, copy relevant files there,
+--edit input_params_system.cfg to point to correct material
+--params files, and:
+--$ git checkout [commit hash]
+--$ patch -p1 < commit.diff:
+--$ python[3] mpetrun.py input_params_system.cfg
+--
+--Total run time: 1.6647062301635742 s
+-diff --git a/tests/ref_outputs/test021/params_c.cfg b/tests/ref_outputs/test021/params_c.cfg
+-deleted file mode 100644
+-index 2579955..0000000
+---- a/tests/ref_outputs/test021/params_c.cfg
++index e382371..0000000
++--- a/tests/ref_outputs/test011/sim_output/input_params_c.cfg
+ +++ /dev/null
+ @@ -1,31 +0,0 @@
+ -[Particles]
+--type = ACR
+--discretization = 1e-9
+--shape = C3
++-type = CHR2
++-discretization = 2e-9
++-shape = sphere
+ -thickness = 20e-9
+ -
+ -[Material]
+--muRfunc = LiFePO4
++-muRfunc = LiC6
+ -logPad = false
+ -noise = false
+ -noise_prefac = 1e-6
+@@ -377,12 +950,12 @@ index 2579955..0000000
+ -Omega_a = 1.8560e-20
+ -Omega_b = 5.761532e-21
+ -Omega_c = 8.23076e-20
+--kappa = 5.0148e-10
+--B = 0.1916e9
++-kappa = 2.5e-10
++-B = 0.1e9
+ -EvdW = 0.0
+ -rho_s = 1.3793e28
+ -D = 5.3e-19
+--Dfunc = constant
++-Dfunc = lattice
+ -dgammadc = 0e-30
+ -cwet = 0.98
+ -
+@@ -393,15 +966,15 @@ index 2579955..0000000
+ -lambda = 6.26e-20
+ -Rfilm = 0e-0
+ -
+-diff --git a/tests/ref_outputs/test021/params_system.cfg b/tests/ref_outputs/test021/params_system.cfg
++diff --git a/tests/ref_outputs/test011/sim_output/input_params_system.cfg b/tests/ref_outputs/test011/sim_output/input_params_system.cfg
+ deleted file mode 100644
+-index 188bf53..0000000
+---- a/tests/ref_outputs/test021/params_system.cfg
++index 8cf3622..0000000
++--- a/tests/ref_outputs/test011/sim_output/input_params_system.cfg
+ +++ /dev/null
+ @@ -1,80 +0,0 @@
+ -[Sim Params]
+ -profileType = CC
+--Crate = -1e-2
++-Crate = 1e-2
+ -Vmax = 1e10
+ -Vmin = -1e10
+ -capFrac = 0.98
+@@ -411,11 +984,11 @@ index 188bf53..0000000
+ -	(-0.5, 0.1),
+ -	]
+ -tramp = 1e-3
+--prevDir = ../test020/sim_output
++-prevDir = false
+ -tend = 1.2e3
+ -tsteps = 35
+--relTol = 1e-6
+--absTol = 1e-6
++-relTol = 1e-7
++-absTol = 1e-7
+ -T = 298
+ -randomSeed = true
+ -dataReporter = hdf5
+@@ -438,8 +1011,8 @@ index 188bf53..0000000
+ -stddev_c = 0e-9
+ -mean_a = 100e-9
+ -stddev_a = 0e-9
+--cs0_c = 0.99
+--cs0_a = 0.01
++-cs0_c = 0.01
++-cs0_a = 0.99
+ -
+ -[Conductivity]
+ -simBulkCond_c = false
+@@ -479,176 +1052,14 @@ index 188bf53..0000000
+ -Dp = 2.2e-10
+ -Dm = 2.94e-10
+ -
+-diff --git a/tests/ref_outputs/test021/sim_output/commit.diff b/tests/ref_outputs/test021/sim_output/commit.diff
+-deleted file mode 100644
+-index 8b13789..0000000
+---- a/tests/ref_outputs/test021/sim_output/commit.diff
+-+++ /dev/null
+-@@ -1 +0,0 @@
+--
+-diff --git a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt b/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
+-deleted file mode 100644
+-index e2f40ff..0000000
+---- a/tests/ref_outputs/test021/sim_output/daetools_config_options.txt
+-+++ /dev/null
+-@@ -1,133 +0,0 @@
+--{
+--    "daetools": {
+--        "core": {
+--            "checkForInfiniteNumbers": "false",
+--            "eventTolerance": "1E-7",
+--            "logIndent": "    ",
+--            "pythonIndent": "    ",
+--            "checkUnitsConsistency": "true",
+--            "resetLAMatrixAfterDiscontinuity": "true",
+--            "printInfo": "false",
+--            "deepCopyClonedNodes": "true",
+--            "equations": {
+--                "info": [
+--                    "If simplifyExpressions is true equation expressions will be simplified.",
+--                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
+--                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
+--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+--                ],
+--                "simplifyExpressions": "false",
+--                "evaluationMode": "computeStack_OpenMP",
+--                "evaluationTree_OpenMP": {
+--                    "numThreads": "0"
+--                },
+--                "computeStack_OpenMP": {
+--                    "numThreads": "0"
+--                }
+--            }
+--        },
+--        "activity": {
+--            "printHeader": "false",
+--            "printStats": "true",
+--            "timeHorizon": "100.0",
+--            "reportingInterval": "1.0",
+--            "reportTimeDerivatives": "false",
+--            "reportSensitivities": "false",
+--            "stopAtModelDiscontinuity": "true",
+--            "reportDataAroundDiscontinuities": "true",
+--            "objFunctionAbsoluteTolerance": "1E-8",
+--            "constraintsAbsoluteTolerance": "1E-8",
+--            "measuredVariableAbsoluteTolerance": "1E-8"
+--        },
+--        "datareporting": {
+--            "tcpipDataReceiverAddress": "127.0.0.1",
+--            "tcpipDataReceiverPort": "50000",
+--            "tcpipNumberOfRetries": "10",
+--            "tcpipRetryAfterMilliSecs": "1000"
+--        },
+--        "logging": {
+--            "tcpipLogAddress": "127.0.0.1",
+--            "tcpipLogPort": "51000"
+--        },
+--        "minlpsolver": {
+--            "printInfo": "false"
+--        },
+--        "IDAS": {
+--            "SolveMode": "normal",
+--            "relativeTolerance": "1E-5",
+--            "nextTimeAfterReinitialization": "1E-7",
+--            "printInfo": "false",
+--            "numberOfSTNRebuildsDuringInitialization": "1000",
+--            "SensitivitySolutionMethod": "Staggered",
+--            "SensErrCon": "false",
+--            "sensRelativeTolerance": "1E-5",
+--            "sensAbsoluteTolerance": "1E-5",
+--            "MaxOrd": "5",
+--            "MaxNumSteps": "2000",
+--            "InitStep": "0.0",
+--            "MaxStep": "0.0",
+--            "MaxErrTestFails": "10",
+--            "MaxNonlinIters": "4",
+--            "MaxConvFails": "10",
+--            "NonlinConvCoef": "0.33",
+--            "SuppressAlg": "false",
+--            "NoInactiveRootWarn": "false",
+--            "NonlinConvCoefIC": "0.0033",
+--            "MaxNumStepsIC": "5",
+--            "MaxNumJacsIC": "4",
+--            "MaxNumItersIC": "10",
+--            "LineSearchOffIC": "false",
+--            "gmres": {
+--                "kspace": "30",
+--                "EpsLin": "0.05",
+--                "JacTimesVecFn": "DifferenceQuotient",
+--                "DQIncrementFactor": "1.0",
+--                "MaxRestarts": "5",
+--                "GSType": "MODIFIED_GS"
+--            }
+--        },
+--        "superlu": {
+--            "factorizationMethod": "SamePattern_SameRowPerm",
+--            "useUserSuppliedWorkSpace": "false",
+--            "workspaceSizeMultiplier": "3.0",
+--            "workspaceMemoryIncrement": "1.5"
+--        },
+--        "superlu_mt": {
+--            "numThreads": "0"
+--        },
+--        "intel_pardiso": {
+--            "numThreads": "0"
+--        },
+--        "BONMIN": {
+--            "IPOPT": {
+--                "print_level": "0",
+--                "tol": "1E-5",
+--                "linear_solver": "mumps",
+--                "hessianApproximation": "limited-memory",
+--                "mu_strategy": "adaptive"
+--            }
+--        },
+--        "NLOPT": {
+--            "printInfo": "false",
+--            "xtol_rel": "1E-6",
+--            "xtol_abs": "1E-6",
+--            "ftol_rel": "1E-6",
+--            "ftol_abs": "1E-6",
+--            "constr_tol": "1E-6"
+--        },
+--        "deal_II": {
+--            "printInfo": "false",
+--            "assembly": {
+--                "info": [
+--                    "parallelAssembly can be: Sequential or OpenMP.",
+--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
+--                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
+--                ],
+--                "parallelAssembly": "OpenMP",
+--                "numThreads": "0",
+--                "queueSize": "32"
+--            }
+--        }
+--    }
+--}
+--
+-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p
+-deleted file mode 100644
+-index b51716c..0000000
+-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_dD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p
+-deleted file mode 100644
+-index 87d2415..0000000
+-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_c_ndD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p
+-deleted file mode 100644
+-index 8396ad8..0000000
+-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_dD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p
+-deleted file mode 100644
+-index fc44ff4..0000000
+-Binary files a/tests/ref_outputs/test021/sim_output/input_dict_system_ndD.p and /dev/null differ
+-diff --git a/tests/ref_outputs/test021/sim_output/output_data.hdf5 b/tests/ref_outputs/test021/sim_output/output_data.hdf5
++diff --git a/tests/ref_outputs/test011/sim_output/output_data.hdf5 b/tests/ref_outputs/test011/sim_output/output_data.hdf5
+ deleted file mode 100644
+-index def260a..0000000
+-Binary files a/tests/ref_outputs/test021/sim_output/output_data.hdf5 and /dev/null differ
+-diff --git a/tests/ref_outputs/test021/sim_output/run_info.txt b/tests/ref_outputs/test021/sim_output/run_info.txt
++index f44982d..0000000
++Binary files a/tests/ref_outputs/test011/sim_output/output_data.hdf5 and /dev/null differ
++diff --git a/tests/ref_outputs/test011/sim_output/run_info.txt b/tests/ref_outputs/test011/sim_output/run_info.txt
+ deleted file mode 100644
+-index cfdf641..0000000
+---- a/tests/ref_outputs/test021/sim_output/run_info.txt
++index 90132bb..0000000
++--- a/tests/ref_outputs/test011/sim_output/run_info.txt
+ +++ /dev/null
+ @@ -1,17 +0,0 @@
+ -mpet version:
+@@ -658,7 +1069,7 @@ index cfdf641..0000000
+ -fix/hdf5
+ -
+ -commit hash:
+--2b3981d
++-49b6304
+ -
+ -to run, from the root repo directory, copy relevant files there,
+ -edit input_params_system.cfg to point to correct material
+@@ -667,5 +1078,5 @@ index cfdf641..0000000
+ -$ patch -p1 < commit.diff:
+ -$ python[3] mpetrun.py input_params_system.cfg
+ -
+--Total run time: 1.7362911701202393 s
++-Total run time: 21.867037057876587 s
+ 
+diff --git a/tests/ref_outputs/test011/sim_output/output_data.hdf5 b/tests/ref_outputs/test011/sim_output/output_data.hdf5
+index f44982d..555bdf0 100644
+Binary files a/tests/ref_outputs/test011/sim_output/output_data.hdf5 and b/tests/ref_outputs/test011/sim_output/output_data.hdf5 differ
+diff --git a/tests/ref_outputs/test011/sim_output/run_info.txt b/tests/ref_outputs/test011/sim_output/run_info.txt
+index 90132bb..93f2530 100644
+--- a/tests/ref_outputs/test011/sim_output/run_info.txt
++++ b/tests/ref_outputs/test011/sim_output/run_info.txt
+@@ -5,7 +5,7 @@ branch name:
+ fix/hdf5
+ 
+ commit hash:
+-49b6304
++d802f6c
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 21.867037057876587 s
++Total run time: 2.7363479137420654 s
+

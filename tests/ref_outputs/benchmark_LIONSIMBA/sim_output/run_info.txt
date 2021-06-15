@@ -1,0 +1,17 @@
+mpet version:
+0.1.5
+
+branch name:
+HEAD
+
+commit hash:
+cd2dfa2
+
+to run, from the root repo directory, copy relevant files there,
+edit input_params_system.cfg to point to correct material
+params files, and:
+$ git checkout [commit hash]
+$ patch -p1 < commit.diff:
+$ python[3] mpetrun.py input_params_system.cfg
+
+Total run time: 0.25788164138793945 s

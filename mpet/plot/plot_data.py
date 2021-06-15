@@ -5,12 +5,12 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.io as sio
+import h5py
 
 import mpet.geometry as geom
-import mpet.io_utils as IO
 import mpet.mod_cell as mod_cell
-import mpet.props_am as props_am
+import mpet.utils as utils
+from mpet.config import Config, constants
 
 """Set list of matplotlib rc parameters to make more readable plots."""
 # axtickfsize = 18
@@ -31,75 +31,70 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
     # Read in the simulation results and calcuations data
-    dataFileName = "output_data.mat"
+    dataFileName = "output_data"
     dataFile = os.path.join(indir, dataFileName)
-    data = sio.loadmat(dataFile)
+    data = utils.open_data_file(dataFile)
     try:
-        data[pfx + 'current'][0][0]
+        utils.get_dict_key(data, pfx + 'current')
     except KeyError:
         pfx = ''
     try:
-        data[pfx + "partTrodecvol0part0" + sStr + "cbar"]
+        utils.get_dict_key(data, pfx + "partTrodecvol0part0" + sStr + "cbar")
     except KeyError:
         sStr = "."
     # Read in the parameters used to define the simulation
-    dD_s, ndD_s = IO.read_dicts(os.path.join(indir, "input_dict_system"))
+    config = Config.from_dicts(indir)
     # simulated (porous) electrodes
-    Nvol = ndD_s["Nvol"]
-    trodes = ndD_s["trodes"]
-    dD_e = {}
-    ndD_e = {}
-    for trode in trodes:
-        dD_e[trode], ndD_e[trode] = IO.read_dicts(
-            os.path.join(indir, "input_dict_{t}".format(t=trode)))
-    # Pick out some useful constants/calculated values
-    k = dD_s['k']                      # Boltzmann constant, J/(K Li)
-    Tref = dD_s['Tref']                # Temp, K
-    e = dD_s['e']                      # Charge of proton, C
-    F = dD_s['F']                      # C/mol
-    td = dD_s["td"]
+    trodes = config["trodes"]
+    # Pick out some useful calculated values
+    k = constants.k                      # Boltzmann constant, J/(K Li)
+    Tref = constants.T_ref               # Temp, K
+    e = constants.e                      # Charge of proton, C
+    F = constants.F                      # C/mol
+    c_ref = constants.c_ref
+    td = config["t_ref"]
     Etheta = {"a": 0.}
     for trode in trodes:
-        Etheta[trode] = -(k*Tref/e) * ndD_s["phiRef"][trode]
-#        Etheta[trode] = -(k*Tref/e) * ndD_e[trode]["muR_ref"]
+        Etheta[trode] = -(k*Tref/e) * config[trode, "phiRef"]
     Vstd = Etheta["c"] - Etheta["a"]
-    Nvol = ndD_s["Nvol"]
-    Npart = ndD_s["Npart"]
-    psd_len = dD_s["psd_len"]
+    dataReporter = config["dataReporter"]
+    Nvol = config["Nvol"]
+    Npart = config["Npart"]
+    psd_len = config["psd_len"]
     # Discretization (and associated porosity)
     Lfac = 1e6
     Lunit = r"$\mu$m"
-    dxc = ndD_s["L"]["c"]/Nvol["c"]
+    dxc = config["L"]["c"]/Nvol["c"]
     dxvec = np.array(Nvol["c"] * [dxc])
-    porosvec = np.array(Nvol["c"] * [ndD_s["poros"]["c"]])
+    porosvec = np.array(Nvol["c"] * [config["poros"]["c"]])
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
-    if Nvol["s"]:
-        dxs = ndD_s["L"]["s"]/Nvol["s"]
+    if config["have_separator"]:
+        dxs = config["L"]["s"]/Nvol["s"]
         dxvec_s = np.array(Nvol["s"] * [dxs])
         dxvec = np.hstack((dxvec_s, dxvec))
-        poros_s = np.array(Nvol["s"] * [ndD_s["poros"]["s"]])
+        poros_s = np.array(Nvol["s"] * [config["poros"]["s"]])
         porosvec = np.hstack((poros_s, porosvec))
-        cellsvec += dD_s["L"]["s"] / dD_s["L"]["c"]
+        cellsvec += config["L"]["s"] / config["L"]["c"]
         cellsvec_s = dxs*np.arange(Nvol["s"]) + dxs/2.
         cellsvec = np.hstack((cellsvec_s, cellsvec))
     if "a" in trodes:
-        dxa = ndD_s["L"]["a"]/Nvol["a"]
+        dxa = config["L"]["a"]/Nvol["a"]
         dxvec_a = np.array(Nvol["a"] * [dxa])
         dxvec = np.hstack((dxvec_a, dxvec))
-        poros_a = np.array(Nvol["a"] * [ndD_s["poros"]["a"]])
+        poros_a = np.array(Nvol["a"] * [config["poros"]["a"]])
         porosvec = np.hstack((poros_a, porosvec))
-        cellsvec += dD_s["L"]["a"] / dD_s["L"]["c"]
+        cellsvec += config["L"]["a"] / config["L"]["c"]
         cellsvec_a = dxa*np.arange(Nvol["a"]) + dxa/2.
         cellsvec = np.hstack((cellsvec_a, cellsvec))
-    cellsvec *= dD_s["Lref"] * Lfac
-    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * dD_s["Lref"] * Lfac
+    cellsvec *= config["L_ref"] * Lfac
+    facesvec = np.insert(np.cumsum(dxvec), 0, 0.) * config["L_ref"] * Lfac
     # Extract the reported simulation times
-    times = data[pfx + 'phi_applied_times'][0]
+    times = utils.get_dict_key(data, pfx + 'phi_applied_times')
     numtimes = len(times)
     tmin = np.min(times)
     tmax = np.max(times)
     # Simulation type
-    profileType = ndD_s['profileType']
+    profileType = config['profileType']
     # Colors for plotting concentrations
     to_yellow = 0.3
     to_red = 0.7
@@ -116,55 +111,68 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #            print "Actual psd_mean [nm]:", np.mean(psd_len[l])
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
         print("Cell structure:")
-        print(("porous anode | " if Nvol["a"] else "flat anode | ")
-              + ("sep | " if Nvol["s"] else "") + "porous cathode")
-        if Nvol["a"]:
-            print("capacity ratio cathode:anode, 'z':", ndD_s["z"])
+        print(("porous anode | " if "a" in config["trodes"] else "flat anode | ")
+              + ("sep | " if config["have_separator"] else "") + "porous cathode")
+        if "a" in config["trodes"]:
+            print("capacity ratio cathode:anode, 'z':", config["z"])
         for trode in trodes:
-            print("solidType_{t}:".format(t=trode), ndD_e[trode]['type'])
-            print("solidShape_{t}".format(t=trode), ndD_e[trode]['shape'])
-            print("rxnType_{t}:".format(t=trode), ndD_e[trode]['rxnType'])
+            print("solidType_{t}:".format(t=trode), config[trode, 'type'])
+            print("solidShape_{t}".format(t=trode), config[trode, 'shape'])
+            print("rxnType_{t}:".format(t=trode), config[trode, 'rxnType'])
         if profileType == "CC":
-            print("C_rate:", dD_s['Crate'])
-            print("current:", dD_s['currset'], "A/m^2")
+            print("C_rate:", config['Crate'])
+            theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
+            currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
+            print("current:", currset_dim, "A/m^2")
         else:  # CV
-            print("Vset:", dD_s['Vset'])
+            Vref = config['c', 'phiRef']
+            if 'a' in config["trodes"]:
+                Vref -= config['a', 'phiRef']
+            Vset_dim = -(config['Vset'] * k * Tref / e - Vref)
+            print("Vset:", Vset_dim)
         print("Specified psd_mean, c [{unit}]:".format(unit=Lunit),
-              np.array(dD_s['psd_mean']["c"])*Lfac)
+              np.array(config['mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
-              np.array(dD_s['psd_stddev']["c"])*Lfac)
+              np.array(config['stddev']["c"])*Lfac)
 #        print "reg sln params:"
 #        print ndD["Omga"]
-        print("ndim B_c:", ndD_e["c"]["B"])
-        if Nvol["s"]:
+        print("ndim B_c:", config["c", "B"])
+        if config["have_separator"]:
             print("Nvol_s:", Nvol["s"])
         print("Nvol_c:", Nvol["c"])
-        if Nvol["a"]:
+        if 'a' in config["trodes"]:
             print("Nvol_a:", Nvol["a"])
         print("Npart_c:", Npart["c"])
-        if Nvol["a"]:
+        if 'a' in config["trodes"]:
             print("Npart_a:", Npart["a"])
-        print("Dp [m^2/s]:", dD_s['Dp'])
-        print("Dm [m^2/s]:", dD_s['Dm'])
-        print("Damb [m^2/s]:", dD_s['Damb'])
-        print("td [s]:", dD_s["td"])
+        print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
+        print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
+        print("Damb [m^2/s]:", config['Damb'] * config['D_ref'])
+        print("td [s]:", config["t_ref"])
         for trode in trodes:
-            print("k0_{t} [A/m^2]:".format(t=trode), dD_e[trode]['k0'])
-            rxnType = ndD_e[trode]['rxnType']
+            if trode == "a":
+                k0 = config.D_a["k0"]
+            elif trode == "c":
+                k0 = config.D_c["k0"]
+            else:
+                raise Exception(f"Unknown trode: {trode}")
+            print("k0_{t} [A/m^2]:".format(t=trode), k0)
+            rxnType = config[trode, 'rxnType']
             if rxnType == "BV":
-                print("alpha_" + trode + ":", ndD_e[trode]['alpha'])
+                print("alpha_" + trode + ":", config[trode, 'alpha'])
             elif rxnType in ["Marcus", "MHC"]:
-                print("lambda_" + trode + "/(kTref):", ndD_e[trode]["lambda"])
-            if ndD_s['simBulkCond'][trode]:
+                print("lambda_" + trode + "/(kTref):", config[trode, "lambda"]
+                      * k * Tref)
+            if config['simBulkCond'][trode]:
                 print(trode + " bulk conductivity loss: Yes -- "
-                      + "sigma_s [S/m]: " + str(dD_s['sigma_s'][trode]))
+                      + "sigma_s [S/m]: " + str(config['sigma_s'][trode] * config['sigma_s_ref']))
             else:
                 print(trode + " bulk conductivity loss: No")
             try:
-                simSurfCond = ndD_e[trode]['simSurfCond']
+                simSurfCond = config[trode, 'simSurfCond']
                 if simSurfCond:
                     print(trode + " surface conductivity loss: Yes -- "
-                          + "dim_scond [S]: " + str(dD_e[trode]['scond']))
+                          + "dim_scond [S]: " + str(config[trode, 'scond']))
                 else:
                     print(trode + " surface conductivity loss: No")
             except Exception:
@@ -176,15 +184,16 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 #                print l + " surface conductivity loss: No"
 
     if plot_type in ["params"]:
-        return ndD_s, dD_s, ndD_e, dD_e
+        # return ndD_s, dD_s, ndD_e, dD_e
+        return config
     if plot_type in ["discData"]:
         return cellsvec/Lfac, facesvec/Lfac
 
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
         voltage = (Vstd
-                   - (k*Tref/e)*data[pfx + 'phi_applied'][0])
-        ffvec = data[pfx + 'ffrac_c'][0]
+                   - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
         fig, ax = plt.subplots(figsize=figsize)
         if plot_type == "v":
             if data_only:
@@ -208,13 +217,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot surface conc.
     if plot_type[:-2] in ["surf"]:
+        if dataReporter == "hdf5Fast":
+            # hdf5Fast does not print internal particle concentrations
+            raise Exception("hdf5Fast dataReporter does not print internal particle "
+                            "concentrations, rerun simulation with another data reporter")
         trode = plot_type[-1]
         str_base = (pfx
                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
         if data_only:
             sol_str = str_base.format(pInd=pOut, vInd=vOut)
-            datay = data[sol_str][:,-1]
+            datay = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
             return times*td, datay
         fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True,
                                figsize=figsize)
@@ -225,18 +238,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 sol_str = str_base.format(pInd=pInd, vInd=vInd)
                 # Remove axis ticks
                 ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
-                datay = data[sol_str][:,-1]
+                datay = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
                 line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
     # Plot SoC profile
     if plot_type[:-2] in ["soc"]:
         trode = plot_type[-1]
-        ffvec = data[pfx + 'ffrac_{trode}'.format(trode=trode)][0]
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_{trode}'.format(trode=trode))
         if data_only:
             return times*td, ffvec
         fig, ax = plt.subplots(figsize=figsize)
-        print(ffvec[-1])
         ax.plot(times*td, ffvec)
         xmin = np.min(ffvec)
         xmax = np.max(ffvec)
@@ -259,26 +271,27 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         anode = pfx + 'c_lyte_a'
         cath = pfx + 'c_lyte_c'
         ax.set_xlabel('Time [s]')
-        cvec = data[cath]
+        cvec = utils.get_dict_key(data, cath)
         if Nvol["s"]:
-            cvec_s = data[sep]
+            cvec_s = utils.get_dict_key(data, sep)
             cvec = np.hstack((cvec_s, cvec))
         if "a" in trodes:
-            cvec_a = data[anode]
+            cvec_a = utils.get_dict_key(data, anode)
             cvec = np.hstack((cvec_a, cvec))
         cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
         if data_only:
             plt.close(fig)
             return times*td, cavg
         np.set_printoptions(precision=8)
-        print(cavg)
         ax.plot(times*td, cavg)
         return fig, ax
 
     # Plot current profile
     if plot_type == "curr":
-        current = data[pfx + "current"][0] * 3600/td
-        ffvec = data[pfx + 'ffrac_c'][0]
+        theoretical_1C_current = config[config['limtrode'], "cap"] / 3600.  # A/m^2
+        current = (utils.get_dict_key(data, pfx + 'current')
+                   * theoretical_1C_current / config['1C_current_density'] * config['curr_ref'])
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
         if data_only:
             return times*td, current
         fig, ax = plt.subplots(figsize=figsize)
@@ -301,25 +314,25 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
-        datay_c = data[c_cath]
-        datay_p = data[p_cath]
-        L_c = dD_s['L']["c"] * Lfac
+        datay_c = utils.get_dict_key(data, c_cath, squeeze=False)
+        datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
+        L_c = config['L']["c"] * Lfac
         Ltot = L_c
-        if Nvol["s"]:
-            datay_s_c = data[c_sep]
-            datay_s_p = data[p_sep]
+        if config["have_separator"]:
+            datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
+            datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
-            L_s = dD_s['L']["s"] * Lfac
+            L_s = config['L']["s"] * Lfac
             Ltot += L_s
         else:
             L_s = 0
         if "a" in trodes:
-            datay_a_c = data[c_anode]
-            datay_a_p = data[p_anode]
+            datay_a_c = utils.get_dict_key(data, c_anode, squeeze=False)
+            datay_a_p = utils.get_dict_key(data, p_anode, squeeze=False)
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
-            L_a = dD_s['L']["a"] * Lfac
+            L_a = config['L']["a"] * Lfac
             Ltot += L_a
         else:
             L_a = 0
@@ -327,29 +340,30 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         xmax = Ltot
         if plot_type in ["elytec", "elytecf"]:
             ylbl = 'Concentration of electrolyte [M]'
-            datay = datay_c * dD_s["cref"] / 1000.
+            datay = datay_c * c_ref / 1000.
         elif plot_type in ["elytep", "elytepf"]:
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
-            cGP_L, pGP_L = data["c_lyteGP_L"], data["phi_lyteGP_L"]
-            cmat = np.hstack((cGP_L.T, datay_c, datay_c[:, -1].reshape((numtimes, 1))))
-            pmat = np.hstack((pGP_L.T, datay_p, datay_p[:, -1].reshape((numtimes, 1))))
+            cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
+            pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
+            cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
+            pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
             disc = geom.get_elyte_disc(
-                Nvol, ndD_s["L"], ndD_s["poros"], ndD_s["BruggExp"])
+                Nvol, config["L"], config["poros"], config["BruggExp"])
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-                    cmat[tInd, :], pmat[tInd, :], disc, ndD_s)[1]
+                    cmat[tInd, :], pmat[tInd, :], disc, config)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
-                datay = i_edges * (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"])
+                datay = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
             elif plot_type in ["elytedivi", "elytedivif"]:
                 ylbl = r'Divergence of electrolyte current density [A/m$^3$]'
                 datax = cellsvec
                 datay = np.diff(i_edges, axis=1) / disc["dxvec"]
-                datay *= (F*dD_s["cref"]*dD_s["Dref"]/dD_s["Lref"]**2)
+                datay *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
         if fplot:
             datay = datay[t0ind]
         if data_only:
@@ -400,12 +414,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                figsize=figsize)
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         type2c = False
-        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
+        if config[trode, "type"] in constants.one_var_types:
             if plot_type[:-2] in ["cbarLine"]:
                 str_base = pfx + partStr + "cbar"
             elif plot_type[:-2] in ["dcbardtLine"]:
                 str_base = pfx + partStr + "dcbardt"
-        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
+        elif config[trode, "type"] in constants.two_var_types:
             type2c = True
             if plot_type[:-2] in ["cbarLine"]:
                 str1_base = pfx + partStr + "c1bar"
@@ -420,12 +434,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             if type2c:
                 sol1_str = str1_base.format(pInd=pOut, vInd=vOut)
                 sol2_str = str2_base.format(pInd=pOut, vInd=vOut)
-                datay1 = data[sol1_str][0]
-                datay2 = data[sol2_str][0]
+                datay1 = utils.get_dict_key(data, sol1_str)
+                datay2 = utils.get_dict_key(data, sol2_str)
                 datay = (datay1, datay2)
             else:
                 sol_str = str_base.format(pInd=pOut, vInd=vOut)
-                datay = data[sol_str][0]
+                datay = utils.get_dict_key(data, sol_str)
             return datax, datay
         xLblNCutoff = 4
         xLbl = "Time [s]"
@@ -441,8 +455,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay1 = data[sol1_str][0]
-                    datay2 = data[sol2_str][0]
+                    datay1 = utils.get_dict_key(data, sol1_str)
+                    datay2 = utils.get_dict_key(data, sol2_str)
                     line1, = ax[pInd,vInd].plot(times, datay1)
                     line2, = ax[pInd,vInd].plot(times, datay2)
                 else:
@@ -453,12 +467,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     else:
                         ax[pInd,vInd].set_xlabel(xLbl)
                         ax[pInd,vInd].set_ylabel(yLbl)
-                    datay = data[sol_str][0]
+                    datay = utils.get_dict_key(data, sol_str)
                     line, = ax[pInd,vInd].plot(times, datay)
         return fig, ax
 
     # Plot all solid concentrations or potentials
-    elif plot_type[:-2] in ["csld", "musld"]:
+    elif plot_type[:-2] in ["csld"]:
+        if dataReporter == "hdf5Fast":
+            # hdf5Fast does not print internal particle concentrations
+            raise Exception("hdf5Fast dataReporter does not print internal particle "
+                            "concentrations, rerun simulation with another data reporter")
+
         timettl = False  # Plot the current simulation time as title
         # Plot title in seconds
         ttlscl, ttlunit = 1, "s"
@@ -477,9 +496,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             plt_cavg = False
         plt_legend = True
         plt_axlabels = True
-        if ndD_e[trode]["type"] in ndD_s["1varTypes"]:
+        if config[trode, "type"] in constants.one_var_types:
             type2c = False
-        elif ndD_e[trode]["type"] in ndD_s["2varTypes"]:
+        elif config[trode, "type"] in constants.two_var_types:
             type2c = True
         Nv, Np = Nvol[trode], Npart[trode]
         partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
@@ -511,34 +530,19 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 c2str = c2str_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 c1barstr = c1barstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 c2barstr = c2barstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
-                datay1 = data[c1str[pOut,vOut]][tOut]
-                datay2 = data[c2str[pOut,vOut]][tOut]
-                if plot_type[:-2] in ["musld"]:
-                    c1bar = data[c1barstr[pOut,vOut]][0][tOut]
-                    c2bar = data[c2barstr[pOut,vOut]][0][tOut]
-                    muRfunc = props_am.muRfuncs(
-                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
-                    datay1, datay2 = muRfunc(
-                        (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
+                datay1 = utils.get_dict_key(data, c1str[pOut,vOut])
+                datay2 = utils.get_dict_key(data, c2str[pOut,vOut])
                 datay = (datay1, datay2)
                 numy = len(datay1)
             else:
                 cstr = cstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
                 cbarstr = cbarstr_base.format(trode=trode, pInd=pOut, vInd=vOut)
-                datay = data[cstr][tOut]
-                if plot_type[:-2] in ["musld"]:
-                    cbar = data[cbarstr[pOut,vOut]][0][tOut]
-                    muRfunc = props_am.muRfuncs(
-                        ndD_s["T"], ndD_e[trode]["indvPart"][vOut, pOut]).muRfunc
-                    datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
+                datay = utils.get_dict_key(data, cstr)[tOut]
                 numy = len(datay)
             datax = np.linspace(0, lenval * Lfac, numy)
             plt.close(fig)
             return datax, datay
-        if plot_type[:-2] in ["csld"]:
-            ylim = (0, 1.01)
-        elif plot_type[:-2] in ["musld"]:
-            ylim = (-4, 4)
+        ylim = (0, 1.01)
         for pInd in range(Np):
             for vInd in range(Nv):
                 lens[pInd,vInd] = psd_len[trode][vInd,pInd]
@@ -547,20 +551,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     c2str[pInd,vInd] = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     c1barstr[pInd,vInd] = c1barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     c2barstr[pInd,vInd] = c2barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    datay1 = data[c1str[pInd,vInd]][t0ind]
-                    datay2 = data[c2str[pInd,vInd]][t0ind]
+                    datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[t0ind]
+                    datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[t0ind]
                     datay3 = 0.5*(datay1 + datay2)
                     lbl1, lbl2 = r"$\widetilde{c}_1$", r"$\widetilde{c}_2$"
                     lbl3 = r"$\overline{c}$"
-                    if plot_type[:-2] in ["musld"]:
-                        lbl1, lbl2 = r"$\mu_1/k_\mathrm{B}T$", r"$\mu_2/k_\mathrm{B}T$"
-                        c1bar = data[c1barstr[pInd,vInd]][0][t0ind]
-                        c2bar = data[c2barstr[pInd,vInd]][0][t0ind]
-                        muRfunc = props_am.muRfuncs(
-                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                        datay1, datay2 = muRfunc(
-                            (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
-                    numy = len(datay1)
+                    numy = len(datay1) if isinstance(datay1, np.ndarray) else 1
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line1, = ax[pInd,vInd].plot(datax, datay1, label=lbl1)
                     line2, = ax[pInd,vInd].plot(datax, datay2, label=lbl2)
@@ -572,13 +568,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 else:
                     cstr[pInd,vInd] = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    datay = data[cstr[pInd,vInd]][t0ind]
-                    if plot_type[:-2] in ["musld"]:
-                        cbar = np.array(data[cbarstr[pInd,vInd]][0][t0ind])
-                        muRfunc = props_am.muRfuncs(
-                            ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                        datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
+                    datay = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
                     numy = len(datay)
+                    # check if it is array, then return length. otherwise return 1
+                    numy = len(datay) if isinstance(datay, np.ndarray) else 1
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
                     lines[pInd,vInd] = line
@@ -607,7 +600,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
-                        numy = len(data[c1str[pInd,vInd]][t0ind])
+                        data_c1str = utils.get_dict_key(data, c1str[pInd,vInd])[t0ind]
+                        # check if it is array, then return length. otherwise return 1
+                        numy = len(data_c1str) if isinstance(data_c1str, np.ndarray) else 1
                         maskTmp = np.zeros(numy)
                         lines1[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                         lines2[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
@@ -616,7 +611,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        numy = len(data[cstr[pInd,vInd]][t0ind])
+                        data_cstr = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
+                        numy = len(data_cstr) if isinstance(data_cstr, np.ndarray) else 1
                         maskTmp = np.zeros(numy)
                         lines[pInd,vInd].set_ydata(np.ma.array(maskTmp, mask=True))
                         lines_local = lines.copy()
@@ -631,16 +627,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             for pInd in range(Npart[trode]):
                 for vInd in range(Nvol[trode]):
                     if type2c:
-                        datay1 = data[c1str[pInd,vInd]][tind]
-                        datay2 = data[c2str[pInd,vInd]][tind]
+                        datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[tind]
+                        datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[tind]
                         datay3 = 0.5*(datay1 + datay2)
-                        if plot_type[:-2] in ["musld"]:
-                            c1bar = data[c1barstr[pInd,vInd]][0][tind]
-                            c2bar = data[c2barstr[pInd,vInd]][0][tind]
-                            muRfunc = props_am.muRfuncs(
-                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                            datay1, datay2 = muRfunc(
-                                (datay1, datay2), (c1bar, c2bar), ndD_e[trode]["muR_ref"])[0]
                         lines1[pInd,vInd].set_ydata(datay1)
                         lines2[pInd,vInd].set_ydata(datay2)
                         lines_local = np.vstack((lines1, lines2))
@@ -648,12 +637,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(datay3)
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        datay = data[cstr[pInd,vInd]][tind]
-                        if plot_type[:-2] in ["musld"]:
-                            cbar = data[cbarstr[pInd,vInd]][0][tind]
-                            muRfunc = props_am.muRfuncs(
-                                ndD_s["T"], ndD_e[trode]["indvPart"][vInd, pInd]).muRfunc
-                            datay = muRfunc(datay, cbar, ndD_e[trode]["muR_ref"])[0]
+                        # double check size of datay, since nosqueeze is not enough
+                        datay = utils.get_dict_key(data, cstr[pInd,vInd])
+                        if len(datay.shape) > 1:
+                            # if actually 2d array
+                            datay = utils.get_dict_key(data, cstr[pInd,vInd],
+                                                       squeeze=False)[:,tind]
+                        else:  # 1D array
+                            datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
                         lines[pInd,vInd].set_ydata(datay)
                         lines_local = lines.copy()
                     toblit.extend(lines_local.reshape(-1))
@@ -683,7 +674,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                                 t=trode, vInd=vInd, pInd=pInd)
                             + sStr + "cbar")
                         dataCbar[trode][tInd,vInd,pInd] = (
-                            data[dataStr][0][tInd])
+                            np.squeeze(utils.get_dict_key(data, dataStr))[tInd])
         if data_only:
             return dataCbar
         # Set up colors.
@@ -811,7 +802,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                       transform=ax.transAxes, verticalalignment="center",
                       horizontalalignment="center")
         bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
-        datay = data[bulkp]
+        datay = utils.get_dict_key(data, bulkp)
         ymin = np.min(datay) - 0.2
         ymax = np.max(datay) + 0.2
         if trode == "a":
@@ -820,7 +811,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datax = cellsvec[-Nvol["c"]:]
         if data_only:
             plt.close(fig)
-            return datax, datay[t0ind]
+            return datax, datay
         # returns tuble of line objects, thus comma
         line1, = ax.plot(datax, datay[t0ind])
 
@@ -844,6 +835,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if save_flag:
         fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
+
+    # close file if it is a h5py file
+    if isinstance(data, h5py._hl.files.File):
+        data.close()
 
     return fig, ax, ani
 

@@ -22,6 +22,7 @@ sim_output*
 
 #Ignore test outputs but not ref_outputs
 !tests/ref_outputs/*/*.cfg
+!tests/ref_outputs/*/output_data
 !tests/ref_outputs/*/sim_output
 tests/test_outputs/
 
@@ -38,4 +39,4 @@ venv/
 .vim
 .idea
 *.egg-info
-.vscode/
+.vscode
