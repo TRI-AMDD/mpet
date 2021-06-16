@@ -63,6 +63,7 @@ class ModCell(dae.daeModel):
         self.R_Vp = {}
         self.ffrac = {}
         self.T_lyte = {}
+        self.T_sol = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -91,6 +92,10 @@ class ModCell(dae.daeModel):
             self.T_lyte[trode] = dae.daeVariable(
                 "T_lyte_{trode}".format(trode=trode), temp_t, self,
                 "Temperature in the elyte in electrode {trode}".format(trode=trode),
+                [self.DmnCell[trode]])
+            self.T_sol[trode] = dae.daeVariable(
+                "T_sol_{trode}".format(trode=trode), temp_t, self,
+                "Temperature in the solid in electrode {trode}".format(trode=trode),
                 [self.DmnCell[trode]])
         if Nvol["s"] >= 1:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
@@ -210,6 +215,20 @@ class ModCell(dae.daeModel):
                     RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
+
+        # Define average temperature in electrode volume
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
+                eq = self.CreateEquation(
+                    "T_sol_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                RHS = 0
+                # sum over particle volumes in given electrode volume
+                for pInd in range(Npart[trode]):
+                    # The volume of this particular particle
+                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                    RHS += self.particles[trode][vInd,pInd].T_lyte()*Vj
+                eq.Residual = self.T_sol[trode](vInd) - RHS
+
 
         # Define output port variables
         for trode in trodes:
@@ -362,9 +381,13 @@ class ModCell(dae.daeModel):
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
-            #boundary equation for temperature variables. per volume
-            eqTL.Residual = q_edges[0] + ndD["h_h"]*(Ttmp[0]-ndD["T0"])/disc["dxvec"][0]
-            eqTR.Residual = q_edges[-1] + ndD["h_h"]*(Ttmp[-1]-ndD["T0"])/disc["dxvec"][0]
+            if ndD['nonisothermal'] == True:
+                #boundary equation for temperature variables. per volume
+                eqTL.Residual = q_edges[0] + ndD["h_h"]*(Ttmp[0]-ndD["T0"])/disc["dxvec"][0]
+                eqTR.Residual = q_edges[-1] + ndD["h_h"]*(Ttmp[-1]-ndD["T0"])/disc["dxvec"][0]
+            else:
+                eqTL.Residual = Ttmp[0] - Ttmp[1]
+                eqTR.Residual = Ttmp[-1] - Ttmp[-2]
 
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]

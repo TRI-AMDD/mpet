@@ -74,6 +74,7 @@ class SimMPET(dae.daeSimulation):
                     self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
                     # set initial temperature condition
                     self.m.T_lyte[tr].SetInitialCondition(i, ndD_s["T0"])
+                    self.m.T_sol[tr].SetInitialGuess(i, ndD_s["T0"])
                     # Guess initial value for the potential of the
                     # electrodes
                     if tr == "a":  # anode
