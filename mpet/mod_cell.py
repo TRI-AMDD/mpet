@@ -60,6 +60,7 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        self.R_Vpp = {}
         self.ffrac = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
@@ -82,6 +83,10 @@ class ModCell(dae.daeModel):
             self.R_Vp[trode] = dae.daeVariable(
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
+                [self.DmnCell[trode]])
+            self.R_Vpp[trode] = dae.daeVariable(
+                "R_Vpp_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of reaction of positives per electrode volume old",
                 [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
@@ -235,12 +240,26 @@ class ModCell(dae.daeModel):
                         # Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
                         i0 = self.portsInInterface[trode][vInd,pInd].i0()
                         # TODO: what is the reaction rate?
-                        RHS += -i0
+                        RHS += -i0 * (ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj)
                     else:
                         RHS += -(config["beta"][trode] * (1-config["poros"][trode])
                                  * config["P_L"][trode] * Vj
                                  * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
+
+                eq = self.CreateEquation(
+                    "R_Vpp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                # Start with no reaction, then add reactions for each
+                # particle in the volume.
+                RHSS = 0
+                # sum over particle volumes in given electrode volume
+                for pInd in range(Npart[trode]):
+                    # The volume of this particular particle
+                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                    if self.ndD["simInterface"]:
+                        RHSS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
+                                 * Vj * self.particles[trode][vInd,pInd].dcbardt())
+                eq.Residual = self.R_Vpp[trode](vInd) - RHSS
 
         # Define output port variables
         for trode in trodes:
@@ -405,10 +424,17 @@ class ModCell(dae.daeModel):
         rxn_scl = config["beta"][limtrode] * (1-config["poros"][limtrode]) \
             * config["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
-            if limtrode == "a":
-                eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
+            if self.ndD["simInterface"]:
+                if limtrode == "a":
+                    eq.Residual -= dx * self.R_Vpp[limtrode](vInd)/rxn_scl
+                else:
+                    eq.Residual += dx * self.R_Vpp[limtrode](vInd)/rxn_scl
             else:
-                eq.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                if limtrode == "a":
+                    eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
+                else:
+                    eq.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
