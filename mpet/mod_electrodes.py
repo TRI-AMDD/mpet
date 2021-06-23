@@ -129,7 +129,7 @@ class Mod2var(dae.daeModel):
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(
             self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-            self.config["elyteModelType"])
+            self.config)
 
         # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")
