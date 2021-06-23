@@ -240,7 +240,8 @@ class ModCell(dae.daeModel):
                         # Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
                         i0 = self.portsInInterface[trode][vInd,pInd].i0()
                         # TODO: what is the reaction rate?
-                        RHS += -i0 * (ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj)
+                        RHS += -i0 * (config["beta"][trode] * (1-config["poros"][trode])
+                                      * config["P_L"][trode] * Vj)
                     else:
                         RHS += -(config["beta"][trode] * (1-config["poros"][trode])
                                  * config["P_L"][trode] * Vj
@@ -255,10 +256,11 @@ class ModCell(dae.daeModel):
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
-                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    if self.ndD["simInterface"]:
-                        RHSS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode]
-                                 * Vj * self.particles[trode][vInd,pInd].dcbardt())
+                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
+                    if config["simInterface"]:
+                        RHSS += -(config["beta"][trode] * (1-config["poros"][trode])
+                                  * config["P_L"][trode]
+                                  * Vj * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vpp[trode](vInd) - RHSS
 
         # Define output port variables
@@ -424,7 +426,7 @@ class ModCell(dae.daeModel):
         rxn_scl = config["beta"][limtrode] * (1-config["poros"][limtrode]) \
             * config["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
-            if self.ndD["simInterface"]:
+            if config["simInterface"]:
                 if limtrode == "a":
                     eq.Residual -= dx * self.R_Vpp[limtrode](vInd)/rxn_scl
                 else:
