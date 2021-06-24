@@ -92,3 +92,59 @@ Following Zeng et al. J. Electroanal. Chem., 2014, we see that
     k_{red/ox} \approx \frac{\sqrt{{\pi}\tilde{{\lambda}}}}{1+\exp{\left( \pm \tilde{{\eta}}_f\right)}} erfc \left( \frac{\tilde{{\lambda}} - \sqrt{1+ \sqrt{\tilde{{\lambda}}}+\tilde{{\eta}}_f^2}}{2\sqrt{\tilde{{\lambda}}}}\right)
 
 is true as a simplification to the MHC model.
+
+
+System scale transport can be modeled using transport equations through multiple volumes. The electrolyte transport equations can be modeled
+
+.. math::
+    \frac{\partial \epsilon c_{l,i}}{\partial t} = - \nabla \cdot \mathbf{F_{l,i}} + R_{V,i}
+
+We assume that quasineutrality is also satisified over the length scales, giving
+
+.. math::
+    \frac{\partial \epsilon \rho_e }{\partial t} \approx 0 = - \nabla \cdot \mathbf{i_l} + \sum_i z_i eR_{V,i}
+
+for the current equations. No flux boundary conditions for concentration and current are applied at the current collector as :math:`\mathbf{n} \cdot \mathbf{F_l} = 0` and :math:`\mathbf{n} \cdot \mathbf{i_l} = 0`.
+
+Dilute or concentrated (Stefan-Maxwell) electrolyte models can be used for electrolyte transport in MPET. Since we defined the chemical potential as :math:`{\mu}_{l,i} = k_B T \ln{a_{l,i}} + {\mu}_{l,i}^0 + z_i e {\phi}_l`, where :math:`{\mu}_{l,i}^0` is the reference state chemical potential and :math:`{\phi}_l` is the electrostatic potential, in a dilute solution model transport can be modeled as 
+
+.. math::
+    \mathbf{F}_{l,i} = -\left( D_{l,chem,i} \nabla c_{l,i} + \frac{D_{l,i}c_{l,i}z_i}{k_B T} \nabla {\phi}_l\right)
+
+with :math:`D_{l,chem,i} = D_{l,i}\left( 1 + \frac{\partial \ln{{\gamma}_{l,i}}}{\partial \ln{c_{l,i}}}\right)` and :math:`{\gamma}_{l,i}` as the activity coefficient of species :math:`i`. 
+
+The Stefan-Maxwell concentrated solution model includes larger concentration gradients, which requires that gradients of species :math:`i` also affect the transport of species :math:`j`. Newman simplified the model for a binary electrolyte in his classic textbook to be
+
+
+.. math::
+    \mathbf{F}_{l,+} = - \frac{{\nu}_{+} {\epsilon}}{{\tau} }D_l \nabla c_l + \frac{t^0_{+} \mathbf{i}_l}{z_{+} e} \\
+    \mathbf{F}_{l,-} = - \frac{{\nu}_{-} {\epsilon}}{{\tau} }D_l \nabla c_l + \frac{t^0_{-} \mathbf{i}_l}{z_{-} e}
+
+
+where 
+
+
+.. math::
+    D_l = \mathbf{D} \frac{c_T}{c_{l,0}}\left( 1 + \frac{\partial \ln{{\gamma}_{l,\pm}}}{\partial \ln{c_l}}\right) \\
+    \mathbf{D} = \frac{\mathbf{D}_{0+} \mathbf{D}_{0-} (z_+ - z_{-})}{z_+\mathbf{D}_{0+} - z_{-}\mathbf{D}_{0-}} \\
+    t_{+}^0 = 1 - t_{-}^0 = \frac{z_+ \mathbf{D}_{0+}}{z_+ \mathbf{D}_{0+} - z_{-} \mathbf{D}_{0-}}
+ 
+
+The diffusivity in these models is defined as :math:`c_{l,i} \nabla {\mu}_{l,i} = k_B T \sum_j \frac{c_{l,i}c_{l,j}}{c_T \mathbf{D}_{ij}}\left( \mathbf{v}_j - \mathbf{v}_i\right)`. 
+
+The solid microstructure model is also defined using conservation of charge, with :math:`0 = -\nabla \cdot \mathbf{i}_2 - \sum_i z_i e R_{V,i}`, where the current density is assumed to be modeled with an Ohm's law equation :math:`\mathbf{i}_s = - \frac{1-{\epsilon}}{{\tau}} {\sigma}_s \nabla {\phi}_s`, where :math:`{\sigma}_s` is the solid conductivity of the system.
+
+
+The coupling between the particle scale and electrode model is achieved through "replicating" the set of particles we are simulating based on the amount of active material in each volume of the battery electrode, and through the current or voltage constraints throughout the battery. The total volumetric reaction term is defined as :math:`R_{V,i} = - \left( 1-{\epsilon}\right)P_L \sum_p \frac{V_p}{V_u} \frac{\partial \bar{c}_{p,i}}{\partial t}`, where :math:`V_u = \sum_p V_p` is the sum over particle areas and :math:`P_L` is the loading of active material in the solid phase.
+The current constraint or voltage constraint equations can be written as 
+
+.. math::
+    i_{cell} = \sum_i \int_{L_a} z_i e R_{V,i} dL = - \sum_i \int_{L_c} z_i e R_{V,i} dL
+
+over either the anode (left side) or cathode (right side)/
+The overall cell voltage is defined as 
+
+.. math::
+    \Delta {\phi}_{cell} = \Delta {\phi}_{appl} - i_{cell} R_{ser}
+
+where :math:`R_{ser}` is the resistance of the cell per area.
