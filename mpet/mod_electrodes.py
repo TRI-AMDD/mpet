@@ -307,11 +307,16 @@ class Mod1var(dae.daeModel):
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
         if config[trode, "type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
+            self.V_Li = dae.daeVariable("V_Li", dae.no_t, self, "Plated Li volume")  
+            self.Rxn_pl = dae.daeVariable("Rxn_pl", dae.no_t, self, "Plating reaction rate")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
+            self.V_Li = dae.daeVariable("V_Li", dae.no_t, self, "Plated Li volume", [self.Dmn])  
+            self.Rxn_pl = dae.daeVariable("Rxn_pl", dae.no_t, self, "Plating reaction rate", [self.Dmn])
 
         # Get reaction rate function from dictionary name
         self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
+        self.calc_rxn_rate_plating = getattr(reactions, "plating_simple")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -409,6 +414,19 @@ class Mod1var(dae.daeModel):
         if self.get_trode_param("noise"):
             eq.Residual += noise[0]()
 
+        if self.get_trode_param("Li_plating"):
+            muR_pl, actR_pl = calc_muR_plating(c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+            eta_pl = calc_eta(muR_pl,muO)
+            Rxn_pl = self.calc_rxn_rate_plating(self.V_Li(),eta_pl, self.get_trode_param("k0_pl"), T, self.get_trode_param("alpha"))
+            eq = self.CreateEquation("Rxn_plating")
+            eq.Residual = self.Rxn_pl() - Rxn_pl[0]
+        else: # No plating in system
+            eq = self.CreateEquation("Rxn_plating")
+            eq.Residual = self.Rxn_pl() - 0
+
+        eq = self.CreateEquation("Lithium_plating_growth")                                  
+        eq.Residual = self.get_trode_param("psd_area")*self.Rxn_pl()/self.get_trode_param("Li_mm") - self.V_Li.dt()
+
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         N = self.get_trode_param("N")
         T = self.config["T"]
@@ -422,24 +440,69 @@ class Mod1var(dae.daeModel):
             c_surf = c
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+            if self.get_trode_param("Li_plating"):
+                muR_pl, actR_pl = calc_muR_plating(
+                    c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+            else:
+                # assign randomly to something of the same size
+                muR_pl = muR_surf
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             muR, actR = calc_muR(c, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
             c_surf = c[-1]
             muR_surf = muR[-1]
+            if self.get_trode_param("Li_plating"):
+                muR_pl, actR_pl = calc_muR_plating(
+                    c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+                muR_pl = muR_pl[-1]
+            else:
+                muR_pl = 0
             if actR is None:
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
         eta = calc_eta(muR_surf, muO)
+        eta_pl = calc_eta(muR_pl, muO)
         if self.get_trode_param("type") in ["ACR"]:
-            eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
+            V_Li = np.array([self.V_Li(i) for i in range(N)])
+            eta_eff = np.array([eta[i] + (self.Rxn(i)+self.Rxn_pl(i))*self.get_trode_param("Rfilm")
+                                for i in range(N)])
+            eta_eff_pl = np.array([eta_pl[i] + (self.Rxn(i)+self.Rxn_pl(i))*self.get_trode_param("Rfilm")
                                 for i in range(N)])
         else:
-            eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+            V_Li = self.V_Li()
+            eta_eff = eta + (self.Rxn()+self.Rxn_pl())*self.get_trode_param("Rfilm")
+            eta_eff_pl = eta_pl + (self.Rxn()+self.Rxn_pl())*self.get_trode_param("Rfilm")
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        Rxn_pl = self.calc_rxn_rate_plating(V_Li, eta_eff_pl, \
+            self.get_trode_param("k0_pl"), T, self.get_trode_param("alpha"))
+        if self.get_trode_param("Li_plating"):
+            if self.get_trode_param("type") in ["ACR"]:
+                for i in range(N):
+                    eq = self.CreateEquation("Rxn_plating")
+                    eq.Residual = self.Rxn_pl(i) - Rxn_pl[i]
+                    eq = self.CreateEquation("Lithium_plating_growth")                                  
+                    eq.Residual = self.get_trode_param("psd_area")*self.Rxn_pl(i)/self.get_trode_param("Li_mm")-self.V_Li.dt(i)
+            else:
+                eq = self.CreateEquation("Rxn_plating")
+                eq.Residual = self.Rxn_pl() - Rxn_pl
+                eq = self.CreateEquation("Lithium_plating_growth")                                  
+                eq.Residual = self.get_trode_param("psd_area")*self.Rxn_pl()/self.get_trode_param("Li_mm") - self.V_Li.dt()
+        else: # No plating in system
+           if self.get_trode_param("type") in ["ACR"]:
+               for i in range(N):
+                   eq = self.CreateEquation("Rxn_plating")
+                   eq.Residual = self.Rxn_pl(i) - 0
+                   eq = self.CreateEquation("Lithium_plating_growth")
+                   eq.Residual = self.V_Li.dt(i) - 0
+           else:
+               eq = self.CreateEquation("Rxn_plating")
+               eq.Residual = self.Rxn_pl() - 0
+               eq = self.CreateEquation("Lithium_plating_growth")
+               eq.Residual = self.V_Li.dt() - 0
+ 
         if self.get_trode_param("type") in ["ACR"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
@@ -450,11 +513,11 @@ class Mod1var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR"]:
-            RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+            RHS = np.array([self.get_trode_param("delta_L")*(self.Rxn(i)+self.Rxn_pl(i)) for i in range(N)])
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux_bc = -self.Rxn()
+            Flux_bc = -self.Rxn()-self.Rxn_pl()
             Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc")).Dfunc
             if self.get_trode_param("type") == "diffn":
                 Flux_vec = calc_flux_diffn(c, self.get_trode_param("D"), Dfunc,
@@ -554,6 +617,13 @@ def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR
+
+
+def calc_muR_plating(c, cbar, config, trode, ind, ISfuncs=None):
+    muR_pl = props_am.muRfuncs(config, trode, ind).muR_pl
+    muR_ref = config[trode, "muR_ref"]
+    muR_pl, actR_pl = muR_pl(c, cbar, muR_ref, ISfuncs)
+    return muR_pl, actR_pl
 
 
 def MX(mat, objvec):
