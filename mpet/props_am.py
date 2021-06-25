@@ -60,6 +60,10 @@ class muRfuncs():
         # Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
 
+        # Plating reaction
+        if self.get_trode_param("Li_plating"):
+            self.muR_pl = getattr(self, self.get_trode_param("muRpl"))
+
     def get_trode_param(self, item):
         """
         Shorthand to retrieve electrode-specific value
@@ -485,6 +489,14 @@ class muRfuncs():
         dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3+k6*y**4+k7*y**5+k8*y**6+k9*y**7+k10*y**8) / \
             (k11+k12*y+k13*y**2+k14*y**3+k15*y**4+k16*y**5+k17*y**6+k18*y**7+k19*y**8)
         OCV = OCV_ref + dUdT*(T-1)*constants.T_ref
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
+
+    def plating_simple(self, y, ybar, muR_ref, ISfuncs=None):
+        # Gao et al. Science Advances 2020 -0.15V. -0.1V is from Che-Ning's data
+        OCV = -0.15
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
