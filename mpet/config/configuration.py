@@ -694,6 +694,8 @@ class Config:
                     self[trode, 'indvPart']['N'][i, j] = self['psd_num'][trode][i,j]
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
+                    # store PSD area for plating, SEI
+                    self[trode, 'indvPart']['psd_area'][i, j] = parea
                     pvol = self['psd_vol'][trode][i,j]
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
@@ -722,6 +724,9 @@ class Config:
                     else:
                         # just use global value
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
+                    # store the lithium plating parameters
+                    self[trode, 'indvPart']['Li_mm'][i, j] = self[trode, 'Li_mm'] * cs_ref_part
+                    self[trode, 'indvPart']['k0_pl'][i, j] = self[trode, 'k0_pl'] / (constants.e * F_s_ref)
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode

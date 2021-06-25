@@ -154,7 +154,11 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            Optional('E_A', default=0.): Use(float),
                            'alpha': Use(float),
                            'lambda': Use(float),
-                           'Rfilm': Use(float)}}
+                           'Rfilm': Use(float)},
+             'Degradation': {'Li_plating': Use(tobool),
+                             'muRpl': str,
+                             'Li_mm': Use(float),
+                             'k0_pl': Use(float)}}
 
 
 # convert the dictionaries to actual schemas
