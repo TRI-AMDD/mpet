@@ -88,8 +88,8 @@ class SimMPET(dae.daeSimulation):
                                 part.c.SetInitialCondition(k, cs0)
                             if config[tr, "type"] in ["ACR"]:
                                 for k in range(Nij):
-                                   part.Rxn_pl.SetInitialGuess(k, 0)
-                                   part.V_Li.SetInitialCondition(k, 1e-5)
+                                    part.Rxn_pl.SetInitialGuess(k, 0)
+                                    part.V_Li.SetInitialCondition(k, 1e-5)
                             else:
                                 part.Rxn_pl.SetInitialGuess(0)
                                 part.V_Li.SetInitialCondition(1e-5)

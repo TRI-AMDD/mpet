@@ -43,6 +43,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, config, trode, ind=None):
         """config is the full dictionary of
         parameters for the electrode particles, as made for the
@@ -492,7 +493,6 @@ class muRfuncs():
         muR = self.get_muR_from_OCV(OCV, muR_ref)
         actR = None
         return muR, actR
-
 
     def plating_simple(self, y, ybar, muR_ref, ISfuncs=None):
         # Gao et al. Science Advances 2020 -0.15V. -0.1V is from Che-Ning's data

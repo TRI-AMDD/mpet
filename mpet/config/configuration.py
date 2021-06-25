@@ -726,7 +726,8 @@ class Config:
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
                     # store the lithium plating parameters
                     self[trode, 'indvPart']['Li_mm'][i, j] = self[trode, 'Li_mm'] * cs_ref_part
-                    self[trode, 'indvPart']['k0_pl'][i, j] = self[trode, 'k0_pl'] / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['k0_pl'][i, j] = self[trode, 'k0_pl'] \
+                        / (constants.e * F_s_ref)
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode
