@@ -87,8 +87,14 @@ Following Zeng et al. J. Electroanal. Chem., 2014, we see that
 
 is true as a simplification to the MHC model, to prevent having to evaluate the integral over the density of states, a computationally expensive procedure.
 
-The coupled-ion electron transfer model was developed by our group as a way of ...
+The coupled-ion electron transfer model was developed by our group as a way of modeling the coupling of electron and lithium ion transfer in a reaction. In this model, electron transfer is modeled quantum mechanically but ion transfer is modeled classically. The model can be expressed as
 
+.. math::
+    i_{red} = \frac{e k^*_0 c_O}{{\gamma}_{TS}} n_e \exp{\left( - \frac{\left( {\lambda}+e{\eta}_f-x_{\varepsilon}\right)^2}{4 {\lambda}k_B T}\right)} \\
+    i_{ox} = \frac{e k^*_0 c_R}{{\gamma}_{TS}} (1-n_e) \exp{\left( - \frac{\left( {\lambda}-e{\eta}_f-x_{\varepsilon}\right)^2}{4 {\lambda}k_B T}\right)} \\
+    i = \int_{-\infty}^{\infty} \left( i_{red} - i_{ox}\right){\rho} d{\varepsilon}
+
+where :math:`x_{\varepsilon} = E_f - {\varepsilon}` and :math:`e{\eta_f} = e{\eta} - k_B T \ln{c_O/c_R}` and :math:`k^*_0` is the reaction state prefactor, :math:`{\gamma}_{TS}` is the transition state overpotential.
 
 Now we return to our volume scale model to reflect the behavior of the porous electrode. System scale transport can be modeled using transport equations through multiple volumes. The electrolyte transport equations can be modeled
 
@@ -132,10 +138,10 @@ The effective diffusivity of the cation/anion in these models is defined as :mat
 
 In addition to electrolyte transport, the solid microstructure model for charge is also defined using conservation of charge, with :math:`0 = -\nabla \cdot \mathbf{i}_2 - \sum_i z_i e R_{V,i}`, where the current density is assumed to be modeled with an Ohm's law equation :math:`\mathbf{i}_s = - \frac{1-{\epsilon}}{{\tau}} {\sigma}_s \nabla {\phi}_s`, where :math:`{\sigma}_s` is the solid conductivity of the system.
 
-The resistance between particles ...
+The resistance between particles can be modeled with parallel contact resistances as :math:`G_{j,k}\left( {\phi}_{j,k}-{\phi}_{j,k+1} = I_{j,k}\right)`, where :math:`G_{j,k}` is the conductance and :math:`I_{j,k}` is the current between particles. Charge conservation requires that :math:`I_{j,k} - I_{j,k+1} = \int_{A_{k+1}} j_{j,k+1}dA`, where :math:`j_{j,k+1}` is the intercalation rate into particle k+1 with surface area :math:`A_{k+1}`. 
 
-The coupling between the particle scale and electrode model is achieved through "replicating" the set of particles we are simulating based on the amount of active material in each volume of the battery electrode, and through the current or voltage constraints throughout the battery. The total volumetric reaction term is defined as :math:`R_{V,i} = - \left( 1-{\epsilon}\right)P_L \sum_p \frac{V_p}{V_u} \frac{\partial \bar{c}_{p,i}}{\partial t}`, where :math:`V_u = \sum_p V_p` is the sum over particle areas and :math:`P_L` is the loading of active material in the solid phase.
-The current constraint or voltage constraint equations can be written as 
+.. The coupling between the particle scale and electrode model is achieved through "replicating" the set of particles we are simulating based on the amount of active material in each volume of the battery electrode, and through the current or voltage constraints throughout the battery. The total volumetric reaction term is defined as :math:`R_{V,i} = - \left( 1-{\epsilon}\right)P_L \sum_p \frac{V_p}{V_u} \frac{\partial \bar{c}_{p,i}}{\partial t}`, where :math:`V_u = \sum_p V_p` is the sum over particle areas and :math:`P_L` is the loading of active material in the solid phase.
+.. The current constraint or voltage constraint equations can be written as 
 
 .. math::
     i_{cell} = \sum_i \int_{L_a} z_i e R_{V,i} dL = - \sum_i \int_{L_c} z_i e R_{V,i} dL
