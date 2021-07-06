@@ -36,33 +36,33 @@ Nvol_a=len(anode.dtype) #Number of anode volumes
 dx=La/Nvol_a            #Physical width of each cell
 
 #Load particle concentrations
-cs=[]
+cbar=[]
 depth=[]
 for vol in range(Nvol_a):
     filename="sldAnodeVol{0:03n}Part000ConcData.txt".format(vol)
     part=read_csv_no_headers(os.path.join(mpetDir,filename),4)
-    cs.append(part[:,-1])
+    cbar.append([np.mean(i) for i in part])
     depth.append(La-dx*(.5+vol))
-cs=np.array(cs)
+cbar=np.array(cbar)
 depth=np.array(depth)
 
 
-#Plot 1, particle surface concentration vs depth at different times
+#Plot 1, graphite intercalation fraction vs depth at different times
 ###############################################################################
 fig,ax=plt.subplots(1)
 
 for time in [150,300,800]:
     time_ind = int(np.interp(time, mpet['Time_[s]'], range(len(mpet))))
-    ax.plot(depth,cs[:,time_ind],label="{0:.0f} s".format(mpet['Time_[s]'][time_ind]))
+    ax.plot(depth,cbar[:,time_ind],label="{0:.0f} s".format(mpet['Time_[s]'][time_ind]))
     ax.set_xlabel("Depth (um)")
-    ax.set_ylabel("Surface concentration")
+    ax.set_ylabel("Intercalation fraction")
     ax.set_ylim(0,1)
 
 ax.legend()
 plt.show()
 
 
-#Plot #2, graphite SOC vs time ad different depths
+#Plot #2, graphite intercalation fraction vs time at different depths
 ###############################################################################
 fig,ax=plt.subplots(1)
 
