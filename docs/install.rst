@@ -37,4 +37,30 @@ Test your installation
 
  ``pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py``
 
+Common Installation Bugs
+---------------------------
 
+One of the most common bugs is with QT plugins (it is not acutally a problem with MPET, but with one of the packages that MPET uses). The bug will usually cause plots to not be able to initialize and have the following error message:
+
+.. code-block:: RST
+
+    qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+    This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+    Available platform plugins are: eglfs, linuxfb, minimal, minimalegl, offscreen, vnc, wayland-egl, wayland, wayland-xcomposite-egl, wayland-xcomposite-glx, webgl, xcb.
+    Aborted (core dumped)``
+
+If you get this bug, first, check to see that your X11 server is in use!
+If not, try turning on debugging for QT plugins with 
+
+``export QT_DEBUG_PLUGINS=1``. 
+
+Often, the library issue that appears is 
+
+.. code-block:: RST
+
+    Cannot load library /.../lib/python3.7/site-packages/PyQt5/Qt5/plugins/platforms/libqxcb.so:
+    (libxcb-xinerama.so.0: cannot open shared object file: No such file or directory)``.
+
+If this is the issue, outside of an virtual environment, install the libxcb-xinerama0 package with
+
+``sudo apt-get install libxcb-xinerama0``.
