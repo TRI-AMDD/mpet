@@ -103,7 +103,7 @@ def SEI(eta, c_e, c_Li_ion, c_solv, k0, T, alpha=None):
     """Frumkin-corrected BV equation. c_e is ~ lithium ion concentration
        in the primary SEI layer, c_Li_ion is the lithium ion concentration
        in the bulk"""
-    ecd = k0 * ((c_e*c_Li_ion*c_solv)**(1-alpha))
+    ecd = k0 * (c_e*c_Li_ion*c_solv)
     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
 

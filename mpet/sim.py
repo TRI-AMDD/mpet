@@ -93,6 +93,7 @@ class SimMPET(dae.daeSimulation):
                             #Initialize degradation variables
                             part.Rxn_SEI.SetInitialGuess(0)
                             part.c_solv.SetInitialGuess(ndD_s["c0_solv"])
+                            part.a_e_SEI.SetInitialGuess(1)
                             part.dcSEIbardt.SetInitialGuess(0)
                             part.L1.SetInitialCondition(ndD_e[l]["indvPart"][i,j]["L10"])
                             part.L2.SetInitialCondition(ndD_e[l]["indvPart"][i,j]["L20"])
@@ -147,14 +148,10 @@ class SimMPET(dae.daeSimulation):
                     #Set electrolyte concentration in each particle
                     for j in range(Npart[l]):
                         self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
-                        self.m.particles[l][i,j].c_eff_lyte.SetInitialGuess(ndD_s["c0"])
     
             for j in range(Npart[l]): #initialize reaction plane potential = electrolyte potential
                 part = self.m.particles[l][i,j]
                 solidType = self.ndD_e[l]["indvPart"][i,j]["type"]
-                if solidType in ndD_s["1varTypes"]:
-                    part.phi_SEI_L0.SetInitialGuess(0)
-                    part.phi_SEI_L1.SetInitialGuess(0)
  
             #set last values
             self.m.last_current.AssignValue(0)

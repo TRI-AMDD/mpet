@@ -304,7 +304,6 @@ class Mod1var(dae.daeModel):
                 "Rate of SEI growth on particle volume basis")
         if ndD["type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
-            self.Rxn_sign = dae.daeVariable("Rxn_sign", dae.no_t, self, "Rate of reaction is +/-")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
@@ -314,13 +313,8 @@ class Mod1var(dae.daeModel):
                 "Primary SEI thickness")
         self.L2 = dae.daeVariable("L2", dae.no_t, self,
                 "Secondary SEI thickness")
-        self.c_eff_lyte = dae.daeVariable("c_eff_lyte", dae.no_t, self,
-                "Lithium ion concentration in the primary SEI layer")
         self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
-        self.phi_SEI_L1 = dae.daeVariable("phi_SEI_L1", elec_pot_t, self,
-                "Electrostatic potential at SEI/electrolyte interface")
-        self.phi_SEI_L0 = dae.daeVariable("phi_SEI_L0", elec_pot_t, self,
-                "Electrostatic potential at electrode/SEI interface")
+        self.a_e_SEI = dae.daeVariable("a_e_SEI", mole_frac_t, self, "Electron actitivty in SEI layer")
 
         #get SEI and plating reaction rates
         if ndD["SEI"]:
@@ -377,47 +371,9 @@ class Mod1var(dae.daeModel):
                     previous_output, _position_)
                 for _position_ in range(N)]
 
-        # calculate effective concentration from the Stern layer
-        if ndD["SEI"]:
-
-           R_SEI = ndD["R0SEI"]*(self.L1()/ndD["L10"])/(self.c_eff_lyte()**ndD["nu"])
-
-           #resistance of the SEI layer to electrons
-           eq = self.CreateEquation("resistance_SEI")
-           eq.Residual = (self.phi_SEI_L0() - self.phi_SEI_L1()) - self.Rxn_SEI()*R_SEI
-
-           #stern layer-double layer equilibrium between c_lyte and c_L1
-           c_avg_1 = (self.c_eff_lyte()+self.c_lyte())/2
-           #if concentrated solution model
-           if self.ndD_s["elyteModelType"] == "SM":
-               eq = self.CreateEquation("Stern_layer")
-               thermFac, tp0 = getattr(props_elyte,self.ndD_s["SMset"])()[2:4]
-               eq.Residual = self.c_eff_lyte() - self.c_lyte()*(np.exp(-(self.phi_SEI_L1()-self.phi_lyte())-ndD["E_ads"]))**(1/thermFac(c_avg_1))
-           else:
-               eq = self.CreateEquation("Stern_layer")
-               eq.Residual = self.c_eff_lyte() - np.exp(-(self.phi_SEI_L1()-self.phi_lyte())-ndD["E_ads"])*self.c_lyte()
-
-           #ionic flux between lithium 
-           eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = (self.phi_SEI_L0()-self.phi_SEI_L1()) - self.Rxn()*ndD["R0SEILi"]
-
-        else:
-
-           eq = self.CreateEquation("resistance_SEI")
-           eq.Residual = self.phi_SEI_L0() - self.phi_SEI_L1()
-
-           eq = self.CreateEquation("resistance_SEI_1")
-           eq.Residual = self.phi_lyte() - self.phi_SEI_L1()
-
-           eq = self.CreateEquation("lithium_ion_reaction")
-           eq.Residual = self.c_eff_lyte() - self.c_lyte()
-           
-
         # F#igure out mu_O, mu of the oxidized state
-        mu_O, act_lyte = calc_mu_O(self.c_eff_lyte(), self.phi_SEI_L0(), self.phi_m(), T,
+        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
                                    self.ndD_s["elyteModelType"])
-        mu_O_SEI, act_lyte_SEI = calc_mu_O_frumkin(self.phi_lyte(), self.c_lyte(), self.phi_SEI_L1(),
-                                                   self.c_eff_lyte(), T, self.ndD_s["elyteModelType"])
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -438,64 +394,54 @@ class Mod1var(dae.daeModel):
             self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
         elif ndD["type"] in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D1var(c, mu_O, mu_O_SEI, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
          
-        p1 = np.exp(-self.L1()/ndD["zeta"]) 
-        p2 = 1-self.c_solv()/self.ndD_s["c0_solv"]
-        w1 = p1/(p1 + p2) # normalized to conserve mass
-        w2 = p2/(p1 + p2) # normalized to conserve mass
-
         eq = self.CreateEquation("Solvent_diffusion_Fick")
         eq.Residual = (self.ndD_s["c0_solv"] - self.c_solv())*(self.ndD_s["D_solv"]/self.L2()) - self.Rxn_SEI()
 
         eq = self.CreateEquation("Primary_SEI_growth")
-        eq.Residual = w1*self.Rxn_SEI() - ndD["c_SEI"]*ndD["vfrac_1"]*self.L1.dt()
+        eq.Residual = np.exp(-self.L1()/ndD["zeta"])*self.Rxn_SEI() - ndD["c_SEI"]*ndD["vfrac_1"]*self.L1.dt()
 
         eq = self.CreateEquation("Secondary_SEI_growth")
-        eq.Residual = w2*self.Rxn_SEI() - ndD["c_SEI"]*ndD["vfrac_2"]*self.L2.dt()
+        eq.Residual = (1-np.exp(-self.L1()/ndD["zeta"]))*self.Rxn_SEI() - ndD["c_SEI"]*ndD["vfrac_2"]*self.L2.dt()
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sld_dynamics_0D1var(self, c, muO, muO_SEI, act_lyte, ISfuncs, noise):
+    def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
         ndD = self.ndD
         T = self.ndD_s["T"]
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
+        muR_SEI = calc_muR_SEI(T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_eff_lyte(), ndD["k0"], T,
+            eta_eff, c_surf, self.c_lyte(), ndD["k0"], T,
             actR_surf, act_lyte, ndD["lambda"], ndD["alpha"])
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
         # add SEI equations
         if ndD["SEI"]:
 
-            muR_SEI, actR_SEI = calc_muR_SEI(c_surf, self.cbar(), T, ndD, ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, muO_SEI)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.c_eff_lyte(), self.c_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
+            eta_SEI = calc_eta(muR_SEI, muO)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.a_e_SEI(), self.c_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI #convert to Rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(muO-ndD["eta_p"]))
 
         else:
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - 0 #convert to Rxn_deg[0] if space dependent
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.a_e_SEI() - 1 #convert to Rxn_deg[0] if space dependent
 
         eq = self.CreateEquation("dcsSEIdt")
         eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
 
-        #the sign function doesn't work sadly...
-        self.IF(self.Rxn() >= 0)
-        eq = self.CreateEquation("sign_Rxn")
-        eq.Residual = self.Rxn_sign() - 1
-        self.ELSE()
-        eq = self.CreateEquation("sign_Rxn")
-        eq.Residual = self.Rxn_sign() + 1
-        self.END_IF()
- 
         eq = self.CreateEquation("dcsdt")
-        eq.Residual = self.c.dt(0) - ndD["delta_L"]*(self.Rxn()-self.Rxn_sign()*self.Rxn_SEI())
+        eq.Residual = self.c.dt(0) - ndD["delta_L"]*self.Rxn()
         if ndD["noise"]:
             eq.Residual += noise[0]()
 
@@ -638,18 +584,6 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     return mu_O, act_lyte
 
 
-def calc_mu_O_frumkin(phi_lyte1, c_lyte1, phi_lyte2, c_lyte2, T, elyteModelType):
-    """Calculates the potential for a Frumkin-BV reaction. 1 is on the bulk side
-       and 2 is in the Stern layer side"""
-    if elyteModelType == "SM":
-        #not implemented yet
-        x = 1
-    elif elyteModelType == "dilute":
-        act_lyte = c_lyte1*c_lyte2 #this is based on the SEI reaction and electroneutral assumption
-        mu_lyte = T*np.log(act_lyte) + phi_lyte1 - phi_lyte2
-    return mu_lyte, act_lyte
-
-
 def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     muRfunc = props_am.muRfuncs(T, ndD).muRfunc
     muR_ref = ndD["muR_ref"]
@@ -657,11 +591,11 @@ def calc_muR(c, cbar, T, ndD, ISfuncs=None):
     return muR, actR
 
 
-def calc_muR_SEI(c, cbar, T, ndD, ISfuncs=None):
+def calc_muR_SEI(T, ndD, ISfuncs=None):
     muRfunc = props_am.muRfuncs(T, ndD).muR_SEI
     muR_ref = ndD["muR_ref"][0]
-    muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
-    return muR, actR
+    muR, actR = muRfunc(0, 0, muR_ref, ISfuncs)
+    return muR
 
 
 def MX(mat, objvec):

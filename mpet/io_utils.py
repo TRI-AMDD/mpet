@@ -233,12 +233,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         dD["k0_pl"] = P.getfloat('Degradation','k0_pl',fallback=0)
         ndD["alpha_SEI"] = P.getfloat('Degradation','alpha_SEI',fallback=0.5)
         ndD["alpha_pl"] = P.getfloat('Degradation','alpha_pl',fallback=0.5)
-        ndD["beta2"] = P.getfloat('Degradation','beta2',fallback=0)
-        dD["E_ads"] = P.getfloat('Degradation','E_ads',fallback=1)
         dD["zeta"] = P.getfloat('Degradation','zeta',fallback=1)
-        ndD["nu"] = P.getfloat('Degradation','nu',fallback=1)
-        dD["R0SEI"] = P.getfloat('Degradation','R0SEI',fallback=0)
-        dD["R0SEILi"] = P.getfloat('Degradation','R0SEILi',fallback=0)
+        dD["eta_p"] = P.getfloat('Degradation','eta_p',fallback=0)
 
         # electrode parameters
         dD_e[trode] = dD.copy()
@@ -420,8 +416,6 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                 ndD_tmp["D"] = dD_e[trode]['D']*t_ref/plen**2
                 ndD_tmp["k0"] = dD_e[trode]['k0']/(e*F_s_ref)
                 ndD_tmp["Rfilm"] = dD_e[trode]["Rfilm"] / (k*T_ref/(e*i_s_ref))
-                ndD_tmp["R0SEI"] = dD_e[trode]["R0SEI"] / (k*T_ref/(e*i_s_ref))
-                ndD_tmp["R0SEILi"] = dD_e[trode]["R0SEILi"] / (k*T_ref/(e*i_s_ref))
                 ndD_tmp["delta_L"] = (parea*plen)/pvol
                 # non dimensionalize SEI parameters
                 ndD_tmp["k0_SEI"] = dD_e[trode]['k0_SEI']/(e*F_s_ref)
@@ -436,7 +430,7 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                     ndD_tmp["L20"] = 0.1e-9/plen
                 
                 ndD_tmp["zeta"] = dD_e[trode]["zeta"]/plen #zeta is also a nondimensional length
-                ndD_tmp["E_ads"] = e*dD_e[trode]["E_ads"] #nondimensionalize adsorption energy
+                ndD_tmp["eta_p"] = dD_e[trode]["eta_p"]*e/(k*T_ref) #zeta is also a nondimensional length
                 ndD_tmp["Li_mm"] = dD_e[trode]['Li_mm'] * cs_ref_part #parts/mol
                 #double check this!!
 
