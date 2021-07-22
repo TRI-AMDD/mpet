@@ -710,11 +710,16 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['k0_SEI'][i, j] = self[trode, 'k0_SEI'] \
+                        / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
+                    self[trode, 'indvPart']['zeta'][i, j] = self[trode, 'zeta'] / plen
+                    self[trode, 'indvPart']['eta_p'][i, j] = self[trode, 'eta_p'] * constants.e \
+                        / (constants.k * constants.T_ref)
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:

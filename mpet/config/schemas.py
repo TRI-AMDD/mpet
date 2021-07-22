@@ -154,7 +154,16 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            Optional('E_A', default=0.): Use(float),
                            'alpha': Use(float),
                            'lambda': Use(float),
-                           'Rfilm': Use(float)}}
+                           'Rfilm': Use(float)},
+             'Degradation': {Optional('SEI', default=False): Use(tobool),
+                             Optional('muRSEI', default="SEI_early"): str,
+                             Optional('rho_SEI', default=6.02e28): Use(float),
+                             Optional('vfrac_1', default=0.9): Use(float),
+                             Optional('vfrac_2', default=0.3): Use(float),
+                             Optional('k0_SEI', default=1e-10): Use(float),
+                             Optional('alpha_SEI', default=0.5): Use(float),
+                             Optional('zeta', default=10e-9): Use(float),
+                             Optional('eta_p', default=2): Use(float)}}
 
 
 # convert the dictionaries to actual schemas
