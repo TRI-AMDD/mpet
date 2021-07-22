@@ -413,7 +413,6 @@ class Mod1var(dae.daeModel):
         T = self.ndD_s["T"]
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), T, ndD, ISfuncs)
-        muR_SEI = calc_muR_SEI(T, ndD, ISfuncs)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*ndD["Rfilm"]
         Rxn = self.calc_rxn_rate(
@@ -424,6 +423,7 @@ class Mod1var(dae.daeModel):
         # add SEI equations
         if ndD["SEI"]:
 
+            muR_SEI = calc_muR_SEI(T, ndD, ISfuncs)
             eta_SEI = calc_eta(muR_SEI, muO)
             Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.a_e_SEI(), self.c_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
             eq = self.CreateEquation("Rxn_SEI")
@@ -454,6 +454,7 @@ class Mod1var(dae.daeModel):
         Mmat = get_Mmat(ndD['shape'], N)
         dr, edges = geo.get_dr_edges(ndD['shape'], N)
 
+
         # Get solid particle chemical potential, overpotential, reaction rate
         if ndD["type"] in ["ACR"]:
             c_surf = c
@@ -483,6 +484,22 @@ class Mod1var(dae.daeModel):
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
 
+        if ndD["SEI"]:
+
+            muR_SEI = calc_muR_SEI(T, ndD, ISfuncs)
+            eta_SEI = calc_eta(muR_SEI, muO)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.a_e_SEI(), self.c_lyte(), self.c_solv(), ndD["k0_SEI"], T, ndD["alpha_SEI"])
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI #convert to Rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(muO-ndD["eta_p"]))
+
+        else:
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - 0 #convert to Rxn_deg[0] if space dependent
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.a_e_SEI() - 1 #convert to Rxn_deg[0] if space dependent
+
         # Get solid particle fluxes (if any) and RHS
         if ndD["type"] in ["ACR"]:
             #since ACR has N equations, use the last N variables
@@ -507,10 +524,15 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         for k in range(N):
+
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
             eq.Residual = LHS_vec[k] - RHS[k]
             if ndD["noise"]:
                 eq.Residual += noise[k]()
+
+        eq = self.CreateEquation("dcsSEIdt")
+        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
+
 
 
 def calc_eta(muR, muO):
