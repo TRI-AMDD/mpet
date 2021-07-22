@@ -55,7 +55,7 @@ def tobool(value):
 system = {'Sim Params': {'profileType': lambda x:
                          check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
                          'Crate': Use(float),
-                         'power': Use(float),
+                         Optional('power', default=None): Use(float),
                          Optional('1C_current_density', default=None): Use(float),
                          Optional('tramp', default=0.): Use(float),
                          'Vmax': Use(float),
