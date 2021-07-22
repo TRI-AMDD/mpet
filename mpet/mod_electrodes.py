@@ -405,6 +405,9 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("Secondary_SEI_growth")
         eq.Residual = (1-np.exp(-self.L1()/ndD["zeta"]))*self.Rxn_SEI() - ndD["c_SEI"]*ndD["vfrac_2"]*self.L2.dt()
 
+        eq = self.CreateEquation("dcsSEIdt")
+        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
+ 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
@@ -436,9 +439,6 @@ class Mod1var(dae.daeModel):
             eq.Residual = self.Rxn_SEI() - 0 #convert to Rxn_deg[0] if space dependent
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.a_e_SEI() - 1 #convert to Rxn_deg[0] if space dependent
-
-        eq = self.CreateEquation("dcsSEIdt")
-        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - ndD["delta_L"]*self.Rxn()
@@ -529,10 +529,6 @@ class Mod1var(dae.daeModel):
             eq.Residual = LHS_vec[k] - RHS[k]
             if ndD["noise"]:
                 eq.Residual += noise[k]()
-
-        eq = self.CreateEquation("dcsSEIdt")
-        eq.Residual = self.dcSEIbardt() - ndD["delta_L"]*self.Rxn_SEI()
-
 
 
 def calc_eta(muR, muO):

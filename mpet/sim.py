@@ -149,10 +149,6 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[l]):
                         self.m.particles[l][i,j].c_lyte.SetInitialGuess(ndD_s["c0"])
     
-            for j in range(Npart[l]): #initialize reaction plane potential = electrolyte potential
-                part = self.m.particles[l][i,j]
-                solidType = self.ndD_e[l]["indvPart"][i,j]["type"]
- 
             #set last values
             self.m.last_current.AssignValue(0)
             self.m.last_phi_applied.AssignValue(phi_guess)
@@ -192,6 +188,8 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, np.asscalar(data[partStr + "c"][-1,k]))
+                            part.L1.SetInitialCondition(utils.get_dict_key(data, partStr + "L1", f_type, final = True))
+                            part.L2.SetInitialCondition(utils.get_dict_key(data, partStr + "L2", f_type, final = True))
                         elif solidType in ndD_s["2varTypes"]:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", f_type, final = True))

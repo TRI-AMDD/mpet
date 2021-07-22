@@ -156,8 +156,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
 
     # Electrolyte
     c0 = dD_s["c0"] = P_s.getfloat('Electrolyte', 'c0')
-    c0_solv = dD_s["c0_solv"] = P_s.getfloat('Electrolyte', 'c0_solv', fallback = 0)
-    D_solv = dD_s["D_solv"] = P_s.getfloat('Electrolyte','D_solv', fallback = 0)
+    c0_solv = dD_s["c0_solv"] = P_s.getfloat('Electrolyte', 'c0_solv', fallback = 13200)
+    D_solv = dD_s["D_solv"] = P_s.getfloat('Electrolyte','D_solv', fallback = 1e-14)
     zp = ndD_s["zp"] = P_s.getfloat('Electrolyte', 'zp')
     zm = ndD_s["zm"] = P_s.getfloat('Electrolyte', 'zm')
     if zm > 0:
@@ -221,20 +221,20 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
         # Degradation
         ndD["SEI"] = P.getboolean('Degradation','SEI', fallback = False)
         ndD["Plating"] = P.getboolean('Degradation','Plating', fallback = False)
-        ndD["muRSEI"] = P.get('Degradation', 'muRSEI', fallback = "None")
-        ndD["muRpl"] = P.get('Degradation', 'muRpl', fallback = "None")
-        dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI', fallback = 0)
+        ndD["muRSEI"] = P.get('Degradation', 'muRSEI', fallback = "SEI_early")
+        ndD["muRpl"] = P.get('Degradation', 'muRpl', fallback = "plating1")
+        dD["rho_SEI"] = P.getfloat('Degradation','rho_SEI', fallback = 6.02e28)
         dD["n0_SEI"] = P.getfloat('Degradation','n0_SEI', fallback = 0)
-        ndD["first_cycle_ratio"] = P.getfloat('Degradation','first_cycle_ratio', fallback = 0)
-        dD["Li_mm"] = P.getfloat('Degradation','Li_mm', fallback = 0)
-        ndD["vfrac_1"] = P.getfloat('Degradation', 'vfrac_1', fallback = 0)
-        ndD["vfrac_2"] = P.getfloat('Degradation', 'vfrac_2', fallback = 0)
-        dD["k0_SEI"] = P.getfloat('Degradation','k0_SEI',fallback=0)
-        dD["k0_pl"] = P.getfloat('Degradation','k0_pl',fallback=0)
+        ndD["first_cycle_ratio"] = P.getfloat('Degradation','first_cycle_ratio', fallback = 0.9)
+        dD["Li_mm"] = P.getfloat('Degradation','Li_mm', fallback = 12.99e-6)
+        ndD["vfrac_1"] = P.getfloat('Degradation', 'vfrac_1', fallback = 0.9)
+        ndD["vfrac_2"] = P.getfloat('Degradation', 'vfrac_2', fallback = 0.3)
+        dD["k0_SEI"] = P.getfloat('Degradation','k0_SEI',fallback=1e-10)
+        dD["k0_pl"] = P.getfloat('Degradation','k0_pl',fallback=2.2e-14)
         ndD["alpha_SEI"] = P.getfloat('Degradation','alpha_SEI',fallback=0.5)
         ndD["alpha_pl"] = P.getfloat('Degradation','alpha_pl',fallback=0.5)
-        dD["zeta"] = P.getfloat('Degradation','zeta',fallback=1)
-        dD["eta_p"] = P.getfloat('Degradation','eta_p',fallback=0)
+        dD["zeta"] = P.getfloat('Degradation','zeta',fallback=10e-9)
+        dD["eta_p"] = P.getfloat('Degradation','eta_p',fallback=0.2)
 
         # electrode parameters
         dD_e[trode] = dD.copy()
@@ -426,8 +426,8 @@ def get_dicts_from_configs(P_s, P_e, paramfile):
                     ndD_tmp["L10"] = ndD_tmp["n0_SEI"]*ndD_e[trode]['first_cycle_ratio']*np.sum(pvol)/(ndD_e[trode]['vfrac_1']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
                     ndD_tmp["L20"] = ndD_tmp["n0_SEI"]*(1-ndD_e[trode]['first_cycle_ratio'])*np.sum(pvol)/(ndD_e[trode]['vfrac_2']*ndD_tmp["c_SEI"]*np.sum(parea)*psd_SEI_area_ratio[trode]) / plen # from mAh/g to particle/g, then nondimensionalize
                 else:
-                    ndD_tmp["L10"] = 0.1e-9/plen
-                    ndD_tmp["L20"] = 0.1e-9/plen
+                    ndD_tmp["L10"] = 0.5e-9/plen
+                    ndD_tmp["L20"] = 0.5e-9/plen
                 
                 ndD_tmp["zeta"] = dD_e[trode]["zeta"]/plen #zeta is also a nondimensional length
                 ndD_tmp["eta_p"] = dD_e[trode]["eta_p"]*e/(k*T_ref) #zeta is also a nondimensional length
