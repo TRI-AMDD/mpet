@@ -470,7 +470,9 @@ class Config:
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
+        self['D_solv'] = self['D_solv'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
+        self['c0_solv'] = self['c0_solv'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
@@ -716,6 +718,31 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
+                    # assuming SEI is made up of Li2CO3, which has density rho = 2.11g/cm^3i
+                    # n0_SEI from mAh/g to unit/m^3
+                    self[trode, 'indvPart']['n0_SEI'][i, j] = self[trode, 'n0_SEI']*3600 \
+                        / constants.e*2.11e3/cs_ref_part
+                    self[trode, 'indvPart']['c_SEI'][i, j] = self[trode, 'rho_SEI'] / cs_ref_part
+                    if self[trode, 'SEI'] and self[trode, 'n0_SEI'] != 0:
+                        # we know the amount of initial SEI--we can set it as a parameter
+                        # from mAh/g to particle/g
+                        self[trode,'indvPart']['L10'][i, j] = self[trode,'n0_SEI'] * \
+                            self[trode,'first_cycle_ratio'] * \
+                            self[trode,'indvPart']['delta_L'][i, j] \
+                            / (self[trode, 'vfrac_1']
+                               * self[trode, 'indvPart']['c_SEI'][i, j]*plen)
+                        self[trode,'indvPart']['L20'][i, j] = self[trode,'n0_SEI'] * \
+                            (1-self[trode,'first_cycle_ratio']) \
+                            * self[trode,'indvPart']['delta_L'][i, j] \
+                            / (self[trode, 'vfrac_2']
+                               * self[trode, 'indvPart']['c_SEI'][i, j]*plen)
+                    else:
+                        # otherwise, set to arbitrary value of 0.1e-9 for both primary and
+                        # secondary SEI
+                        self[trode, 'indvPart']['L10'][i, j] = 0.1e-9/plen
+                        self[trode, 'indvPart']['L20'][i, j] = 0.1e-9/plen
+
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
                     self[trode, 'indvPart']['zeta'][i, j] = self[trode, 'zeta'] / plen
                     self[trode, 'indvPart']['eta_p'][i, j] = self[trode, 'eta_p'] * constants.e \
