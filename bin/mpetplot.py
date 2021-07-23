@@ -16,6 +16,7 @@ plotTypes = OrderedDict([
     ('v','voltage vs filling fraction'),
     ('vt','voltage vs time'),
     ('curr','current vs time'),
+    ('power','power vs time'),
     ('elytec','electrolyte concentration (movie)'),
     ('elytecf','electrolyte concentration final snapshot'),
     ('elytep','electrolyte potential (movie)'),
