@@ -185,18 +185,18 @@ class Mod2var(dae.daeModel):
         # add SEI equations
         if self.get_trode_param("SEI"):
 
-            muR_SEI = calc_muR_SEI(self.config["T"], self.config, ISfuncs)
+            muR_SEI = calc_muR_SEI(self.config, self.trode, self.ind, ISfuncs)
             eta_SEI = calc_eta(muR_SEI, mu_O)
             Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
                                              self.a_e_SEI(),
                                              self.c_lyte(),
                                              self.c_solv(),
                                              self.get_trode_param("k0_SEI"),
-                                             self.config["T"],
+                                             T,
                                              self.get_trode_param("alpha_SEI"))
             eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateCquation("a_e_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
             eq.Residual = self.a_e_SEI() - 1/(1+np.exp(mu_O-self.get_trode_param("eta_p")))
 
         else:
@@ -472,18 +472,18 @@ class Mod1var(dae.daeModel):
         # add SEI equations
         if self.get_trode_param("SEI"):
 
-            muR_SEI = calc_muR_SEI(self.config["T"], self.config, self.ISfuncs)
+            muR_SEI = calc_muR_SEI(self.config, self.trode, self.ind, self.ISfuncs)
             eta_SEI = calc_eta(muR_SEI, mu_O)
             Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
                                              self.a_e_SEI(),
                                              self.c_lyte(),
                                              self.c_solv(),
                                              self.get_trode_param("k0_SEI"),
-                                             self.config["T"],
+                                             T,
                                              self.get_trode_param("alpha_SEI"))
             eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateCquation("a_e_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
             eq.Residual = self.a_e_SEI() - 1/(1+np.exp(mu_O-self.get_trode_param("eta_p")))
 
         else:
@@ -661,9 +661,9 @@ def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
     return muR, actR
 
 
-def calc_muR_SEI(T, ndD, ISfuncs=None):
-    muRfunc = props_am.muRfuncs(T, ndD).muR_SEI
-    muR_ref = ndD["muR_ref"][0]
+def calc_muR_SEI(config, trode, ind, ISfuncs=None):
+    muRfunc = props_am.muRfuncs(config, trode, ind).muR_SEI
+    muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(0, 0, muR_ref, ISfuncs)
     return muR
 
