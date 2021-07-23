@@ -85,7 +85,7 @@ class ModCell(dae.daeModel):
                 [self.DmnCell[trode]])
             self.R_no_deg_Vp[trode] = dae.daeVariable(
                 "R_no_deg_Vp_{trode}".format(trode=trode), dae.no_t, self,
-                "Rate of reaction of positive without degradation per electrode volume",
+                "Rate of reaction without degradation per electrode volume",
                 [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,

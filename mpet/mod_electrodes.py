@@ -446,7 +446,7 @@ class Mod1var(dae.daeModel):
                 self.c_lyte(),
                 self.c_solv(),
                 self.get_trode_param("k0_SEI"),
-                t,
+                T,
                 self.get_trode_param("alpha_SEI"))
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
@@ -514,7 +514,7 @@ class Mod1var(dae.daeModel):
                 self.c_lyte(),
                 self.c_solv(),
                 self.get_trode_param("k0_SEI"),
-                t,
+                T,
                 self.get_trode_param("alpha_SEI"))
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
