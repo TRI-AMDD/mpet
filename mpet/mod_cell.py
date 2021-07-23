@@ -206,7 +206,8 @@ class ModCell(dae.daeModel):
                     Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
                     RHS1 += -(config["beta"][trode] * (1-config["poros"][trode])
                               * config["P_L"][trode] * Vj
-                              * self.particles[trode][vInd,pInd].dcSEIbardt())  # this imposes the current constraint
+                              * self.particles[trode][vInd,pInd].dcSEIbardt())
+                    # this imposes the current constraint
                     RHS2 += -(config["beta"][trode] * (1-config["poros"][trode])
                               * config["P_L"][trode] * Vj
                               * self.particles[trode][vInd,pInd].dcbardt())  # Equation 96 in paper
