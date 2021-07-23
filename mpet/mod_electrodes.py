@@ -54,12 +54,24 @@ class Mod2var(dae.daeModel):
             "c2bar", mole_frac_t, self,
             "Average concentration in 'layer' 2 of active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
+                                          "Rate of SEI growth on particle volume basis")
         if self.get_trode_param("type") not in ["ACR2"]:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1")
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2")
         else:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
+
+        self.Rxn_SEI = dae.daeVariable("Rxn_SEI", dae.no_t, self,
+                                       "Rate of SEI growth reaction")
+        self.L1 = dae.daeVariable("L1", dae.no_t, self,
+                                  "Primary SEI thickness")
+        self.L2 = dae.daeVariable("L2", dae.no_t, self,
+                                  "Secondary SEI thickness")
+        self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
+        self.a_e_SEI = dae.daeVariable("a_e_SEI", mole_frac_t, self,
+                                       "Electron actitivty in SEI layer")
 
         # Get reaction rate function from dictionary name
         self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
@@ -154,6 +166,45 @@ class Mod2var(dae.daeModel):
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+
+        eq = self.CreateEquation("Solvent_diffusion_Fick")
+        eq.Residual = (self.config["c0_solv"] - self.c_solv()) * \
+            (self.config["D_solv"]/self.L2()) - self.Rxn_SEI()
+
+        eq = self.CreateEquation("Primary_SEI_growth")
+        eq.Residual = np.exp(-self.L1()/self.get_trode_param("zeta"))*self.Rxn_SEI() - \
+            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_1")*self.L1.dt()
+
+        eq = self.CreateEquation("Secondary_SEI_growth")
+        eq.Residual = (1-np.exp(-self.L1()/self.get_trode_param("zeta")))*self.Rxn_SEI() - \
+            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_2")*self.L2.dt()
+
+        eq = self.CreateEquation("dcsSEIdt")
+        eq.Residual = self.dcSEIbardt() - self.get_trode_param("delta_L")*self.Rxn_SEI()
+
+        # add SEI equations
+        if self.get_trode_param("SEI"):
+
+            muR_SEI = calc_muR_SEI(self.config["T"], self.config, ISfuncs)
+            eta_SEI = calc_eta(muR_SEI, mu_O)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
+                                             self.a_e_SEI(),
+                                             self.c_lyte(),
+                                             self.c_solv(),
+                                             self.get_trode_param("k0_SEI"),
+                                             self.config["T"],
+                                             self.get_trode_param("alpha_SEI"))
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateCquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(mu_O-self.get_trode_param("eta_p")))
+
+        else:
+
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -418,6 +469,29 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("dcsSEIdt")
         eq.Residual = self.dcSEIbardt() - self.get_trode_param("delta_L")*self.Rxn_SEI()
 
+        # add SEI equations
+        if self.get_trode_param("SEI"):
+
+            muR_SEI = calc_muR_SEI(self.config["T"], self.config, self.ISfuncs)
+            eta_SEI = calc_eta(muR_SEI, mu_O)
+            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
+                                             self.a_e_SEI(),
+                                             self.c_lyte(),
+                                             self.c_solv(),
+                                             self.get_trode_param("k0_SEI"),
+                                             self.config["T"],
+                                             self.get_trode_param("alpha_SEI"))
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateCquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(mu_O-self.get_trode_param("eta_p")))
+
+        else:
+            eq = self.CreateEquation("Rxn_SEI")
+            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
+            eq = self.CreateEquation("a_e_SEI")
+            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
+
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
@@ -434,30 +508,6 @@ class Mod1var(dae.daeModel):
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
-
-        # add SEI equations
-        if self.get_trode_param("SEI"):
-
-            muR_SEI = calc_muR_SEI(T, self.config, ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, muO)
-            Rxn_SEI = self.calc_rxn_rate_SEI(
-                eta_SEI,
-                self.a_e_SEI(),
-                self.c_lyte(),
-                self.c_solv(),
-                self.get_trode_param("k0_SEI"),
-                T,
-                self.get_trode_param("alpha_SEI"))
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateCquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(muO-self.get_trode_param("eta_p")))
-
-        else:
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
@@ -502,30 +552,6 @@ class Mod1var(dae.daeModel):
         else:
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
-
-        # add SEI equations
-        if self.get_trode_param("SEI"):
-
-            muR_SEI = calc_muR_SEI(T, self.config, ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, muO)
-            Rxn_SEI = self.calc_rxn_rate_SEI(
-                eta_SEI,
-                self.a_e_SEI(),
-                self.c_lyte(),
-                self.c_solv(),
-                self.get_trode_param("k0_SEI"),
-                T,
-                self.get_trode_param("alpha_SEI"))
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateCquation("a_e_sei")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(muO-self.get_trode_param("eta_p")))
-
-        else:
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR"]:

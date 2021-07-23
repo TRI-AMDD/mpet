@@ -81,18 +81,19 @@ class SimMPET(dae.daeSimulation):
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
+                        # Initialize degradation variables
+                        part.Rxn_SEI.SetInitialGuess(0)
+                        part.c_solv.SetInitialGuess(config["c0_solv"])
+                        part.a_e_SEI.SetInitialGuess(1)
+                        part.dcSEIbardt.SetInitialGuess(0)
+                        part.L1.SetInitialCondition(config[tr, "indvPart"]["L10"][i, j])
+                        part.L2.SetInitialCondition(config[tr, "indvPart"]["L20"][i, j])
+
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
-                            # Initialize degradation variables
-                            part.Rxn_SEI.SetInitialGuess(0)
-                            part.c_solv.SetInitialGuess(config["c0_solv"])
-                            part.a_e_SEI.SetInitialGuess(1)
-                            part.dcSEIbardt.SetInitialGuess(0)
-                            part.L1.SetInitialCondition(config[tr, "indvPart"]["L10"][i, j])
-                            part.L2.SetInitialCondition(config[tr, "indvPart"]["L20"][i, j])
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -161,6 +162,10 @@ class SimMPET(dae.daeSimulation):
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
+                        part.L1.SetInitialCondition(utils.get_dict_key(data,
+                                                                       partStr + "L1", final=True))
+                        part.L2.SetInitialCondition(utils.get_dict_key(data,
+                                                                       partStr + "L2", final=True))
 
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
@@ -168,12 +173,6 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
-                            part.L1.SetInitialCondition(
-                                utils.get_dict_key(
-                                    data, partStr + "L1", final=True))
-                            part.L2.SetInitialCondition(
-                                utils.get_dict_key(
-                                    data, partStr + "L2", final=True))
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))
