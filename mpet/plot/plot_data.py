@@ -47,6 +47,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # simulated (porous) electrodes
     trodes = config["trodes"]
     # Pick out some useful calculated values
+    limtrode = config["limtrode"]
     k = constants.k                      # Boltzmann constant, J/(K Li)
     Tref = constants.T_ref               # Temp, K
     e = constants.e                      # Charge of proton, C
@@ -54,6 +55,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     c_ref = constants.c_ref
     td = config["t_ref"]
     Etheta = {"a": 0.}
+    cap = config[limtrode, "cap"]
     for trode in trodes:
         Etheta[trode] = -(k*Tref/e) * config[trode, "phiRef"]
     Vstd = Etheta["c"] - Etheta["a"]
@@ -302,6 +304,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ax.set_ylabel("Current [C-rate]")
         if save_flag:
             fig.savefig("mpet_current.png", bbox_inches="tight")
+        return fig, ax
+
+    if plot_type == "power":
+        current = utils.get_dict_key(data, pfx + 'current') * (3600/td) * (cap/3600)  # in A/m^2
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
+        power = np.multiply(current, voltage)
+        if data_only:
+            return times*td, power
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, power)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel(r"Power [W/m$^2$]")
+        if save_flag:
+            fig.savefig("mpet_power.png", bbox_inches="tight")
         return fig, ax
 
     # Plot electrolyte concentration or potential

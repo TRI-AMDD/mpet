@@ -475,6 +475,8 @@ class Config:
         self['c0_solv'] = self['c0_solv'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+        if self['power'] is not None:
+            self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
 
