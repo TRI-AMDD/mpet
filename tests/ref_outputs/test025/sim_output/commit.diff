@@ -1,1 +1,193 @@
+diff --git a/tests/ref_outputs/test025/sim_output/commit.diff b/tests/ref_outputs/test025/sim_output/commit.diff
+deleted file mode 100644
+index 8b13789..0000000
+--- a/tests/ref_outputs/test025/sim_output/commit.diff
++++ /dev/null
+@@ -1 +0,0 @@
+-
+diff --git a/tests/ref_outputs/test025/sim_output/daetools_config_options.txt b/tests/ref_outputs/test025/sim_output/daetools_config_options.txt
+deleted file mode 100644
+index 89c9d5d..0000000
+--- a/tests/ref_outputs/test025/sim_output/daetools_config_options.txt
++++ /dev/null
+@@ -1,137 +0,0 @@
+-{
+-    "daetools": {
+-        "core": {
+-            "checkForInfiniteNumbers": "false",
+-            "eventTolerance": "1E-7",
+-            "logIndent": "    ",
+-            "pythonIndent": "    ",
+-            "checkUnitsConsistency": "true",
+-            "resetLAMatrixAfterDiscontinuity": "true",
+-            "printInfo": "false",
+-            "nodes": {
+-                "useNodeMemoryPools": "false",
+-                "deleteNodesThreshold": "1000000"
+-            },
+-            "equations": {
+-                "info": [
+-                    "If simplifyExpressions is true equation expressions will be simplified.",
+-                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
+-                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+-                ],
+-                "simplifyExpressions": "false",
+-                "evaluationMode": "computeStack_OpenMP",
+-                "evaluationTree_OpenMP": {
+-                    "numThreads": "0"
+-                },
+-                "computeStack_OpenMP": {
+-                    "numThreads": "0"
+-                }
+-            }
+-        },
+-        "activity": {
+-            "printHeader": "false",
+-            "printStats": "true",
+-            "timeHorizon": "100.0",
+-            "reportingInterval": "1.0",
+-            "reportTimeDerivatives": "false",
+-            "reportSensitivities": "false",
+-            "stopAtModelDiscontinuity": "true",
+-            "reportDataAroundDiscontinuities": "true",
+-            "objFunctionAbsoluteTolerance": "1E-8",
+-            "constraintsAbsoluteTolerance": "1E-8",
+-            "measuredVariableAbsoluteTolerance": "1E-8"
+-        },
+-        "datareporting": {
+-            "tcpipDataReceiverAddress": "127.0.0.1",
+-            "tcpipDataReceiverPort": "50000",
+-            "tcpipNumberOfRetries": "10",
+-            "tcpipRetryAfterMilliSecs": "1000"
+-        },
+-        "logging": {
+-            "tcpipLogAddress": "127.0.0.1",
+-            "tcpipLogPort": "51000"
+-        },
+-        "minlpsolver": {
+-            "printInfo": "false"
+-        },
+-        "IDAS": {
+-            "relativeTolerance": "1E-5",
+-            "integrationMode": "Normal",
+-            "reportDataInOneStepMode": "false",
+-            "nextTimeAfterReinitialization": "1E-7",
+-            "printInfo": "false",
+-            "numberOfSTNRebuildsDuringInitialization": "1000",
+-            "SensitivitySolutionMethod": "Staggered",
+-            "SensErrCon": "false",
+-            "sensRelativeTolerance": "1E-5",
+-            "sensAbsoluteTolerance": "1E-5",
+-            "MaxOrd": "5",
+-            "MaxNumSteps": "1000",
+-            "InitStep": "0.0",
+-            "MaxStep": "0.0",
+-            "MaxErrTestFails": "10",
+-            "MaxNonlinIters": "4",
+-            "MaxConvFails": "10",
+-            "NonlinConvCoef": "0.33",
+-            "SuppressAlg": "false",
+-            "NoInactiveRootWarn": "false",
+-            "NonlinConvCoefIC": "0.0033",
+-            "MaxNumStepsIC": "5",
+-            "MaxNumJacsIC": "4",
+-            "MaxNumItersIC": "10",
+-            "LineSearchOffIC": "false",
+-            "gmres": {
+-                "kspace": "30",
+-                "EpsLin": "0.05",
+-                "JacTimesVecFn": "DifferenceQuotient",
+-                "DQIncrementFactor": "1.0",
+-                "MaxRestarts": "5",
+-                "GSType": "MODIFIED_GS"
+-            }
+-        },
+-        "superlu": {
+-            "factorizationMethod": "SamePattern_SameRowPerm",
+-            "useUserSuppliedWorkSpace": "false",
+-            "workspaceSizeMultiplier": "3.0",
+-            "workspaceMemoryIncrement": "1.5"
+-        },
+-        "superlu_mt": {
+-            "numThreads": "0"
+-        },
+-        "intel_pardiso": {
+-            "numThreads": "0"
+-        },
+-        "BONMIN": {
+-            "IPOPT": {
+-                "print_level": "0",
+-                "tol": "1E-5",
+-                "linear_solver": "mumps",
+-                "hessianApproximation": "limited-memory",
+-                "mu_strategy": "adaptive"
+-            }
+-        },
+-        "NLOPT": {
+-            "printInfo": "false",
+-            "xtol_rel": "1E-6",
+-            "xtol_abs": "1E-6",
+-            "ftol_rel": "1E-6",
+-            "ftol_abs": "1E-6",
+-            "constr_tol": "1E-6"
+-        },
+-        "deal_II": {
+-            "printInfo": "false",
+-            "assembly": {
+-                "info": [
+-                    "parallelAssembly can be: Sequential or OpenMP.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
+-                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
+-                ],
+-                "parallelAssembly": "OpenMP",
+-                "numThreads": "0",
+-                "queueSize": "32"
+-            }
+-        }
+-    }
+-}
+-
+diff --git a/tests/ref_outputs/test025/sim_output/input_dict_cathode.p b/tests/ref_outputs/test025/sim_output/input_dict_cathode.p
+deleted file mode 100644
+index 670f169..0000000
+Binary files a/tests/ref_outputs/test025/sim_output/input_dict_cathode.p and /dev/null differ
+diff --git a/tests/ref_outputs/test025/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test025/sim_output/input_dict_derived_values.p
+deleted file mode 100644
+index e81b9ab..0000000
+Binary files a/tests/ref_outputs/test025/sim_output/input_dict_derived_values.p and /dev/null differ
+diff --git a/tests/ref_outputs/test025/sim_output/input_dict_system.p b/tests/ref_outputs/test025/sim_output/input_dict_system.p
+deleted file mode 100644
+index 05010b7..0000000
+Binary files a/tests/ref_outputs/test025/sim_output/input_dict_system.p and /dev/null differ
+diff --git a/tests/ref_outputs/test025/sim_output/output_data b/tests/ref_outputs/test025/sim_output/output_data
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/tests/ref_outputs/test025/sim_output/output_data.mat b/tests/ref_outputs/test025/sim_output/output_data.mat
+deleted file mode 100644
+index 57418c8..0000000
+Binary files a/tests/ref_outputs/test025/sim_output/output_data.mat and /dev/null differ
+diff --git a/tests/ref_outputs/test025/sim_output/run_info.txt b/tests/ref_outputs/test025/sim_output/run_info.txt
+deleted file mode 100644
+index d5f8e64..0000000
+--- a/tests/ref_outputs/test025/sim_output/run_info.txt
++++ /dev/null
+@@ -1,17 +0,0 @@
+-mpet version:
+-0.1.6
+-
+-branch name:
+-feature/degradation_adsorption
+-
+-commit hash:
+-d6c166f
+-
+-to run, from the root repo directory, copy relevant files there,
+-edit input_params_system.cfg to point to correct material
+-params files, and:
+-$ git checkout [commit hash]
+-$ patch -p1 < commit.diff:
+-$ python[3] mpetrun.py input_params_system.cfg
+-
+-Total run time: 0.1838245391845703 s
 
