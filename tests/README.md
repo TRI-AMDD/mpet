@@ -62,3 +62,5 @@ it is both tested as absolute and relative tolerance.
  - test021: hdf5Fast file output and restarting hdf5 simulations
  - test022: Test of specified_psd_c option, LFP homog
  - test023: CIET for LFP
+ - test024: test for constant power simulations
+ - test025: SEI degradation test

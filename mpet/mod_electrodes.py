@@ -197,7 +197,8 @@ class Mod2var(dae.daeModel):
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
             eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-(mu_O-self.get_trode_param("eta_p"))))
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-((self.phi_lyte()-self.phi_m())
+                                                         - self.get_trode_param("eta_p"))))
 
         else:
 
@@ -484,7 +485,8 @@ class Mod1var(dae.daeModel):
             eq = self.CreateEquation("Rxn_SEI")
             eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
             eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-(mu_O-self.get_trode_param("eta_p"))))
+            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-((self.phi_lyte()-self.phi_m())
+                                                         - self.get_trode_param("eta_p"))))
 
         else:
             eq = self.CreateEquation("Rxn_SEI")
