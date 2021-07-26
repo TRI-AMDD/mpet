@@ -84,13 +84,9 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
+                            part.V_Li.SetInitialCondition(1e-5)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
-                            if config[tr, "type"] in ["ACR"]:
-                                for k in range(Nij):
-                                    part.V_Li.SetInitialCondition(k, 1e-5)
-                            else:
-                                part.V_Li.SetInitialCondition(1e-5)
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -166,12 +162,8 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
-                            if config[tr, "type"] in ["ACR"]:
-                                for k in range(Nij):
-                                    part.V_Li.SetInitialCondition(k, data[partStr + "V_Li"][-1,k])
-                            else:
-                                part.V_Li.SetInitialCondition(
-                                    utils.get_dict_key(data, partStr + "V_Li", final=True))
+                            part.V_Li.SetInitialCondition(
+                                utils.get_dict_key(data, partStr + "V_Li", final=True))
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))

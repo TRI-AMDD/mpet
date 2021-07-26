@@ -158,6 +158,7 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            'Rfilm': Use(float)},
              'Degradation': {Optional('Li_plating', default=False): Use(tobool),
                              Optional('muRpl', default='plating_simple'): str,
+                             Optional('alpha_pl', default=0.5): Use(float),
                              Optional('Li_mm', default=12.99e-6): Use(float),
                              Optional('k0_pl', default=2.2e-14): Use(float)}}
 
