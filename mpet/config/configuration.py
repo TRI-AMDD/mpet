@@ -10,6 +10,7 @@ import os
 import pickle
 
 import numpy as np
+import mpet.utils as utils
 
 from mpet.config import constants
 from mpet.config.derived_values import DerivedValues
@@ -436,6 +437,8 @@ class Config:
         if self[param] is None:
             # set to theoretical value
             self[param] = theoretical_1C_current
+        # process Crate if it is function
+        self['Crate'] = utils.get_crate(self['Crate'], self[param])
 
         # apply scalings
         self._scale_system_parameters(theoretical_1C_current)
@@ -466,6 +469,7 @@ class Config:
         from :meth:`_process_config`.
         """
         # non-dimensional scalings
+        self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
@@ -568,8 +572,10 @@ class Config:
         self['segments'] = segments
         self['segments_tvec'] = segments_tvec
         self['segments_setvec'] = segments_setvec
-        if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
-            self['tend'] = np.abs(self['capFrac'] / self['currset'])
+        if 't' not in str(self['currset']):
+            # if the system is not a functional waveform
+            if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
+                self['tend'] = np.abs(self['capFrac'] / self['currset'])
 
     def _distr_part(self):
         """

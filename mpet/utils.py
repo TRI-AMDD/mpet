@@ -3,9 +3,12 @@ import subprocess as subp
 import os
 import numpy as np
 import h5py
+import re
 import scipy.io as sio
 
 import daetools.pyDAE as dae
+
+from sympy.parsing.sympy_parser import parse_expr
 
 
 def mean_linear(a):
@@ -140,3 +143,29 @@ def get_dict_key(data, string, squeeze=True, final=False):
         return np.squeeze(data[string][...])
     else:  # returns entire array
         return data[string][...]
+
+
+def get_crate(crate, Cratecurr):
+    """Returns crate from Crate input in params.sys.
+    if it is in Crate, returns original number. otherwise converts
+    from A to Crate and returns that number.
+    if it is in waveform, returns waveform
+    Cratecurr is theoretical 1C current"""
+    out = 0
+    if "t" in str(crate):
+        # if waveform, we output original formula
+        if str(crate)[-1] != "A":
+            out = parse_expr(crate)
+            print(out)
+        else:  # convert A to Crate
+            amp_value = re.sub(r'[A]+', '', crate, re.I)
+            amp_value = parse_expr(amp_value)
+            out = amp_value / Cratecurr
+    else:
+        # if not waveform, output float
+        if str(crate)[-1] != "A":
+            out = float(crate)
+        else:  # convert A to Crate
+            amp_value = float(re.sub(r'[A]+', '', crate, re.I))
+            out = amp_value / Cratecurr
+    return out

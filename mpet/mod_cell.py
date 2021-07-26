@@ -11,6 +11,7 @@ import daetools.pyDAE as dae
 from pyUnits import s
 
 import numpy as np
+import sympy as sym
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
@@ -368,6 +369,9 @@ class ModCell(dae.daeModel):
         eq.Residual = self.phi_cell() - (
             self.phi_applied() - config["Rser"]*self.current())
 
+        # declare useful variable if function
+        t = sym.Symbol("t")
+
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
@@ -376,7 +380,16 @@ class ModCell(dae.daeModel):
                     config["currPrev"] + (config["currset"] - config["currPrev"])
                     * (1 - np.exp(-dae.Time()/(config["tend"]*config["tramp"]))))
             else:
-                eq.Residual = self.current() - config["currset"]
+                # if it is not a functional form
+                if "t" not in str(config["currset"]):
+                    # check to see if it's a waveform type
+                    eq.Residual = self.current() - config["currset"]
+                else:  # if it is waveform, use periodic time to find the value of function
+                    f = sym.lambdify(t, config["currset"], modules="numpy")
+                    # periodic time = mod(time, period) / nondimenionalized period
+                    eq.Residual = f(
+                        dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
+                        - self.current()
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
