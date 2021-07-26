@@ -239,3 +239,9 @@ class DerivedValues:
         """Reference electrostatic potential of given electrode
         """
         return -self.config[trode, 'muR_ref'][0]
+
+    def power_ref(self):
+        """Reference power of the system
+        """
+        return constants.k*constants.T_ref * \
+            self.config['curr_ref']*self.config["1C_current_density"]/constants.e

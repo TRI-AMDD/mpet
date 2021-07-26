@@ -387,6 +387,22 @@ class ModCell(dae.daeModel):
                     )
             else:
                 eq.Residual = self.phi_applied() - config["Vset"]
+        elif self.profileType == "CP":
+            # constant power constraint
+            ndDVref = config["c", "phiRef"]
+            if 'a' in config["trodes"]:
+                ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
+            eq = self.CreateEquation("Total_Power_Constraint")
+            # adding Vref since P = V*I
+            if config["tramp"] > 0:
+                eq.Residual = self.current()*(self.phi_applied() + ndDVref) - (
+                    config["currPrev"]*(config["phiPrev"] + ndDVref)
+                    + (config["power"] - (config["currPrev"]*(config["phiPrev"]
+                                                              + ndDVref)))
+                    * (1 - np.exp(-dae.Time()/(config["tend"]*config["tramp"])))
+                    )
+            else:
+                eq.Residual = self.current()*(self.phi_applied() + ndDVref) - config["power"]
         elif self.profileType == "CCsegments":
             if config["tramp"] > 0:
                 config["segments_setvec"][0] = config["currPrev"]
