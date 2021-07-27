@@ -127,11 +127,7 @@ def CIET(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
 def plating_simple(V_Li,eta,k0,T,alpha=None):
     ecd = k0
     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
-    # if it is ACR function
-    if isinstance(V_Li, np.ndarray):
-        Rate[np.where(V_Li < 0.5e-5)] = 0
-    else:
-        if V_Li < 0.5e-5:
-            Rate = 0
     # lithium plating/stripping cannot happen if there is no Li
+    if V_Li < 0.5e-5:
+        Rate = 0*Rate
     return Rate

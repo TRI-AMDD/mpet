@@ -383,14 +383,14 @@ class Mod1var(dae.daeModel):
                 T,
                 self.get_trode_param("alpha_pl"))
             eq = self.CreateEquation("Rxn_plating")
-            eq.Residual = self.Rxn_pl() - Rxn_pl
+            eq.Residual = self.Rxn_pl() - Rxn_pl[0]
         else:  # No plating in system
             eq = self.CreateEquation("Rxn_plating")
             eq.Residual = self.Rxn_pl() - 0
 
         eq = self.CreateEquation("Lithium_plating_growth")
         eq.Residual = self.get_trode_param(
-            "psd_area")*self.Rxn_pl() - self.get_trode_param("Li_mm")*self.V_Li.dt()
+            "psd_area")*self.Rxn_pl() - self.V_Li.dt()/self.get_trode_param("Li_mm")
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
