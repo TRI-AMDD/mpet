@@ -61,6 +61,10 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
+        # Reaction rates of plating
+        self.Rxn_pl = dae.daeVariable("Rxn_pl", dae.no_t, self, "Plating reaction rate")
+        self.V_Li = dae.daeVariable("V_Li", dae.no_t, self, "Plated Li volume")
+
         # Get reaction rate function from dictionary name
         self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
 
@@ -126,6 +130,28 @@ class Mod2var(dae.daeModel):
         mu_O, act_lyte = calc_mu_O(
             self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
             self.config["elyteModelType"])
+
+        # Define Li plating equations
+        if self.get_trode_param("Li_plating"):
+            muR_pl = calc_muR_plating(
+                self.config, self.trode, self.ind, ISfuncs)
+            eta_pl = calc_eta(muR_pl, mu_O)
+            Rxn_pl = self.calc_rxn_rate_plating(
+                self.V_Li(),
+                eta_pl,
+                self.get_trode_param("k0_pl"),
+                T,
+                self.get_trode_param("alpha_pl"))
+            eq = self.CreateEquation("Rxn_plating")
+            eq.Residual = self.Rxn_pl() - Rxn_pl[0]
+        else:  # No plating in system
+            print("no plating")
+            eq = self.CreateEquation("Rxn_plating")
+            eq.Residual = self.Rxn_pl() - 0
+
+        eq = self.CreateEquation("Lithium_plating_growth")
+        eq.Residual = self.get_trode_param(
+            "psd_area")*self.Rxn_pl() - self.V_Li.dt()/self.get_trode_param("Li_mm")
 
         # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")

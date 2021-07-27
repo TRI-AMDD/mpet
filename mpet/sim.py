@@ -82,9 +82,9 @@ class SimMPET(dae.daeSimulation):
                         # concentrations and set initial value for
                         # solid concentrations
                         solidType = self.config[tr, "type"]
+                        part.V_Li.SetInitialCondition(1e-5)
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
-                            part.V_Li.SetInitialCondition(1e-5)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
                         elif solidType in constants.two_var_types:
@@ -155,15 +155,14 @@ class SimMPET(dae.daeSimulation):
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
-
+                        part.V_Li.SetInitialCondition(
+                            utils.get_dict_key(data, partStr + "V_Li", final=True))
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", final=True))
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
-                            part.V_Li.SetInitialCondition(
-                                utils.get_dict_key(data, partStr + "V_Li", final=True))
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))
