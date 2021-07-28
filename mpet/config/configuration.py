@@ -721,10 +721,10 @@ class Config:
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
-                    # assuming SEI is made up of Li2CO3, which has density rho = 2.11g/cm^3i
+                    # assuming SEI materials is graphite, which has density rho = 2.26e-3kg/m^3
                     # n0_SEI from mAh/g to unit/m^3
-                    self[trode, 'indvPart']['n0_SEI'][i, j] = self[trode, 'n0_SEI']*3600 \
-                        / constants.e*2.11e3/cs_ref_part
+                    self[trode, 'indvPart']['n0_SEI'][i, j] = self[trode, 'n0_SEI'] * 3600 \
+                        * 2.26e-3 / constants.e / cs_ref_part
                     self[trode, 'indvPart']['c_SEI'][i, j] = self[trode, 'rho_SEI'] / cs_ref_part
                     if self[trode, 'SEI'] and self[trode, 'n0_SEI'] != 0:
                         # we know the amount of initial SEI--we can set it as a parameter
