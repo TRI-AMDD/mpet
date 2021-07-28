@@ -1,284 +1,38 @@
-diff --git a/configs/params_electrodes.cfg b/configs/params_electrodes.cfg
-index 56cc6c2..efbb653 100644
---- a/configs/params_electrodes.cfg
-+++ b/configs/params_electrodes.cfg
-@@ -127,3 +127,21 @@ alpha = 0.5
- lambda = 6.26e-20
- # Film resistance, Ohm m^2
- Rfilm = 0e-0
-+
-+[Degradation]
-+# Section to include all parameters related to degradation reactions
-+# Li_plating. Set to true to include, false to not include. Optional,
-+# default is false
-+Li_plating = true
-+# muRpl the functional form used for the formation reaction of lithium
-+# plating. Optional, default is plating_simple from Tao et al., Joule
-+muRpl = plating_simple
-+# alpha_pl is the charge transfer coefficient for the plating reaction.
-+# Optional, default is 0.5
-+alpha_pl = 0.5
-+# k0_pl is the exchange current density for the plating reaction (A/m^2). 
-+# Optional, default is 2 A/m^2
-+k0_pl = 2
-+# Li_mm is the molar voluem of plated lithium in m^3/mol. Optional, default is
-+# 12.99e-6 
-+Li_mm = 12.99e-6
-diff --git a/configs/params_graphite_1param.cfg b/configs/params_graphite_1param.cfg
-index 7f33734..1917f73 100644
---- a/configs/params_graphite_1param.cfg
-+++ b/configs/params_graphite_1param.cfg
-@@ -35,5 +35,6 @@ Rfilm = 0e-0
- [Degradation]
- Li_plating = true
- muRpl = plating_simple
-+alpha_pl = 0.5
- k0_pl = 2.2e-14
- Li_mm = 12.99e-6
-diff --git a/configs/params_system.cfg b/configs/params_system.cfg
-index 40e27d6..e41c98f 100644
---- a/configs/params_system.cfg
-+++ b/configs/params_system.cfg
-@@ -62,7 +62,7 @@ seed = 0
- # printing internal variable concentrations) files. hdf5 files
- # are better for cycling, as they store less information and there is less
- # opening/rewriting of files. Default is mat
--dataReporter = hdf5
-+dataReporter = mat
- # Series resistance, [Ohm m^2]
- Rser = 0.
- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
-diff --git a/mpet/mod_electrodes.py b/mpet/mod_electrodes.py
-index 5bd3559..3714978 100644
---- a/mpet/mod_electrodes.py
-+++ b/mpet/mod_electrodes.py
-@@ -390,7 +390,7 @@ class Mod1var(dae.daeModel):
+diff --git a/mpet/electrode/reactions.py b/mpet/electrode/reactions.py
+index eafd536..aa34939 100644
+--- a/mpet/electrode/reactions.py
++++ b/mpet/electrode/reactions.py
+@@ -128,6 +128,6 @@ def plating_simple(V_Li,eta,k0,T,alpha=None):
+     ecd = k0
+     Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+     # lithium plating/stripping cannot happen if there is no Li
+-    if V_Li < 0.5e-5:
+-        Rate = 0*Rate
++    #if V_Li < 0.5e-5:
++    #    Rate = 0*Rate
+     return Rate
+diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
+index a851fca..bdda96f 100644
+--- a/tests/ref_outputs/test026/params_system.cfg
++++ b/tests/ref_outputs/test026/params_system.cfg
+@@ -1,7 +1,6 @@
+-
+ [Sim Params]
+ profileType = CC
+-Crate = 1
++Crate = -1
+ Vmax = 3.6
+ Vmin = 2.0
+ Vset = 0.12
+@@ -40,8 +39,8 @@ mean_a = 100e-9
+ stddev_a = 1e-9
+ specified_psd_c = False
+ specified_psd_a = False
+-cs0_c = 0.01
+-cs0_a = 0.99
++cs0_c = 0.95
++cs0_a = 0.05
  
-         eq = self.CreateEquation("Lithium_plating_growth")
-         eq.Residual = self.get_trode_param(
--            "psd_area")*self.Rxn_pl() - self.get_trode_param("Li_mm")*self.V_Li.dt()
-+            "psd_area")*self.Rxn_pl() - self.V_Li.dt()/self.get_trode_param("Li_mm")
- 
-         # Define average filling fraction in particle
-         eq = self.CreateEquation("cbar")
-diff --git a/tests/ref_outputs/test026/params_a.cfg b/tests/ref_outputs/test026/params_a.cfg
-index d662a4d..e910ad2 100644
---- a/tests/ref_outputs/test026/params_a.cfg
-+++ b/tests/ref_outputs/test026/params_a.cfg
-@@ -33,5 +33,5 @@ Rfilm = 0e-0
- Li_plating = true
- muRpl = plating_simple
- alpha_pl = 0.5
--k0_pl = 2.2e-14
-+k0_pl = 2
- Li_mm = 12.99e-6
-diff --git a/tests/ref_outputs/test026/sim_output/commit.diff b/tests/ref_outputs/test026/sim_output/commit.diff
-deleted file mode 100644
-index b392d13..0000000
---- a/tests/ref_outputs/test026/sim_output/commit.diff
-+++ /dev/null
-@@ -1,14 +0,0 @@
--diff --git a/configs/params_system.cfg b/configs/params_system.cfg
--index 40e27d6..e41c98f 100644
----- a/configs/params_system.cfg
--+++ b/configs/params_system.cfg
--@@ -62,7 +62,7 @@ seed = 0
-- # printing internal variable concentrations) files. hdf5 files
-- # are better for cycling, as they store less information and there is less
-- # opening/rewriting of files. Default is mat
---dataReporter = hdf5
--+dataReporter = mat
-- # Series resistance, [Ohm m^2]
-- Rser = 0.
-- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
--
-diff --git a/tests/ref_outputs/test026/sim_output/daetools_config_options.txt b/tests/ref_outputs/test026/sim_output/daetools_config_options.txt
-deleted file mode 100644
-index 89c9d5d..0000000
---- a/tests/ref_outputs/test026/sim_output/daetools_config_options.txt
-+++ /dev/null
-@@ -1,137 +0,0 @@
--{
--    "daetools": {
--        "core": {
--            "checkForInfiniteNumbers": "false",
--            "eventTolerance": "1E-7",
--            "logIndent": "    ",
--            "pythonIndent": "    ",
--            "checkUnitsConsistency": "true",
--            "resetLAMatrixAfterDiscontinuity": "true",
--            "printInfo": "false",
--            "nodes": {
--                "useNodeMemoryPools": "false",
--                "deleteNodesThreshold": "1000000"
--            },
--            "equations": {
--                "info": [
--                    "If simplifyExpressions is true equation expressions will be simplified.",
--                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
--                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
--                ],
--                "simplifyExpressions": "false",
--                "evaluationMode": "computeStack_OpenMP",
--                "evaluationTree_OpenMP": {
--                    "numThreads": "0"
--                },
--                "computeStack_OpenMP": {
--                    "numThreads": "0"
--                }
--            }
--        },
--        "activity": {
--            "printHeader": "false",
--            "printStats": "true",
--            "timeHorizon": "100.0",
--            "reportingInterval": "1.0",
--            "reportTimeDerivatives": "false",
--            "reportSensitivities": "false",
--            "stopAtModelDiscontinuity": "true",
--            "reportDataAroundDiscontinuities": "true",
--            "objFunctionAbsoluteTolerance": "1E-8",
--            "constraintsAbsoluteTolerance": "1E-8",
--            "measuredVariableAbsoluteTolerance": "1E-8"
--        },
--        "datareporting": {
--            "tcpipDataReceiverAddress": "127.0.0.1",
--            "tcpipDataReceiverPort": "50000",
--            "tcpipNumberOfRetries": "10",
--            "tcpipRetryAfterMilliSecs": "1000"
--        },
--        "logging": {
--            "tcpipLogAddress": "127.0.0.1",
--            "tcpipLogPort": "51000"
--        },
--        "minlpsolver": {
--            "printInfo": "false"
--        },
--        "IDAS": {
--            "relativeTolerance": "1E-5",
--            "integrationMode": "Normal",
--            "reportDataInOneStepMode": "false",
--            "nextTimeAfterReinitialization": "1E-7",
--            "printInfo": "false",
--            "numberOfSTNRebuildsDuringInitialization": "1000",
--            "SensitivitySolutionMethod": "Staggered",
--            "SensErrCon": "false",
--            "sensRelativeTolerance": "1E-5",
--            "sensAbsoluteTolerance": "1E-5",
--            "MaxOrd": "5",
--            "MaxNumSteps": "1000",
--            "InitStep": "0.0",
--            "MaxStep": "0.0",
--            "MaxErrTestFails": "10",
--            "MaxNonlinIters": "4",
--            "MaxConvFails": "10",
--            "NonlinConvCoef": "0.33",
--            "SuppressAlg": "false",
--            "NoInactiveRootWarn": "false",
--            "NonlinConvCoefIC": "0.0033",
--            "MaxNumStepsIC": "5",
--            "MaxNumJacsIC": "4",
--            "MaxNumItersIC": "10",
--            "LineSearchOffIC": "false",
--            "gmres": {
--                "kspace": "30",
--                "EpsLin": "0.05",
--                "JacTimesVecFn": "DifferenceQuotient",
--                "DQIncrementFactor": "1.0",
--                "MaxRestarts": "5",
--                "GSType": "MODIFIED_GS"
--            }
--        },
--        "superlu": {
--            "factorizationMethod": "SamePattern_SameRowPerm",
--            "useUserSuppliedWorkSpace": "false",
--            "workspaceSizeMultiplier": "3.0",
--            "workspaceMemoryIncrement": "1.5"
--        },
--        "superlu_mt": {
--            "numThreads": "0"
--        },
--        "intel_pardiso": {
--            "numThreads": "0"
--        },
--        "BONMIN": {
--            "IPOPT": {
--                "print_level": "0",
--                "tol": "1E-5",
--                "linear_solver": "mumps",
--                "hessianApproximation": "limited-memory",
--                "mu_strategy": "adaptive"
--            }
--        },
--        "NLOPT": {
--            "printInfo": "false",
--            "xtol_rel": "1E-6",
--            "xtol_abs": "1E-6",
--            "ftol_rel": "1E-6",
--            "ftol_abs": "1E-6",
--            "constr_tol": "1E-6"
--        },
--        "deal_II": {
--            "printInfo": "false",
--            "assembly": {
--                "info": [
--                    "parallelAssembly can be: Sequential or OpenMP.",
--                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
--                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
--                ],
--                "parallelAssembly": "OpenMP",
--                "numThreads": "0",
--                "queueSize": "32"
--            }
--        }
--    }
--}
--
-diff --git a/tests/ref_outputs/test026/sim_output/input_dict_anode.p b/tests/ref_outputs/test026/sim_output/input_dict_anode.p
-deleted file mode 100644
-index 1c5302c..0000000
-Binary files a/tests/ref_outputs/test026/sim_output/input_dict_anode.p and /dev/null differ
-diff --git a/tests/ref_outputs/test026/sim_output/input_dict_cathode.p b/tests/ref_outputs/test026/sim_output/input_dict_cathode.p
-deleted file mode 100644
-index fe818e3..0000000
-Binary files a/tests/ref_outputs/test026/sim_output/input_dict_cathode.p and /dev/null differ
-diff --git a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p
-deleted file mode 100644
-index b967c15..0000000
-Binary files a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p and /dev/null differ
-diff --git a/tests/ref_outputs/test026/sim_output/input_dict_system.p b/tests/ref_outputs/test026/sim_output/input_dict_system.p
-deleted file mode 100644
-index dd8bf67..0000000
-Binary files a/tests/ref_outputs/test026/sim_output/input_dict_system.p and /dev/null differ
-diff --git a/tests/ref_outputs/test026/sim_output/output_data b/tests/ref_outputs/test026/sim_output/output_data
-deleted file mode 100644
-index e69de29..0000000
-diff --git a/tests/ref_outputs/test026/sim_output/output_data.mat b/tests/ref_outputs/test026/sim_output/output_data.mat
-deleted file mode 100644
-index 57e099e..0000000
-Binary files a/tests/ref_outputs/test026/sim_output/output_data.mat and /dev/null differ
-diff --git a/tests/ref_outputs/test026/sim_output/run_info.txt b/tests/ref_outputs/test026/sim_output/run_info.txt
-deleted file mode 100644
-index eba4c66..0000000
---- a/tests/ref_outputs/test026/sim_output/run_info.txt
-+++ /dev/null
-@@ -1,17 +0,0 @@
--mpet version:
--0.1.6
--
--branch name:
--feature/Li_plating
--
--commit hash:
--2d39e98
--
--to run, from the root repo directory, copy relevant files there,
--edit input_params_system.cfg to point to correct material
--params files, and:
--$ git checkout [commit hash]
--$ patch -p1 < commit.diff:
--$ python[3] mpetrun.py input_params_system.cfg
--
--Total run time: 13.7348473072052 s
+ [Conductivity]
+ simBulkCond_c = false
 
