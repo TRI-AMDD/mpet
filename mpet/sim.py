@@ -78,16 +78,22 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
-                        # Guess initial value for the average solid
-                        # concentrations and set initial value for
-                        # solid concentrations
-                        # Initialize degradation variables
-                        part.Rxn_SEI.SetInitialGuess(0)
-                        part.c_solv.SetInitialGuess(config["c0_solv"])
-                        part.a_e_SEI.SetInitialGuess(1)
-                        part.dcSEIbardt.SetInitialGuess(0)
-                        part.L1.SetInitialCondition(config[tr, "indvPart"]["L10"][i, j])
-                        part.L2.SetInitialCondition(config[tr, "indvPart"]["L20"][i, j])
+                        part_SEI = self.m.particles_SEI[tr][i,j]
+
+                        if config[tr, "SEI"]:
+                            # if SEI model is on, check for the models
+                            if config[tr, "muRSEI"] == "SEI_early":
+                                # Guess initial value for the average solid
+                                # concentrations and set initial value for
+                                # solid concentrations
+                                # Initialize degradation variables
+                                part_SEI.c_solv.SetInitialGuess(config["c0_solv"])
+                                part_SEI.a_e_SEI.SetInitialGuess(1)
+                                part_SEI.dcSEIbardt.SetInitialGuess(0)
+                                part_SEI.L1.SetInitialCondition(
+                                    config[tr, "indvPart"]["L10"][i, j])
+                                part_SEI.L2.SetInitialCondition(
+                                    config[tr, "indvPart"]["L20"][i, j])
 
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
@@ -154,6 +160,7 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
+                        part_SEI = self.m.particles_SEI[tr][i,j]
                         solidType = self.config[tr, "type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
                             l=tr, i=i, j=j)
@@ -162,10 +169,14 @@ class SimMPET(dae.daeSimulation):
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
-                        part.L1.SetInitialCondition(utils.get_dict_key(data,
-                                                                       partStr + "L1", final=True))
-                        part.L2.SetInitialCondition(utils.get_dict_key(data,
-                                                                       partStr + "L2", final=True))
+
+                        if config[tr, "SEI"]:
+                            # if SEI model is turned on, choose from selections
+                            if config[tr, "muRSEI"] == "SEI_early":
+                                part_SEI.L1.SetInitialCondition(
+                                    utils.get_dict_key(data, partStr + "L1", final=True))
+                                part_SEI.L2.SetInitialCondition(
+                                    utils.get_dict_key(data, partStr + "L2", final=True))
 
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(

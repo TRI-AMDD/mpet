@@ -54,24 +54,13 @@ class Mod2var(dae.daeModel):
             "c2bar", mole_frac_t, self,
             "Average concentration in 'layer' 2 of active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
-        self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
-                                          "Rate of SEI growth on particle volume basis")
+
         if self.get_trode_param("type") not in ["ACR2"]:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1")
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2")
         else:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
-
-        self.Rxn_SEI = dae.daeVariable("Rxn_SEI", dae.no_t, self,
-                                       "Rate of SEI growth reaction")
-        self.L1 = dae.daeVariable("L1", dae.no_t, self,
-                                  "Primary SEI thickness")
-        self.L2 = dae.daeVariable("L2", dae.no_t, self,
-                                  "Secondary SEI thickness")
-        self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
-        self.a_e_SEI = dae.daeVariable("a_e_SEI", mole_frac_t, self,
-                                       "Electron actitivty in SEI layer")
 
         # Get reaction rate function from dictionary name
         self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
@@ -166,46 +155,6 @@ class Mod2var(dae.daeModel):
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
-
-        eq = self.CreateEquation("Solvent_diffusion_Fick")
-        eq.Residual = (self.config["c0_solv"] - self.c_solv()) * \
-            (self.config["D_solv"]/self.L2()) - self.Rxn_SEI()
-
-        eq = self.CreateEquation("Primary_SEI_growth")
-        eq.Residual = np.exp(-self.L1()/self.get_trode_param("zeta"))*self.Rxn_SEI() - \
-            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_1")*self.L1.dt()
-
-        eq = self.CreateEquation("Secondary_SEI_growth")
-        eq.Residual = (1-np.exp(-self.L1()/self.get_trode_param("zeta")))*self.Rxn_SEI() - \
-            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_2")*self.L2.dt()
-
-        eq = self.CreateEquation("dcsSEIdt")
-        eq.Residual = self.dcSEIbardt() - self.get_trode_param("delta_L")*self.Rxn_SEI()
-
-        # add SEI equations
-        if self.get_trode_param("SEI"):
-
-            muR_SEI = calc_muR_SEI(self.config, self.trode, self.ind, ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, mu_O)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
-                                             self.a_e_SEI(),
-                                             self.c_lyte(),
-                                             self.c_solv(),
-                                             self.get_trode_param("k0_SEI"),
-                                             T,
-                                             self.get_trode_param("alpha_SEI"))
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-((self.phi_lyte()-self.phi_m())
-                                                         - self.get_trode_param("eta_p"))))
-
-        else:
-
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -357,8 +306,6 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
-        self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
-                                          "Rate of SEI growth on particle volume basis")
         if config[trode, "type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
@@ -366,20 +313,6 @@ class Mod1var(dae.daeModel):
 
         # Get reaction rate function from dictionary name
         self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
-
-        self.Rxn_SEI = dae.daeVariable("Rxn_SEI", dae.no_t, self,
-                                       "Rate of SEI growth reaction")
-        self.L1 = dae.daeVariable("L1", dae.no_t, self,
-                                  "Primary SEI thickness")
-        self.L2 = dae.daeVariable("L2", dae.no_t, self,
-                                  "Secondary SEI thickness")
-        self.c_solv = dae.daeVariable("c_solv", mole_frac_t, self, "Solvent concentration")
-        self.a_e_SEI = dae.daeVariable("a_e_SEI", mole_frac_t, self,
-                                       "Electron actitivty in SEI layer")
-
-        # get SEI and plating reaction rates
-        if config[trode, "SEI"]:
-            self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -454,45 +387,6 @@ class Mod1var(dae.daeModel):
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
-
-        eq = self.CreateEquation("Solvent_diffusion_Fick")
-        eq.Residual = (self.config["c0_solv"] - self.c_solv()) * \
-            (self.config["D_solv"]/self.L2()) - self.Rxn_SEI()
-
-        eq = self.CreateEquation("Primary_SEI_growth")
-        eq.Residual = np.exp(-self.L1()/self.get_trode_param("zeta"))*self.Rxn_SEI() - \
-            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_1")*self.L1.dt()
-
-        eq = self.CreateEquation("Secondary_SEI_growth")
-        eq.Residual = (1-np.exp(-self.L1()/self.get_trode_param("zeta")))*self.Rxn_SEI() - \
-            self.get_trode_param("c_SEI")*self.get_trode_param("vfrac_2")*self.L2.dt()
-
-        eq = self.CreateEquation("dcsSEIdt")
-        eq.Residual = self.dcSEIbardt() - self.get_trode_param("delta_L")*self.Rxn_SEI()
-
-        # add SEI equations
-        if self.get_trode_param("SEI"):
-
-            muR_SEI = calc_muR_SEI(self.config, self.trode, self.ind, self.ISfuncs)
-            eta_SEI = calc_eta(muR_SEI, mu_O)
-            Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI,
-                                             self.a_e_SEI(),
-                                             self.c_lyte(),
-                                             self.c_solv(),
-                                             self.get_trode_param("k0_SEI"),
-                                             T,
-                                             self.get_trode_param("alpha_SEI"))
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - Rxn_SEI[0]  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1/(1+np.exp(-((self.phi_lyte()-self.phi_m())
-                                                         - self.get_trode_param("eta_p"))))
-
-        else:
-            eq = self.CreateEquation("Rxn_SEI")
-            eq.Residual = self.Rxn_SEI() - 0  # convert to rxn_deg[0] if space dependent
-            eq = self.CreateEquation("a_e_SEI")
-            eq.Residual = self.a_e_SEI() - 1  # convert to rxn_deg[0] if space dependent
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -661,13 +555,6 @@ def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
     return muR, actR
-
-
-def calc_muR_SEI(config, trode, ind, ISfuncs=None):
-    muRfunc = props_am.muRfuncs(config, trode, ind).muR_SEI
-    muR_ref = config[trode, "muR_ref"]
-    muR, actR = muRfunc(0, 0, muR_ref, ISfuncs)
-    return muR
 
 
 def MX(mat, objvec):
