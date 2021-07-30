@@ -431,7 +431,17 @@ class ModCell(dae.daeModel):
                 time = config["segments"][0][1]
                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - config["segments"][0][0]
+                # if it is not a functional form
+                if "t" not in str(config["segments"][0][0]):
+                    # check to see if it's a waveform type
+                    eq.Residual = self.current() - config["segments"][0][0]
+                else:  # if it is waveform, use periodic time to find the value of function
+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+                    # periodic time = mod(time, period) / nondimenionalized period
+                    eq.Residual = f(dae.Time()/config["period"][0]
+                                    - dae.Floor(dae.Time()/config["period"][0])) \
+                        - self.current()
+                    eq.CheckUnitsConsistency = False
 
                 # Middle segments
                 for i in range(1,len(config["segments"])-1):
@@ -446,15 +456,26 @@ class ModCell(dae.daeModel):
                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
                         # periodic time = mod(time, period) / nondimenionalized period
                         eq.Residual = f(dae.Time()/config["period"][i]
-                                        - dae.Floor(dae.Time()/config["period"][i]))
-                        - self.current()
+                                        - dae.Floor(dae.Time()/config["period"][i])) \
+                            - self.current()
                         # for some reason, this is required specifically for this equation
                         eq.CheckUnitsConsistency = False
 
                 # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - config["segments"][-1][0]
+                # if it is not a functional form
+                if "t" not in str(config["segments"][-1][0]):
+                    # check to see if it's a waveform type
+                    eq.Residual = self.current() - config["segments"][-1][0]
+                else:  # if it is waveform, use periodic time to find the value of function
+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+                    # periodic time = mod(time, period) / nondimenionalized period
+                    eq.Residual = f(dae.Time()/config["period"][-1]
+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
+                        - self.current()
+                    eq.CheckUnitsConsistency = False
+
                 self.END_IF()
 
         elif self.profileType == "CVsegments":
