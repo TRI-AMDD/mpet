@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          Optional('power', default=None): Use(float),
                          Optional('1C_current_density', default=None): Use(float),
                          Optional('tramp', default=0.): Use(float),
-                         Optional('period', default=1e8): Use(float),
+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
                          'Vmax': Use(float),
                          'Vmin': Use(float),
                          'Vset': Use(float),

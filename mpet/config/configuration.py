@@ -532,7 +532,8 @@ class Config:
         if self['profileType'] == 'CCsegments':
             for i in range(len(self['segments'])):
                 segments.append((utils.get_crate(self['segments'][i][0],
-                                                 self['1C_current_density']),
+                                                 self['1C_current_density']) * \
+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
                                 self["segments"][i][1]*60/self['t_ref']))
         elif self['profileType'] == 'CVsegments':
             for i in range(len(self['segments'])):
@@ -541,13 +542,13 @@ class Config:
 
         # Current or voltage segments profiles
         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
-        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
         if self['profileType'] == 'CCsegments':
             segments_setvec[0] = 0.
         elif self['profileType'] == 'CVsegments':
             segments_setvec[0] = -(kT / constants.e) * Vref
         tPrev = 0.
-        for segIndx in range(len(segments)):
+        for segIndx in range(self['numsegments']):
             tNext = tPrev + self['tramp']
             segments_tvec[2*segIndx+1] = tNext
             tPrev = tNext
@@ -555,12 +556,12 @@ class Config:
             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
             segments_tvec[2*segIndx+2] = tNext
             tPrev = tNext
-            setNext = segments[segIndx][0]
+            setNext = self['segments'][segIndx][0]
             segments_setvec[2*segIndx+1] = setNext
             segments_setvec[2*segIndx+2] = setNext
         segments_tvec /= self['t_ref']
         if self['profileType'] == 'CCsegments':
-            segments_setvec /= self['curr_ref']
+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
         elif self['profileType'] == 'CVsegments':
             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
         if 'segments' in self['profileType']:

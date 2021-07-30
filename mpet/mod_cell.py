@@ -438,8 +438,19 @@ class ModCell(dae.daeModel):
                     time = time+config["segments"][i][1]
                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("Total_Current_Constraint")
-                    eq.Residual = self.current() - config["segments"][i][0]
-
+                    # if it is not a functional form
+                    if "t" not in str(config["segments"][i][0]):
+                        # check to see if it's a waveform type
+                        eq.Residual = self.current() - config["segments"][i][0]
+                    else:  # if it is waveform, use periodic time to find the value of function
+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+                        # periodic time = mod(time, period) / nondimenionalized period
+                        eq.Residual = f(
+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
+                            - self.current()
+                        # for some reason, this is required specifically for this equation
+                        eq.CheckUnitsConsistency = False
+     
                 # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("Total_Current_Constraint")
