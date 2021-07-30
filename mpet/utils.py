@@ -150,20 +150,19 @@ def get_crate(crate, Cratecurr):
     if it is in Crate, returns original number. otherwise converts
     from A to Crate and returns that number.
     if it is in waveform, returns waveform
-    Cratecurr is theoretical 1C current"""
+    Cratecurr is theoretical 1C current density"""
     out = 0
     if "t" in str(crate):
         # if waveform, we output original formula
-        if str(crate)[-1] != "A":
+        if "A" not in str(crate)[-1]:
             out = parse_expr(crate)
-            print(out)
         else:  # convert A to Crate
             amp_value = re.sub(r'[A]+', '', crate, re.I)
             amp_value = parse_expr(amp_value)
             out = amp_value / Cratecurr
     else:
         # if not waveform, output float
-        if str(crate)[-1] != "A":
+        if "A" not in str(crate)[-1]:
             out = float(crate)
         else:  # convert A to Crate
             amp_value = float(re.sub(r'[A]+', '', crate, re.I))

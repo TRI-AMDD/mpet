@@ -21,7 +21,7 @@ def parse_segments(key):
     assert isinstance(segments, list), "segments must be a list"
     assert len(segments) > 0, "There must be at least one segment"
     for item in segments:
-        assert (isinstance(item, tuple)) and (len(item) == 2), \
+        assert (len(item) == 2), \
             "Each segment must be a tuple of (setpoint, time)"
     return segments
 
