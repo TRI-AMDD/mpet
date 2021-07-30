@@ -1,0 +1,121 @@
+diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+index 3dda645..d2af1a6 100644
+--- a/configs/params_system.cfg
++++ b/configs/params_system.cfg
+@@ -5,7 +5,7 @@
+ [Sim Params]
+ # Constant voltage or current or segments of one of them
+ # Options: CV, CC, CCsegments, CVsegments
+-profileType = CC
++profileType = CCsegments
+ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+ # (positive for discharge, negative for charge)
+ # It can also be set in units of A/m^2 (in which case, append A to the value
+@@ -31,8 +31,9 @@ power = 1
+ # Note: It's okay to leave commented lines within the segments list
+ segments = [
+     [0.3, 0.4],
++    ['0.01*sin(2*pi*t)', 0.4],
+     #    ['1A', 0.4],
+-    [-0.5, 0.1],
++    ['-0.5A', 0.1],
+     ]
+ # Continuation directory. If false, begin a fresh simulation with the
+ # specified input parameters here. Otherwise, this should be the
+@@ -47,7 +48,10 @@ prevDir = false
+ # If we have waveform functions in our segments, then we will have a list of
+ # size the number of steps, where period(i) is the period for the ith step,
+ # with 0's if there is no period. Optional, default if 1e8
+-period = 1e8
++# If period is being used with segments, then write it in list format
++# as a period for each segment
++#period = 1e8
++period = [1e8, 1, 1e8]
+ # Final time (only used for CV), [s]
+ tend = 1.2e3
+ # Number disc. in time
+diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+index 3b318ef..08116e7 100644
+--- a/mpet/config/configuration.py
++++ b/mpet/config/configuration.py
+@@ -532,7 +532,8 @@ class Config:
+         if self['profileType'] == 'CCsegments':
+             for i in range(len(self['segments'])):
+                 segments.append((utils.get_crate(self['segments'][i][0],
+-                                                 self['1C_current_density']),
++                                                 self['1C_current_density']) * \
++                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+                                 self["segments"][i][1]*60/self['t_ref']))
+         elif self['profileType'] == 'CVsegments':
+             for i in range(len(self['segments'])):
+@@ -541,13 +542,14 @@ class Config:
+ 
+         # Current or voltage segments profiles
+         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+-        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++        segments_setvec = [0]*(2 * self['numsegments'] + 1)
+         if self['profileType'] == 'CCsegments':
+             segments_setvec[0] = 0.
+         elif self['profileType'] == 'CVsegments':
+             segments_setvec[0] = -(kT / constants.e) * Vref
+         tPrev = 0.
+-        for segIndx in range(len(segments)):
++        for segIndx in range(self['numsegments']):
+             tNext = tPrev + self['tramp']
+             segments_tvec[2*segIndx+1] = tNext
+             tPrev = tNext
+@@ -555,12 +557,12 @@ class Config:
+             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+             segments_tvec[2*segIndx+2] = tNext
+             tPrev = tNext
+-            setNext = segments[segIndx][0]
++            setNext = self['segments'][segIndx][0]
+             segments_setvec[2*segIndx+1] = setNext
+             segments_setvec[2*segIndx+2] = setNext
+         segments_tvec /= self['t_ref']
+         if self['profileType'] == 'CCsegments':
+-            segments_setvec /= self['curr_ref']
++            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+         elif self['profileType'] == 'CVsegments':
+             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+         if 'segments' in self['profileType']:
+diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+index d6782fb..77839c5 100644
+--- a/mpet/config/schemas.py
++++ b/mpet/config/schemas.py
+@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
+                          Optional('power', default=None): Use(float),
+                          Optional('1C_current_density', default=None): Use(float),
+                          Optional('tramp', default=0.): Use(float),
+-                         Optional('period', default=1e8): Use(float),
++                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
+                          'Vmax': Use(float),
+                          'Vmin': Use(float),
+                          'Vset': Use(float),
+diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+index 2fc6da1..949e5e4 100644
+--- a/mpet/mod_cell.py
++++ b/mpet/mod_cell.py
+@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
+                     time = time+config["segments"][i][1]
+                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+                     eq = self.CreateEquation("Total_Current_Constraint")
+-                    eq.Residual = self.current() - config["segments"][i][0]
+-
++                    # if it is not a functional form
++                    if "t" not in str(config["segments"][i][0]):
++                        # check to see if it's a waveform type
++                        eq.Residual = self.current() - config["segments"][i][0]
++                    else:  # if it is waveform, use periodic time to find the value of function
++                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++                        # periodic time = mod(time, period) / nondimenionalized period
++                        eq.Residual = f(
++                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
++                            - self.current()
++                        eq.CheckUnitsConsistency = False
++     
+                 # Last segment
+                 self.ELSE()
+                 eq = self.CreateEquation("Total_Current_Constraint")
+

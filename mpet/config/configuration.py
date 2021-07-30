@@ -531,10 +531,10 @@ class Config:
         segments = []
         if self['profileType'] == 'CCsegments':
             for i in range(len(self['segments'])):
-                segments.append((utils.get_crate(self['segments'][i][0],
-                                                 self['1C_current_density']) * \
-                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
-                                self["segments"][i][1]*60/self['t_ref']))
+                segments.append(
+                    (utils.get_crate(self['segments'][i][0], self['1C_current_density'])
+                     * self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+                     self["segments"][i][1] * 60 / self['t_ref']))
         elif self['profileType'] == 'CVsegments':
             for i in range(len(self['segments'])):
                 segments.append((-((constants.e/kT)*self['segments'][i][0]+Vref),
@@ -561,9 +561,12 @@ class Config:
             segments_setvec[2*segIndx+2] = setNext
         segments_tvec /= self['t_ref']
         if self['profileType'] == 'CCsegments':
-            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+            segments_setvec = [
+                utils.get_crate(i, self['1C_current_density'])
+                * self["1C_current_density"] / theoretical_1C_current
+                / self['curr_ref'] for i in segments_setvec]
         elif self['profileType'] == 'CVsegments':
-            segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+            segments_setvec = -((constants.e/kT)*np.array(segments_setvec) + Vref)
         if 'segments' in self['profileType']:
             self['tend'] = segments_tvec[-1]
             # Pad the last segment so no extrapolation occurs
