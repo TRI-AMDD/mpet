@@ -1,14 +1,1 @@
-diff --git a/configs/params_graphite_1param.cfg b/configs/params_graphite_1param.cfg
-index 734d19d..b71cd43 100644
---- a/configs/params_graphite_1param.cfg
-+++ b/configs/params_graphite_1param.cfg
-@@ -4,7 +4,7 @@
- 
- [Particles]
- type = CHR
--discretization = 2.5e-8
-+discretization = 1e-9
- shape = cylinder
- thickness = 20e-9
- 
 
