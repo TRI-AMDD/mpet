@@ -249,9 +249,10 @@ class Mod2var(dae.daeModel):
 #                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
 #                    c1, c2, self.get_trode_param("D"), Flux1_bc, Flux2_bc, dr, T)
             elif self.get_trode_param("type") == "CHR2":
+                noise1, noise2 = noises
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
                     c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
-                    self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, T)
+                    self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, T, noise1, noise2)
             if self.get_trode_param("shape") == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
@@ -273,15 +274,11 @@ class Mod2var(dae.daeModel):
         dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
         LHS1_vec = MX(Mmat, dc1dt_vec)
         LHS2_vec = MX(Mmat, dc2dt_vec)
-        noise1, noise2 = noises
         for k in range(N):
             eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
             eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
             eq1.Residual = LHS1_vec[k] - RHS1[k]
             eq2.Residual = LHS2_vec[k] - RHS2[k]
-            if self.get_trode_param("noise"):
-                eq1.Residual += noise1[k]()
-                eq2.Residual += noise2[k]()
 
 
 class Mod1var(dae.daeModel):
@@ -458,10 +455,10 @@ class Mod1var(dae.daeModel):
             Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc")).Dfunc
             if self.get_trode_param("type") == "diffn":
                 Flux_vec = calc_flux_diffn(c, self.get_trode_param("D"), Dfunc,
-                                           self.get_trode_param("E_D"), Flux_bc, dr, T)
+                                           self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
             elif self.get_trode_param("type") == "CHR":
                 Flux_vec = calc_flux_CHR(c, muR, self.get_trode_param("D"), Dfunc,
-                                         self.get_trode_param("E_D"), Flux_bc, dr, T)
+                                         self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
             if self.get_trode_param("shape") == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
@@ -474,8 +471,6 @@ class Mod1var(dae.daeModel):
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
             eq.Residual = LHS_vec[k] - RHS[k]
-            if self.get_trode_param("noise"):
-                eq.Residual += noise[k]()
 
 
 def calc_eta(muR, muO):
@@ -503,27 +498,33 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T):
+def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
+    if noise is None:
+        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
+    else:
+        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c + [n() for n in noise])/dr
     return Flux_vec
 
 
-def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T):
+def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+    if noise is None:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+    else:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu + [n() for n in noise])/dr
     return Flux_vec
 
 
-def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, T):
+def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, T, noise1, noise2):
     N = len(c1)
     Flux1_vec = np.empty(N+1, dtype=object)
     Flux2_vec = np.empty(N+1, dtype=object)
@@ -533,8 +534,12 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
     Flux2_vec[-1] = Flux2_bc
     c1_edges = utils.mean_linear(c1)
     c2_edges = utils.mean_linear(c2)
-    Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
-    Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R)/dr
+    if noise1 is None:
+        Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
+        Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R)/dr
+    else:
+        Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R+[n() for n in noise1])/dr
+        Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R+[n() for n in noise2])/dr
     return Flux1_vec, Flux2_vec
 
 
