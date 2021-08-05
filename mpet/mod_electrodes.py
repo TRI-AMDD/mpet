@@ -169,6 +169,10 @@ class Mod2var(dae.daeModel):
         eta2 = calc_eta(mu2R_surf, muO)
         eta1_eff = eta1 + self.Rxn1()*self.get_trode_param("Rfilm")
         eta2_eff = eta2 + self.Rxn2()*self.get_trode_param("Rfilm")
+        noise1, noise2 = noises
+        if self.get_trode_param("noise"):
+            eta1_eff += noise1[0]()
+            eta2_eff += noise2[0]()
         Rxn1 = self.calc_rxn_rate(
             eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, act1R_surf, act_lyte,
@@ -182,14 +186,10 @@ class Mod2var(dae.daeModel):
         eq1.Residual = self.Rxn1() - Rxn1[0]
         eq2.Residual = self.Rxn2() - Rxn2[0]
 
-        noise1, noise2 = noises
         eq1 = self.CreateEquation("dc1sdt")
         eq2 = self.CreateEquation("dc2sdt")
         eq1.Residual = self.c1.dt(0) - self.get_trode_param("delta_L")*Rxn1[0]
         eq2.Residual = self.c2.dt(0) - self.get_trode_param("delta_L")*Rxn2[0]
-        if self.get_trode_param("noise"):
-            eq1.Residual += noise1[0]()
-            eq2.Residual += noise2[0]()
 
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         N = self.get_trode_param("N")
@@ -394,6 +394,8 @@ class Mod1var(dae.daeModel):
                                        self.trode, self.ind, ISfuncs)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+        if self.get_trode_param("noise"):
+            eta_eff += noise[0]()
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -403,8 +405,6 @@ class Mod1var(dae.daeModel):
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
-        if self.get_trode_param("noise"):
-            eq.Residual += noise[0]()
 
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         N = self.get_trode_param("N")
