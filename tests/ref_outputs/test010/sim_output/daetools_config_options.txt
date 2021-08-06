@@ -20,7 +20,7 @@
                     "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
                 ],
                 "simplifyExpressions": "false",
-                "evaluationMode": "evaluationTree_OpenMP",
+                "evaluationMode": "computeStack_OpenMP",
                 "evaluationTree_OpenMP": {
                     "numThreads": "0"
                 },
@@ -31,7 +31,7 @@
         },
         "activity": {
             "printHeader": "false",
-            "printStats": "false",
+            "printStats": "true",
             "timeHorizon": "100.0",
             "reportingInterval": "1.0",
             "reportTimeDerivatives": "false",
@@ -79,7 +79,7 @@
             "NonlinConvCoefIC": "0.0033",
             "MaxNumStepsIC": "5",
             "MaxNumJacsIC": "4",
-            "MaxNumItersIC": "100",
+            "MaxNumItersIC": "10",
             "LineSearchOffIC": "false",
             "gmres": {
                 "kspace": "30",
