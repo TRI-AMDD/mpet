@@ -23,6 +23,8 @@ import mpet.utils as utils
 import mpet.electrode.reactions as reactions
 from mpet.daeVariableTypes import mole_frac_t
 
+import scipy.interpolate as sintrp
+
 
 class Mod2var(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
@@ -109,17 +111,10 @@ class Mod2var(dae.daeModel):
             tvec = np.linspace(0., 1.05*self.config["tend"], numnoise)
             noise_data1 = noise_prefac*np.random.randn(numnoise, N)
             noise_data2 = noise_prefac*np.random.randn(numnoise, N)
-            # Previous_output is common for all external functions
-            previous_output1 = []
-            previous_output2 = []
-            self.noise1 = [extern_funcs.InterpTimeVector(
-                "noise1", self, dae.unit(), dae.Time(), tvec,
-                noise_data1, previous_output1, _position_)
-                for _position_ in range(N)]
-            self.noise2 = [extern_funcs.InterpTimeVector(
-                "noise2", self, dae.unit(), dae.Time(), tvec,
-                noise_data2, previous_output2, _position_)
-                for _position_ in range(N)]
+            self.noise1 = sintrp.interp1d(tvec, noise_data1, axis=0,
+                                          bounds_error=False, fill_value=0.)
+            self.noise2 = sintrp.interp1d(tvec, noise_data2, axis=0,
+                                          bounds_error=False, fill_value=0.)
         noises = (self.noise1, self.noise2)
 
         # Figure out mu_O, mu of the oxidized state
@@ -171,8 +166,8 @@ class Mod2var(dae.daeModel):
         eta2_eff = eta2 + self.Rxn2()*self.get_trode_param("Rfilm")
         noise1, noise2 = noises
         if self.get_trode_param("noise"):
-            eta1_eff += noise1[0]()
-            eta2_eff += noise2[0]()
+            eta1_eff += noise1(dae.Time().Value)
+            eta2_eff += noise2(dae.Time().Value)
         Rxn1 = self.calc_rxn_rate(
             eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, act1R_surf, act_lyte,
@@ -351,13 +346,8 @@ class Mod1var(dae.daeModel):
             noise_prefac = self.get_trode_param("noise_prefac")
             tvec = np.linspace(0., 1.05*self.config["tend"], numnoise)
             noise_data = noise_prefac*np.random.randn(numnoise, N)
-            # Previous_output is common for all external functions
-            previous_output = []
-            self.noise = [
-                extern_funcs.InterpTimeVector(
-                    "noise", self, dae.unit(), dae.Time(), tvec, noise_data,
-                    previous_output, _position_)
-                for _position_ in range(N)]
+            self.noise = sintrp.interp1d(tvec, noise_data, axis=0,
+                                         bounds_error=False, fill_value=0.)
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
@@ -507,7 +497,8 @@ def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     if noise is None:
         Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
     else:
-        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c + [n() for n in noise])/dr
+        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(c + noise(dae.Time().Value))/dr
     return Flux_vec
 
 
@@ -520,7 +511,8 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     if noise is None:
         Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
     else:
-        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu + [n() for n in noise])/dr
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu + noise(dae.Time().Value))/dr
     return Flux_vec
 
 
@@ -538,8 +530,10 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
         Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
         Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R)/dr
     else:
-        Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R+[n() for n in noise1])/dr
-        Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R+[n() for n in noise2])/dr
+        Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu1_R+noise1(dae.Time().Value))/dr
+        Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu2_R+noise2(dae.Time().Value))/dr
     return Flux1_vec, Flux2_vec
 
 

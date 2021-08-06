@@ -172,10 +172,9 @@ def main(paramfile, keepArchive=True):
     # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    noise = config['c', 'noise']
     logPad = config['c', 'logPad']
     segments = config["profileType"] in ["CCsegments","CVsegments"]
-    if (noise or logPad or (segments and config["tramp"] > 0)) \
+    if (logPad or (segments and config["tramp"] > 0)) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
