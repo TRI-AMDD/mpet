@@ -177,11 +177,13 @@ def main(paramfile, keepArchive=True):
     if (logPad or (segments and config["tramp"] > 0)) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
-    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
-        print(cfg, file=fo)
 
     # Disable printStats
     cfg.SetString('daetools.activity.printStats','false')
+
+    # Write config file
+    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
+        print(cfg, file=fo)
 
     # Carry out the simulation
     run_simulation(config, outdir)
