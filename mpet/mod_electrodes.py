@@ -14,6 +14,7 @@ materials within a battery electrode.
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
+import scipy.interpolate as sintrp
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
@@ -22,8 +23,6 @@ import mpet.props_am as props_am
 import mpet.utils as utils
 import mpet.electrode.reactions as reactions
 from mpet.daeVariableTypes import mole_frac_t
-
-import scipy.interpolate as sintrp
 
 
 class Mod2var(dae.daeModel):
