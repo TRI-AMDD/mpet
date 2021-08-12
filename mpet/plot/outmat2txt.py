@@ -74,6 +74,17 @@ positions (see discData.txt).
 bulkpHdr = ("Bulk electrode electric potential [V]\n" + RowsStr + bulkpHdrP2)
 fnameBulkpBase = "bulkPot{l}Data.txt"
 
+RowStrHdr1 = "First column corresponds to the cycle number.\n"
+RowStrHdr2 = "Second, third and fourth columns respond to gravimetric capacity of limiting electrode in mAh/g, cycle capacity fraction relative to original capacity, and cycle efficiency (discharge capacity/charge capacity).\n"
+cyclerHdr = ("Cycling Data\n" + RowStrHdr1 + RowStrHdr2)
+fnameCycleBase = "cycleData.txt"
+
+RowStrHdr1Q = "Each (2*i,2*i+1) row represents the (V(t), Q(t)) in cycle i in units of (V, Ah/m^2).\n"
+vQCyclerHdr = ("Voltage/Capacity Cycling Data\n" + RowStrHdr1Q)
+
+RowStrHdr2Q = "Each (2*i,2*i+1) row represents the (V(t), dQ(t)dV) in cycle i in units of (V, Ah/m^2).\n"
+vdQCyclerHdr = ("Voltage/dQ Cycling Data\n" + RowStrHdr2Q)
+
 
 def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
@@ -83,6 +94,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     trodes = config["trodes"]
     CrateCurr = config["1C_current_density"]  # A/m^2
     psd_len_c = config["psd_len"]["c"]
+    totalCycle = config["totalCycle"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
 
@@ -222,10 +234,6 @@ def main(indir, genData=True, discData=True, elyteData=True,
                         np.savetxt(os.path.join(indir, filename), datay,
                                    delimiter=dlm, header=solHdr)
 
-        # close file if it is a h5py file
-        if isinstance(data, h5py._hl.files.File):
-            data.close()
-
     if cbarData:
         cbarDict = plot_data.show_data(
             indir, plot_type="cbar_full", print_flag=False,
@@ -260,5 +268,49 @@ def main(indir, genData=True, discData=True, elyteData=True,
         fname = fnameBulkpBase.format(l="Cathode")
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
                    delimiter=dlm, header=bulkpHdr)
+
+    if totalCycle > 1:
+        # save general cycle data
+        cycNum, cycleCapacity = plot_data.show_data(
+            indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
+            data_only=True)
+        cycleCapFrac = plot_data.show_data(
+            indir, plot_type="cycle_cap_frac", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        cycleEfficiency = plot_data.show_data(
+            indir, plot_type="cycle_efficiency", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        genMat = np.zeros((len(cycNum), 4))
+        genMat[:,0] = cycNum
+        genMat[:,1] = cycleCapacity
+        genMat[:,2] = cycleCapFrac
+        genMat[:,3] = cycleEfficiency
+        np.savetxt(os.path.join(indir, fnameCycleBase), genMat, delimiter=dlm,
+                   header=cyclerHdr)
+
+        # save QV and dQdV data
+        voltCycle, capCycle = plot_data.show_data(
+            indir, plot_type="cycle_Q_V", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "QVCycle.txt"
+        genMat = np.zeros((voltCycle.shape[0]*2, voltCycle.shape[1]))
+        genMat[:voltCycle.shape[0],:] = voltCycle
+        genMat[voltCycle.shape[0]:voltCycle.shape[0]*2,:] = capCycle
+        np.savetxt(os.path.join(indir, fname), genMat, delimiter=dlm,
+                   header=vQCyclerHdr)
+
+        voltCycle, dQdVCycle = plot_data.show_data(
+            indir, plot_type="cycle_dQ_dV", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "dQdVCycle.txt"
+        genMat = np.zeros((voltCycle.shape[0]*2, voltCycle.shape[1]))
+        genMat[:voltCycle.shape[0],:] = voltCycle
+        genMat[voltCycle.shape[0]:voltCycle.shape[0]*2,:] = dQdVCycle
+        np.savetxt(os.path.join(indir, fname), genMat, delimiter=dlm,
+                   header=vdQCyclerHdr)
+
+        # close file if it is a h5py file
+        if isinstance(data, h5py._hl.files.File):
+            data.close()
 
     return

@@ -21,7 +21,7 @@ def parse_segments(key):
     assert isinstance(segments, list), "segments must be a list"
     assert len(segments) > 0, "There must be at least one segment"
     for item in segments:
-        assert (len(item) == 2), \
+        assert (len(item) == 2) or (len(item) == 6), \
             "Each segment must be a tuple of (setpoint, time)"
     return segments
 
@@ -53,7 +53,7 @@ def tobool(value):
 
 #: System parameters, per section
 system = {'Sim Params': {'profileType': lambda x:
-                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
+                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments", "CCCVCPcycle"]),
                          'Crate': str,
                          Optional('power', default=None): Use(float),
                          Optional('1C_current_density', default=None): Use(float),
@@ -79,7 +79,8 @@ system = {'Sim Params': {'profileType': lambda x:
                          'Nvol_s': And(Use(int), lambda x: x >= 0),
                          'Nvol_a': And(Use(int), lambda x: x >= 0),
                          'Npart_c': And(Use(int), lambda x: x >= 0),
-                         'Npart_a': And(Use(int), lambda x: x >= 0)},
+                         'Npart_a': And(Use(int), lambda x: x >= 0),
+                         Optional('totalCycle', default=1): And(Use(int), lambda x: x >= 0)},
           'Electrodes': {'cathode': str,
                          'anode': str,
                          'k0_foil': Use(float),
@@ -136,6 +137,7 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                                check_allowed_values(x, ["C3", "sphere", "cylinder", "homog_sdn"]),
                            Optional('thickness'): Use(float)},
              'Material': {'muRfunc': str,
+                          Optional('material_type', default='LiC6'): str,
                           'logPad': Use(tobool),
                           'noise': Use(tobool),
                           'noise_prefac': Use(float),

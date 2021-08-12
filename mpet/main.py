@@ -178,6 +178,7 @@ def main(paramfile, keepArchive=True):
     if (noise or logPad or (segments and config["tramp"] > 0)) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+    cfg.SetInteger('daetools.IDAS.numberOfSTNRebuildsDuringInitialization', 10000)
     with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
         print(cfg, file=fo)
 

@@ -540,6 +540,116 @@ class Config:
                 segments.append((-((constants.e/kT)*self['segments'][i][0]+Vref),
                                 self['segments'][i][1]*60/self['t_ref']))
 
+        elif self['profileType'] == 'CCCVCPcycle':
+            # if the size of each array is 1X8, we know we have the maccor cycling
+            # step number and cycle increments in the information too
+            if len(self["segments"][0]) == 7:
+                for i in range(len(self["segments"])):
+
+                    # find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
+                    hard_cut = self["capFrac"] if self["segments"][i][5] <= 2 else 1 - \
+                        self["capFrac"]
+                    # if input is None, stores as None for cutoffs only. otherwise
+                    # nondimensionalizes cutoffs & setpoints
+                    volt_cut = None if self["segments"][i][1] is None else - \
+                        ((e/(k*T_ref))*(self["segments"][i][1])+ndDVref)
+                    # we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
+                    #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                    capfrac_cut = hard_cut if self["segments"][i][2] is None else self["segments"][i][2]
+                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
+                        self['segments'][i][3],
+                        self['1C_current_density']) * self["1C_current_density"] / theoretical_1C_current / self['curr_ref']
+                    time_cut = None if self["segments"][i][4] is None else self["segments"][i][4]*60/self['t_ref']
+                    if not (volt_cut or capfrac_cut or crate_cut or time_cut):
+                        print(
+                            "Warning: in segment "
+                            + str(i)
+                            + " of the cycle no cutoff is specified.")
+                    if self["segments"][i][5] == 1 or self["segments"][i][5] == 4:
+                        # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
+                        # cutoff, type
+                        segments.append(
+                            (utils.get_crate(
+                                self["segments"][i][0],
+                                self['1C_current_density']) *
+                                self["1C_current_density"]
+                                / theoretical_1C_current
+                                / self['curr_ref'],
+                                volt_cut,
+                                capfrac_cut,
+                                None,
+                                time_cut,
+                                self["segments"][i][5],
+                                self["segments"][i][6]))
+                    elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
+                        # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
+                        # time cutoff, type
+                        segments.append((-((constants.e/(kT))*(self["segments"][i][0])+Vref),
+                                         None,
+                                         capfrac_cut,
+                                         crate_cut,
+                                         time_cut,
+                                         self["segments"][i][5],
+                                         self["segments"][i][6]))
+                    # elif CP segments
+                    elif self["segments"][i][5] == 3 or self["segments"][i][5] == 6:
+                        segments.append((-(constants.e/(kT*self['curr_ref']*theoretical_1C_current))*self["segments"][i][0], volt_cut,
+                                        capfrac_cut, crate_cut, time_cut, self["segments"][i][5], self["segments"][i][6]))
+                    # elif just incrementing step
+                    elif self["segments"][i][5] == 0:
+                        segments.append((0, None, None, None, None, 0, 0))
+
+            else:
+                # just a simple cycler
+                for i in range(len(self["segments"])):
+
+                    # find hard capfrac cutoff (0.99 for charge, 0.01 for discharge)
+                    hard_cut = self["capFrac"] if self["segments"][i][5] <= 2 else 1 - \
+                        self["capFrac"]
+                    # if input is None, stores as None for cutoffs only. otherwise
+                    # nondimensionalizes cutoffs & setpoints
+                    volt_cut = None if self["segments"][i][1] is None else - \
+                        ((e/(k*T_ref))*(self["segments"][i][1])+ndDVref)
+                    # we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
+                    #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
+                    capfrac_cut = hard_cut if self["segments"][i][2] is None else self["segments"][i][2]
+                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
+                        self['segments'][i][3],
+                        self['1C_current_density']) * self["1C_current_density"] / theoretical_1C_current / self['curr_ref']
+                    time_cut = None if self["segments"][i][4] is None else self["segments"][i][4]*60/self['t_ref']
+                    if not (volt_cut or capfrac_cut or crate_cut or time_cut):
+                        print(
+                            "Warning: in segment "
+                            + str(i)
+                            + " of the cycle no cutoff is specified.")
+                    if self["segments"][i][5] == 1 or self["segments"][i][5] == 4:
+                        # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
+                        # cutoff, type
+                        segments.append(
+                            (utils.get_crate(
+                                self["segments"][i][0],
+                                self['1C_current_density']) *
+                                self["1C_current_density"]
+                                / theoretical_1C_current
+                                / self['curr_ref'],
+                                volt_cut,
+                                capfrac_cut,
+                                None,
+                                time_cut,
+                                self["segments"][i][5]))
+                    elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
+                        # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
+                        # time cutoff, type
+                        segments.append((-((constants.e/(kT))*(
+                            self["segments"][i][0])+Vref), None, capfrac_cut, crate_cut, time_cut, self["segments"][i][5]))
+                    # elif CP segments
+                    elif self["segments"][i][5] == 3 or self["segments"][i][5] == 6:
+                        segments.append((-(constants.e/(kT*self['curr_ref']*theoretical_1C_current))*self["segments"]
+                                         [i][0], volt_cut, capfrac_cut, crate_cut, time_cut, self["segments"][i][5]))
+                    # elif just incrementing step
+                    elif self["segments"][i][5] == 0:
+                        segments.append((0, None, None, None, None, 0))
+
         # Current or voltage segments profiles
         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
         segments_setvec = [0]*(2 * self['numsegments'] + 1)
@@ -548,18 +658,19 @@ class Config:
         elif self['profileType'] == 'CVsegments':
             segments_setvec[0] = -(kT / constants.e) * Vref
         tPrev = 0.
-        for segIndx in range(self['numsegments']):
-            tNext = tPrev + self['tramp']
-            segments_tvec[2*segIndx+1] = tNext
-            tPrev = tNext
-            # Factor of 60 here to convert to s
-            tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
-            segments_tvec[2*segIndx+2] = tNext
-            tPrev = tNext
-            setNext = self['segments'][segIndx][0]
-            segments_setvec[2*segIndx+1] = setNext
-            segments_setvec[2*segIndx+2] = setNext
-        segments_tvec /= self['t_ref']
+        if self['profileType'] == 'CCsegments' or self['profileType'] == 'CVsegments':
+            for segIndx in range(self['numsegments']):
+                tNext = tPrev + self['tramp']
+                segments_tvec[2*segIndx+1] = tNext
+                tPrev = tNext
+                # Factor of 60 here to convert to s
+                tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+                segments_tvec[2*segIndx+2] = tNext
+                tPrev = tNext
+                setNext = self['segments'][segIndx][0]
+                segments_setvec[2*segIndx+1] = setNext
+                segments_setvec[2*segIndx+2] = setNext
+            segments_tvec /= self['t_ref']
         if self['profileType'] == 'CCsegments':
             segments_setvec = [
                 utils.get_crate(i, self['1C_current_density'])
