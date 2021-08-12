@@ -59,10 +59,10 @@ def test_compare(Dirs, tol):
             assert False, "Fail from KeyError"
 
         # #Check absolute and relative error against tol
-        assert np.max(diffMat) < tol or \
-               np.max(diffMat) < tol * np.max(np.abs(varDataRef)), \
-               "Fail from tolerance\nVariable failing: %s\nMax error:\
-        %f" % (varKey, np.max(diffMat))
+        assert np.mean(diffMat) < tol or \
+               np.mean(diffMat) < tol * np.mean(np.abs(varDataRef)), \
+               "Fail from tolerance\nVariable failing: %s\nMean error:\
+        %f" % (varKey, np.mean(diffMat))
 
 
 @pytest.mark.analytic

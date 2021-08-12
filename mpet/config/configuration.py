@@ -558,7 +558,7 @@ class Config:
             segments_setvec[2*segIndx+2] = setNext
         segments_tvec /= self['t_ref']
         if self['profileType'] == 'CCsegments':
-            segments_setvec /= self['curr_ref']
+            segments_setvec *= self["1C_current_density"]/theoretical_1C_current/self['curr_ref']
         elif self['profileType'] == 'CVsegments':
             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
         if 'segments' in self['profileType']:
@@ -731,7 +731,7 @@ class Config:
                         # from mAh/g to particle/g
                         self[trode,'indvPart']['L10'][i, j] = \
                             self[trode, 'indvPart']['n0_SEI'][i, j] * \
-                            self[trode,'first_cycle_ratio'] * \
+                            self[trode,'first_cycle_ratio'] \
                             / (self[trode, 'vfrac_1'] * self[trode,'indvPart']['delta_L'][i, j]
                                * self[trode, 'indvPart']['c_SEI'][i, j]*plen)
                         self[trode,'indvPart']['L20'][i, j] = \
