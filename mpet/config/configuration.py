@@ -283,8 +283,8 @@ class Config:
             else:
                 # only update generated distributions
                 if section == 'system':
-                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_vol',
-                                'psd_vol_FracVol', 'G']:
+                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_area_SEI',
+                                'psd_vol', 'psd_vol_FracVol', 'G']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:
                     trode = section[0]
@@ -581,6 +581,7 @@ class Config:
         self['psd_num'] = {}
         self['psd_len'] = {}
         self['psd_area'] = {}
+        self['psd_area_SEI'] = {}
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
 
@@ -631,12 +632,15 @@ class Config:
             solidShape = self[trode, 'shape']
             if solidShape == 'sphere':
                 psd_area = 4 * np.pi * psd_len**2
+                psd_area_SEI = psd_area
                 psd_vol = (4. / 3) * np.pi * psd_len**3
             elif solidShape == 'C3':
                 psd_area = 2 * 1.2263 * psd_len**2
+                psd_area_SEI = psd_area
                 psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
             elif solidShape == 'cylinder':
                 psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
+                psd_area_SEI = psd_area + 2 * np.pi * psd_len**2
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
@@ -650,6 +654,7 @@ class Config:
             self['psd_num'][trode] = psd_num
             self['psd_len'][trode] = psd_len
             self['psd_area'][trode] = psd_area
+            self['psd_area_SEI'][trode] = psd_area_SEI
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
 
@@ -698,6 +703,7 @@ class Config:
                     self[trode, 'indvPart']['N'][i, j] = self['psd_num'][trode][i,j]
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
+                    parea_SEI = self['psd_area_SEI'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
@@ -731,14 +737,14 @@ class Config:
                         # from mAh/g to particle/g
                         self[trode,'indvPart']['L10'][i, j] = \
                             self[trode, 'indvPart']['n0_SEI'][i, j] * \
-                            self[trode,'first_cycle_ratio'] \
-                            / (self[trode, 'vfrac_1'] * self[trode,'indvPart']['delta_L'][i, j]
-                               * self[trode, 'indvPart']['c_SEI'][i, j]*plen)
+                            self[trode,'first_cycle_ratio'] * pvol \
+                            / (self[trode, 'vfrac_1'] * parea_SEI * plen
+                               * self[trode, 'indvPart']['c_SEI'][i, j])
                         self[trode,'indvPart']['L20'][i, j] = \
                             self[trode, 'indvPart']['n0_SEI'][i, j] * \
-                            (1-self[trode,'first_cycle_ratio']) \
-                            / (self[trode, 'vfrac_2'] * self[trode,'indvPart']['delta_L'][i, j]
-                               * self[trode, 'indvPart']['c_SEI'][i, j]*plen)
+                            (1-self[trode,'first_cycle_ratio']) * pvol \
+                            / (self[trode, 'vfrac_2'] * parea_SEI * plen
+                               * self[trode, 'indvPart']['c_SEI'][i, j])
                     else:
                         # otherwise, set to arbitrary value of 0.1e-9 for both primary and
                         # secondary SEI

@@ -405,7 +405,7 @@ class ModCell(dae.daeModel):
                 eq2.Residual -= dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
             else:
                 eq1.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
-                eq2.Residual -= dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
+                eq2.Residual += dx * self.R_no_deg_Vp[limtrode](vInd)/rxn_scl
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
