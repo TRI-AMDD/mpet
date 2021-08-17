@@ -78,11 +78,14 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
+                        partPl = self.m.particles_plating[tr][i,j]
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
                         solidType = self.config[tr, "type"]
-                        part.V_Li.SetInitialCondition(1e-5)
+                        if config[tr, "Li_plating"]:
+                            if config[tr, "muRpl"] == "plating_simple":
+                                partPl.V_Li.SetInitialCondition(1e-5)
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
@@ -147,16 +150,19 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
+                        partPl = self.m.particles_plating[tr][i,j]
                         solidType = self.config[tr, "type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
+                            l=tr, i=i, j=j)
+                        partPlStr = "partTrode{l}vol{i}partplating{j}_".format(
                             l=tr, i=i, j=j)
 
                         # Set the inlet port variables for each particle
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
-                        part.V_Li.SetInitialCondition(
-                            utils.get_dict_key(data, partStr + "V_Li", final=True))
+                        partPl.V_Li.SetInitialCondition(
+                            utils.get_dict_key(data, partPlStr + "V_Li", final=True))
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", final=True))

@@ -14,6 +14,7 @@ import numpy as np
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
+import mpet.mod_degradation as mod_degradation
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.props_elyte as props_elyte
@@ -122,12 +123,14 @@ class ModCell(dae.daeModel):
         self.portsOutLyte = {}
         self.portsOutBulk = {}
         self.particles = {}
+        self.particles_plating = {}
         for trode in trodes:
             Nv = Nvol[trode]
             Np = Npart[trode]
             self.portsOutLyte[trode] = np.empty(Nv, dtype=object)
             self.portsOutBulk[trode] = np.empty((Nv, Np), dtype=object)
             self.particles[trode] = np.empty((Nv, Np), dtype=object)
+            self.particles_plating[trode] = np.empty((Nv, Np), dtype=object)
             for vInd in range(Nv):
                 self.portsOutLyte[trode][vInd] = ports.portFromElyte(
                     "portTrode{trode}vol{vInd}".format(trode=trode, vInd=vInd), dae.eOutletPort,
@@ -145,6 +148,15 @@ class ModCell(dae.daeModel):
                         pMod = mod_electrodes.Mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
+                    if config[trode, "Li_plating"]:
+                        # set the different models
+                        if config[trode, "muRpl"] == "plating_simple":
+                            pplatingMod = mod_degradation.plating_simple
+                        else:
+                            raise NotImplementedError("unknown plating model")
+                    else:
+                        # sets degradation to 0
+                        pplatingMod = mod_degradation.plating_none
                     self.particles[trode][vInd,pInd] = pMod(
                         config, trode, vInd, pInd,
                         Name="partTrode{trode}vol{vInd}part{pInd}".format(
@@ -154,6 +166,15 @@ class ModCell(dae.daeModel):
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
+                    self.particles_plating[trode][vInd,pInd] = pplatingMod(
+                        config, trode, vInd, pInd,
+                        Name="partTrode{trode}vol{vInd}partplating{pInd}".format(
+                            trode=trode, vInd=vInd, pInd=pInd),
+                        Parent=self)
+                    self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                      self.particles_plating[trode][vInd,pInd].portInLyte)
+                    self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
+                                      self.particles_plating[trode][vInd,pInd].portInBulk)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
