@@ -61,7 +61,6 @@ class ModCell(dae.daeModel):
         self.R_Vp = {}
         self.ffrac = {}
         self.T_lyte = {}
-        self.T_sol = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -90,10 +89,6 @@ class ModCell(dae.daeModel):
             self.T_lyte[trode] = dae.daeVariable(
                 "T_lyte_{trode}".format(trode=trode), temp_t, self,
                 "Temperature in the elyte in electrode {trode}".format(trode=trode),
-                [self.DmnCell[trode]])
-            self.T_sol[trode] = dae.daeVariable(
-                "T_sol_{trode}".format(trode=trode), temp_t, self,
-                "Temperature in the solid in electrode {trode}".format(trode=trode),
                 [self.DmnCell[trode]])
         if config['have_separator']:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
@@ -214,19 +209,6 @@ class ModCell(dae.daeModel):
                              * config["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
-
-        # Define average temperature in electrode volume
-        for trode in trodes:
-            for vInd in range(Nvol[trode]):
-                eq = self.CreateEquation(
-                    "T_sol_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
-                RHS = 0
-                # sum over particle volumes in given electrode volume
-                for pInd in range(Npart[trode]):
-                    # The volume of this particular particle
-                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
-                    RHS += self.particles[trode][vInd,pInd].T_lyte()*Vj
-                eq.Residual = self.T_sol[trode](vInd) - RHS
 
         # Define output port variables
         for trode in trodes:
