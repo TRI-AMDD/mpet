@@ -34,33 +34,6 @@ class InterpTimeScalar(daeScalarExternalFunction):
         return adouble(yval)
 
 
-class InterpTimeVector(daeScalarExternalFunction):
-    def __init__(self, Name, Model, units, time, tvec, ymat,
-                 previous_output, position):
-        arguments = {}
-        self.previous_output = previous_output
-        self.interp = sintrp.interp1d(tvec, ymat, axis=0,
-                                      bounds_error=False, fill_value=0.)
-        arguments["time"] = time
-        self.position = position
-        daeScalarExternalFunction.__init__(self, Name, Model, units, arguments)
-
-    def Calculate(self, values):
-        time = values["time"]
-        # A derivative for Jacobian is requested - always return 0.0
-        if time.Derivative != 0:
-            return adouble(0)
-        # Store the previous time value to prevent excessive
-        # interpolation.
-        if (len(self.previous_output) > 0
-                and self.previous_output[0] == time.Value):
-            return adouble(float(self.previous_output[1][self.position]))
-        noise_vec = self.interp(time.Value)
-        # it is a list now not a tuple
-        self.previous_output[:] = [time.Value, noise_vec]
-        return adouble(noise_vec[self.position])
-
-
 class LogRatio(daeScalarExternalFunction):
     """
     Class to make a piecewise function that evaluates

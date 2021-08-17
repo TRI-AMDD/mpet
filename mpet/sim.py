@@ -84,7 +84,7 @@ class SimMPET(dae.daeSimulation):
                         # solid concentrations
                         solidType = self.config[tr, "type"]
                         if config[tr, "Li_plating"]:
-                            if config[tr, "muRpl"] == "plating_simple":
+                            if config[tr, "muRpl"] != "plating_none":
                                 partPl.V_Li.SetInitialCondition(1e-5)
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
@@ -161,8 +161,10 @@ class SimMPET(dae.daeSimulation):
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
-                        partPl.V_Li.SetInitialCondition(
-                            utils.get_dict_key(data, partPlStr + "V_Li", final=True))
+                        if config[tr, "Li_plating"]:
+                            if config[tr, "muRpl"] != "plating_none":
+                                partPl.V_Li.SetInitialCondition(
+                                    utils.get_dict_key(data, partPlStr + "V_Li", final=True))
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", final=True))

@@ -7,18 +7,16 @@ import numpy as np
 import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.electrode.reactions as reactions
-from mpet.daeVariableTypes import mole_frac_t
 
 
 class plating_none(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
                  Name, Parent=None, Description=""):
         super().__init__(Name, Parent, Description)
-        print("CLASS 1")
 
         # Variables
         self.dcplatingbardt = dae.daeVariable("dcplatingbardt", dae.no_t, self,
-                                          "Rate of plating growth on particle volume basis")
+                                              "Rate of plating growth on particle volume basis")
         # Ports
         self.portInLyte = ports.portFromElyte(
             "portInLyte", dae.eInletPort, self,
@@ -41,6 +39,7 @@ class plating_none(dae.daeModel):
 
 class plating_simple(dae.daeModel):
     """Gao et al., Joule 2020"""
+
     def __init__(self, config, trode, vInd, pInd,
                  Name, Parent=None, Description=""):
         super().__init__(Name, Parent, Description)
@@ -49,10 +48,9 @@ class plating_simple(dae.daeModel):
         self.trode = trode
         self.ind = (vInd, pInd)
 
-        print("CLASS 2")
         # Variables
         self.dcplatingbardt = dae.daeVariable("dcplatingbardt", dae.no_t, self,
-                                          "Rate of plating growth on particle volume basis")
+                                              "Rate of plating growth on particle volume basis")
         # Reaction rates of plating
         self.Rxn_pl = dae.daeVariable("Rxn_pl", dae.no_t, self, "Plating reaction rate")
         self.V_Li = dae.daeVariable("V_Li", dae.no_t, self, "Plated Li volume")
@@ -99,7 +97,7 @@ class plating_simple(dae.daeModel):
                                             T, self.get_trode_param("alpha_pl"))
         eq = self.CreateEquation("Rxn_plating")
         eq.Residual = self.Rxn_pl() - Rxn_pl[0]
- 
+
         eq = self.CreateEquation("Lithium_plating_growth")
         eq.Residual = self.get_trode_param("psd_area") * self.Rxn_pl() - self.V_Li.dt() \
             / self.get_trode_param("Li_mm")
