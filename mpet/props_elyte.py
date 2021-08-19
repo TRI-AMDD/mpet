@@ -74,14 +74,14 @@ def Doyle96_EC_DMC_2_1():
         k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4  # S/cm
         return(100*k0)
 
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*constants.c_ref))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
@@ -106,14 +106,14 @@ def Doyle96_EC_DMC_1_2():
         k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4  # S/cm
         return(100*k0)
 
-    Dref = D(cref, 1)
+    Dref = D(constants.c_ref, 1)
 
     def D_ndim(c, T):
         return D(c, T) / Dref
 
     def sigma_ndim(c, T):
         return sigma(c, T) * (
-            k*Tref/(e**2*Dref*N_A*(1000*cref)))
+            constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*constants.c_ref))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
 
