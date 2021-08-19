@@ -1,0 +1,14 @@
+diff --git a/configs/params_system_Doyle96-cell2.cfg b/configs/params_system_Doyle96-cell2.cfg
+index 062ae18..92e149d 100644
+--- a/configs/params_system_Doyle96-cell2.cfg
++++ b/configs/params_system_Doyle96-cell2.cfg
+@@ -14,7 +14,7 @@ segments = [
+ 	]
+ prevDir = false
+ tend = 1.2e3
+-tsteps = 200
++tsteps = 25
+ relTol = 1e-6
+ absTol = 1e-6
+ T = 298
+
