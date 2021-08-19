@@ -726,6 +726,8 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    self[trode, 'indvPart']['R0_SEI'][i, j] = self[trode, 'R0_SEI'] \
+                        / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
                     # assuming SEI materials is graphite, which has density rho = 2.26e3kg/m^3
                     # n0_SEI from mAh/g to unit/m^3

@@ -209,10 +209,12 @@ class ModCell(dae.daeModel):
                     RHS1 += -(config["beta"][trode] * (1-config["poros"][trode])
                               * config["P_L"][trode] * Vj
                               * self.particles[trode][vInd,pInd].dcbardt())
-                    # this imposes the current constraint
-                    RHS2 += -(config["beta"][trode] * (1-config["poros"][trode])
-                              * config["P_L"][trode] * Vj
-                              * self.particles[trode][vInd,pInd].dcbardt())  # Equation 96 in paper
+                    # # this imposes the current constraint
+                    # RHS2 += -(config["beta"][trode] * (1-config["poros"][trode])
+                    #           * config["P_L"][trode] * Vj
+                    #           * self.particles[trode][vInd,pInd].dcSEIbardt())
+                    # Equation 96 in paper
+                    RHS2 += 0
 
                 eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
                 eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS2
