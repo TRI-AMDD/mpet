@@ -12,7 +12,6 @@ from pyUnits import s
 
 import numpy as np
 
-import mpet.mod_degradation as mod_degradation
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
@@ -130,14 +129,12 @@ class ModCell(dae.daeModel):
         self.portsOutLyte = {}
         self.portsOutBulk = {}
         self.particles = {}
-        self.particles_SEI = {}
         for trode in trodes:
             Nv = Nvol[trode]
             Np = Npart[trode]
             self.portsOutLyte[trode] = np.empty(Nv, dtype=object)
             self.portsOutBulk[trode] = np.empty((Nv, Np), dtype=object)
             self.particles[trode] = np.empty((Nv, Np), dtype=object)
-            self.particles_SEI[trode] = np.empty((Nv, Np), dtype=object)
             for vInd in range(Nv):
                 self.portsOutLyte[trode][vInd] = ports.portFromElyte(
                     "portTrode{trode}vol{vInd}".format(trode=trode, vInd=vInd), dae.eOutletPort,
@@ -157,15 +154,6 @@ class ModCell(dae.daeModel):
                         raise NotImplementedError("unknown solid type")
                     # Create models for representative particles within electrode
                     # volumes and ports with which to talk to them.
-                    if config[trode, "SEI"]:
-                        # set the different models
-                        if config[trode, "muRSEI"] == "SEI_early":
-                            pSEIMod = mod_degradation.SEI_adsorption
-                        else:
-                            raise NotImplementedError("unknown SEI model")
-                    else:
-                        # sets degradation to 0
-                        pSEIMod = mod_degradation.SEI_none
                     self.particles[trode][vInd,pInd] = pMod(
                         config, trode, vInd, pInd,
                         Name="partTrode{trode}vol{vInd}part{pInd}".format(
@@ -175,15 +163,6 @@ class ModCell(dae.daeModel):
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
-                    self.particles_SEI[trode][vInd,pInd] = pSEIMod(
-                        config, trode, vInd, pInd,
-                        Name="partTrode{trode}vol{vInd}partSEI{pInd}".format(
-                            trode=trode, vInd=vInd, pInd=pInd),
-                        Parent=self)
-                    self.ConnectPorts(self.portsOutLyte[trode][vInd],
-                                      self.particles_SEI[trode][vInd,pInd].portInLyte)
-                    self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
-                                      self.particles_SEI[trode][vInd,pInd].portInBulk)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -229,7 +208,7 @@ class ModCell(dae.daeModel):
                     Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
                     RHS1 += -(config["beta"][trode] * (1-config["poros"][trode])
                               * config["P_L"][trode] * Vj
-                              * self.particles_SEI[trode][vInd,pInd].dcSEIbardt())
+                              * self.particles[trode][vInd,pInd].dcbardt())
                     # this imposes the current constraint
                     RHS2 += -(config["beta"][trode] * (1-config["poros"][trode])
                               * config["P_L"][trode] * Vj

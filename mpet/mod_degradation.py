@@ -18,16 +18,14 @@ class SEI_none(dae.daeModel):
         # Variables
         self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
                                           "Rate of SEI growth on particle volume basis")
-        # Ports
-        self.portInLyte = ports.portFromElyte(
-            "portInLyte", dae.eInletPort, self,
+
+        # ports
+        self.portInPart = ports.portFromPart(
+            "portInPart", dae.eInletPort, self,
             "Inlet port from electrolyte")
-        self.portInBulk = ports.portFromBulk(
-            "portInBulk", dae.eInletPort, self,
-            "Inlet port from e- conducting phase")
-        self.phi_lyte = self.portInLyte.phi_lyte
-        self.c_lyte = self.portInLyte.c_lyte
-        self.phi_m = self.portInBulk.phi_m
+        self.phi_lyte = self.portInPart.phi_lyte
+        self.c_lyte = self.portInPart.c_lyte
+        self.phi_m = self.portInPart.phi_m
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -65,16 +63,13 @@ class SEI_adsorption(dae.daeModel):
         if config[trode, "SEI"]:
             self.calc_rxn_rate_SEI = getattr(reactions,"SEI")
 
-        # Ports
-        self.portInLyte = ports.portFromElyte(
-            "portInLyte", dae.eInletPort, self,
+        # ports
+        self.portInPart = ports.portFromPart(
+            "portInPart", dae.eInletPort, self,
             "Inlet port from electrolyte")
-        self.portInBulk = ports.portFromBulk(
-            "portInBulk", dae.eInletPort, self,
-            "Inlet port from e- conducting phase")
-        self.phi_lyte = self.portInLyte.phi_lyte
-        self.c_lyte = self.portInLyte.c_lyte
-        self.phi_m = self.portInBulk.phi_m
+        self.phi_lyte = self.portInPart.phi_lyte
+        self.c_lyte = self.portInPart.c_lyte
+        self.phi_m = self.portInPart.phi_m
 
     def get_trode_param(self, item):
         """

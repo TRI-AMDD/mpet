@@ -18,6 +18,7 @@ import scipy.interpolate as sintrp
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
+import mpet.mod_degradation as mod_degradation
 import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
@@ -76,6 +77,24 @@ class Mod2var(dae.daeModel):
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
+        #  Create ports with degradation model
+        #  export c_lyte, phi_lyte, phi_m into degradation models
+        self.portsOutPart = ports.portFromPart("SEI", dae.eOutletPort,
+                                               self, "Electrolyte port to particles")
+
+        if config[trode, "SEI"]:
+            # set the different models
+            if config[trode, "muRSEI"] == "SEI_early":
+                pSEIMod = mod_degradation.SEI_adsorption
+            else:
+                raise NotImplementedError("unknown SEI model")
+        else:
+            # sets degradation to 0
+            pSEIMod = mod_degradation.SEI_none
+
+        self.particles_SEI = pSEIMod(config, trode, vInd, pInd, Name="SEI", Parent=self)
+        self.ConnectPorts(self.portsOutPart, self.particles_SEI.portInPart)
+
     def get_trode_param(self, item):
         """
         Shorthand to retrieve electrode-specific value
@@ -91,6 +110,14 @@ class Mod2var(dae.daeModel):
         N = self.get_trode_param("N")  # number of grid points in particle
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
+
+        # Define port variables to degradation
+        eq = self.CreateEquation("portPartout_phi_lyte")
+        eq.Residual = self.phi_lyte() - self.portsOutPart.phi_lyte()
+        eq = self.CreateEquation("portPartout_phi_m")
+        eq.Residual = self.phi_m() - self.portsOutPart.phi_m()
+        eq = self.CreateEquation("portPartout_c_lyte")
+        eq.Residual = self.c_lyte() - self.portsOutPart.c_lyte()
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs1 = self.ISfuncs2 = None
@@ -316,6 +343,24 @@ class Mod1var(dae.daeModel):
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
+        #  Create ports with degradation model
+        #  export c_lyte, phi_lyte, phi_m into degradation models
+        self.portsOutPart = ports.portFromPart("SEI", dae.eOutletPort,
+                                               self, "Electrolyte port to particles")
+
+        if config[trode, "SEI"]:
+            # set the different models
+            if config[trode, "muRSEI"] == "SEI_early":
+                pSEIMod = mod_degradation.SEI_adsorption
+            else:
+                raise NotImplementedError("unknown SEI model")
+        else:
+            # sets degradation to 0
+            pSEIMod = mod_degradation.SEI_none
+
+        self.particles_SEI = pSEIMod(config, trode, vInd, pInd, Name="SEI", Parent=self)
+        self.ConnectPorts(self.portsOutPart, self.particles_SEI.portInPart)
+
     def get_trode_param(self, item):
         """
         Shorthand to retrieve electrode-specific value
@@ -331,6 +376,14 @@ class Mod1var(dae.daeModel):
         N = self.get_trode_param("N")  # number of grid points in particle
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
+
+        # Define port variables to degradation
+        eq = self.CreateEquation("portPartout_phi_lyte")
+        eq.Residual = self.phi_lyte() - self.portsOutPart.phi_lyte()
+        eq = self.CreateEquation("portPartout_phi_m")
+        eq.Residual = self.phi_m() - self.portsOutPart.phi_m()
+        eq = self.CreateEquation("portPartout_c_lyte")
+        eq.Residual = self.c_lyte() - self.portsOutPart.c_lyte()
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs = None
