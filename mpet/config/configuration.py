@@ -9,6 +9,7 @@ distributions from input means and standard deviations.
 import os
 import pickle
 
+import mpet.utils as utils
 import numpy as np
 
 from mpet.config import constants
@@ -283,7 +284,7 @@ class Config:
             else:
                 # only update generated distributions
                 if section == 'system':
-                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_area_SEI',
+                    for key in ['psd_num', 'psd_len', 'psd_area_SEI',
                                 'psd_vol', 'psd_vol_FracVol', 'G']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:
@@ -581,7 +582,6 @@ class Config:
         self['psd_num'] = {}
         self['psd_len'] = {}
         self['psd_area'] = {}
-        self['psd_area_SEI'] = {}
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
 
@@ -632,15 +632,12 @@ class Config:
             solidShape = self[trode, 'shape']
             if solidShape == 'sphere':
                 psd_area = 4 * np.pi * psd_len**2
-                psd_area_SEI = psd_area
                 psd_vol = (4. / 3) * np.pi * psd_len**3
             elif solidShape == 'C3':
                 psd_area = 2 * 1.2263 * psd_len**2
-                psd_area_SEI = psd_area
                 psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
             elif solidShape == 'cylinder':
                 psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
-                psd_area_SEI = psd_area + 2 * np.pi * psd_len**2
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
@@ -654,7 +651,6 @@ class Config:
             self['psd_num'][trode] = psd_num
             self['psd_len'][trode] = psd_len
             self['psd_area'][trode] = psd_area
-            self['psd_area_SEI'][trode] = psd_area_SEI
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
 
@@ -703,7 +699,6 @@ class Config:
                     self[trode, 'indvPart']['N'][i, j] = self['psd_num'][trode][i,j]
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
-                    parea_SEI = self['psd_area_SEI'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
@@ -729,6 +724,11 @@ class Config:
                     self[trode, 'indvPart']['R0_SEI'][i, j] = self[trode, 'R0_SEI'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
+                    self[trode, 'indvPart']['ssa'][i, j] = self[trode, 'indvPart']['delta_L'][i, j]
+                    if not self[trode, 'ssa'] is None:
+                        self[trode, 'indvPart']['ssa'][i, j] = self[trode, 'ssa'] * \
+                            plen * utils.get_density(self[trode, "material_type"]) * 1000
+                        # assuming SEI materials is Li2CO3, which has density rho = 2.26e3kg/m^3
                     # assuming SEI materials is graphite, which has density rho = 2.26e3kg/m^3
                     # n0_SEI from mAh/g to unit/m^3
                     self[trode, 'indvPart']['n0_SEI'][i, j] = self[trode, 'n0_SEI'] * 3600 \
@@ -737,15 +737,16 @@ class Config:
                     if self[trode, 'SEI'] and self[trode, 'n0_SEI'] != 0:
                         # we know the amount of initial SEI--we can set it as a parameter
                         # from mAh/g to particle/g
+                        # primary SEI grows over the entire area and not just the reaction plane
                         self[trode,'indvPart']['L10'][i, j] = \
                             self[trode, 'indvPart']['n0_SEI'][i, j] * \
-                            self[trode,'first_cycle_ratio'] * pvol \
-                            / (self[trode, 'vfrac_1'] * parea_SEI * plen
+                            self[trode,'first_cycle_ratio'] \
+                            / (self[trode, 'vfrac_1'] * self[trode, 'indvPart']['ssa'][i, j]
                                * self[trode, 'indvPart']['c_SEI'][i, j])
                         self[trode,'indvPart']['L20'][i, j] = \
                             self[trode, 'indvPart']['n0_SEI'][i, j] * \
-                            (1-self[trode,'first_cycle_ratio']) * pvol \
-                            / (self[trode, 'vfrac_2'] * parea_SEI * plen
+                            (1-self[trode,'first_cycle_ratio']) \
+                            / (self[trode, 'vfrac_2'] * self[trode, 'indvPart']['ssa'][i, j]
                                * self[trode, 'indvPart']['c_SEI'][i, j])
                     else:
                         # otherwise, set to arbitrary value of 0.1e-9 for both primary and

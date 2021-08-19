@@ -140,3 +140,16 @@ def get_dict_key(data, string, squeeze=True, final=False):
         return np.squeeze(data[string][...])
     else:  # returns entire array
         return data[string][...]
+
+
+def get_density(material_type):
+    """Gets active material density from input material type, in units of kg/m^3"""
+    if material_type == "LMO":  # cathode, so do LiMn2O4
+        return 4.01e3
+    elif material_type == "LiC6":
+        return 2.26e3  # anode, so do graphite
+    elif material_type == "NCA":
+        return 4.45e3
+    elif material_type == "LFP":
+        return 3.6e3
+        # https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf

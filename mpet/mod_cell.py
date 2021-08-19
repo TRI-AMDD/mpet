@@ -215,8 +215,8 @@ class ModCell(dae.daeModel):
                               * self.particles[trode][vInd,pInd].particles_SEI.dcSEIbardt())
                     # Equation 96 in paper
 
-                eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - self.R_no_deg_Vp[trode](vInd)
-                eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS2
+                eq1.Residual = self.R_Vp[trode](vInd) - RHS1 - RHS2
+                eq2.Residual = self.R_no_deg_Vp[trode](vInd) - RHS1
 
         # Define output port variables
         for trode in trodes:
