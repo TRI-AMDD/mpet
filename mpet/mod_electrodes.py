@@ -189,8 +189,10 @@ class Mod2var(dae.daeModel):
             self.trode, self.ind, ISfuncs)
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
-        eta1_eff = eta1 + self.Rxn1()*self.get_trode_param("Rfilm")
-        eta2_eff = eta2 + self.Rxn2()*self.get_trode_param("Rfilm")
+        eta1_eff = eta1 + self.Rxn1()*(self.get_trode_param("Rfilm")
+                                       + self.get_trode_param("R0_SEI")*self.particles_SEI.L1())
+        eta2_eff = eta2 + self.Rxn2()*(self.get_trode_param("Rfilm") +
+                                       + self.get_trode_param("R0_SEI")*self.particles_SEI.L1())
         noise1, noise2 = noises
         if self.get_trode_param("noise"):
             eta1_eff += noise1(dae.Time().Value)
@@ -233,12 +235,22 @@ class Mod2var(dae.daeModel):
         eta2 = calc_eta(mu2R_surf, muO)
         if self.get_trode_param("type") in ["ACR2"]:
             eta1_eff = np.array([eta1[i]
-                                 + self.Rxn1(i)*self.get_trode_param("Rfilm") for i in range(N)])
+                                 + self.Rxn1(i)
+                                 * (self.get_trode_param("Rfilm")
+                                    + self.get_trode_param("R0_SEI")
+                                    * self.particles_SEI.L1()) for i in range(N)])
             eta2_eff = np.array([eta2[i]
-                                 + self.Rxn2(i)*self.get_trode_param("Rfilm") for i in range(N)])
+                                 + self.Rxn2(i)
+                                 * (self.get_trode_param("Rfilm")
+                                    + self.get_trode_param("R0_SEI")
+                                    * self.particles_SEI.L1()) for i in range(N)])
         else:
-            eta1_eff = eta1 + self.Rxn1()*self.get_trode_param("Rfilm")
-            eta2_eff = eta2 + self.Rxn2()*self.get_trode_param("Rfilm")
+            eta1_eff = eta1 + self.Rxn1()*(self.get_trode_param("Rfilm")
+                                           + self.get_trode_param("R0_SEI")
+                                           * self.particles_SEI.L1())
+            eta2_eff = eta2 + self.Rxn2()*(self.get_trode_param("Rfilm")
+                                           + self.get_trode_param("R0_SEI")
+                                           * self.particles_SEI.L1())
         Rxn1 = self.calc_rxn_rate(
             eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, act1R_surf, act_lyte,
@@ -436,7 +448,8 @@ class Mod1var(dae.daeModel):
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.config,
                                        self.trode, self.ind, ISfuncs)
         eta = calc_eta(muR_surf, muO)
-        eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+        eta_eff = eta + self.Rxn()*(self.get_trode_param("Rfilm")
+                                    + self.get_trode_param("R0_SEI")*self.particles_SEI.L1())
         if self.get_trode_param("noise"):
             eta_eff += noise[0]()
         Rxn = self.calc_rxn_rate(
@@ -472,10 +485,14 @@ class Mod1var(dae.daeModel):
                 actR_surf = actR[-1]
         eta = calc_eta(muR_surf, muO)
         if self.get_trode_param("type") in ["ACR"]:
-            eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
-                                for i in range(N)])
+            eta_eff = np.array([eta[i]
+                                + self.Rxn(i)
+                                * (self.get_trode_param("Rfilm")
+                                   + self.get_trode_param("R0_SEI")
+                                   * self.particles_SEI.L1()) for i in range(N)])
         else:
-            eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+            eta_eff = eta + self.Rxn()*(self.get_trode_param("Rfilm")
+                                        + self.get_trode_param("R0_SEI")*self.particles_SEI.L1())
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,

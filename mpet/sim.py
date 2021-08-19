@@ -79,12 +79,13 @@ class SimMPET(dae.daeSimulation):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
 
+                        # Initialize degradation variables
+                        part.particles_SEI.L1.SetInitialCondition(
+                            config[tr, "indvPart"]["L10"][i, j])
+
                         if config[tr, "SEI"]:
                             # if SEI model is on, check for the models
                             if config[tr, "muRSEI"] == "SEI_early":
-                                # Initialize degradation variables
-                                part.particles_SEI.L1.SetInitialCondition(
-                                    config[tr, "indvPart"]["L10"][i, j])
                                 part.particles_SEI.L2.SetInitialCondition(
                                     config[tr, "indvPart"]["L20"][i, j])
                         solidType = self.config[tr, "type"]
@@ -161,13 +162,14 @@ class SimMPET(dae.daeSimulation):
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
 
+                        part.particles_SEI.L1.SetInitialCondition(
+                            utils.get_dict_key(data, partStr + "SEI_L1", final=True))
+
                         if config[tr, "SEI"]:
                             # if SEI model is turned on, choose from selections
                             if config[tr, "muRSEI"] == "SEI_early":
-                                part.particles_SEI.L1.SetInitialCondition(
-                                    utils.get_dict_key(data, partStr + "L1", final=True))
                                 part.particles_SEI.L2.SetInitialCondition(
-                                    utils.get_dict_key(data, partStr + "L2", final=True))
+                                    utils.get_dict_key(data, partStr + "SEI_L2", final=True))
 
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(

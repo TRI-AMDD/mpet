@@ -18,6 +18,8 @@ class SEI_none(dae.daeModel):
         # Variables
         self.dcSEIbardt = dae.daeVariable("dcSEIbardt", dae.no_t, self,
                                           "Rate of SEI growth on particle volume basis")
+        self.L1 = dae.daeVariable("L1", dae.no_t, self,
+                                  "Primary SEI thickness")
 
         # ports
         self.portInPart = ports.portFromPart(
@@ -31,6 +33,8 @@ class SEI_none(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         eq = self.CreateEquation("dcSEIbardt")
         eq.Residual = self.dcSEIbardt()  # no degradation
+        eq = self.CreateEquation("Primary_SEI_growth")
+        eq.Residual = self.L1.dt()  # no degradation
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
