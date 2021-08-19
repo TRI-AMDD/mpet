@@ -43,6 +43,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, config, trode, ind=None):
         """config is the full dictionary of
         parameters for the electrode particles, as made for the
@@ -59,6 +60,9 @@ class muRfuncs():
 
         # Convert "muRfunc" to a callable function
         self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+
+        if config[trode, "SEI"]:
+            self.muR_SEI = getattr(self, self.get_trode_param("muRSEI"))
 
     def get_trode_param(self, item):
         """
@@ -303,6 +307,12 @@ class muRfuncs():
                   )*step_down(y, 0.35, width)
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
+
+    def SEI_early(self, y, ybar, muR_ref, ISfuncs=None):
+        OCV = 0.505  # + self.kToe*np.log(y**2) # Das  et al. JES 166(4) 2019
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """

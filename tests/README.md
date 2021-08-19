@@ -63,6 +63,7 @@ it is both tested as absolute and relative tolerance.
  - test022: Test of specified_psd_c option, LFP homog
  - test023: CIET for LFP
  - test024: constant power test
+ - test025: SEI degradation test
  - test026: functional waveform test with periodic function in CC
  - test027: Crate input in A (for compatibility with Maccor cycler)
  - test028: CCsegments input of waveform and Crate in A

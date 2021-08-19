@@ -1,0 +1,14 @@
+diff --git a/tests/ref_outputs/test025/params_c.cfg b/tests/ref_outputs/test025/params_c.cfg
+index 76f04a4..e372033 100644
+--- a/tests/ref_outputs/test025/params_c.cfg
++++ b/tests/ref_outputs/test025/params_c.cfg
+@@ -41,7 +41,7 @@ first_cycle_ratio = 0.9
+ R0_SEI = 0.001
+ vfrac_1 = 0.9
+ vfrac_2 = 0.3
+-k0_SEI = 5e-6
++k0_SEI = 1e-6
+ alpha_SEI = 0.5
+ zeta = 10e-9
+ eta_p = 0.02
+

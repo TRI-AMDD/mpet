@@ -15,6 +15,20 @@ class portFromElyte(dae.daePort):
             "Electric potential in the electrolyte")
 
 
+class portFromPart(dae.daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+        dae.daePort.__init__(self, Name, PortType, Model, Description)
+        self.c_lyte = dae.daeVariable(
+            "c_lyte", mole_frac_t, self,
+            "Concentration in the electrolyte")
+        self.phi_lyte = dae.daeVariable(
+            "phi_lyte", elec_pot_t, self,
+            "Electric potential in the electrolyte")
+        self.phi_m = dae.daeVariable(
+            "phi_m", elec_pot_t, self,
+            "Electric potential in the e- conducting phase")
+
+
 class portFromBulk(dae.daePort):
     def __init__(self, Name, PortType, Model, Description=""):
         dae.daePort.__init__(self, Name, PortType, Model, Description)

@@ -9,6 +9,7 @@ distributions from input means and standard deviations.
 import os
 import pickle
 
+import mpet.utils as utils
 import numpy as np
 import mpet.utils as utils
 
@@ -284,8 +285,8 @@ class Config:
             else:
                 # only update generated distributions
                 if section == 'system':
-                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_vol',
-                                'psd_vol_FracVol', 'G']:
+                    for key in ['psd_num', 'psd_len', 'psd_area_SEI',
+                                'psd_vol', 'psd_vol_FracVol', 'G']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:
                     trode = section[0]
@@ -474,7 +475,9 @@ class Config:
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
+        self['D_solv'] = self['D_solv'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
+        self['c0_solv'] = self['c0_solv'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
         if self['power'] is not None:
@@ -833,11 +836,49 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['k0_SEI'][i, j] = self[trode, 'k0_SEI'] \
+                        / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    self[trode, 'indvPart']['R0_SEI'][i, j] = self[trode, 'R0_SEI'] \
+                        / (constants.k * constants.T_ref / (constants.e * i_s_ref))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
+                    self[trode, 'indvPart']['ssa'][i, j] = self[trode, 'indvPart']['delta_L'][i, j]
+                    if not self[trode, 'ssa'] is None:
+                        self[trode, 'indvPart']['ssa'][i, j] = self[trode, 'ssa'] * \
+                            plen * utils.get_density(self[trode, "material_type"]) * 1000
+                        # assuming SEI materials is Li2CO3, which has density rho = 2.26e3kg/m^3
+                    # assuming SEI materials is graphite, which has density rho = 2.26e3kg/m^3
+                    # n0_SEI from mAh/g to unit/m^3
+                    self[trode, 'indvPart']['n0_SEI'][i, j] = self[trode, 'n0_SEI'] * 3600 \
+                        * 2.26e3 / constants.e / cs_ref_part
+                    self[trode, 'indvPart']['c_SEI'][i, j] = self[trode, 'rho_SEI'] / cs_ref_part
+                    if self[trode, 'SEI'] and self[trode, 'n0_SEI'] != 0:
+                        # we know the amount of initial SEI--we can set it as a parameter
+                        # from mAh/g to particle/g
+                        # primary SEI grows over the entire area and not just the reaction plane
+                        self[trode,'indvPart']['L10'][i, j] = \
+                            self[trode, 'indvPart']['n0_SEI'][i, j] * \
+                            self[trode,'first_cycle_ratio'] \
+                            / (self[trode, 'vfrac_1'] * self[trode, 'indvPart']['ssa'][i, j]
+                               * self[trode, 'indvPart']['c_SEI'][i, j])
+                        self[trode,'indvPart']['L20'][i, j] = \
+                            self[trode, 'indvPart']['n0_SEI'][i, j] * \
+                            (1-self[trode,'first_cycle_ratio']) \
+                            / (self[trode, 'vfrac_2'] * self[trode, 'indvPart']['ssa'][i, j]
+                               * self[trode, 'indvPart']['c_SEI'][i, j])
+                    else:
+                        # otherwise, set to arbitrary value of 0.1e-9 for both primary and
+                        # secondary SEI
+                        self[trode, 'indvPart']['L10'][i, j] = 0.1e-9/plen
+                        self[trode, 'indvPart']['L20'][i, j] = 0.1e-9/plen
+
+                    self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
+                    self[trode, 'indvPart']['zeta'][i, j] = self[trode, 'zeta'] / plen
+                    self[trode, 'indvPart']['eta_p'][i, j] = self[trode, 'eta_p'] * constants.e \
+                        / (constants.k * constants.T_ref)
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:

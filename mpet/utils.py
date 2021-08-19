@@ -145,6 +145,7 @@ def get_dict_key(data, string, squeeze=True, final=False):
         return data[string][...]
 
 
+<<<<<<< HEAD
 def get_crate(crate, Cratecurr):
     """Returns crate from Crate input in params.sys.
     if it is in Crate, returns original number. otherwise converts
