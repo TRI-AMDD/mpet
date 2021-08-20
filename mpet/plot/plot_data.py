@@ -332,14 +332,14 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
         datay_c = utils.get_dict_key(data, c_cath, squeeze=False)
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
-        L_c = config['L']["c"] * Lfac
+        L_c = config['L']["c"] * config['L_ref'] * Lfac
         Ltot = L_c
         if config["have_separator"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
-            L_s = config['L']["s"] * Lfac
+            L_s = config['L']["s"] * config['L_ref'] * Lfac
             Ltot += L_s
         else:
             L_s = 0
@@ -348,7 +348,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datay_a_p = utils.get_dict_key(data, p_anode, squeeze=False)
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
-            L_a = config['L']["a"] * Lfac
+            L_a = config['L']["a"] * config['L_ref'] * Lfac
             Ltot += L_a
         else:
             L_a = 0
