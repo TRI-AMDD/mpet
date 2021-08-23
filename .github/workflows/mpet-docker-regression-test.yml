@@ -1,0 +1,62 @@
+name: MPET regression test
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test:
+    
+    runs-on: ubuntu-latest
+    container:
+      image: vikko00/daetools:1.9.0
+
+    steps:
+    - name: update container
+      run: |
+        apt-get update
+        apt-get upgrade -y
+
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: mpet
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: base-mpet
+        ref: ${{ github.base_ref }}
+
+    - name: Install additional dependencies using mpet's setup.py
+      run: |
+        cd mpet
+        pip install .[test]
+
+    - name: Set up test for modified branch
+      run: |
+        cd mpet/bin
+        rm -rf workdir
+        mkdir workdir
+        cd workdir
+
+        cp ../run_tests.py .
+        ln -s ../../mpet .
+        ln -s ../../tests .
+
+    - name: run tests for modified branch and get coverage
+      run: |
+        cd mpet/bin/workdir
+        coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
+
+    - name: upload Coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cd mpet/bin/workdir
+        coveralls --service=github || : #Dont fret if if fails
+
+    - name: Checks test results
+      run: |
+        cd mpet/tests
+        pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py

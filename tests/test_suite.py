@@ -1,22 +1,35 @@
 import errno
 import os
 import os.path as osp
+import shutil
 import time
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-import mpet.io_utils as IO
+import mpet.main
+from mpet.config.configuration import Config
 import tests.test_defs as defs
 
 
 def run_test_sims(runInfo, dirDict, pflag=True):
-    for testStr in sorted(runInfo.keys()):
+    for testStr in runInfo:
         testDir = osp.join(dirDict["out"], testStr)
         os.makedirs(testDir)
-        runInfo[testStr](testDir, dirDict, pflag)
+
+        # Copy config files from ref_outputs
+        refDir = osp.join(dirDict["suite"],"ref_outputs",testStr)
+        _, _, filenames = next(os.walk(osp.join(refDir)))
+        for f in filenames:
+            if ".cfg" in f:
+                shutil.copyfile(osp.join(refDir,f),osp.join(testDir,f))
+
+        # Run the simulation
+        configfile = osp.join(testDir,'params_system.cfg')
+        mpet.main.main(configfile, keepArchive=False)
+        shutil.move(dirDict["simOut"], testDir)
+
     # Remove the history directory that mpet creates.
     try:
         os.rmdir(osp.join(dirDict["suite"], "history"))
@@ -49,11 +62,8 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
     for testStr in sorted(runInfo.keys()):
         newDir = osp.join(dirDict["out"], testStr, "sim_output")
         newDataFile = osp.join(newDir, "output_data.mat")
-        dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
-        tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
-        dD_e = {}
-        ndD_e = {}
-        dD_e["c"], ndD_e["c"] = tmp
+        config = Config.from_dicts(newDir)
+
         try:
             newData = sio.loadmat(newDataFile)
         except IOError as exception:
@@ -63,10 +73,10 @@ def compare_with_analyt(runInfo, dirDict, tol=1e-4):
             print("No simulation data for " + testStr)
             continue
         if "Difn" in testStr:
-            t_ref = dD_s["t_ref"]
-            L_part = dD_s["psd_len"]["c"][0,0]
-            nx_part = ndD_s["psd_num"]["c"][0,0]
-            t_refPart = L_part**2 / dD_e["c"]["D"]
+            t_ref = config["t_ref"]
+            L_part = config["psd_len"]["c"][0,0]
+            nx_part = config["psd_num"]["c"][0,0]
+            t_refPart = L_part**2 / config["c", "D"]
             # Skip first time point: analytical solution fails at t=0.
             t0ind = 2
             r0ind = 1
@@ -113,7 +123,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 raise
             print("No simulation data for " + testStr)
             continue
-        
+
         refData = sio.loadmat(refDataFile)
         for varKey in (set(refData.keys()) & set(newData.keys())):
             # TODO -- Consider keeping a list of the variables that fail
@@ -122,7 +132,7 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
             if varKey[0:2] == "__":
                 continue
 
-            #Compute the difference between the solution and the reference
+            # Compute the difference between the solution and the reference
             try:
                 varDataNew = newData[varKey]
                 varDataRef = refData[varKey]
@@ -135,14 +145,14 @@ def compare_with_ref(runInfo, dirDict, tol=1e-4):
                 print(testStr, "Fail from KeyError")
                 testFailed = True
                 continue
-            
+
             # #Check absolute and relative error against tol
             if np.max(diffMat) > tol and np.max(diffMat) > tol*np.max(np.abs(varDataRef)):
                 print(testStr, "Fail from tolerance")
                 print("variable failing:", varKey)
                 print("max error:", np.max(diffMat))
                 testFailed = True
-        
+
         if testFailed:
             failList.append(testStr)
 
@@ -197,7 +207,7 @@ def main(compareDir):
     failList = compare_with_ref(runInfo, dirDict, tol=1e-4)
     failListAnalyt = compare_with_analyt(runInfoAnalyt, dirDict, tol=1e-4)
 
-    #Print a summary of test results
+    # Print a summary of test results
     print("\n")
     print("--------------------------------------------------------------")
     if len(failList) > 0:
