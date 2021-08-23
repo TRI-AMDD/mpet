@@ -284,7 +284,7 @@ class Config:
             else:
                 # only update generated distributions
                 if section == 'system':
-                    for key in ['psd_num', 'psd_len', 'psd_area_SEI',
+                    for key in ['psd_num', 'psd_len', 'psd_area',
                                 'psd_vol', 'psd_vol_FracVol', 'G']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:

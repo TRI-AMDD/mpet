@@ -124,10 +124,13 @@ def CIET(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
     return Rate
 
 
-def SEI(eta, c_e, c_Li_ion, c_solv, k0, T, alpha=None):
+def SEI(eta, c_e, c_Li_ion, c_solv, k0, E_A, T, alpha=None):
     """Frumkin-corrected BV equation. c_e is ~ lithium ion concentration
        in the primary SEI layer, c_Li_ion is the lithium ion concentration
        in the bulk"""
-    ecd = k0 * (c_e*c_Li_ion*c_solv)
-    Rate = ecd * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    # c_e is also supposed to be in the power. but this value is always
+    # between 0 and 1 and affects the power to be unstable sometimes.
+    # thus we can take a linear approximation
+    ecd = k0 * c_e * (c_Li_ion*c_solv)**(1-alpha)
+    Rate = ecd * np.exp(-E_A/T + E_A/1) * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
