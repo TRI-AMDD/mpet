@@ -555,7 +555,7 @@ class Config:
                     # if input is None, stores as None for cutoffs only. otherwise
                     # nondimensionalizes cutoffs & setpoints
                     volt_cut = None if self["segments"][i][1] is None else - \
-                        ((e/(k*T_ref))*(self["segments"][i][1])+ndDVref)
+                        ((constants.e/kT)*(self["segments"][i][1])+Vref)
                     # we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
                     #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None else self["segments"][i][2]
@@ -612,7 +612,7 @@ class Config:
                     # if input is None, stores as None for cutoffs only. otherwise
                     # nondimensionalizes cutoffs & setpoints
                     volt_cut = None if self["segments"][i][1] is None else - \
-                        ((e/(k*T_ref))*(self["segments"][i][1])+ndDVref)
+                        ((constants.e/kT)*(self["segments"][i][1])+Vref)
                     # we set capfrac cutoff to be 0.99 if it is not set to prevent overfilling
                     #capfrac_cut = 0.99 if dD_s["segments"][i][2] == None else dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None else self["segments"][i][2]

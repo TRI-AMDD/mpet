@@ -113,7 +113,9 @@ class SEI_adsorption(dae.daeModel):
 
         muR_SEI = calc_muR_SEI(self.config, self.trode, self.ind, self.ISfuncs)
         eta_SEI = calc_eta(muR_SEI, mu_O)
-        Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI, self.a_e_SEI(), self.c_lyte(),
+        eta_SEI_eff = eta_SEI + self.Rxn_SEI()*(self.get_trode_param("Rfilm")
+                                                + self.get_trode_param("R0_SEI")*self.L1())
+        Rxn_SEI = self.calc_rxn_rate_SEI(eta_SEI_eff, self.a_e_SEI(), self.c_lyte(),
                                          self.c_solv(), self.get_trode_param("k0_SEI"),
                                          T, self.get_trode_param("alpha_SEI"))
         eq = self.CreateEquation("Rxn_SEI")
