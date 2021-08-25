@@ -42,15 +42,21 @@ class ParameterSet:
         parser.optionxform = str
         parser.read(fname)
 
-        # load each section and validate schema
-        for section in parser.sections():
-            # get the schema
+        # get schemas for all potential sections
+        section_schemas = getattr(schemas, self.config_type)
+
+        # load each potential section and validate schema
+        for section, config_schema in section_schemas.items():
+            # try to read this section from the file
             try:
-                config_schema = getattr(schemas, self.config_type)[section]
+                raw_section_params = dict(parser[section])
             except KeyError:
-                raise Exception(f'Unknown section "{section}" in {self.fname}')
-            # validate
-            section_params = config_schema.validate(dict(parser[section].items()))
+                # this section does not exist. Make it an empty dict, so
+                # schema can still handle optional parameters in the section
+                raw_section_params = dict()
+
+            # validate the parameters
+            section_params = config_schema.validate(raw_section_params)
             # verify there are no duplicate keys
             for key in section_params.keys():
                 if key in self.params:
