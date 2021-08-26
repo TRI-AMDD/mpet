@@ -4,8 +4,30 @@ Installation
 Prerequisites
 ----------------------------
 
-  * Python 3.5 to 3.7
-  * DAE Tools version 1.9.0
+
+  * Python 3.5 to 3.9
+  * numpy, scipy, matplotlib, pyqt5, h5py
+
+Python 3.5-3.7 on Ubuntu
+-----------------------------
+
+Prerequisites
+
+ * libgl1-mesa-glx
+ * libpython3.5, libpython3.6, or libpython3.7 (to match your Python version)
+ * libgfortran3
+ * DAE Tools version 1.9.0
+
+Python 3.8/3.9 on Ubuntu
+-----------------------------
+
+Prerequisites
+
+ * libgl1-mesa-glx
+ * libpython3.8 or libpython3.9 (to match your Python version)
+ * libgfortran5
+ * libsuperlu5
+ * DAE tools version 1.9.1 from github.com/v1kko/daetools
 
 Install via PyPi
 -----------------------------
