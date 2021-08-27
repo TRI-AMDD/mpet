@@ -1,0 +1,16 @@
+diff --git a/tests/README.md b/tests/README.md
+index 4c7575a..3da0299 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -59,3 +59,4 @@ it is both tested as absolute and relative tolerance.
+  - test020: hdf5 file output
+  - test021: hdf5Fast file output and restarting hdf5 simulations
+  - test022: Test of specified_psd_c option, LFP homog
++ - test023: CIET for LFP
+diff --git a/tests/ref_outputs/test020/sim_output/output_data b/tests/ref_outputs/test020/sim_output/output_data
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/tests/ref_outputs/test021/sim_output/output_data b/tests/ref_outputs/test021/sim_output/output_data
+deleted file mode 100644
+index e69de29..0000000
+

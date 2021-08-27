@@ -1,0 +1,14 @@
+diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+index 9479ad3..3e061a3 100644
+--- a/configs/params_system_LIONSIMBA.cfg
++++ b/configs/params_system_LIONSIMBA.cfg
+@@ -26,7 +26,7 @@ prevDir = false
+ # Final time (only used for CV), [s]
+ tend = 1.2e3
+ # Number disc. in time
+-tsteps = 200
++tsteps = 25
+ # Numerical Tolerances
+ relTol = 1e-6
+ absTol = 1e-6
+

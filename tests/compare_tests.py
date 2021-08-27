@@ -1,11 +1,12 @@
 import os.path as osp
 import scipy.io as sio
 import numpy as np
-import mpet.io_utils as IO
 import tests.test_defs as defs
 import errno
 import h5py
 import pytest
+
+from mpet.config.configuration import Config
 
 
 def test_compare(Dirs, tol):
@@ -48,8 +49,9 @@ def test_compare(Dirs, tol):
 
         # Compute the difference between the solution and the reference
         try:
-            varDataNew = newData[varKey]
-            varDataRef = refData[varKey]
+            # Ellipsis notation converts h5py Datasets to numpy arrays
+            varDataNew = newData[varKey][...]
+            varDataRef = refData[varKey][...]
             diffMat = np.abs(varDataNew - varDataRef)
         except ValueError:
             assert False, "Fail from ValueError"
@@ -57,10 +59,10 @@ def test_compare(Dirs, tol):
             assert False, "Fail from KeyError"
 
         # #Check absolute and relative error against tol
-        assert np.max(diffMat) < tol or \
-               np.max(diffMat) < tol * np.max(np.abs(varDataRef)), \
-               "Fail from tolerance\nVariable failing: %s\nMax error:\
-        %f" % (varKey, np.max(diffMat))
+        assert np.mean(diffMat) < tol or \
+               np.mean(diffMat) < tol * np.mean(np.abs(varDataRef)), \
+               "Fail from tolerance\nVariable failing: %s\nMean error:\
+        %f" % (varKey, np.mean(diffMat))
 
 
 @pytest.mark.analytic
@@ -84,11 +86,7 @@ def _test_analytic(testDir, tol, info):
         newDatah5 = True
     assert osp.exists(newDataFile), "neither output_data.{mat,hdf5} present"
 
-    dD_s, ndD_s = IO.read_dicts(osp.join(newDir, "input_dict_system"))
-    tmp = IO.read_dicts(osp.join(newDir, "input_dict_c"))
-    dD_e = {}
-    ndD_e = {}
-    dD_e["c"], ndD_e["c"] = tmp
+    config = Config.from_dicts(newDir)
     try:
         if newDatah5:
             newData = h5py.File(newDataFile, 'r')
@@ -98,10 +96,10 @@ def _test_analytic(testDir, tol, info):
         # If it's an error _other than_ the file not being there
         assert exception.errno == errno.ENOENT, "IO error on opening file"
         assert False, "File %s does not exist" % (newDataFile)
-    t_ref = dD_s["t_ref"]
-    L_part = dD_s["psd_len"]["c"][0, 0]
-    nx_part = ndD_s["psd_num"]["c"][0, 0]
-    t_refPart = L_part ** 2 / dD_e["c"]["D"]
+    t_ref = config["t_ref"]
+    L_part = config["psd_len"]["c"][0, 0]
+    nx_part = config["psd_num"]["c"][0, 0]
+    t_refPart = L_part ** 2 / config.D_c["D"]
     # Skip first time point: analytical solution fails at t=0.
     t0ind = 2
     r0ind = 1
