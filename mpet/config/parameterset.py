@@ -48,7 +48,7 @@ class ParameterSet:
             try:
                 config_schema = getattr(schemas, self.config_type)[section]
             except KeyError:
-                raise Exception(f'Unknown section "{section}" in {self.fname}')
+                raise Exception(f'Unknown section "{section}" in {fname}')
             # validate
             section_params = config_schema.validate(dict(parser[section].items()))
             # verify there are no duplicate keys
