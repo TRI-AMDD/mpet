@@ -641,14 +641,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(datay3)
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        # double check size of datay, since nosqueeze is not enough
-                        datay = utils.get_dict_key(data, cstr[pInd,vInd])
-                        if len(datay.shape) > 1:
-                            # if actually 2d array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd],
-                                                       squeeze=False)[:,tind]
-                        else:  # 1D array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
+                        datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
                         lines[pInd,vInd].set_ydata(datay)
                         lines_local = lines.copy()
                     toblit.extend(lines_local.reshape(-1))
