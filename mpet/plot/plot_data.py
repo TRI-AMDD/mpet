@@ -497,20 +497,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         timettl = False  # Plot the current simulation time as title
         # Plot title in seconds
         ttlscl, ttlunit = 1, "s"
-        # For example, to plot title in hours:
-        # ttlscl, ttlunit = 1./3600, "hr"
-        save_shot = False
-        if save_shot:
-            t0ind = 300
-            print("Time at screenshot: {ts} s".format(ts=times[t0ind]*td))
-        else:
-            t0ind = 0
+        t0ind = 0
         trode = plot_type[-1]
         if plot_type[0] == "c":
             plt_cavg = True
         else:
             plt_cavg = False
-        plt_legend = True
         plt_axlabels = True
         if config[trode, "type"] in constants.one_var_types:
             type2c = False
@@ -593,8 +585,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     lines[pInd,vInd] = line
                 ax[pInd,vInd].set_ylim(ylim)
                 ax[pInd,vInd].set_xlim((0, lens[pInd,vInd] * Lfac))
-                if plt_legend:
-                    ax[pInd, vInd].legend(loc="best")
                 if plt_axlabels:
                     ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
                     if plot_type[0] == "c":
@@ -608,8 +598,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             tval=times[t0ind]*td*ttlscl, ttlu=ttlunit),
                         verticalalignment="center", horizontalalignment="center",
                         transform=ax[pInd, vInd].transAxes)
-        if save_shot:
-            fig.savefig("mpet_{pt}.pdf".format(pt=plot_type), bbox_inches="tight")
 
         def init():
             toblit = []
@@ -653,14 +641,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(datay3)
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        # double check size of datay, since nosqueeze is not enough
-                        datay = utils.get_dict_key(data, cstr[pInd,vInd])
-                        if len(datay.shape) > 1:
-                            # if actually 2d array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd],
-                                                       squeeze=False)[:,tind]
-                        else:  # 1D array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
+                        datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
                         lines[pInd,vInd].set_ydata(datay)
                         lines_local = lines.copy()
                     toblit.extend(lines_local.reshape(-1))
