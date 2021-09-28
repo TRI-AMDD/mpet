@@ -5,7 +5,6 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
-import h5py
 
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
@@ -578,8 +577,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
                     numy = len(datay)
-                    # check if it is array, then return length. otherwise return 1
-                    numy = len(datay) if isinstance(datay, np.ndarray) else 1
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
                     lines[pInd,vInd] = line
@@ -832,10 +829,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if save_flag:
         fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
-
-    # close file if it is a h5py file
-    if isinstance(data, h5py._hl.files.File):
-        data.close()
 
     return fig, ax, ani
 
