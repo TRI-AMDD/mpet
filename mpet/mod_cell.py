@@ -222,8 +222,10 @@ class ModCell(dae.daeModel):
             if simBulkCond:
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = utils.add_gp_to_vec(utils.get_var_vec(self.phi_bulk[trode], Nvol[trode]))
+#                porosvec = utils.pad_vec(utils.get_const_vec(
+#                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"][trode]), Nvol[trode]))
                 porosvec = utils.pad_vec(utils.get_const_vec(
-                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"][trode]), Nvol[trode]))
+                    (1-self.ndD["poros"][trode]), Nvol[trode]))
                 poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
                     # Potential at the current collector is from

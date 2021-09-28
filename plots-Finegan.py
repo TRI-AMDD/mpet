@@ -59,6 +59,7 @@ for time in [150,300,800]:
     ax.set_ylim(0,1)
 
 ax.legend()
+plt.savefig('plt1.png', dpi = 300, bbox_inches = 'tight')
 plt.show()
 
 
@@ -78,6 +79,7 @@ ax.set_ylabel("Intercalation fraction")
 ax.set_ylim(0,1)
 
 ax.legend()
+plt.savefig('plt2.png', dpi = 300, bbox_inches = 'tight')
 plt.show()
 
 # Plot #3, localized C-rate vs time and position
@@ -105,4 +107,5 @@ ax.set_xlabel("Time (s)")
 ax.set_ylabel("Depth (um)")
 fig.tight_layout()
 fig.colorbar(c, ax=ax, label='$\\Delta$X/hr')
+plt.savefig('plt3.png', dpi = 300, bbox_inches = 'tight')
 plt.show()
