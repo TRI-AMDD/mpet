@@ -324,7 +324,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                        "elytei", "elyteif", "elytedivi", "elytedivif"]:
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
-        mpl.animation.Animation._blit_draw = _blit_draw
         datax = cellsvec
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
@@ -589,7 +588,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     elif plot_type[:2] == "mu":
                         ax[pInd, vInd].set_ylabel(r"$\mu/k_\mathrm{B}T$")
                 if timettl:
-                    mpl.animation.Animation._blit_draw = _blit_draw
                     ttl = ax[pInd, vInd].text(
                         0.5, 1.04, "t = {tval:3.3f} {ttlu}".format(
                             tval=times[t0ind]*td*ttlscl, ttlu=ttlunit),
@@ -700,8 +698,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmap_data = cmaps["GnYlRd_3"]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
-        # Implement hack to be able to animate title
-        mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(trvec), squeeze=False, figsize=figsize)
         ttlx = 0.5 if len(trvec) < 2 else 1.1
@@ -788,7 +784,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         trode = plot_type[-1]
         fplot = (True if plot_type[-3] == "f" else False)
         t0ind = (0 if not fplot else -1)
-        mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
         ax.set_ylabel('Potential of cathode [nondim]')
@@ -831,29 +826,3 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
 
     return fig, ax, ani
-
-
-# This is a block of code which messes with some mpl internals
-# to allow for animation of a title. See
-# http://stackoverflow.com/questions/17558096/animated-title-in-mpl
-def _blit_draw(self, artists, bg_cache):
-    # Handles blitted drawing, which renders only the artists given instead
-    # of the entire figure.
-    updated_ax = []
-    for a in artists:
-        # If we haven't cached the background for this axes object, do
-        # so now. This might not always be reliable, but it's an attempt
-        # to automate the process.
-        if a.axes not in bg_cache:
-            # bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(a.axes.bbox)
-            # change here
-            bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(
-                a.axes.figure.bbox)
-        a.axes.draw_artist(a)
-        updated_ax.append(a.axes)
-
-    # After rendering all the needed artists, blit each axes individually.
-    for ax in set(updated_ax):
-        # and here
-        # ax.figure.canvas.blit(ax.bbox)
-        ax.figure.canvas.blit(ax.figure.bbox)
