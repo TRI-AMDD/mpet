@@ -78,14 +78,14 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
-                        partPl = self.m.particles_plating[tr][i,j]
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
                         solidType = self.config[tr, "type"]
                         if config[tr, "Li_plating"]:
-                            if config[tr, "muRpl"] != "plating_none":
-                                partPl.V_Li.SetInitialCondition(1e-5)
+                            # if SEI model is on, check for the models
+                            if config[tr, "muRpl"] == "plating_simple":
+                                part.particles_plating.V_Li.SetInitialCondition(1e-5)
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
@@ -150,11 +150,8 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
-                        partPl = self.m.particles_plating[tr][i,j]
                         solidType = self.config[tr, "type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
-                            l=tr, i=i, j=j)
-                        partPlStr = "partTrode{l}vol{i}partplating{j}_".format(
                             l=tr, i=i, j=j)
 
                         # Set the inlet port variables for each particle
@@ -163,8 +160,8 @@ class SimMPET(dae.daeSimulation):
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
                         if config[tr, "Li_plating"]:
                             if config[tr, "muRpl"] != "plating_none":
-                                partPl.V_Li.SetInitialCondition(
-                                    utils.get_dict_key(data, partPlStr + "V_Li", final=True))
+                                part.particles_plating.V_Li.SetInitialCondition(
+                                    utils.get_dict_key(data, partStr + "plating_V_Li", final=True))
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "cbar", final=True))

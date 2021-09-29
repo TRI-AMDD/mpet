@@ -18,15 +18,12 @@ class plating_none(dae.daeModel):
         self.dcplatingbardt = dae.daeVariable("dcplatingbardt", dae.no_t, self,
                                               "Rate of plating growth on particle volume basis")
         # Ports
-        self.portInLyte = ports.portFromElyte(
-            "portInLyte", dae.eInletPort, self,
+        self.portInPart = ports.portFromPart(
+            "portInPart", dae.eInletPort, self,
             "Inlet port from electrolyte")
-        self.portInBulk = ports.portFromBulk(
-            "portInBulk", dae.eInletPort, self,
-            "Inlet port from e- conducting phase")
-        self.c_lyte = self.portInLyte.c_lyte
-        self.phi_lyte = self.portInLyte.phi_lyte
-        self.phi_m = self.portInBulk.phi_m
+        self.c_lyte = self.portInPart.c_lyte
+        self.phi_lyte = self.portInPart.phi_lyte
+        self.phi_m = self.portInPart.phi_m
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -60,15 +57,13 @@ class plating_simple(dae.daeModel):
             self.calc_rxn_rate_plating = getattr(reactions,"plating_simple")
 
         # Ports
-        self.portInLyte = ports.portFromElyte(
-            "portInLyte", dae.eInletPort, self,
+        self.portInPart = ports.portFromPart(
+            "portInPart", dae.eInletPort, self,
             "Inlet port from electrolyte")
-        self.portInBulk = ports.portFromBulk(
-            "portInBulk", dae.eInletPort, self,
-            "Inlet port from e- conducting phase")
-        self.c_lyte = self.portInLyte.c_lyte
-        self.phi_lyte = self.portInLyte.phi_lyte
-        self.phi_m = self.portInBulk.phi_m
+
+        self.c_lyte = self.portInPart.c_lyte
+        self.phi_lyte = self.portInPart.phi_lyte
+        self.phi_m = self.portInPart.phi_m
 
     def get_trode_param(self, item):
         """
