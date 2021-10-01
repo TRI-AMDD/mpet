@@ -477,6 +477,9 @@ class Config:
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+        # nondimensionalize the scale of time in curr_set if it is a function of time
+        # set them as a function of periodic time as well
+        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60)
         if self['power'] is not None:
             self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
@@ -529,11 +532,14 @@ class Config:
 
         # Scaling of current and voltage segments
         segments = []
+
         if self['profileType'] == 'CCsegments':
             for i in range(len(self['segments'])):
                 segments.append(
-                    (utils.get_crate(self['segments'][i][0], self['1C_current_density'])
-                     * self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+                    (utils.nondim_time(utils.get_crate(self['segments'][i][0],
+                                       self['1C_current_density']),
+                                       self['t_ref'] / 60) * self["1C_current_density"]
+                     / theoretical_1C_current / self['curr_ref'],
                      self["segments"][i][1] * 60 / self['t_ref']))
         elif self['profileType'] == 'CVsegments':
             for i in range(len(self['segments'])):

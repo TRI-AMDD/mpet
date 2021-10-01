@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import re
 import scipy.io as sio
+import sympy as sym
 
 import daetools.pyDAE as dae
 
@@ -168,3 +169,14 @@ def get_crate(crate, Cratecurr):
             amp_value = float(re.sub(r'[A]+', '', crate, re.I))
             out = amp_value / Cratecurr
     return out
+
+
+def nondim_time(currset, t_ref):
+    """Nondimensionalizes the time function in currset if it is a function of time
+    and set periodicity in this function
+    """
+    if "t" in str(currset):
+        t = sym.Symbol("t")
+        return currset.subs(t, t*t_ref)
+    else:
+        return currset

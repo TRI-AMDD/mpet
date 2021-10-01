@@ -1,71 +1,718 @@
 diff --git a/configs/params_system.cfg b/configs/params_system.cfg
-index 19a21b4..3f4b3bc 100644
+index 555b765..fbc160a 100644
 --- a/configs/params_system.cfg
 +++ b/configs/params_system.cfg
-@@ -10,7 +10,7 @@ profileType = CC
- # (positive for discharge, negative for charge)
+@@ -12,7 +12,7 @@ profileType = CC
+ # of the current density as in "1A")
  # If using wavefunction form, write it as a function of t (time) in min
  # in sympy format.
--Crate = 0.01*sin(t)
-+Crate = 0.01*sin(2*pi*t)
+-Crate = 1
++Crate = t/60
  # Optional nominal 1C current density for the cell, A/m^2
  # 1C_current_density = 12.705
  # Voltage cutoffs, V
-@@ -46,13 +46,13 @@ prevDir = false
+@@ -47,9 +47,9 @@ prevDir = false
+ # If we have waveform functions in our segments, then we will have a list of
+ # size the number of steps, where period(i) is the period for the ith step,
  # with 0's if there is no period. Optional, default if 1e8
- period = 1
+-period = 1e8
++period = 100
  # Final time (only used for CV), [s]
 -tend = 1.2e3
-+tend = 300
++tend = 3600
  # Number disc. in time
  # Note time stepping is adaptive, variable-order stepping, so this
  # affects only the interpolated output values, not simulation
- # accuracy. The output will have all simulation values at a linear
- # spacing between initial and final times with tsteps total outputs.
--tsteps = 200
-+tsteps = 500
- # Relative Tolerance
+diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+index fa08140..59001e9 100644
+--- a/configs/params_system_LIONSIMBA.cfg
++++ b/configs/params_system_LIONSIMBA.cfg
+@@ -7,10 +7,11 @@
+ profileType = CC
+ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+ # (positive for discharge, negative for charge)
+-Crate = 1
++Crate = sin(2*pi*t)
+ #Optional nominal 1C current density for the cell, A/m^2
+-1C_current_density = 30
++#1C_current_density = 30
+ # Voltage cutoffs, V
++period = 1
+ Vmax = 5
+ Vmin = 2.5
+ # Battery applied voltage (only used for CV), V
+@@ -24,7 +25,7 @@ segments = [
+ # Options: false, absolute directory path
+ prevDir = false
+ # Final time (only used for CV), [s]
+-tend = 1.2e3
++tend = 1200
+ # Number disc. in time
+ tsteps = 200
+ # Numerical Tolerances
+diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
+index 131e323..5093bba 100644
+--- a/tests/ref_outputs/test026/params_system.cfg
++++ b/tests/ref_outputs/test026/params_system.cfg
+@@ -1,6 +1,7 @@
+ [Sim Params]
+ #Functional waveform test
+ profileType = CC
++period = 1
+ Crate = sin(2*pi*t)
+ Vmax = 1e10
+ Vmin = -1e10
+@@ -11,8 +12,8 @@ segments = [
+ 	]
+ tramp = 0
+ prevDir = false
+-tend = 1.2e3
+-tsteps = 35
++tend = 60
++tsteps = 40
  relTol = 1e-6
- # Absolute Tolerance
-@@ -70,7 +70,7 @@ seed = 0
- # printing internal variable concentrations) files. hdf5 files
- # are better for cycling, as they store less information and there is less
- # opening/rewriting of files. Default is mat
--dataReporter = hdf5
-+dataReporter = mat
- # Series resistance, [Ohm m^2]
- Rser = 0.
- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
-index ec4320f..35a22b2 100644
---- a/mpet/config/configuration.py
-+++ b/mpet/config/configuration.py
-@@ -469,6 +469,7 @@ class Config:
-         from :meth:`_process_config`.
-         """
-         # non-dimensional scalings
-+        print(self['t_ref'], self['period'], self['period'] * 60 / self['t_ref'])
-         self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
-         self['T'] = self['T'] / constants.T_ref
-         self['Rser'] = self['Rser'] / self['Rser_ref']
-@@ -576,6 +577,7 @@ class Config:
-             # if the system is not a functional waveform
-             if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
-                 self['tend'] = np.abs(self['capFrac'] / self['currset'])
-+        print(self['tend'])
+ absTol = 1e-6
+ T = 298
+@@ -24,7 +25,6 @@ Nvol_s = 3
+ Nvol_a = 0
+ Npart_c = 1
+ Npart_a = 1
+-period = 10
  
-     def _distr_part(self):
-         """
-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
-index 2fc6da1..cab5ddf 100644
---- a/mpet/mod_cell.py
-+++ b/mpet/mod_cell.py
-@@ -390,6 +390,7 @@ class ModCell(dae.daeModel):
-                     eq.Residual = f(
-                         dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
-                         - self.current()
-+                    #eq.Residual = f(dae.Time()) - self.current()
-         elif self.profileType == "CV":
-             # Keep applied potential constant
-             eq = self.CreateEquation("applied_potential")
+ [Electrodes]
+ cathode = params_c.cfg
+diff --git a/tests/ref_outputs/test026/sim_output/commit.diff b/tests/ref_outputs/test026/sim_output/commit.diff
+index 7a4f3d9..a809687 100644
+--- a/tests/ref_outputs/test026/sim_output/commit.diff
++++ b/tests/ref_outputs/test026/sim_output/commit.diff
+@@ -1,71 +1,547 @@
+ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+-index 19a21b4..3f4b3bc 100644
++index 555b765..fbc160a 100644
+ --- a/configs/params_system.cfg
+ +++ b/configs/params_system.cfg
+-@@ -10,7 +10,7 @@ profileType = CC
+- # (positive for discharge, negative for charge)
++@@ -12,7 +12,7 @@ profileType = CC
++ # of the current density as in "1A")
+  # If using wavefunction form, write it as a function of t (time) in min
+  # in sympy format.
+--Crate = 0.01*sin(t)
+-+Crate = 0.01*sin(2*pi*t)
++-Crate = 1
+++Crate = t/60
+  # Optional nominal 1C current density for the cell, A/m^2
+  # 1C_current_density = 12.705
+  # Voltage cutoffs, V
+-@@ -46,13 +46,13 @@ prevDir = false
++@@ -47,9 +47,9 @@ prevDir = false
++ # If we have waveform functions in our segments, then we will have a list of
++ # size the number of steps, where period(i) is the period for the ith step,
+  # with 0's if there is no period. Optional, default if 1e8
+- period = 1
++-period = 1e8
+++period = 100
+  # Final time (only used for CV), [s]
+ -tend = 1.2e3
+-+tend = 300
+++tend = 3600
+  # Number disc. in time
+  # Note time stepping is adaptive, variable-order stepping, so this
+  # affects only the interpolated output values, not simulation
+- # accuracy. The output will have all simulation values at a linear
+- # spacing between initial and final times with tsteps total outputs.
+--tsteps = 200
+-+tsteps = 500
+- # Relative Tolerance
++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
++index fa08140..59001e9 100644
++--- a/configs/params_system_LIONSIMBA.cfg
+++++ b/configs/params_system_LIONSIMBA.cfg
++@@ -7,10 +7,11 @@
++ profileType = CC
++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++ # (positive for discharge, negative for charge)
++-Crate = 1
+++Crate = sin(2*pi*t)
++ #Optional nominal 1C current density for the cell, A/m^2
++-1C_current_density = 30
+++#1C_current_density = 30
++ # Voltage cutoffs, V
+++period = 1
++ Vmax = 5
++ Vmin = 2.5
++ # Battery applied voltage (only used for CV), V
++@@ -24,7 +25,7 @@ segments = [
++ # Options: false, absolute directory path
++ prevDir = false
++ # Final time (only used for CV), [s]
++-tend = 1.2e3
+++tend = 1200
++ # Number disc. in time
++ tsteps = 200
++ # Numerical Tolerances
++diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
++index 131e323..9929186 100644
++--- a/tests/ref_outputs/test026/params_system.cfg
+++++ b/tests/ref_outputs/test026/params_system.cfg
++@@ -1,6 +1,7 @@
++ [Sim Params]
++ #Functional waveform test
++ profileType = CC
+++period = 1
++ Crate = sin(2*pi*t)
++ Vmax = 1e10
++ Vmin = -1e10
++@@ -12,7 +13,7 @@ segments = [
++ tramp = 0
++ prevDir = false
++ tend = 1.2e3
++-tsteps = 35
+++tsteps = 200
+  relTol = 1e-6
+- # Absolute Tolerance
+-@@ -70,7 +70,7 @@ seed = 0
+- # printing internal variable concentrations) files. hdf5 files
+- # are better for cycling, as they store less information and there is less
+- # opening/rewriting of files. Default is mat
+--dataReporter = hdf5
+-+dataReporter = mat
+- # Series resistance, [Ohm m^2]
+- Rser = 0.
+- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+-index ec4320f..35a22b2 100644
+---- a/mpet/config/configuration.py
+-+++ b/mpet/config/configuration.py
+-@@ -469,6 +469,7 @@ class Config:
+-         from :meth:`_process_config`.
+-         """
+-         # non-dimensional scalings
+-+        print(self['t_ref'], self['period'], self['period'] * 60 / self['t_ref'])
+-         self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
+-         self['T'] = self['T'] / constants.T_ref
+-         self['Rser'] = self['Rser'] / self['Rser_ref']
+-@@ -576,6 +577,7 @@ class Config:
+-             # if the system is not a functional waveform
+-             if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
+-                 self['tend'] = np.abs(self['capFrac'] / self['currset'])
+-+        print(self['tend'])
++ absTol = 1e-6
++ T = 298
++@@ -24,7 +25,6 @@ Nvol_s = 3
++ Nvol_a = 0
++ Npart_c = 1
++ Npart_a = 1
++-period = 10
++ 
++ [Electrodes]
++ cathode = params_c.cfg
++diff --git a/tests/ref_outputs/test026/sim_output/commit.diff b/tests/ref_outputs/test026/sim_output/commit.diff
++index 7a4f3d9..8921194 100644
++--- a/tests/ref_outputs/test026/sim_output/commit.diff
+++++ b/tests/ref_outputs/test026/sim_output/commit.diff
++@@ -1,71 +1,377 @@
++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
++-index 19a21b4..3f4b3bc 100644
+++index 555b765..fbc160a 100644
++ --- a/configs/params_system.cfg
++ +++ b/configs/params_system.cfg
++-@@ -10,7 +10,7 @@ profileType = CC
++- # (positive for discharge, negative for charge)
+++@@ -12,7 +12,7 @@ profileType = CC
+++ # of the current density as in "1A")
++  # If using wavefunction form, write it as a function of t (time) in min
++  # in sympy format.
++--Crate = 0.01*sin(t)
++-+Crate = 0.01*sin(2*pi*t)
+++-Crate = 1
++++Crate = t/60
++  # Optional nominal 1C current density for the cell, A/m^2
++  # 1C_current_density = 12.705
++  # Voltage cutoffs, V
++-@@ -46,13 +46,13 @@ prevDir = false
+++@@ -47,9 +47,9 @@ prevDir = false
+++ # If we have waveform functions in our segments, then we will have a list of
+++ # size the number of steps, where period(i) is the period for the ith step,
++  # with 0's if there is no period. Optional, default if 1e8
++- period = 1
+++-period = 1e8
++++period = 100
++  # Final time (only used for CV), [s]
++ -tend = 1.2e3
++-+tend = 300
++++tend = 3600
++  # Number disc. in time
++  # Note time stepping is adaptive, variable-order stepping, so this
++  # affects only the interpolated output values, not simulation
++- # accuracy. The output will have all simulation values at a linear
++- # spacing between initial and final times with tsteps total outputs.
++--tsteps = 200
++-+tsteps = 500
++- # Relative Tolerance
++- relTol = 1e-6
++- # Absolute Tolerance
++-@@ -70,7 +70,7 @@ seed = 0
++- # printing internal variable concentrations) files. hdf5 files
++- # are better for cycling, as they store less information and there is less
++- # opening/rewriting of files. Default is mat
++--dataReporter = hdf5
++-+dataReporter = mat
++- # Series resistance, [Ohm m^2]
++- Rser = 0.
++- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
++-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++-index ec4320f..35a22b2 100644
++---- a/mpet/config/configuration.py
++-+++ b/mpet/config/configuration.py
++-@@ -469,6 +469,7 @@ class Config:
++-         from :meth:`_process_config`.
++-         """
++-         # non-dimensional scalings
++-+        print(self['t_ref'], self['period'], self['period'] * 60 / self['t_ref'])
++-         self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
++-         self['T'] = self['T'] / constants.T_ref
++-         self['Rser'] = self['Rser'] / self['Rser_ref']
++-@@ -576,6 +577,7 @@ class Config:
++-             # if the system is not a functional waveform
++-             if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
++-                 self['tend'] = np.abs(self['capFrac'] / self['currset'])
++-+        print(self['tend'])
+++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+++index fa08140..59001e9 100644
+++--- a/configs/params_system_LIONSIMBA.cfg
++++++ b/configs/params_system_LIONSIMBA.cfg
+++@@ -7,10 +7,11 @@
+++ profileType = CC
+++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+++ # (positive for discharge, negative for charge)
+++-Crate = 1
++++Crate = sin(2*pi*t)
+++ #Optional nominal 1C current density for the cell, A/m^2
+++-1C_current_density = 30
++++#1C_current_density = 30
+++ # Voltage cutoffs, V
++++period = 1
+++ Vmax = 5
+++ Vmin = 2.5
+++ # Battery applied voltage (only used for CV), V
+++@@ -24,7 +25,7 @@ segments = [
+++ # Options: false, absolute directory path
+++ prevDir = false
+++ # Final time (only used for CV), [s]
+++-tend = 1.2e3
++++tend = 1200
+++ # Number disc. in time
+++ tsteps = 200
+++ # Numerical Tolerances
+++diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
+++index 131e323..1229f71 100644
+++--- a/tests/ref_outputs/test026/params_system.cfg
++++++ b/tests/ref_outputs/test026/params_system.cfg
+++@@ -1,6 +1,7 @@
+++ [Sim Params]
+++ #Functional waveform test
+++ profileType = CC
++++period = 1
+++ Crate = sin(2*pi*t)
+++ Vmax = 1e10
+++ Vmin = -1e10
+++@@ -24,7 +25,6 @@ Nvol_s = 3
+++ Nvol_a = 0
+++ Npart_c = 1
+++ Npart_a = 1
+++-period = 10
+++ 
+++ [Electrodes]
+++ cathode = params_c.cfg
+++diff --git a/tests/ref_outputs/test026/sim_output/commit.diff b/tests/ref_outputs/test026/sim_output/commit.diff
+++index 7a4f3d9..8759cc8 100644
+++--- a/tests/ref_outputs/test026/sim_output/commit.diff
++++++ b/tests/ref_outputs/test026/sim_output/commit.diff
+++@@ -1,71 +1,216 @@
+++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+++-index 19a21b4..3f4b3bc 100644
++++index 555b765..fbc160a 100644
+++ --- a/configs/params_system.cfg
+++ +++ b/configs/params_system.cfg
+++-@@ -10,7 +10,7 @@ profileType = CC
+++- # (positive for discharge, negative for charge)
++++@@ -12,7 +12,7 @@ profileType = CC
++++ # of the current density as in "1A")
+++  # If using wavefunction form, write it as a function of t (time) in min
+++  # in sympy format.
+++--Crate = 0.01*sin(t)
+++-+Crate = 0.01*sin(2*pi*t)
++++-Crate = 1
+++++Crate = t/60
+++  # Optional nominal 1C current density for the cell, A/m^2
+++  # 1C_current_density = 12.705
+++  # Voltage cutoffs, V
+++-@@ -46,13 +46,13 @@ prevDir = false
++++@@ -47,9 +47,9 @@ prevDir = false
++++ # If we have waveform functions in our segments, then we will have a list of
++++ # size the number of steps, where period(i) is the period for the ith step,
+++  # with 0's if there is no period. Optional, default if 1e8
+++- period = 1
++++-period = 1e8
+++++period = 100
+++  # Final time (only used for CV), [s]
+++ -tend = 1.2e3
+++-+tend = 300
+++++tend = 3600
+++  # Number disc. in time
+++  # Note time stepping is adaptive, variable-order stepping, so this
+++  # affects only the interpolated output values, not simulation
+++- # accuracy. The output will have all simulation values at a linear
+++- # spacing between initial and final times with tsteps total outputs.
+++--tsteps = 200
+++-+tsteps = 500
+++- # Relative Tolerance
+++- relTol = 1e-6
+++- # Absolute Tolerance
+++-@@ -70,7 +70,7 @@ seed = 0
+++- # printing internal variable concentrations) files. hdf5 files
+++- # are better for cycling, as they store less information and there is less
+++- # opening/rewriting of files. Default is mat
+++--dataReporter = hdf5
+++-+dataReporter = mat
+++- # Series resistance, [Ohm m^2]
+++- Rser = 0.
+++- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
+++-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+++-index ec4320f..35a22b2 100644
+++---- a/mpet/config/configuration.py
+++-+++ b/mpet/config/configuration.py
+++-@@ -469,6 +469,7 @@ class Config:
+++-         from :meth:`_process_config`.
+++-         """
+++-         # non-dimensional scalings
+++-+        print(self['t_ref'], self['period'], self['period'] * 60 / self['t_ref'])
+++-         self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
+++-         self['T'] = self['T'] / constants.T_ref
+++-         self['Rser'] = self['Rser'] / self['Rser_ref']
+++-@@ -576,6 +577,7 @@ class Config:
+++-             # if the system is not a functional waveform
+++-             if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
+++-                 self['tend'] = np.abs(self['capFrac'] / self['currset'])
+++-+        print(self['tend'])
++++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
++++index fa08140..7e28abe 100644
++++--- a/configs/params_system_LIONSIMBA.cfg
+++++++ b/configs/params_system_LIONSIMBA.cfg
++++@@ -7,10 +7,11 @@
++++ profileType = CC
++++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++++ # (positive for discharge, negative for charge)
++++-Crate = 1
+++++Crate = 1*t/60
++++ #Optional nominal 1C current density for the cell, A/m^2
++++-1C_current_density = 30
+++++#1C_current_density = 30
++++ # Voltage cutoffs, V
+++++period = 1
++++ Vmax = 5
++++ Vmin = 2.5
++++ # Battery applied voltage (only used for CV), V
++++diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
++++index 131e323..30dd8a2 100644
++++--- a/tests/ref_outputs/test026/params_system.cfg
+++++++ b/tests/ref_outputs/test026/params_system.cfg
++++@@ -1,6 +1,7 @@
++++ [Sim Params]
++++ #Functional waveform test
++++ profileType = CC
+++++period = 60
++++ Crate = sin(2*pi*t)
++++ Vmax = 1e10
++++ Vmin = -1e10
++++@@ -24,7 +25,6 @@ Nvol_s = 3
++++ Nvol_a = 0
++++ Npart_c = 1
++++ Npart_a = 1
++++-period = 10
++++ 
++++ [Electrodes]
++++ cathode = params_c.cfg
++++diff --git a/tests/ref_outputs/test026/sim_output/commit.diff b/tests/ref_outputs/test026/sim_output/commit.diff
++++index 7a4f3d9..88577e5 100644
++++--- a/tests/ref_outputs/test026/sim_output/commit.diff
+++++++ b/tests/ref_outputs/test026/sim_output/commit.diff
++++@@ -1,71 +1,64 @@
++++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
++++-index 19a21b4..3f4b3bc 100644
+++++index 555b765..fbc160a 100644
++++ --- a/configs/params_system.cfg
++++ +++ b/configs/params_system.cfg
++++-@@ -10,7 +10,7 @@ profileType = CC
++++- # (positive for discharge, negative for charge)
+++++@@ -12,7 +12,7 @@ profileType = CC
+++++ # of the current density as in "1A")
++++  # If using wavefunction form, write it as a function of t (time) in min
++++  # in sympy format.
++++--Crate = 0.01*sin(t)
++++-+Crate = 0.01*sin(2*pi*t)
+++++-Crate = 1
++++++Crate = t/60
++++  # Optional nominal 1C current density for the cell, A/m^2
++++  # 1C_current_density = 12.705
++++  # Voltage cutoffs, V
++++-@@ -46,13 +46,13 @@ prevDir = false
+++++@@ -47,9 +47,9 @@ prevDir = false
+++++ # If we have waveform functions in our segments, then we will have a list of
+++++ # size the number of steps, where period(i) is the period for the ith step,
++++  # with 0's if there is no period. Optional, default if 1e8
++++- period = 1
+++++-period = 1e8
++++++period = 100
++++  # Final time (only used for CV), [s]
++++ -tend = 1.2e3
++++-+tend = 300
++++++tend = 3600
++++  # Number disc. in time
++++  # Note time stepping is adaptive, variable-order stepping, so this
++++  # affects only the interpolated output values, not simulation
++++- # accuracy. The output will have all simulation values at a linear
++++- # spacing between initial and final times with tsteps total outputs.
++++--tsteps = 200
++++-+tsteps = 500
++++- # Relative Tolerance
++++- relTol = 1e-6
++++- # Absolute Tolerance
++++-@@ -70,7 +70,7 @@ seed = 0
++++- # printing internal variable concentrations) files. hdf5 files
++++- # are better for cycling, as they store less information and there is less
++++- # opening/rewriting of files. Default is mat
++++--dataReporter = hdf5
++++-+dataReporter = mat
++++- # Series resistance, [Ohm m^2]
++++- Rser = 0.
++++- # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
++++-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++++-index ec4320f..35a22b2 100644
++++---- a/mpet/config/configuration.py
++++-+++ b/mpet/config/configuration.py
++++-@@ -469,6 +469,7 @@ class Config:
++++-         from :meth:`_process_config`.
++++-         """
++++-         # non-dimensional scalings
++++-+        print(self['t_ref'], self['period'], self['period'] * 60 / self['t_ref'])
++++-         self['period'] = self['period'] * 60 / self['t_ref']  # convert to s
++++-         self['T'] = self['T'] / constants.T_ref
++++-         self['Rser'] = self['Rser'] / self['Rser_ref']
++++-@@ -576,6 +577,7 @@ class Config:
++++-             # if the system is not a functional waveform
++++-             if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
++++-                 self['tend'] = np.abs(self['capFrac'] / self['currset'])
++++-+        print(self['tend'])
+++++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+++++index fa08140..7e28abe 100644
+++++--- a/configs/params_system_LIONSIMBA.cfg
++++++++ b/configs/params_system_LIONSIMBA.cfg
+++++@@ -7,10 +7,11 @@
+++++ profileType = CC
+++++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+++++ # (positive for discharge, negative for charge)
+++++-Crate = 1
++++++Crate = 1*t/60
+++++ #Optional nominal 1C current density for the cell, A/m^2
+++++-1C_current_density = 30
++++++#1C_current_density = 30
+++++ # Voltage cutoffs, V
++++++period = 1
+++++ Vmax = 5
+++++ Vmin = 2.5
+++++ # Battery applied voltage (only used for CV), V
+++++diff --git a/tests/ref_outputs/test026/params_system.cfg b/tests/ref_outputs/test026/params_system.cfg
+++++index 131e323..7c685ac 100644
+++++--- a/tests/ref_outputs/test026/params_system.cfg
++++++++ b/tests/ref_outputs/test026/params_system.cfg
+++++@@ -1,6 +1,7 @@
+++++ [Sim Params]
+++++ #Functional waveform test
+++++ profileType = CC
++++++period = 1e10
+++++ Crate = sin(2*pi*t)
+++++ Vmax = 1e10
+++++ Vmin = -1e10
+++++@@ -24,7 +25,6 @@ Nvol_s = 3
+++++ Nvol_a = 0
+++++ Npart_c = 1
+++++ Npart_a = 1
+++++-period = 10
++++  
++++-     def _distr_part(self):
++++-         """
++++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++++-index 2fc6da1..cab5ddf 100644
++++---- a/mpet/mod_cell.py
++++-+++ b/mpet/mod_cell.py
++++-@@ -390,6 +390,7 @@ class ModCell(dae.daeModel):
++++-                     eq.Residual = f(
++++-                         dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
++++-                         - self.current()
++++-+                    #eq.Residual = f(dae.Time()) - self.current()
++++-         elif self.profileType == "CV":
++++-             # Keep applied potential constant
++++-             eq = self.CreateEquation("applied_potential")
+++++ [Electrodes]
+++++ cathode = params_c.cfg
++++ 
++++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p
++++index 6bcc6db..e3998e1 100644
++++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p differ
++++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_system.p b/tests/ref_outputs/test026/sim_output/input_dict_system.p
++++index 1a2d8d1..b0e753a 100644
++++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_system.p and b/tests/ref_outputs/test026/sim_output/input_dict_system.p differ
++++diff --git a/tests/ref_outputs/test026/sim_output/output_data.mat b/tests/ref_outputs/test026/sim_output/output_data.mat
++++index 4e006e8..24d0314 100644
++++Binary files a/tests/ref_outputs/test026/sim_output/output_data.mat and b/tests/ref_outputs/test026/sim_output/output_data.mat differ
++++diff --git a/tests/ref_outputs/test026/sim_output/run_info.txt b/tests/ref_outputs/test026/sim_output/run_info.txt
++++index 6a1e1b1..0b24221 100644
++++--- a/tests/ref_outputs/test026/sim_output/run_info.txt
+++++++ b/tests/ref_outputs/test026/sim_output/run_info.txt
++++@@ -5,7 +5,7 @@ branch name:
++++ feature/mod_battery_cycle
++++ 
++++ commit hash:
++++-34c67ab
+++++040044e
++++ 
++++ to run, from the root repo directory, copy relevant files there,
++++ edit input_params_system.cfg to point to correct material
++++@@ -14,4 +14,4 @@ $ git checkout [commit hash]
++++ $ patch -p1 < commit.diff:
++++ $ python[3] mpetrun.py input_params_system.cfg
+++  
+++-     def _distr_part(self):
+++-         """
+++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+++-index 2fc6da1..cab5ddf 100644
+++---- a/mpet/mod_cell.py
+++-+++ b/mpet/mod_cell.py
+++-@@ -390,6 +390,7 @@ class ModCell(dae.daeModel):
+++-                     eq.Residual = f(
+++-                         dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
+++-                         - self.current()
+++-+                    #eq.Residual = f(dae.Time()) - self.current()
+++-         elif self.profileType == "CV":
+++-             # Keep applied potential constant
+++-             eq = self.CreateEquation("applied_potential")
++++-Total run time: 0.0479581356048584 s
+++++Total run time: 0.08342623710632324 s
+++ 
+++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p
+++index 6bcc6db..17616ce 100644
+++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p differ
+++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_system.p b/tests/ref_outputs/test026/sim_output/input_dict_system.p
+++index 1a2d8d1..8341f23 100644
+++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_system.p and b/tests/ref_outputs/test026/sim_output/input_dict_system.p differ
+++diff --git a/tests/ref_outputs/test026/sim_output/output_data.mat b/tests/ref_outputs/test026/sim_output/output_data.mat
+++index 4e006e8..c2a7fdf 100644
+++Binary files a/tests/ref_outputs/test026/sim_output/output_data.mat and b/tests/ref_outputs/test026/sim_output/output_data.mat differ
+++diff --git a/tests/ref_outputs/test026/sim_output/run_info.txt b/tests/ref_outputs/test026/sim_output/run_info.txt
+++index 6a1e1b1..d49d8c2 100644
+++--- a/tests/ref_outputs/test026/sim_output/run_info.txt
++++++ b/tests/ref_outputs/test026/sim_output/run_info.txt
+++@@ -5,7 +5,7 @@ branch name:
+++ feature/mod_battery_cycle
+++ 
+++ commit hash:
+++-34c67ab
++++040044e
+++ 
+++ to run, from the root repo directory, copy relevant files there,
+++ edit input_params_system.cfg to point to correct material
+++@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+++ $ patch -p1 < commit.diff:
+++ $ python[3] mpetrun.py input_params_system.cfg
++  
++-     def _distr_part(self):
++-         """
++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++-index 2fc6da1..cab5ddf 100644
++---- a/mpet/mod_cell.py
++-+++ b/mpet/mod_cell.py
++-@@ -390,6 +390,7 @@ class ModCell(dae.daeModel):
++-                     eq.Residual = f(
++-                         dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
++-                         - self.current()
++-+                    #eq.Residual = f(dae.Time()) - self.current()
++-         elif self.profileType == "CV":
++-             # Keep applied potential constant
++-             eq = self.CreateEquation("applied_potential")
+++-Total run time: 0.0479581356048584 s
++++Total run time: 0.09258794784545898 s
++ 
++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p
++index 6bcc6db..ed2accc 100644
++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p differ
++diff --git a/tests/ref_outputs/test026/sim_output/input_dict_system.p b/tests/ref_outputs/test026/sim_output/input_dict_system.p
++index 1a2d8d1..dcd60cb 100644
++Binary files a/tests/ref_outputs/test026/sim_output/input_dict_system.p and b/tests/ref_outputs/test026/sim_output/input_dict_system.p differ
++diff --git a/tests/ref_outputs/test026/sim_output/output_data.mat b/tests/ref_outputs/test026/sim_output/output_data.mat
++index 4e006e8..6312776 100644
++Binary files a/tests/ref_outputs/test026/sim_output/output_data.mat and b/tests/ref_outputs/test026/sim_output/output_data.mat differ
++diff --git a/tests/ref_outputs/test026/sim_output/run_info.txt b/tests/ref_outputs/test026/sim_output/run_info.txt
++index 6a1e1b1..43b444a 100644
++--- a/tests/ref_outputs/test026/sim_output/run_info.txt
+++++ b/tests/ref_outputs/test026/sim_output/run_info.txt
++@@ -5,7 +5,7 @@ branch name:
++ feature/mod_battery_cycle
++ 
++ commit hash:
++-34c67ab
+++937beff
++ 
++ to run, from the root repo directory, copy relevant files there,
++ edit input_params_system.cfg to point to correct material
++@@ -14,4 +14,4 @@ $ git checkout [commit hash]
++ $ patch -p1 < commit.diff:
++ $ python[3] mpetrun.py input_params_system.cfg
+  
+-     def _distr_part(self):
+-         """
+-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+-index 2fc6da1..cab5ddf 100644
+---- a/mpet/mod_cell.py
+-+++ b/mpet/mod_cell.py
+-@@ -390,6 +390,7 @@ class ModCell(dae.daeModel):
+-                     eq.Residual = f(
+-                         dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
+-                         - self.current()
+-+                    #eq.Residual = f(dae.Time()) - self.current()
+-         elif self.profileType == "CV":
+-             # Keep applied potential constant
+-             eq = self.CreateEquation("applied_potential")
++-Total run time: 0.0479581356048584 s
+++Total run time: 0.08160090446472168 s
+ 
+diff --git a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p
+index 6bcc6db..b80a5d2 100644
+Binary files a/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test026/sim_output/input_dict_derived_values.p differ
+diff --git a/tests/ref_outputs/test026/sim_output/input_dict_system.p b/tests/ref_outputs/test026/sim_output/input_dict_system.p
+index 1a2d8d1..2cb854c 100644
+Binary files a/tests/ref_outputs/test026/sim_output/input_dict_system.p and b/tests/ref_outputs/test026/sim_output/input_dict_system.p differ
+diff --git a/tests/ref_outputs/test026/sim_output/output_data.mat b/tests/ref_outputs/test026/sim_output/output_data.mat
+index 4e006e8..dc29cd6 100644
+Binary files a/tests/ref_outputs/test026/sim_output/output_data.mat and b/tests/ref_outputs/test026/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test026/sim_output/run_info.txt b/tests/ref_outputs/test026/sim_output/run_info.txt
+index 6a1e1b1..9e68ffb 100644
+--- a/tests/ref_outputs/test026/sim_output/run_info.txt
++++ b/tests/ref_outputs/test026/sim_output/run_info.txt
+@@ -5,7 +5,7 @@ branch name:
+ feature/mod_battery_cycle
+ 
+ commit hash:
+-34c67ab
++937beff
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 0.0479581356048584 s
++Total run time: 0.10333991050720215 s
 

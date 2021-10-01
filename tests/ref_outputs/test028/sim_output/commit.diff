@@ -1,516 +1,2523 @@
 diff --git a/configs/params_system.cfg b/configs/params_system.cfg
-index 3dda645..d2af1a6 100644
+index 555b765..fbc160a 100644
 --- a/configs/params_system.cfg
 +++ b/configs/params_system.cfg
-@@ -5,7 +5,7 @@
- [Sim Params]
- # Constant voltage or current or segments of one of them
- # Options: CV, CC, CCsegments, CVsegments
--profileType = CC
-+profileType = CCsegments
- # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
- # (positive for discharge, negative for charge)
- # It can also be set in units of A/m^2 (in which case, append A to the value
-@@ -31,8 +31,9 @@ power = 1
- # Note: It's okay to leave commented lines within the segments list
- segments = [
-     [0.3, 0.4],
-+    ['0.01*sin(2*pi*t)', 0.4],
-     #    ['1A', 0.4],
--    [-0.5, 0.1],
-+    ['-0.5A', 0.1],
-     ]
- # Continuation directory. If false, begin a fresh simulation with the
- # specified input parameters here. Otherwise, this should be the
-@@ -47,7 +48,10 @@ prevDir = false
+@@ -12,7 +12,7 @@ profileType = CC
+ # of the current density as in "1A")
+ # If using wavefunction form, write it as a function of t (time) in min
+ # in sympy format.
+-Crate = 1
++Crate = t/60
+ # Optional nominal 1C current density for the cell, A/m^2
+ # 1C_current_density = 12.705
+ # Voltage cutoffs, V
+@@ -47,9 +47,9 @@ prevDir = false
  # If we have waveform functions in our segments, then we will have a list of
  # size the number of steps, where period(i) is the period for the ith step,
  # with 0's if there is no period. Optional, default if 1e8
 -period = 1e8
-+# If period is being used with segments, then write it in list format
-+# as a period for each segment
-+#period = 1e8
-+period = [1e8, 1, 1e8]
++period = 100
  # Final time (only used for CV), [s]
- tend = 1.2e3
+-tend = 1.2e3
++tend = 3600
  # Number disc. in time
-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
-index 3c3bbd1..2cbaf63 100644
---- a/mpet/mod_cell.py
-+++ b/mpet/mod_cell.py
-@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
-             # CCsegments implemented as discontinuous equations
-             else:
-                 # First segment
-+                print(config["segments"])
-                 time = config["segments"][0][1]
-                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
-                 eq = self.CreateEquation("Total_Current_Constraint")
--                eq.Residual = self.current() - config["segments"][0][0]
-+                # if it is not a functional form
-+                if "t" not in str(config["segments"][0][0]):
-+                    # check to see if it's a waveform type
-+                    eq.Residual = self.current() - config["segments"][0][0]
-+                else:  # if it is waveform, use periodic time to find the value of function
-+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
-+                    # periodic time = mod(time, period) / nondimenionalized period
-+                    eq.Residual = f(dae.Time()/config["period"][0]
-+                                    - dae.Floor(dae.Time()/config["period"][0])) \
-+                        - self.current()
-+                    eq.CheckUnitsConsistency = False
+ # Note time stepping is adaptive, variable-order stepping, so this
+ # affects only the interpolated output values, not simulation
+diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+index fa08140..59001e9 100644
+--- a/configs/params_system_LIONSIMBA.cfg
++++ b/configs/params_system_LIONSIMBA.cfg
+@@ -7,10 +7,11 @@
+ profileType = CC
+ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+ # (positive for discharge, negative for charge)
+-Crate = 1
++Crate = sin(2*pi*t)
+ #Optional nominal 1C current density for the cell, A/m^2
+-1C_current_density = 30
++#1C_current_density = 30
+ # Voltage cutoffs, V
++period = 1
+ Vmax = 5
+ Vmin = 2.5
+ # Battery applied voltage (only used for CV), V
+@@ -24,7 +25,7 @@ segments = [
+ # Options: false, absolute directory path
+ prevDir = false
+ # Final time (only used for CV), [s]
+-tend = 1.2e3
++tend = 1200
+ # Number disc. in time
+ tsteps = 200
+ # Numerical Tolerances
+diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+index 75dad2c..e4e197e 100644
+--- a/mpet/config/configuration.py
++++ b/mpet/config/configuration.py
+@@ -479,7 +479,7 @@ class Config:
+         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+         # nondimensionalize the scale of time in curr_set if it is a function of time
+         # set them as a function of periodic time as well
+-        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60, self['period'])
++        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60)
+         if self['power'] is not None:
+             self['power'] = self['power'] / (self['power_ref'])
+         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
+@@ -532,10 +532,11 @@ class Config:
  
-                 # Middle segments
-                 for i in range(1,len(config["segments"])-1):
-@@ -446,15 +457,26 @@ class ModCell(dae.daeModel):
-                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
-                         # periodic time = mod(time, period) / nondimenionalized period
-                         eq.Residual = f(dae.Time()/config["period"][i]
--                                        - dae.Floor(dae.Time()/config["period"][i]))
--                        - self.current()
-+                                        - dae.Floor(dae.Time()/config["period"][i])) \
-+                            - self.current()
-                         # for some reason, this is required specifically for this equation
-                         eq.CheckUnitsConsistency = False
+         # Scaling of current and voltage segments
+         segments = []
++
+         if self['profileType'] == 'CCsegments':
+             for i in range(len(self['segments'])):
+                 segments.append(
+-                    (utils.get_crate(self['segments'][i][0], self['1C_current_density'])
++                    (utils.nondim_time(utils.get_crate(self['segments'][i][0], self['1C_current_density']), self['t_ref'] / 60)
+                      * self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+                      self["segments"][i][1] * 60 / self['t_ref']))
+         elif self['profileType'] == 'CVsegments':
+diff --git a/mpet/utils.py b/mpet/utils.py
+index 0d8633c..8814428 100644
+--- a/mpet/utils.py
++++ b/mpet/utils.py
+@@ -171,7 +171,7 @@ def get_crate(crate, Cratecurr):
+     return out
  
-                 # Last segment
-                 self.ELSE()
-                 eq = self.CreateEquation("Total_Current_Constraint")
--                eq.Residual = self.current() - config["segments"][-1][0]
-+                # if it is not a functional form
-+                if "t" not in str(config["segments"][-1][0]):
-+                    # check to see if it's a waveform type
-+                    eq.Residual = self.current() - config["segments"][-1][0]
-+                else:  # if it is waveform, use periodic time to find the value of function
-+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
-+                    # periodic time = mod(time, period) / nondimenionalized period
-+                    eq.Residual = f(dae.Time()/config["period"][-1]
-+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
-+                        - self.current()
-+                    eq.CheckUnitsConsistency = False
-+ 
-                 self.END_IF()
  
-         elif self.profileType == "CVsegments":
+-def nondim_time(currset, t_ref, period):
++def nondim_time(currset, t_ref):
+     """Nondimensionalizes the time function in currset if it is a function of time
+     and set periodicity in this function
+     """
 diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
-index 868f764..52f39e0 100644
+index 52f39e0..3caa13f 100644
 --- a/tests/ref_outputs/test028/params_system.cfg
 +++ b/tests/ref_outputs/test028/params_system.cfg
-@@ -1,19 +1,20 @@
- [Sim Params]
- #LFP ACR test for current with A instead of C-rate
- profileType = CCsegments
--Crate = 1
-+Crate = 0.01*sin(2*pi*t)
- Vmax = 1e10
- Vmin = -1e10
+@@ -7,14 +7,14 @@ Vmin = -1e10
  capFrac = 0.98
  Vset = 0.12
  segments = [
--    [0.3, 0.4],
--    ['0.01*sin(2*pi*t)', 0.4],
--    ['-0.5A', 0.1],
--    ]
--period = [1e8, 1, 1e8]
-+    ['0.01*sin(2*pi*t)', 1],
-+    [0.1, 0.4],
-+    ['-0.15A', 0.1],
-+   ]
-+period = [1, 1e8, 1e8]
-+#period = 1
+-    ['0.01*sin(2*pi*t)', 1],
+-    [0.1, 0.4],
++    ['sin(2*pi*t)', 1],
++    [0, 0.4],
+     ['-0.15A', 0.1],
+    ]
+ period = [1, 1e8, 1e8]
+ #period = 1
  prevDir = false
--tend = 1.2e3
-+tend = 60
+-tend = 60
++tend = 90
  tsteps = 35
  relTol = 1e-6
  absTol = 1e-6
 diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
-index 84991f7..6ab6103 100644
+index b36ac7d..da855b4 100644
 --- a/tests/ref_outputs/test028/sim_output/commit.diff
 +++ b/tests/ref_outputs/test028/sim_output/commit.diff
-@@ -34,88 +34,287 @@ index 3dda645..d2af1a6 100644
-  # Final time (only used for CV), [s]
-  tend = 1.2e3
-  # Number disc. in time
--diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
--index 3b318ef..08116e7 100644
----- a/mpet/config/configuration.py
--+++ b/mpet/config/configuration.py
--@@ -532,7 +532,8 @@ class Config:
--         if self['profileType'] == 'CCsegments':
--             for i in range(len(self['segments'])):
--                 segments.append((utils.get_crate(self['segments'][i][0],
---                                                 self['1C_current_density']),
--+                                                 self['1C_current_density']) * \
--+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
--                                 self["segments"][i][1]*60/self['t_ref']))
--         elif self['profileType'] == 'CVsegments':
--             for i in range(len(self['segments'])):
--@@ -541,13 +542,14 @@ class Config:
-- 
--         # Current or voltage segments profiles
--         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
---        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
--+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
--+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
--         if self['profileType'] == 'CCsegments':
--             segments_setvec[0] = 0.
--         elif self['profileType'] == 'CVsegments':
--             segments_setvec[0] = -(kT / constants.e) * Vref
--         tPrev = 0.
---        for segIndx in range(len(segments)):
--+        for segIndx in range(self['numsegments']):
--             tNext = tPrev + self['tramp']
--             segments_tvec[2*segIndx+1] = tNext
--             tPrev = tNext
--@@ -555,12 +557,12 @@ class Config:
--             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
--             segments_tvec[2*segIndx+2] = tNext
--             tPrev = tNext
---            setNext = segments[segIndx][0]
--+            setNext = self['segments'][segIndx][0]
--             segments_setvec[2*segIndx+1] = setNext
--             segments_setvec[2*segIndx+2] = setNext
--         segments_tvec /= self['t_ref']
--         if self['profileType'] == 'CCsegments':
---            segments_setvec /= self['curr_ref']
--+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
--         elif self['profileType'] == 'CVsegments':
--             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
--         if 'segments' in self['profileType']:
--diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
--index d6782fb..77839c5 100644
----- a/mpet/config/schemas.py
--+++ b/mpet/config/schemas.py
--@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
--                          Optional('power', default=None): Use(float),
--                          Optional('1C_current_density', default=None): Use(float),
--                          Optional('tramp', default=0.): Use(float),
---                         Optional('period', default=1e8): Use(float),
--+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
--                          'Vmax': Use(float),
--                          'Vmin': Use(float),
--                          'Vset': Use(float),
- diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
--index 2fc6da1..949e5e4 100644
-+index 3c3bbd1..d8db287 100644
- --- a/mpet/mod_cell.py
- +++ b/mpet/mod_cell.py
--@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
--                     time = time+config["segments"][i][1]
--                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
--                     eq = self.CreateEquation("Total_Current_Constraint")
---                    eq.Residual = self.current() - config["segments"][i][0]
---
--+                    # if it is not a functional form
--+                    if "t" not in str(config["segments"][i][0]):
--+                        # check to see if it's a waveform type
--+                        eq.Residual = self.current() - config["segments"][i][0]
--+                    else:  # if it is waveform, use periodic time to find the value of function
--+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
--+                        # periodic time = mod(time, period) / nondimenionalized period
--+                        eq.Residual = f(
--+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
-+@@ -428,10 +428,20 @@ class ModCell(dae.daeModel):
-+             # CCsegments implemented as discontinuous equations
-+             else:
-+                 # First segment
-++                print(config["segments"])
-+                 time = config["segments"][0][1]
-+                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
-+                 eq = self.CreateEquation("Total_Current_Constraint")
-+-                eq.Residual = self.current() - config["segments"][0][0]
-++                # if it is not a functional form
-++                if "t" not in str(config["segments"][0][0]):
-++                    # check to see if it's a waveform type
-++                    eq.Residual = self.current() - config["segments"][0][0]
-++                else:  # if it is waveform, use periodic time to find the value of function
-++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
-++                    # periodic time = mod(time, period) / nondimenionalized period
-++                    eq.Residual = f(dae.Time()/config["period"][0]
-++                                    - dae.Floor(dae.Time()/config["period"][0])) \
-++                        - self.current()
-+ 
-+                 # Middle segments
-+                 for i in range(1,len(config["segments"])-1):
-+@@ -446,15 +456,24 @@ class ModCell(dae.daeModel):
-+                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
-+                         # periodic time = mod(time, period) / nondimenionalized period
-+                         eq.Residual = f(dae.Time()/config["period"][i]
-+-                                        - dae.Floor(dae.Time()/config["period"][i]))
-+-                        - self.current()
-++                                        - dae.Floor(dae.Time()/config["period"][i])) \
- +                            - self.current()
--+                        eq.CheckUnitsConsistency = False
--+     
-+                         # for some reason, this is required specifically for this equation
-+-                        eq.CheckUnitsConsistency = False
-+ 
-                  # Last segment
-                  self.ELSE()
-                  eq = self.CreateEquation("Total_Current_Constraint")
-+-                eq.Residual = self.current() - config["segments"][-1][0]
-++                # if it is not a functional form
-++                if "t" not in str(config["segments"][-1][0]):
-++                    # check to see if it's a waveform type
-++                    eq.Residual = self.current() - config["segments"][-1][0]
-++                else:  # if it is waveform, use periodic time to find the value of function
-++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
-++                    # periodic time = mod(time, period) / nondimenionalized period
-++                    eq.Residual = f(dae.Time()/config["period"][-1]
-++                                    - dae.Floor(dae.Time()/config["period"][-1])) \
-++                        - self.current()
-++ 
-+                 self.END_IF()
-+ 
-+         elif self.profileType == "CVsegments":
-+diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
-+index 868f764..2fa22f1 100644
-+--- a/tests/ref_outputs/test028/params_system.cfg
-++++ b/tests/ref_outputs/test028/params_system.cfg
-+@@ -1,19 +1,20 @@
-+ [Sim Params]
-+ #LFP ACR test for current with A instead of C-rate
-+-profileType = CCsegments
+@@ -1,516 +1,1902 @@
+ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+-index 3dda645..d2af1a6 100644
++index 555b765..fbc160a 100644
+ --- a/configs/params_system.cfg
+ +++ b/configs/params_system.cfg
+-@@ -5,7 +5,7 @@
+- [Sim Params]
+- # Constant voltage or current or segments of one of them
+- # Options: CV, CC, CCsegments, CVsegments
+--profileType = CC
+-+profileType = CCsegments
+- # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+- # (positive for discharge, negative for charge)
+- # It can also be set in units of A/m^2 (in which case, append A to the value
+-@@ -31,8 +31,9 @@ power = 1
+- # Note: It's okay to leave commented lines within the segments list
+- segments = [
+-     [0.3, 0.4],
+-+    ['0.01*sin(2*pi*t)', 0.4],
+-     #    ['1A', 0.4],
+--    [-0.5, 0.1],
+-+    ['-0.5A', 0.1],
+-     ]
+- # Continuation directory. If false, begin a fresh simulation with the
+- # specified input parameters here. Otherwise, this should be the
+-@@ -47,7 +48,10 @@ prevDir = false
++@@ -12,7 +12,7 @@ profileType = CC
++ # of the current density as in "1A")
++ # If using wavefunction form, write it as a function of t (time) in min
++ # in sympy format.
 +-Crate = 1
-++profileType = CC
-++Crate = 0.01*sin(2*pi*t)
-+ Vmax = 1e10
-+ Vmin = -1e10
-+ capFrac = 0.98
-+ Vset = 0.12
-+ segments = [
-+-    [0.3, 0.4],
-+-    ['0.01*sin(2*pi*t)', 0.4],
-+-    ['-0.5A', 0.1],
-+-    ]
-+-period = [1e8, 1, 1e8]
-++    ['0.01*sin(2*pi*t)', 1],
-++    [0.1, 0.4],
-++    ['-0.15A', 0.1],
-++   ]
-++#period = [1, 1e8, 1e8]
-++period = 1
-+ prevDir = false
+++Crate = t/60
++ # Optional nominal 1C current density for the cell, A/m^2
++ # 1C_current_density = 12.705
++ # Voltage cutoffs, V
++@@ -47,9 +47,9 @@ prevDir = false
+  # If we have waveform functions in our segments, then we will have a list of
+  # size the number of steps, where period(i) is the period for the ith step,
+  # with 0's if there is no period. Optional, default if 1e8
+ -period = 1e8
+-+# If period is being used with segments, then write it in list format
+-+# as a period for each segment
+-+#period = 1e8
+-+period = [1e8, 1, 1e8]
+++period = 100
+  # Final time (only used for CV), [s]
+- tend = 1.2e3
 +-tend = 1.2e3
-++tend = 60
-+ tsteps = 35
-+ relTol = 1e-6
-+ absTol = 1e-6
-+diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
-+index 84991f7..6aed585 100644
-+--- a/tests/ref_outputs/test028/sim_output/commit.diff
-++++ b/tests/ref_outputs/test028/sim_output/commit.diff
-+@@ -34,88 +34,84 @@ index 3dda645..d2af1a6 100644
-+  # Final time (only used for CV), [s]
-+  tend = 1.2e3
-+  # Number disc. in time
-+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
-+-index 3b318ef..08116e7 100644
-+---- a/mpet/config/configuration.py
-+-+++ b/mpet/config/configuration.py
-+-@@ -532,7 +532,8 @@ class Config:
-+-         if self['profileType'] == 'CCsegments':
-+-             for i in range(len(self['segments'])):
-+-                 segments.append((utils.get_crate(self['segments'][i][0],
-+--                                                 self['1C_current_density']),
-+-+                                                 self['1C_current_density']) * \
-+-+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
-+-                                 self["segments"][i][1]*60/self['t_ref']))
-+-         elif self['profileType'] == 'CVsegments':
-+-             for i in range(len(self['segments'])):
-+-@@ -541,13 +542,14 @@ class Config:
-+- 
-+-         # Current or voltage segments profiles
-+-         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
-+--        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
-+-+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
-+-+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
-+-         if self['profileType'] == 'CCsegments':
-+-             segments_setvec[0] = 0.
-+-         elif self['profileType'] == 'CVsegments':
-+-             segments_setvec[0] = -(kT / constants.e) * Vref
-+-         tPrev = 0.
-+--        for segIndx in range(len(segments)):
-+-+        for segIndx in range(self['numsegments']):
-+-             tNext = tPrev + self['tramp']
-+-             segments_tvec[2*segIndx+1] = tNext
-+-             tPrev = tNext
-+-@@ -555,12 +557,12 @@ class Config:
-+-             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
-+-             segments_tvec[2*segIndx+2] = tNext
-+-             tPrev = tNext
-+--            setNext = segments[segIndx][0]
-+-+            setNext = self['segments'][segIndx][0]
-+-             segments_setvec[2*segIndx+1] = setNext
-+-             segments_setvec[2*segIndx+2] = setNext
-+-         segments_tvec /= self['t_ref']
-+-         if self['profileType'] == 'CCsegments':
-+--            segments_setvec /= self['curr_ref']
-+-+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
-+-         elif self['profileType'] == 'CVsegments':
-+-             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
-+-         if 'segments' in self['profileType']:
-+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
-+-index d6782fb..77839c5 100644
-+---- a/mpet/config/schemas.py
-+-+++ b/mpet/config/schemas.py
-+-@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
-+-                          Optional('power', default=None): Use(float),
-+-                          Optional('1C_current_density', default=None): Use(float),
-+-                          Optional('tramp', default=0.): Use(float),
-+--                         Optional('period', default=1e8): Use(float),
-+-+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
-+-                          'Vmax': Use(float),
-+-                          'Vmin': Use(float),
-+-                          'Vset': Use(float),
-+ diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
-+-index 2fc6da1..949e5e4 100644
-++index 3c3bbd1..0e156b6 100644
-+ --- a/mpet/mod_cell.py
-+ +++ b/mpet/mod_cell.py
-+-@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
-+-                     time = time+config["segments"][i][1]
-+-                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
-+-                     eq = self.CreateEquation("Total_Current_Constraint")
-+--                    eq.Residual = self.current() - config["segments"][i][0]
-+--
-+-+                    # if it is not a functional form
-+-+                    if "t" not in str(config["segments"][i][0]):
-+-+                        # check to see if it's a waveform type
-+-+                        eq.Residual = self.current() - config["segments"][i][0]
-+-+                    else:  # if it is waveform, use periodic time to find the value of function
-+-+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
-+-+                        # periodic time = mod(time, period) / nondimenionalized period
-+-+                        eq.Residual = f(
-+-+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
-+-+                            - self.current()
-+-+                        eq.CheckUnitsConsistency = False
-+-+     
-++@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
-++             # CCsegments implemented as discontinuous equations
-++             else:
-++                 # First segment
-+++                print(config["segments"])
-++                 time = config["segments"][0][1]
-++                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
-++                 eq = self.CreateEquation("Total_Current_Constraint")
-++-                eq.Residual = self.current() - config["segments"][0][0]
-+++                # if it is not a functional form
-+++                if "t" not in str(config["segments"][0][0]):
-+++                    # check to see if it's a waveform type
-+++                    eq.Residual = self.current() - config["segments"][0][0]
-+++                else:  # if it is waveform, use periodic time to find the value of function
-+++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
-+++                    # periodic time = mod(time, period) / nondimenionalized period
-+++                    eq.Residual = f(dae.Time()/config["period"][0]
-+++                                    - dae.Floor(dae.Time()/config["period"][0]))
-+++                    - self.current()
-+++                    eq.CheckUnitsConsistency = False
-++ 
-++                 # Middle segments
-++                 for i in range(1,len(config["segments"])-1):
-++@@ -454,7 +465,18 @@ class ModCell(dae.daeModel):
-+                  # Last segment
-+                  self.ELSE()
-+                  eq = self.CreateEquation("Total_Current_Constraint")
-++-                eq.Residual = self.current() - config["segments"][-1][0]
-+++                # if it is not a functional form
-+++                if "t" not in str(config["segments"][-1][0]):
-+++                    # check to see if it's a waveform type
-+++                    eq.Residual = self.current() - config["segments"][-1][0]
-+++                else:  # if it is waveform, use periodic time to find the value of function
-+++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
-+++                    # periodic time = mod(time, period) / nondimenionalized period
-+++                    eq.Residual = f(dae.Time()/config["period"][-1]
-+++                                    - dae.Floor(dae.Time()/config["period"][-1]))
-+++                    - self.current()
-+++                    eq.CheckUnitsConsistency = False
-+++ 
-++                 self.END_IF()
-++ 
-++         elif self.profileType == "CVsegments":
-++diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
-++index 868f764..2fa22f1 100644
-++--- a/tests/ref_outputs/test028/params_system.cfg
-+++++ b/tests/ref_outputs/test028/params_system.cfg
-++@@ -1,19 +1,20 @@
-++ [Sim Params]
-++ #LFP ACR test for current with A instead of C-rate
-++-profileType = CCsegments
-++-Crate = 1
-+++profileType = CC
-+++Crate = 0.01*sin(2*pi*t)
-++ Vmax = 1e10
-++ Vmin = -1e10
-++ capFrac = 0.98
-++ Vset = 0.12
-++ segments = [
-++-    [0.3, 0.4],
-++-    ['0.01*sin(2*pi*t)', 0.4],
-++-    ['-0.5A', 0.1],
-++-    ]
-++-period = [1e8, 1, 1e8]
-+++    ['0.01*sin(2*pi*t)', 1],
-+++    [0.1, 0.4],
-+++    ['-0.15A', 0.1],
-+++   ]
-+++#period = [1, 1e8, 1e8]
-+++period = 1
-++ prevDir = false
+++tend = 3600
+  # Number disc. in time
+-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+-index 3c3bbd1..2cbaf63 100644
+---- a/mpet/mod_cell.py
+-+++ b/mpet/mod_cell.py
+-@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
+-             # CCsegments implemented as discontinuous equations
+-             else:
+-                 # First segment
+-+                print(config["segments"])
+-                 time = config["segments"][0][1]
+-                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+-                 eq = self.CreateEquation("Total_Current_Constraint")
+--                eq.Residual = self.current() - config["segments"][0][0]
+-+                # if it is not a functional form
+-+                if "t" not in str(config["segments"][0][0]):
+-+                    # check to see if it's a waveform type
+-+                    eq.Residual = self.current() - config["segments"][0][0]
+-+                else:  # if it is waveform, use periodic time to find the value of function
+-+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+-+                    # periodic time = mod(time, period) / nondimenionalized period
+-+                    eq.Residual = f(dae.Time()/config["period"][0]
+-+                                    - dae.Floor(dae.Time()/config["period"][0])) \
+-+                        - self.current()
+-+                    eq.CheckUnitsConsistency = False
++ # Note time stepping is adaptive, variable-order stepping, so this
++ # affects only the interpolated output values, not simulation
++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
++index fa08140..59001e9 100644
++--- a/configs/params_system_LIONSIMBA.cfg
+++++ b/configs/params_system_LIONSIMBA.cfg
++@@ -7,10 +7,11 @@
++ profileType = CC
++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++ # (positive for discharge, negative for charge)
++-Crate = 1
+++Crate = sin(2*pi*t)
++ #Optional nominal 1C current density for the cell, A/m^2
++-1C_current_density = 30
+++#1C_current_density = 30
++ # Voltage cutoffs, V
+++period = 1
++ Vmax = 5
++ Vmin = 2.5
++ # Battery applied voltage (only used for CV), V
++@@ -24,7 +25,7 @@ segments = [
++ # Options: false, absolute directory path
++ prevDir = false
++ # Final time (only used for CV), [s]
++-tend = 1.2e3
+++tend = 1200
++ # Number disc. in time
++ tsteps = 200
++ # Numerical Tolerances
++diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++index 75dad2c..e4e197e 100644
++--- a/mpet/config/configuration.py
+++++ b/mpet/config/configuration.py
++@@ -479,7 +479,7 @@ class Config:
++         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
++         # nondimensionalize the scale of time in curr_set if it is a function of time
++         # set them as a function of periodic time as well
++-        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60, self['period'])
+++        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60)
++         if self['power'] is not None:
++             self['power'] = self['power'] / (self['power_ref'])
++         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
++@@ -532,10 +532,11 @@ class Config:
+  
+-                 # Middle segments
+-                 for i in range(1,len(config["segments"])-1):
+-@@ -446,15 +457,26 @@ class ModCell(dae.daeModel):
+-                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+-                         # periodic time = mod(time, period) / nondimenionalized period
+-                         eq.Residual = f(dae.Time()/config["period"][i]
+--                                        - dae.Floor(dae.Time()/config["period"][i]))
+--                        - self.current()
+-+                                        - dae.Floor(dae.Time()/config["period"][i])) \
+-+                            - self.current()
+-                         # for some reason, this is required specifically for this equation
+-                         eq.CheckUnitsConsistency = False
++         # Scaling of current and voltage segments
++         segments = []
+++
++         if self['profileType'] == 'CCsegments':
++             for i in range(len(self['segments'])):
++                 segments.append(
++-                    (utils.get_crate(self['segments'][i][0], self['1C_current_density'])
+++                    (utils.nondim_time(utils.get_crate(self['segments'][i][0], self['1C_current_density']), self['t_ref'] / 60)
++                      * self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
++                      self["segments"][i][1] * 60 / self['t_ref']))
++         elif self['profileType'] == 'CVsegments':
++diff --git a/mpet/utils.py b/mpet/utils.py
++index 0d8633c..8814428 100644
++--- a/mpet/utils.py
+++++ b/mpet/utils.py
++@@ -171,7 +171,7 @@ def get_crate(crate, Cratecurr):
++     return out
+  
+-                 # Last segment
+-                 self.ELSE()
+-                 eq = self.CreateEquation("Total_Current_Constraint")
+--                eq.Residual = self.current() - config["segments"][-1][0]
+-+                # if it is not a functional form
+-+                if "t" not in str(config["segments"][-1][0]):
+-+                    # check to see if it's a waveform type
+-+                    eq.Residual = self.current() - config["segments"][-1][0]
+-+                else:  # if it is waveform, use periodic time to find the value of function
+-+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+-+                    # periodic time = mod(time, period) / nondimenionalized period
+-+                    eq.Residual = f(dae.Time()/config["period"][-1]
+-+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
+-+                        - self.current()
+-+                    eq.CheckUnitsConsistency = False
+-+ 
+-                 self.END_IF()
+  
+-         elif self.profileType == "CVsegments":
++-def nondim_time(currset, t_ref, period):
+++def nondim_time(currset, t_ref):
++     """Nondimensionalizes the time function in currset if it is a function of time
++     and set periodicity in this function
++     """
+ diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+-index 868f764..52f39e0 100644
++index 52f39e0..c4d2bee 100644
+ --- a/tests/ref_outputs/test028/params_system.cfg
+ +++ b/tests/ref_outputs/test028/params_system.cfg
+-@@ -1,19 +1,20 @@
+- [Sim Params]
+- #LFP ACR test for current with A instead of C-rate
+- profileType = CCsegments
+--Crate = 1
+-+Crate = 0.01*sin(2*pi*t)
+- Vmax = 1e10
+- Vmin = -1e10
++@@ -7,8 +7,8 @@ Vmin = -1e10
+  capFrac = 0.98
+  Vset = 0.12
+  segments = [
+--    [0.3, 0.4],
+--    ['0.01*sin(2*pi*t)', 0.4],
+--    ['-0.5A', 0.1],
+--    ]
+--period = [1e8, 1, 1e8]
+-+    ['0.01*sin(2*pi*t)', 1],
+-+    [0.1, 0.4],
+-+    ['-0.15A', 0.1],
+-+   ]
+-+period = [1, 1e8, 1e8]
+-+#period = 1
+- prevDir = false
+--tend = 1.2e3
+-+tend = 60
+- tsteps = 35
+- relTol = 1e-6
+- absTol = 1e-6
++-    ['0.01*sin(2*pi*t)', 1],
++-    [0.1, 0.4],
+++    ['sin(2*pi*t)', 1],
+++    [0, 0.4],
++     ['-0.15A', 0.1],
++    ]
++ period = [1, 1e8, 1e8]
+ diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
+-index 84991f7..6ab6103 100644
++index b36ac7d..86cbc58 100644
+ --- a/tests/ref_outputs/test028/sim_output/commit.diff
+ +++ b/tests/ref_outputs/test028/sim_output/commit.diff
+-@@ -34,88 +34,287 @@ index 3dda645..d2af1a6 100644
+-  # Final time (only used for CV), [s]
+-  tend = 1.2e3
+-  # Number disc. in time
+--diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+--index 3b318ef..08116e7 100644
+----- a/mpet/config/configuration.py
+--+++ b/mpet/config/configuration.py
+--@@ -532,7 +532,8 @@ class Config:
+--         if self['profileType'] == 'CCsegments':
+--             for i in range(len(self['segments'])):
+--                 segments.append((utils.get_crate(self['segments'][i][0],
+---                                                 self['1C_current_density']),
+--+                                                 self['1C_current_density']) * \
+--+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+--                                 self["segments"][i][1]*60/self['t_ref']))
+--         elif self['profileType'] == 'CVsegments':
+--             for i in range(len(self['segments'])):
+--@@ -541,13 +542,14 @@ class Config:
+-- 
+--         # Current or voltage segments profiles
+--         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+---        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+--+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+--+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
+--         if self['profileType'] == 'CCsegments':
+--             segments_setvec[0] = 0.
+--         elif self['profileType'] == 'CVsegments':
+--             segments_setvec[0] = -(kT / constants.e) * Vref
+--         tPrev = 0.
+---        for segIndx in range(len(segments)):
+--+        for segIndx in range(self['numsegments']):
+--             tNext = tPrev + self['tramp']
+--             segments_tvec[2*segIndx+1] = tNext
+--             tPrev = tNext
+--@@ -555,12 +557,12 @@ class Config:
+--             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+--             segments_tvec[2*segIndx+2] = tNext
+--             tPrev = tNext
+---            setNext = segments[segIndx][0]
+--+            setNext = self['segments'][segIndx][0]
+--             segments_setvec[2*segIndx+1] = setNext
+--             segments_setvec[2*segIndx+2] = setNext
+--         segments_tvec /= self['t_ref']
+--         if self['profileType'] == 'CCsegments':
+---            segments_setvec /= self['curr_ref']
+--+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+--         elif self['profileType'] == 'CVsegments':
+--             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+--         if 'segments' in self['profileType']:
+--diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+--index d6782fb..77839c5 100644
+----- a/mpet/config/schemas.py
+--+++ b/mpet/config/schemas.py
+--@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
+--                          Optional('power', default=None): Use(float),
+--                          Optional('1C_current_density', default=None): Use(float),
+--                          Optional('tramp', default=0.): Use(float),
+---                         Optional('period', default=1e8): Use(float),
+--+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
+--                          'Vmax': Use(float),
+--                          'Vmin': Use(float),
+--                          'Vset': Use(float),
+- diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+--index 2fc6da1..949e5e4 100644
+-+index 3c3bbd1..d8db287 100644
+- --- a/mpet/mod_cell.py
+- +++ b/mpet/mod_cell.py
+--@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
+--                     time = time+config["segments"][i][1]
+--                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+--                     eq = self.CreateEquation("Total_Current_Constraint")
+---                    eq.Residual = self.current() - config["segments"][i][0]
+---
+--+                    # if it is not a functional form
+--+                    if "t" not in str(config["segments"][i][0]):
+--+                        # check to see if it's a waveform type
+--+                        eq.Residual = self.current() - config["segments"][i][0]
+--+                    else:  # if it is waveform, use periodic time to find the value of function
+--+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+--+                        # periodic time = mod(time, period) / nondimenionalized period
+--+                        eq.Residual = f(
+--+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
+-+@@ -428,10 +428,20 @@ class ModCell(dae.daeModel):
+-+             # CCsegments implemented as discontinuous equations
+-+             else:
+-+                 # First segment
+-++                print(config["segments"])
+-+                 time = config["segments"][0][1]
+-+                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+-+                 eq = self.CreateEquation("Total_Current_Constraint")
+-+-                eq.Residual = self.current() - config["segments"][0][0]
+-++                # if it is not a functional form
+-++                if "t" not in str(config["segments"][0][0]):
+-++                    # check to see if it's a waveform type
+-++                    eq.Residual = self.current() - config["segments"][0][0]
+-++                else:  # if it is waveform, use periodic time to find the value of function
+-++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+-++                    # periodic time = mod(time, period) / nondimenionalized period
+-++                    eq.Residual = f(dae.Time()/config["period"][0]
+-++                                    - dae.Floor(dae.Time()/config["period"][0])) \
+-++                        - self.current()
+-+ 
+-+                 # Middle segments
+-+                 for i in range(1,len(config["segments"])-1):
+-+@@ -446,15 +456,24 @@ class ModCell(dae.daeModel):
+-+                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+-+                         # periodic time = mod(time, period) / nondimenionalized period
+-+                         eq.Residual = f(dae.Time()/config["period"][i]
+-+-                                        - dae.Floor(dae.Time()/config["period"][i]))
+-+-                        - self.current()
+-++                                        - dae.Floor(dae.Time()/config["period"][i])) \
+- +                            - self.current()
+--+                        eq.CheckUnitsConsistency = False
+--+     
+-+                         # for some reason, this is required specifically for this equation
+-+-                        eq.CheckUnitsConsistency = False
+-+ 
+-                  # Last segment
+-                  self.ELSE()
+-                  eq = self.CreateEquation("Total_Current_Constraint")
+-+-                eq.Residual = self.current() - config["segments"][-1][0]
+-++                # if it is not a functional form
+-++                if "t" not in str(config["segments"][-1][0]):
+-++                    # check to see if it's a waveform type
+-++                    eq.Residual = self.current() - config["segments"][-1][0]
+-++                else:  # if it is waveform, use periodic time to find the value of function
+-++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+-++                    # periodic time = mod(time, period) / nondimenionalized period
+-++                    eq.Residual = f(dae.Time()/config["period"][-1]
+-++                                    - dae.Floor(dae.Time()/config["period"][-1])) \
+-++                        - self.current()
+-++ 
+-+                 self.END_IF()
+-+ 
+-+         elif self.profileType == "CVsegments":
+-+diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+-+index 868f764..2fa22f1 100644
+-+--- a/tests/ref_outputs/test028/params_system.cfg
+-++++ b/tests/ref_outputs/test028/params_system.cfg
+-+@@ -1,19 +1,20 @@
+-+ [Sim Params]
+-+ #LFP ACR test for current with A instead of C-rate
+-+-profileType = CCsegments
++@@ -1,516 +1,1291 @@
++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
++-index 3dda645..d2af1a6 100644
+++index 555b765..fbc160a 100644
++ --- a/configs/params_system.cfg
++ +++ b/configs/params_system.cfg
++-@@ -5,7 +5,7 @@
++- [Sim Params]
++- # Constant voltage or current or segments of one of them
++- # Options: CV, CC, CCsegments, CVsegments
++--profileType = CC
++-+profileType = CCsegments
++- # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++- # (positive for discharge, negative for charge)
++- # It can also be set in units of A/m^2 (in which case, append A to the value
++-@@ -31,8 +31,9 @@ power = 1
++- # Note: It's okay to leave commented lines within the segments list
++- segments = [
++-     [0.3, 0.4],
++-+    ['0.01*sin(2*pi*t)', 0.4],
++-     #    ['1A', 0.4],
++--    [-0.5, 0.1],
++-+    ['-0.5A', 0.1],
++-     ]
++- # Continuation directory. If false, begin a fresh simulation with the
++- # specified input parameters here. Otherwise, this should be the
++-@@ -47,7 +48,10 @@ prevDir = false
+++@@ -12,7 +12,7 @@ profileType = CC
+++ # of the current density as in "1A")
+++ # If using wavefunction form, write it as a function of t (time) in min
+++ # in sympy format.
+ +-Crate = 1
+-++profileType = CC
+-++Crate = 0.01*sin(2*pi*t)
+-+ Vmax = 1e10
+-+ Vmin = -1e10
+-+ capFrac = 0.98
+-+ Vset = 0.12
+-+ segments = [
+-+-    [0.3, 0.4],
+-+-    ['0.01*sin(2*pi*t)', 0.4],
+-+-    ['-0.5A', 0.1],
+-+-    ]
+-+-period = [1e8, 1, 1e8]
+-++    ['0.01*sin(2*pi*t)', 1],
+-++    [0.1, 0.4],
+-++    ['-0.15A', 0.1],
+-++   ]
+-++#period = [1, 1e8, 1e8]
++++Crate = t/60
+++ # Optional nominal 1C current density for the cell, A/m^2
+++ # 1C_current_density = 12.705
+++ # Voltage cutoffs, V
+++@@ -47,9 +47,9 @@ prevDir = false
++  # If we have waveform functions in our segments, then we will have a list of
++  # size the number of steps, where period(i) is the period for the ith step,
++  # with 0's if there is no period. Optional, default if 1e8
++ -period = 1e8
++-+# If period is being used with segments, then write it in list format
++-+# as a period for each segment
++-+#period = 1e8
++-+period = [1e8, 1, 1e8]
++++period = 100
+++ # Final time (only used for CV), [s]
 ++-tend = 1.2e3
-+++tend = 60
-++ tsteps = 35
-++ relTol = 1e-6
-++ absTol = 1e-6
-+ 
-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
-+index 0ee3b77..2967dbe 100644
-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
-+index 9190390..2e11800 100644
-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
-+diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
-+index 6c26aa3..9ada8f0 100644
-+Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
-+diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
-+index cb9ac97..e1bf8f1 100644
-+--- a/tests/ref_outputs/test028/sim_output/run_info.txt
-++++ b/tests/ref_outputs/test028/sim_output/run_info.txt
-+@@ -5,7 +5,7 @@ branch name:
-+ feature/mod_battery_cycle
-+ 
-+ commit hash:
-+-acffd69
-++3d40fb1
-+ 
-+ to run, from the root repo directory, copy relevant files there,
-+ edit input_params_system.cfg to point to correct material
-+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
-+ $ patch -p1 < commit.diff:
-+ $ python[3] mpetrun.py input_params_system.cfg
-+ 
-+-Total run time: 0.09573698043823242 s
-++Total run time: 0.05446434020996094 s
++++tend = 3600
+++ # Number disc. in time
+++ # Note time stepping is adaptive, variable-order stepping, so this
+++ # affects only the interpolated output values, not simulation
+++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+++index fa08140..59001e9 100644
+++--- a/configs/params_system_LIONSIMBA.cfg
++++++ b/configs/params_system_LIONSIMBA.cfg
+++@@ -7,10 +7,11 @@
+++ profileType = CC
+++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+++ # (positive for discharge, negative for charge)
+++-Crate = 1
++++Crate = sin(2*pi*t)
+++ #Optional nominal 1C current density for the cell, A/m^2
+++-1C_current_density = 30
++++#1C_current_density = 30
+++ # Voltage cutoffs, V
+ ++period = 1
+++ Vmax = 5
+++ Vmin = 2.5
+++ # Battery applied voltage (only used for CV), V
+++@@ -24,7 +25,7 @@ segments = [
+++ # Options: false, absolute directory path
+ + prevDir = false
++  # Final time (only used for CV), [s]
++- tend = 1.2e3
+ +-tend = 1.2e3
+-++tend = 60
+-+ tsteps = 35
+-+ relTol = 1e-6
+-+ absTol = 1e-6
+-+diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
+-+index 84991f7..6aed585 100644
+-+--- a/tests/ref_outputs/test028/sim_output/commit.diff
+-++++ b/tests/ref_outputs/test028/sim_output/commit.diff
+-+@@ -34,88 +34,84 @@ index 3dda645..d2af1a6 100644
+-+  # Final time (only used for CV), [s]
+-+  tend = 1.2e3
+-+  # Number disc. in time
+-+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+-+-index 3b318ef..08116e7 100644
+-+---- a/mpet/config/configuration.py
+-+-+++ b/mpet/config/configuration.py
+-+-@@ -532,7 +532,8 @@ class Config:
+-+-         if self['profileType'] == 'CCsegments':
+-+-             for i in range(len(self['segments'])):
+-+-                 segments.append((utils.get_crate(self['segments'][i][0],
+-+--                                                 self['1C_current_density']),
+-+-+                                                 self['1C_current_density']) * \
+-+-+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+-+-                                 self["segments"][i][1]*60/self['t_ref']))
+-+-         elif self['profileType'] == 'CVsegments':
+-+-             for i in range(len(self['segments'])):
+-+-@@ -541,13 +542,14 @@ class Config:
+-+- 
+-+-         # Current or voltage segments profiles
+-+-         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+-+--        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+-+-+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+-+-+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
+-+-         if self['profileType'] == 'CCsegments':
+-+-             segments_setvec[0] = 0.
+-+-         elif self['profileType'] == 'CVsegments':
+-+-             segments_setvec[0] = -(kT / constants.e) * Vref
+-+-         tPrev = 0.
+-+--        for segIndx in range(len(segments)):
+-+-+        for segIndx in range(self['numsegments']):
+-+-             tNext = tPrev + self['tramp']
+-+-             segments_tvec[2*segIndx+1] = tNext
+-+-             tPrev = tNext
+-+-@@ -555,12 +557,12 @@ class Config:
+-+-             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+-+-             segments_tvec[2*segIndx+2] = tNext
+-+-             tPrev = tNext
+-+--            setNext = segments[segIndx][0]
+-+-+            setNext = self['segments'][segIndx][0]
+-+-             segments_setvec[2*segIndx+1] = setNext
+-+-             segments_setvec[2*segIndx+2] = setNext
+-+-         segments_tvec /= self['t_ref']
+-+-         if self['profileType'] == 'CCsegments':
+-+--            segments_setvec /= self['curr_ref']
+-+-+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+-+-         elif self['profileType'] == 'CVsegments':
+-+-             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+-+-         if 'segments' in self['profileType']:
+-+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+-+-index d6782fb..77839c5 100644
+-+---- a/mpet/config/schemas.py
+-+-+++ b/mpet/config/schemas.py
+-+-@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
+-+-                          Optional('power', default=None): Use(float),
+-+-                          Optional('1C_current_density', default=None): Use(float),
+-+-                          Optional('tramp', default=0.): Use(float),
+-+--                         Optional('period', default=1e8): Use(float),
+-+-+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
+-+-                          'Vmax': Use(float),
+-+-                          'Vmin': Use(float),
+-+-                          'Vset': Use(float),
+-+ diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+-+-index 2fc6da1..949e5e4 100644
+-++index 3c3bbd1..0e156b6 100644
+-+ --- a/mpet/mod_cell.py
+-+ +++ b/mpet/mod_cell.py
+-+-@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
+-+-                     time = time+config["segments"][i][1]
+-+-                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+-+-                     eq = self.CreateEquation("Total_Current_Constraint")
+-+--                    eq.Residual = self.current() - config["segments"][i][0]
+-+--
+-+-+                    # if it is not a functional form
+-+-+                    if "t" not in str(config["segments"][i][0]):
+-+-+                        # check to see if it's a waveform type
+-+-+                        eq.Residual = self.current() - config["segments"][i][0]
+-+-+                    else:  # if it is waveform, use periodic time to find the value of function
+-+-+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+-+-+                        # periodic time = mod(time, period) / nondimenionalized period
+-+-+                        eq.Residual = f(
+-+-+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
+-+-+                            - self.current()
+-+-+                        eq.CheckUnitsConsistency = False
+-+-+     
+-++@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
+-++             # CCsegments implemented as discontinuous equations
+-++             else:
+-++                 # First segment
+-+++                print(config["segments"])
+-++                 time = config["segments"][0][1]
+-++                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+-++                 eq = self.CreateEquation("Total_Current_Constraint")
+-++-                eq.Residual = self.current() - config["segments"][0][0]
+-+++                # if it is not a functional form
+-+++                if "t" not in str(config["segments"][0][0]):
+-+++                    # check to see if it's a waveform type
+-+++                    eq.Residual = self.current() - config["segments"][0][0]
+-+++                else:  # if it is waveform, use periodic time to find the value of function
+-+++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+-+++                    # periodic time = mod(time, period) / nondimenionalized period
+-+++                    eq.Residual = f(dae.Time()/config["period"][0]
+-+++                                    - dae.Floor(dae.Time()/config["period"][0]))
+-+++                    - self.current()
+-+++                    eq.CheckUnitsConsistency = False
+-++ 
+-++                 # Middle segments
+-++                 for i in range(1,len(config["segments"])-1):
+-++@@ -454,7 +465,18 @@ class ModCell(dae.daeModel):
+-+                  # Last segment
+-+                  self.ELSE()
+-+                  eq = self.CreateEquation("Total_Current_Constraint")
+-++-                eq.Residual = self.current() - config["segments"][-1][0]
+-+++                # if it is not a functional form
+-+++                if "t" not in str(config["segments"][-1][0]):
+-+++                    # check to see if it's a waveform type
+-+++                    eq.Residual = self.current() - config["segments"][-1][0]
+-+++                else:  # if it is waveform, use periodic time to find the value of function
+-+++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+-+++                    # periodic time = mod(time, period) / nondimenionalized period
+-+++                    eq.Residual = f(dae.Time()/config["period"][-1]
+-+++                                    - dae.Floor(dae.Time()/config["period"][-1]))
+-+++                    - self.current()
+-+++                    eq.CheckUnitsConsistency = False
+-+++ 
+-++                 self.END_IF()
+-++ 
+-++         elif self.profileType == "CVsegments":
+-++diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+-++index 868f764..2fa22f1 100644
+-++--- a/tests/ref_outputs/test028/params_system.cfg
+-+++++ b/tests/ref_outputs/test028/params_system.cfg
+-++@@ -1,19 +1,20 @@
+-++ [Sim Params]
+-++ #LFP ACR test for current with A instead of C-rate
+-++-profileType = CCsegments
++++tend = 1200
++  # Number disc. in time
++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++-index 3c3bbd1..2cbaf63 100644
++---- a/mpet/mod_cell.py
++-+++ b/mpet/mod_cell.py
++-@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
++-             # CCsegments implemented as discontinuous equations
++-             else:
++-                 # First segment
++-+                print(config["segments"])
++-                 time = config["segments"][0][1]
++-                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++-                 eq = self.CreateEquation("Total_Current_Constraint")
++--                eq.Residual = self.current() - config["segments"][0][0]
++-+                # if it is not a functional form
++-+                if "t" not in str(config["segments"][0][0]):
++-+                    # check to see if it's a waveform type
++-+                    eq.Residual = self.current() - config["segments"][0][0]
++-+                else:  # if it is waveform, use periodic time to find the value of function
++-+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++-+                    # periodic time = mod(time, period) / nondimenionalized period
++-+                    eq.Residual = f(dae.Time()/config["period"][0]
++-+                                    - dae.Floor(dae.Time()/config["period"][0])) \
++-+                        - self.current()
++-+                    eq.CheckUnitsConsistency = False
+++ tsteps = 200
+++ # Numerical Tolerances
+++diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+++index 75dad2c..e4e197e 100644
+++--- a/mpet/config/configuration.py
++++++ b/mpet/config/configuration.py
+++@@ -479,7 +479,7 @@ class Config:
+++         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+++         # nondimensionalize the scale of time in curr_set if it is a function of time
+++         # set them as a function of periodic time as well
+++-        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60, self['period'])
++++        self['currset'] = utils.nondim_time(self['currset'], self['t_ref'] / 60)
+++         if self['power'] is not None:
+++             self['power'] = self['power'] / (self['power_ref'])
+++         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
+++@@ -532,10 +532,11 @@ class Config:
++  
++-                 # Middle segments
++-                 for i in range(1,len(config["segments"])-1):
++-@@ -446,15 +457,26 @@ class ModCell(dae.daeModel):
++-                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++-                         # periodic time = mod(time, period) / nondimenionalized period
++-                         eq.Residual = f(dae.Time()/config["period"][i]
++--                                        - dae.Floor(dae.Time()/config["period"][i]))
++--                        - self.current()
++-+                                        - dae.Floor(dae.Time()/config["period"][i])) \
++-+                            - self.current()
++-                         # for some reason, this is required specifically for this equation
++-                         eq.CheckUnitsConsistency = False
+++         # Scaling of current and voltage segments
+++         segments = []
++++
+++         if self['profileType'] == 'CCsegments':
+++             for i in range(len(self['segments'])):
+++                 segments.append(
+++-                    (utils.get_crate(self['segments'][i][0], self['1C_current_density'])
++++                    (utils.nondim_time(utils.get_crate(self['segments'][i][0], self['1C_current_density']), self['t_ref'] / 60)
+++                      * self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+++                      self["segments"][i][1] * 60 / self['t_ref']))
+++         elif self['profileType'] == 'CVsegments':
+++diff --git a/mpet/utils.py b/mpet/utils.py
+++index 0d8633c..8814428 100644
+++--- a/mpet/utils.py
++++++ b/mpet/utils.py
+++@@ -171,7 +171,7 @@ def get_crate(crate, Cratecurr):
+++     return out
++  
++-                 # Last segment
++-                 self.ELSE()
++-                 eq = self.CreateEquation("Total_Current_Constraint")
++--                eq.Residual = self.current() - config["segments"][-1][0]
++-+                # if it is not a functional form
++-+                if "t" not in str(config["segments"][-1][0]):
++-+                    # check to see if it's a waveform type
++-+                    eq.Residual = self.current() - config["segments"][-1][0]
++-+                else:  # if it is waveform, use periodic time to find the value of function
++-+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++-+                    # periodic time = mod(time, period) / nondimenionalized period
++-+                    eq.Residual = f(dae.Time()/config["period"][-1]
++-+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
++-+                        - self.current()
++-+                    eq.CheckUnitsConsistency = False
++-+ 
++-                 self.END_IF()
++  
++-         elif self.profileType == "CVsegments":
+++-def nondim_time(currset, t_ref, period):
++++def nondim_time(currset, t_ref):
+++     """Nondimensionalizes the time function in currset if it is a function of time
+++     and set periodicity in this function
+++     """
++ diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++-index 868f764..52f39e0 100644
+++index 52f39e0..6a3a125 100644
++ --- a/tests/ref_outputs/test028/params_system.cfg
++ +++ b/tests/ref_outputs/test028/params_system.cfg
++-@@ -1,19 +1,20 @@
++- [Sim Params]
++- #LFP ACR test for current with A instead of C-rate
++- profileType = CCsegments
++--Crate = 1
++-+Crate = 0.01*sin(2*pi*t)
++- Vmax = 1e10
++- Vmin = -1e10
+++@@ -7,9 +7,9 @@ Vmin = -1e10
++  capFrac = 0.98
++  Vset = 0.12
++  segments = [
++--    [0.3, 0.4],
++--    ['0.01*sin(2*pi*t)', 0.4],
++--    ['-0.5A', 0.1],
++--    ]
++--period = [1e8, 1, 1e8]
++-+    ['0.01*sin(2*pi*t)', 1],
++-+    [0.1, 0.4],
++-+    ['-0.15A', 0.1],
++-+   ]
++-+period = [1, 1e8, 1e8]
++-+#period = 1
++- prevDir = false
++--tend = 1.2e3
++-+tend = 60
++- tsteps = 35
++- relTol = 1e-6
++- absTol = 1e-6
+++-    ['0.01*sin(2*pi*t)', 1],
+++-    [0.1, 0.4],
+++-    ['-0.15A', 0.1],
++++    ['sin(2*pi*t)', 1],
++++   # [0, 0.4],
++++   # ['-0.00001A', 0.1],
+++    ]
+++ period = [1, 1e8, 1e8]
+++ #period = 1
++ diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
++-index 84991f7..6ab6103 100644
+++index b36ac7d..a17d85c 100644
++ --- a/tests/ref_outputs/test028/sim_output/commit.diff
++ +++ b/tests/ref_outputs/test028/sim_output/commit.diff
++-@@ -34,88 +34,287 @@ index 3dda645..d2af1a6 100644
+++@@ -1,516 +1,673 @@
+++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+++-index 3dda645..d2af1a6 100644
++++index 555b765..fbc160a 100644
+++ --- a/configs/params_system.cfg
+++ +++ b/configs/params_system.cfg
+++-@@ -5,7 +5,7 @@
+++- [Sim Params]
+++- # Constant voltage or current or segments of one of them
+++- # Options: CV, CC, CCsegments, CVsegments
+++--profileType = CC
+++-+profileType = CCsegments
+++- # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+++- # (positive for discharge, negative for charge)
+++- # It can also be set in units of A/m^2 (in which case, append A to the value
+++-@@ -31,8 +31,9 @@ power = 1
+++- # Note: It's okay to leave commented lines within the segments list
+++- segments = [
+++-     [0.3, 0.4],
+++-+    ['0.01*sin(2*pi*t)', 0.4],
+++-     #    ['1A', 0.4],
+++--    [-0.5, 0.1],
+++-+    ['-0.5A', 0.1],
+++-     ]
+++- # Continuation directory. If false, begin a fresh simulation with the
+++- # specified input parameters here. Otherwise, this should be the
+++-@@ -47,7 +48,10 @@ prevDir = false
++++@@ -12,7 +12,7 @@ profileType = CC
++++ # of the current density as in "1A")
++++ # If using wavefunction form, write it as a function of t (time) in min
++++ # in sympy format.
+ ++-Crate = 1
+-+++profileType = CC
+-+++Crate = 0.01*sin(2*pi*t)
+-++ Vmax = 1e10
+-++ Vmin = -1e10
+-++ capFrac = 0.98
+-++ Vset = 0.12
+-++ segments = [
+-++-    [0.3, 0.4],
+-++-    ['0.01*sin(2*pi*t)', 0.4],
+-++-    ['-0.5A', 0.1],
+-++-    ]
+-++-period = [1e8, 1, 1e8]
+-+++    ['0.01*sin(2*pi*t)', 1],
+-+++    [0.1, 0.4],
+-+++    ['-0.15A', 0.1],
+-+++   ]
+-+++#period = [1, 1e8, 1e8]
+-+++period = 1
+-++ prevDir = false
+++++Crate = t/60
++++ # Optional nominal 1C current density for the cell, A/m^2
++++ # 1C_current_density = 12.705
++++ # Voltage cutoffs, V
++++@@ -47,9 +47,9 @@ prevDir = false
+++  # If we have waveform functions in our segments, then we will have a list of
+++  # size the number of steps, where period(i) is the period for the ith step,
+++  # with 0's if there is no period. Optional, default if 1e8
+++ -period = 1e8
+++-+# If period is being used with segments, then write it in list format
+++-+# as a period for each segment
+++-+#period = 1e8
+++-+period = [1e8, 1, 1e8]
+++++period = 100
++   # Final time (only used for CV), [s]
++-  tend = 1.2e3
+++- tend = 1.2e3
+ ++-tend = 1.2e3
+-+++tend = 60
+-++ tsteps = 35
+-++ relTol = 1e-6
+-++ absTol = 1e-6
+-+ 
+-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
+-+index 0ee3b77..2967dbe 100644
+-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
+-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
+-+index 9190390..2e11800 100644
+-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
+-+diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
+-+index 6c26aa3..9ada8f0 100644
+-+Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
+-+diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
+-+index cb9ac97..e1bf8f1 100644
+-+--- a/tests/ref_outputs/test028/sim_output/run_info.txt
+-++++ b/tests/ref_outputs/test028/sim_output/run_info.txt
+-+@@ -5,7 +5,7 @@ branch name:
+-+ feature/mod_battery_cycle
+-+ 
+-+ commit hash:
+-+-acffd69
+-++3d40fb1
+-+ 
+-+ to run, from the root repo directory, copy relevant files there,
+-+ edit input_params_system.cfg to point to correct material
+-+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+-+ $ patch -p1 < commit.diff:
+-+ $ python[3] mpetrun.py input_params_system.cfg
+-+ 
+-+-Total run time: 0.09573698043823242 s
+-++Total run time: 0.05446434020996094 s
+++++tend = 3600
++   # Number disc. in time
++--diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++--index 3b318ef..08116e7 100644
++----- a/mpet/config/configuration.py
++--+++ b/mpet/config/configuration.py
++--@@ -532,7 +532,8 @@ class Config:
++--         if self['profileType'] == 'CCsegments':
++--             for i in range(len(self['segments'])):
++--                 segments.append((utils.get_crate(self['segments'][i][0],
++---                                                 self['1C_current_density']),
++--+                                                 self['1C_current_density']) * \
++--+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
++--                                 self["segments"][i][1]*60/self['t_ref']))
++--         elif self['profileType'] == 'CVsegments':
++--             for i in range(len(self['segments'])):
++--@@ -541,13 +542,14 @@ class Config:
+++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+++-index 3c3bbd1..2cbaf63 100644
+++---- a/mpet/mod_cell.py
+++-+++ b/mpet/mod_cell.py
+++-@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
+++-             # CCsegments implemented as discontinuous equations
+++-             else:
+++-                 # First segment
+++-+                print(config["segments"])
+++-                 time = config["segments"][0][1]
+++-                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+++-                 eq = self.CreateEquation("Total_Current_Constraint")
+++--                eq.Residual = self.current() - config["segments"][0][0]
+++-+                # if it is not a functional form
+++-+                if "t" not in str(config["segments"][0][0]):
+++-+                    # check to see if it's a waveform type
+++-+                    eq.Residual = self.current() - config["segments"][0][0]
+++-+                else:  # if it is waveform, use periodic time to find the value of function
+++-+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+++-+                    # periodic time = mod(time, period) / nondimenionalized period
+++-+                    eq.Residual = f(dae.Time()/config["period"][0]
+++-+                                    - dae.Floor(dae.Time()/config["period"][0])) \
+++-+                        - self.current()
+++-+                    eq.CheckUnitsConsistency = False
+++- 
+++-                 # Middle segments
+++-                 for i in range(1,len(config["segments"])-1):
+++-@@ -446,15 +457,26 @@ class ModCell(dae.daeModel):
+++-                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+++-                         # periodic time = mod(time, period) / nondimenionalized period
+++-                         eq.Residual = f(dae.Time()/config["period"][i]
+++--                                        - dae.Floor(dae.Time()/config["period"][i]))
+++--                        - self.current()
+++-+                                        - dae.Floor(dae.Time()/config["period"][i])) \
+++-+                            - self.current()
+++-                         # for some reason, this is required specifically for this equation
+++-                         eq.CheckUnitsConsistency = False
++ - 
++--         # Current or voltage segments profiles
++--         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
++---        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++--+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++--+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
++--         if self['profileType'] == 'CCsegments':
++--             segments_setvec[0] = 0.
++--         elif self['profileType'] == 'CVsegments':
++--             segments_setvec[0] = -(kT / constants.e) * Vref
++--         tPrev = 0.
++---        for segIndx in range(len(segments)):
++--+        for segIndx in range(self['numsegments']):
++--             tNext = tPrev + self['tramp']
++--             segments_tvec[2*segIndx+1] = tNext
++--             tPrev = tNext
++--@@ -555,12 +557,12 @@ class Config:
++--             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
++--             segments_tvec[2*segIndx+2] = tNext
++--             tPrev = tNext
++---            setNext = segments[segIndx][0]
++--+            setNext = self['segments'][segIndx][0]
++--             segments_setvec[2*segIndx+1] = setNext
++--             segments_setvec[2*segIndx+2] = setNext
++--         segments_tvec /= self['t_ref']
++--         if self['profileType'] == 'CCsegments':
++---            segments_setvec /= self['curr_ref']
++--+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
++--         elif self['profileType'] == 'CVsegments':
++--             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
++--         if 'segments' in self['profileType']:
++--diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
++--index d6782fb..77839c5 100644
++----- a/mpet/config/schemas.py
++--+++ b/mpet/config/schemas.py
++--@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
++--                          Optional('power', default=None): Use(float),
++--                          Optional('1C_current_density', default=None): Use(float),
++--                          Optional('tramp', default=0.): Use(float),
++---                         Optional('period', default=1e8): Use(float),
++--+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
++--                          'Vmax': Use(float),
++--                          'Vmin': Use(float),
++--                          'Vset': Use(float),
++- diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++--index 2fc6da1..949e5e4 100644
++-+index 3c3bbd1..d8db287 100644
++- --- a/mpet/mod_cell.py
++- +++ b/mpet/mod_cell.py
++--@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
++--                     time = time+config["segments"][i][1]
++--                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++--                     eq = self.CreateEquation("Total_Current_Constraint")
++---                    eq.Residual = self.current() - config["segments"][i][0]
++---
++--+                    # if it is not a functional form
++--+                    if "t" not in str(config["segments"][i][0]):
++--+                        # check to see if it's a waveform type
++--+                        eq.Residual = self.current() - config["segments"][i][0]
++--+                    else:  # if it is waveform, use periodic time to find the value of function
++--+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++--+                        # periodic time = mod(time, period) / nondimenionalized period
++--+                        eq.Residual = f(
++--+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
++-+@@ -428,10 +428,20 @@ class ModCell(dae.daeModel):
++-+             # CCsegments implemented as discontinuous equations
++-+             else:
++-+                 # First segment
++-++                print(config["segments"])
++-+                 time = config["segments"][0][1]
++-+                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++-+                 eq = self.CreateEquation("Total_Current_Constraint")
++-+-                eq.Residual = self.current() - config["segments"][0][0]
++-++                # if it is not a functional form
++-++                if "t" not in str(config["segments"][0][0]):
++-++                    # check to see if it's a waveform type
++-++                    eq.Residual = self.current() - config["segments"][0][0]
++-++                else:  # if it is waveform, use periodic time to find the value of function
++-++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++-++                    # periodic time = mod(time, period) / nondimenionalized period
++-++                    eq.Residual = f(dae.Time()/config["period"][0]
++-++                                    - dae.Floor(dae.Time()/config["period"][0])) \
++-++                        - self.current()
++-+ 
++-+                 # Middle segments
++-+                 for i in range(1,len(config["segments"])-1):
++-+@@ -446,15 +456,24 @@ class ModCell(dae.daeModel):
++-+                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++-+                         # periodic time = mod(time, period) / nondimenionalized period
++-+                         eq.Residual = f(dae.Time()/config["period"][i]
++-+-                                        - dae.Floor(dae.Time()/config["period"][i]))
++-+-                        - self.current()
++-++                                        - dae.Floor(dae.Time()/config["period"][i])) \
++- +                            - self.current()
++--+                        eq.CheckUnitsConsistency = False
++--+     
++-+                         # for some reason, this is required specifically for this equation
++-+-                        eq.CheckUnitsConsistency = False
++-+ 
++-                  # Last segment
++-                  self.ELSE()
++-                  eq = self.CreateEquation("Total_Current_Constraint")
++-+-                eq.Residual = self.current() - config["segments"][-1][0]
++-++                # if it is not a functional form
++-++                if "t" not in str(config["segments"][-1][0]):
++-++                    # check to see if it's a waveform type
++-++                    eq.Residual = self.current() - config["segments"][-1][0]
++-++                else:  # if it is waveform, use periodic time to find the value of function
++-++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++-++                    # periodic time = mod(time, period) / nondimenionalized period
++-++                    eq.Residual = f(dae.Time()/config["period"][-1]
++-++                                    - dae.Floor(dae.Time()/config["period"][-1])) \
++-++                        - self.current()
++-++ 
++-+                 self.END_IF()
++-+ 
++-+         elif self.profileType == "CVsegments":
++-+diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++-+index 868f764..2fa22f1 100644
++-+--- a/tests/ref_outputs/test028/params_system.cfg
++-++++ b/tests/ref_outputs/test028/params_system.cfg
++-+@@ -1,19 +1,20 @@
++-+ [Sim Params]
++-+ #LFP ACR test for current with A instead of C-rate
++-+-profileType = CCsegments
+++-                 # Last segment
+++-                 self.ELSE()
+++-                 eq = self.CreateEquation("Total_Current_Constraint")
+++--                eq.Residual = self.current() - config["segments"][-1][0]
+++-+                # if it is not a functional form
+++-+                if "t" not in str(config["segments"][-1][0]):
+++-+                    # check to see if it's a waveform type
+++-+                    eq.Residual = self.current() - config["segments"][-1][0]
+++-+                else:  # if it is waveform, use periodic time to find the value of function
+++-+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+++-+                    # periodic time = mod(time, period) / nondimenionalized period
+++-+                    eq.Residual = f(dae.Time()/config["period"][-1]
+++-+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
+++-+                        - self.current()
+++-+                    eq.CheckUnitsConsistency = False
+++-+ 
+++-                 self.END_IF()
+++- 
+++-         elif self.profileType == "CVsegments":
++++ # Note time stepping is adaptive, variable-order stepping, so this
++++ # affects only the interpolated output values, not simulation
++++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
++++index fa08140..59001e9 100644
++++--- a/configs/params_system_LIONSIMBA.cfg
+++++++ b/configs/params_system_LIONSIMBA.cfg
++++@@ -7,10 +7,11 @@
++++ profileType = CC
++++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++++ # (positive for discharge, negative for charge)
++ +-Crate = 1
++-++profileType = CC
++-++Crate = 0.01*sin(2*pi*t)
++-+ Vmax = 1e10
++-+ Vmin = -1e10
++-+ capFrac = 0.98
++-+ Vset = 0.12
++-+ segments = [
++-+-    [0.3, 0.4],
++-+-    ['0.01*sin(2*pi*t)', 0.4],
++-+-    ['-0.5A', 0.1],
++-+-    ]
++-+-period = [1e8, 1, 1e8]
++-++    ['0.01*sin(2*pi*t)', 1],
++-++    [0.1, 0.4],
++-++    ['-0.15A', 0.1],
++-++   ]
++-++#period = [1, 1e8, 1e8]
+++++Crate = sin(2*pi*t)
++++ #Optional nominal 1C current density for the cell, A/m^2
++++-1C_current_density = 30
+++++#1C_current_density = 30
++++ # Voltage cutoffs, V
++ ++period = 1
++++ Vmax = 5
++++ Vmin = 2.5
++++ # Battery applied voltage (only used for CV), V
++++@@ -24,7 +25,7 @@ segments = [
++++ # Options: false, absolute directory path
++ + prevDir = false
++++ # Final time (only used for CV), [s]
++ +-tend = 1.2e3
++-++tend = 60
++-+ tsteps = 35
++-+ relTol = 1e-6
++-+ absTol = 1e-6
++-+diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
++-+index 84991f7..6aed585 100644
++-+--- a/tests/ref_outputs/test028/sim_output/commit.diff
++-++++ b/tests/ref_outputs/test028/sim_output/commit.diff
++-+@@ -34,88 +34,84 @@ index 3dda645..d2af1a6 100644
++-+  # Final time (only used for CV), [s]
++-+  tend = 1.2e3
++-+  # Number disc. in time
++-+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++-+-index 3b318ef..08116e7 100644
++-+---- a/mpet/config/configuration.py
++-+-+++ b/mpet/config/configuration.py
++-+-@@ -532,7 +532,8 @@ class Config:
++-+-         if self['profileType'] == 'CCsegments':
++-+-             for i in range(len(self['segments'])):
++-+-                 segments.append((utils.get_crate(self['segments'][i][0],
++-+--                                                 self['1C_current_density']),
++-+-+                                                 self['1C_current_density']) * \
++-+-+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
++-+-                                 self["segments"][i][1]*60/self['t_ref']))
++-+-         elif self['profileType'] == 'CVsegments':
++-+-             for i in range(len(self['segments'])):
++-+-@@ -541,13 +542,14 @@ class Config:
++-+- 
++-+-         # Current or voltage segments profiles
++-+-         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
++-+--        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++-+-+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++-+-+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
++-+-         if self['profileType'] == 'CCsegments':
++-+-             segments_setvec[0] = 0.
++-+-         elif self['profileType'] == 'CVsegments':
++-+-             segments_setvec[0] = -(kT / constants.e) * Vref
++-+-         tPrev = 0.
++-+--        for segIndx in range(len(segments)):
++-+-+        for segIndx in range(self['numsegments']):
++-+-             tNext = tPrev + self['tramp']
++-+-             segments_tvec[2*segIndx+1] = tNext
++-+-             tPrev = tNext
++-+-@@ -555,12 +557,12 @@ class Config:
++-+-             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
++-+-             segments_tvec[2*segIndx+2] = tNext
++-+-             tPrev = tNext
++-+--            setNext = segments[segIndx][0]
++-+-+            setNext = self['segments'][segIndx][0]
++-+-             segments_setvec[2*segIndx+1] = setNext
++-+-             segments_setvec[2*segIndx+2] = setNext
++-+-         segments_tvec /= self['t_ref']
++-+-         if self['profileType'] == 'CCsegments':
++-+--            segments_setvec /= self['curr_ref']
++-+-+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
++-+-         elif self['profileType'] == 'CVsegments':
++-+-             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
++-+-         if 'segments' in self['profileType']:
++-+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
++-+-index d6782fb..77839c5 100644
++-+---- a/mpet/config/schemas.py
++-+-+++ b/mpet/config/schemas.py
++-+-@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
++-+-                          Optional('power', default=None): Use(float),
++-+-                          Optional('1C_current_density', default=None): Use(float),
++-+-                          Optional('tramp', default=0.): Use(float),
++-+--                         Optional('period', default=1e8): Use(float),
++-+-+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
++-+-                          'Vmax': Use(float),
++-+-                          'Vmin': Use(float),
++-+-                          'Vset': Use(float),
++-+ diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++-+-index 2fc6da1..949e5e4 100644
++-++index 3c3bbd1..0e156b6 100644
++-+ --- a/mpet/mod_cell.py
++-+ +++ b/mpet/mod_cell.py
++-+-@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
++-+-                     time = time+config["segments"][i][1]
++-+-                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++-+-                     eq = self.CreateEquation("Total_Current_Constraint")
++-+--                    eq.Residual = self.current() - config["segments"][i][0]
++-+--
++-+-+                    # if it is not a functional form
++-+-+                    if "t" not in str(config["segments"][i][0]):
++-+-+                        # check to see if it's a waveform type
++-+-+                        eq.Residual = self.current() - config["segments"][i][0]
++-+-+                    else:  # if it is waveform, use periodic time to find the value of function
++-+-+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++-+-+                        # periodic time = mod(time, period) / nondimenionalized period
++-+-+                        eq.Residual = f(
++-+-+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
++-+-+                            - self.current()
++-+-+                        eq.CheckUnitsConsistency = False
++-+-+     
++-++@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
++-++             # CCsegments implemented as discontinuous equations
++-++             else:
++-++                 # First segment
++-+++                print(config["segments"])
++-++                 time = config["segments"][0][1]
++-++                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++-++                 eq = self.CreateEquation("Total_Current_Constraint")
++-++-                eq.Residual = self.current() - config["segments"][0][0]
++-+++                # if it is not a functional form
++-+++                if "t" not in str(config["segments"][0][0]):
++-+++                    # check to see if it's a waveform type
++-+++                    eq.Residual = self.current() - config["segments"][0][0]
++-+++                else:  # if it is waveform, use periodic time to find the value of function
++-+++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++-+++                    # periodic time = mod(time, period) / nondimenionalized period
++-+++                    eq.Residual = f(dae.Time()/config["period"][0]
++-+++                                    - dae.Floor(dae.Time()/config["period"][0]))
++-+++                    - self.current()
++-+++                    eq.CheckUnitsConsistency = False
++-++ 
++-++                 # Middle segments
++-++                 for i in range(1,len(config["segments"])-1):
++-++@@ -454,7 +465,18 @@ class ModCell(dae.daeModel):
++-+                  # Last segment
++-+                  self.ELSE()
++-+                  eq = self.CreateEquation("Total_Current_Constraint")
++-++-                eq.Residual = self.current() - config["segments"][-1][0]
++-+++                # if it is not a functional form
++-+++                if "t" not in str(config["segments"][-1][0]):
++-+++                    # check to see if it's a waveform type
++-+++                    eq.Residual = self.current() - config["segments"][-1][0]
++-+++                else:  # if it is waveform, use periodic time to find the value of function
++-+++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++-+++                    # periodic time = mod(time, period) / nondimenionalized period
++-+++                    eq.Residual = f(dae.Time()/config["period"][-1]
++-+++                                    - dae.Floor(dae.Time()/config["period"][-1]))
++-+++                    - self.current()
++-+++                    eq.CheckUnitsConsistency = False
++-+++ 
++-++                 self.END_IF()
++-++ 
++-++         elif self.profileType == "CVsegments":
++-++diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++-++index 868f764..2fa22f1 100644
++-++--- a/tests/ref_outputs/test028/params_system.cfg
++-+++++ b/tests/ref_outputs/test028/params_system.cfg
++-++@@ -1,19 +1,20 @@
++-++ [Sim Params]
++-++ #LFP ACR test for current with A instead of C-rate
++-++-profileType = CCsegments
+++++tend = 1200
++++ # Number disc. in time
++++ tsteps = 200
++++ # Numerical Tolerances
+++ diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+++-index 868f764..52f39e0 100644
++++index 52f39e0..6a3a125 100644
+++ --- a/tests/ref_outputs/test028/params_system.cfg
+++ +++ b/tests/ref_outputs/test028/params_system.cfg
+++-@@ -1,19 +1,20 @@
+++- [Sim Params]
+++- #LFP ACR test for current with A instead of C-rate
+++- profileType = CCsegments
+++--Crate = 1
+++-+Crate = 0.01*sin(2*pi*t)
+++- Vmax = 1e10
+++- Vmin = -1e10
++++@@ -7,9 +7,9 @@ Vmin = -1e10
+++  capFrac = 0.98
+++  Vset = 0.12
+++  segments = [
+++--    [0.3, 0.4],
+++--    ['0.01*sin(2*pi*t)', 0.4],
+++--    ['-0.5A', 0.1],
+++--    ]
+++--period = [1e8, 1, 1e8]
+++-+    ['0.01*sin(2*pi*t)', 1],
+++-+    [0.1, 0.4],
+++-+    ['-0.15A', 0.1],
+++-+   ]
+++-+period = [1, 1e8, 1e8]
+++-+#period = 1
+++- prevDir = false
+++--tend = 1.2e3
+++-+tend = 60
+++- tsteps = 35
+++- relTol = 1e-6
+++- absTol = 1e-6
++++-    ['0.01*sin(2*pi*t)', 1],
++++-    [0.1, 0.4],
++++-    ['-0.15A', 0.1],
+++++    ['sin(2*pi*t)', 1],
+++++   # [0, 0.4],
+++++   # ['-0.00001A', 0.1],
++++    ]
++++ period = [1, 1e8, 1e8]
++++ #period = 1
+++ diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
+++-index 84991f7..6ab6103 100644
++++index b36ac7d..c773290 100644
+++ --- a/tests/ref_outputs/test028/sim_output/commit.diff
+++ +++ b/tests/ref_outputs/test028/sim_output/commit.diff
+++-@@ -34,88 +34,287 @@ index 3dda645..d2af1a6 100644
++++@@ -1,523 +1,70 @@
++++ diff --git a/configs/params_system.cfg b/configs/params_system.cfg
++++-index 3dda645..d2af1a6 100644
+++++index 555b765..fbc160a 100644
++++ --- a/configs/params_system.cfg
++++ +++ b/configs/params_system.cfg
++++-@@ -5,7 +5,7 @@
++++- [Sim Params]
++++- # Constant voltage or current or segments of one of them
++++- # Options: CV, CC, CCsegments, CVsegments
++++--profileType = CC
++++-+profileType = CCsegments
++++- # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
++++- # (positive for discharge, negative for charge)
++++- # It can also be set in units of A/m^2 (in which case, append A to the value
++++-@@ -31,8 +31,9 @@ power = 1
++++- # Note: It's okay to leave commented lines within the segments list
++++- segments = [
++++-     [0.3, 0.4],
++++-+    ['0.01*sin(2*pi*t)', 0.4],
++++-     #    ['1A', 0.4],
++++--    [-0.5, 0.1],
++++-+    ['-0.5A', 0.1],
++++-     ]
++++- # Continuation directory. If false, begin a fresh simulation with the
++++- # specified input parameters here. Otherwise, this should be the
++++-@@ -47,7 +48,10 @@ prevDir = false
+++++@@ -12,7 +12,7 @@ profileType = CC
+++++ # of the current density as in "1A")
+++++ # If using wavefunction form, write it as a function of t (time) in min
+++++ # in sympy format.
++ ++-Crate = 1
++-+++profileType = CC
++-+++Crate = 0.01*sin(2*pi*t)
++-++ Vmax = 1e10
++-++ Vmin = -1e10
++-++ capFrac = 0.98
++-++ Vset = 0.12
++-++ segments = [
++-++-    [0.3, 0.4],
++-++-    ['0.01*sin(2*pi*t)', 0.4],
++-++-    ['-0.5A', 0.1],
++-++-    ]
++-++-period = [1e8, 1, 1e8]
++-+++    ['0.01*sin(2*pi*t)', 1],
++-+++    [0.1, 0.4],
++-+++    ['-0.15A', 0.1],
++-+++   ]
++-+++#period = [1, 1e8, 1e8]
++-+++period = 1
++-++ prevDir = false
++++++Crate = t/60
+++++ # Optional nominal 1C current density for the cell, A/m^2
+++++ # 1C_current_density = 12.705
+++++ # Voltage cutoffs, V
+++++@@ -47,9 +47,9 @@ prevDir = false
++++  # If we have waveform functions in our segments, then we will have a list of
++++  # size the number of steps, where period(i) is the period for the ith step,
++++  # with 0's if there is no period. Optional, default if 1e8
++++ -period = 1e8
++++-+# If period is being used with segments, then write it in list format
++++-+# as a period for each segment
++++-+#period = 1e8
++++-+period = [1e8, 1, 1e8]
++++++period = 100
+++   # Final time (only used for CV), [s]
+++-  tend = 1.2e3
++++- tend = 1.2e3
++ ++-tend = 1.2e3
++-+++tend = 60
++-++ tsteps = 35
++-++ relTol = 1e-6
++-++ absTol = 1e-6
++-+ 
++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
++-+index 0ee3b77..2967dbe 100644
++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
++-+index 9190390..2e11800 100644
++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
++-+diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
++-+index 6c26aa3..9ada8f0 100644
++-+Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
++-+diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
++-+index cb9ac97..e1bf8f1 100644
++-+--- a/tests/ref_outputs/test028/sim_output/run_info.txt
++-++++ b/tests/ref_outputs/test028/sim_output/run_info.txt
++-+@@ -5,7 +5,7 @@ branch name:
++-+ feature/mod_battery_cycle
++-+ 
++-+ commit hash:
++-+-acffd69
++-++3d40fb1
++-+ 
++-+ to run, from the root repo directory, copy relevant files there,
++-+ edit input_params_system.cfg to point to correct material
++-+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
++-+ $ patch -p1 < commit.diff:
++-+ $ python[3] mpetrun.py input_params_system.cfg
++-+ 
++-+-Total run time: 0.09573698043823242 s
++-++Total run time: 0.05446434020996094 s
++++++tend = 3600
+++   # Number disc. in time
+++--diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+++--index 3b318ef..08116e7 100644
+++----- a/mpet/config/configuration.py
+++--+++ b/mpet/config/configuration.py
+++--@@ -532,7 +532,8 @@ class Config:
+++--         if self['profileType'] == 'CCsegments':
+++--             for i in range(len(self['segments'])):
+++--                 segments.append((utils.get_crate(self['segments'][i][0],
+++---                                                 self['1C_current_density']),
+++--+                                                 self['1C_current_density']) * \
+++--+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+++--                                 self["segments"][i][1]*60/self['t_ref']))
+++--         elif self['profileType'] == 'CVsegments':
+++--             for i in range(len(self['segments'])):
+++--@@ -541,13 +542,14 @@ class Config:
++++-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++++-index 3c3bbd1..2cbaf63 100644
++++---- a/mpet/mod_cell.py
++++-+++ b/mpet/mod_cell.py
++++-@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
++++-             # CCsegments implemented as discontinuous equations
++++-             else:
++++-                 # First segment
++++-+                print(config["segments"])
++++-                 time = config["segments"][0][1]
++++-                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++++-                 eq = self.CreateEquation("Total_Current_Constraint")
++++--                eq.Residual = self.current() - config["segments"][0][0]
++++-+                # if it is not a functional form
++++-+                if "t" not in str(config["segments"][0][0]):
++++-+                    # check to see if it's a waveform type
++++-+                    eq.Residual = self.current() - config["segments"][0][0]
++++-+                else:  # if it is waveform, use periodic time to find the value of function
++++-+                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++++-+                    # periodic time = mod(time, period) / nondimenionalized period
++++-+                    eq.Residual = f(dae.Time()/config["period"][0]
++++-+                                    - dae.Floor(dae.Time()/config["period"][0])) \
++++-+                        - self.current()
++++-+                    eq.CheckUnitsConsistency = False
+++ - 
+++--         # Current or voltage segments profiles
+++--         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+++---        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+++--+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+++--+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
+++--         if self['profileType'] == 'CCsegments':
+++--             segments_setvec[0] = 0.
+++--         elif self['profileType'] == 'CVsegments':
+++--             segments_setvec[0] = -(kT / constants.e) * Vref
+++--         tPrev = 0.
+++---        for segIndx in range(len(segments)):
+++--+        for segIndx in range(self['numsegments']):
+++--             tNext = tPrev + self['tramp']
+++--             segments_tvec[2*segIndx+1] = tNext
+++--             tPrev = tNext
+++--@@ -555,12 +557,12 @@ class Config:
+++--             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+++--             segments_tvec[2*segIndx+2] = tNext
+++--             tPrev = tNext
+++---            setNext = segments[segIndx][0]
+++--+            setNext = self['segments'][segIndx][0]
+++--             segments_setvec[2*segIndx+1] = setNext
+++--             segments_setvec[2*segIndx+2] = setNext
+++--         segments_tvec /= self['t_ref']
+++--         if self['profileType'] == 'CCsegments':
+++---            segments_setvec /= self['curr_ref']
+++--+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+++--         elif self['profileType'] == 'CVsegments':
+++--             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+++--         if 'segments' in self['profileType']:
+++--diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+++--index d6782fb..77839c5 100644
+++----- a/mpet/config/schemas.py
+++--+++ b/mpet/config/schemas.py
+++--@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
+++--                          Optional('power', default=None): Use(float),
+++--                          Optional('1C_current_density', default=None): Use(float),
+++--                          Optional('tramp', default=0.): Use(float),
+++---                         Optional('period', default=1e8): Use(float),
+++--+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
+++--                          'Vmax': Use(float),
+++--                          'Vmin': Use(float),
+++--                          'Vset': Use(float),
+++- diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+++--index 2fc6da1..949e5e4 100644
+++-+index 3c3bbd1..d8db287 100644
+++- --- a/mpet/mod_cell.py
+++- +++ b/mpet/mod_cell.py
+++--@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
+++--                     time = time+config["segments"][i][1]
+++--                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+++--                     eq = self.CreateEquation("Total_Current_Constraint")
+++---                    eq.Residual = self.current() - config["segments"][i][0]
+++---
+++--+                    # if it is not a functional form
+++--+                    if "t" not in str(config["segments"][i][0]):
+++--+                        # check to see if it's a waveform type
+++--+                        eq.Residual = self.current() - config["segments"][i][0]
+++--+                    else:  # if it is waveform, use periodic time to find the value of function
+++--+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+++--+                        # periodic time = mod(time, period) / nondimenionalized period
+++--+                        eq.Residual = f(
+++--+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
+++-+@@ -428,10 +428,20 @@ class ModCell(dae.daeModel):
+++-+             # CCsegments implemented as discontinuous equations
+++-+             else:
+++-+                 # First segment
+++-++                print(config["segments"])
+++-+                 time = config["segments"][0][1]
+++-+                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+++-+                 eq = self.CreateEquation("Total_Current_Constraint")
+++-+-                eq.Residual = self.current() - config["segments"][0][0]
+++-++                # if it is not a functional form
+++-++                if "t" not in str(config["segments"][0][0]):
+++-++                    # check to see if it's a waveform type
+++-++                    eq.Residual = self.current() - config["segments"][0][0]
+++-++                else:  # if it is waveform, use periodic time to find the value of function
+++-++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+++-++                    # periodic time = mod(time, period) / nondimenionalized period
+++-++                    eq.Residual = f(dae.Time()/config["period"][0]
+++-++                                    - dae.Floor(dae.Time()/config["period"][0])) \
+++-++                        - self.current()
+++-+ 
+++-+                 # Middle segments
+++-+                 for i in range(1,len(config["segments"])-1):
+++-+@@ -446,15 +456,24 @@ class ModCell(dae.daeModel):
+++-+                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+++-+                         # periodic time = mod(time, period) / nondimenionalized period
+++-+                         eq.Residual = f(dae.Time()/config["period"][i]
+++-+-                                        - dae.Floor(dae.Time()/config["period"][i]))
+++-+-                        - self.current()
+++-++                                        - dae.Floor(dae.Time()/config["period"][i])) \
+++- +                            - self.current()
+++--+                        eq.CheckUnitsConsistency = False
+++--+     
+++-+                         # for some reason, this is required specifically for this equation
+++-+-                        eq.CheckUnitsConsistency = False
+++-+ 
+++-                  # Last segment
+++-                  self.ELSE()
+++-                  eq = self.CreateEquation("Total_Current_Constraint")
+++-+-                eq.Residual = self.current() - config["segments"][-1][0]
+++-++                # if it is not a functional form
+++-++                if "t" not in str(config["segments"][-1][0]):
+++-++                    # check to see if it's a waveform type
+++-++                    eq.Residual = self.current() - config["segments"][-1][0]
+++-++                else:  # if it is waveform, use periodic time to find the value of function
+++-++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+++-++                    # periodic time = mod(time, period) / nondimenionalized period
+++-++                    eq.Residual = f(dae.Time()/config["period"][-1]
+++-++                                    - dae.Floor(dae.Time()/config["period"][-1])) \
+++-++                        - self.current()
+++-++ 
+++-+                 self.END_IF()
+++-+ 
+++-+         elif self.profileType == "CVsegments":
+++-+diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+++-+index 868f764..2fa22f1 100644
+++-+--- a/tests/ref_outputs/test028/params_system.cfg
+++-++++ b/tests/ref_outputs/test028/params_system.cfg
+++-+@@ -1,19 +1,20 @@
+++-+ [Sim Params]
+++-+ #LFP ACR test for current with A instead of C-rate
+++-+-profileType = CCsegments
++++-                 # Middle segments
++++-                 for i in range(1,len(config["segments"])-1):
++++-@@ -446,15 +457,26 @@ class ModCell(dae.daeModel):
++++-                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++++-                         # periodic time = mod(time, period) / nondimenionalized period
++++-                         eq.Residual = f(dae.Time()/config["period"][i]
++++--                                        - dae.Floor(dae.Time()/config["period"][i]))
++++--                        - self.current()
++++-+                                        - dae.Floor(dae.Time()/config["period"][i])) \
++++-+                            - self.current()
++++-                         # for some reason, this is required specifically for this equation
++++-                         eq.CheckUnitsConsistency = False
++++- 
++++-                 # Last segment
++++-                 self.ELSE()
++++-                 eq = self.CreateEquation("Total_Current_Constraint")
++++--                eq.Residual = self.current() - config["segments"][-1][0]
++++-+                # if it is not a functional form
++++-+                if "t" not in str(config["segments"][-1][0]):
++++-+                    # check to see if it's a waveform type
++++-+                    eq.Residual = self.current() - config["segments"][-1][0]
++++-+                else:  # if it is waveform, use periodic time to find the value of function
++++-+                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++++-+                    # periodic time = mod(time, period) / nondimenionalized period
++++-+                    eq.Residual = f(dae.Time()/config["period"][-1]
++++-+                                    - dae.Floor(dae.Time()/config["period"][-1])) \
++++-+                        - self.current()
++++-+                    eq.CheckUnitsConsistency = False
++++-+ 
++++-                 self.END_IF()
++++- 
++++-         elif self.profileType == "CVsegments":
+++++ # Note time stepping is adaptive, variable-order stepping, so this
+++++ # affects only the interpolated output values, not simulation
+++++diff --git a/configs/params_system_LIONSIMBA.cfg b/configs/params_system_LIONSIMBA.cfg
+++++index fa08140..59001e9 100644
+++++--- a/configs/params_system_LIONSIMBA.cfg
++++++++ b/configs/params_system_LIONSIMBA.cfg
+++++@@ -7,10 +7,11 @@
+++++ profileType = CC
+++++ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+++++ # (positive for discharge, negative for charge)
+++ +-Crate = 1
+++-++profileType = CC
+++-++Crate = 0.01*sin(2*pi*t)
+++-+ Vmax = 1e10
+++-+ Vmin = -1e10
+++-+ capFrac = 0.98
+++-+ Vset = 0.12
+++-+ segments = [
+++-+-    [0.3, 0.4],
+++-+-    ['0.01*sin(2*pi*t)', 0.4],
+++-+-    ['-0.5A', 0.1],
+++-+-    ]
+++-+-period = [1e8, 1, 1e8]
+++-++    ['0.01*sin(2*pi*t)', 1],
+++-++    [0.1, 0.4],
+++-++    ['-0.15A', 0.1],
+++-++   ]
+++-++#period = [1, 1e8, 1e8]
++++++Crate = sin(2*pi*t)
+++++ #Optional nominal 1C current density for the cell, A/m^2
+++++-1C_current_density = 30
++++++#1C_current_density = 30
+++++ # Voltage cutoffs, V
+++ ++period = 1
+++++ Vmax = 5
+++++ Vmin = 2.5
+++++ # Battery applied voltage (only used for CV), V
+++++@@ -24,7 +25,7 @@ segments = [
+++++ # Options: false, absolute directory path
+++ + prevDir = false
+++++ # Final time (only used for CV), [s]
+++ +-tend = 1.2e3
+++-++tend = 60
+++-+ tsteps = 35
+++-+ relTol = 1e-6
+++-+ absTol = 1e-6
+++-+diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
+++-+index 84991f7..6aed585 100644
+++-+--- a/tests/ref_outputs/test028/sim_output/commit.diff
+++-++++ b/tests/ref_outputs/test028/sim_output/commit.diff
+++-+@@ -34,88 +34,84 @@ index 3dda645..d2af1a6 100644
+++-+  # Final time (only used for CV), [s]
+++-+  tend = 1.2e3
+++-+  # Number disc. in time
+++-+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
+++-+-index 3b318ef..08116e7 100644
+++-+---- a/mpet/config/configuration.py
+++-+-+++ b/mpet/config/configuration.py
+++-+-@@ -532,7 +532,8 @@ class Config:
+++-+-         if self['profileType'] == 'CCsegments':
+++-+-             for i in range(len(self['segments'])):
+++-+-                 segments.append((utils.get_crate(self['segments'][i][0],
+++-+--                                                 self['1C_current_density']),
+++-+-+                                                 self['1C_current_density']) * \
+++-+-+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
+++-+-                                 self["segments"][i][1]*60/self['t_ref']))
+++-+-         elif self['profileType'] == 'CVsegments':
+++-+-             for i in range(len(self['segments'])):
+++-+-@@ -541,13 +542,14 @@ class Config:
+++-+- 
+++-+-         # Current or voltage segments profiles
+++-+-         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
+++-+--        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+++-+-+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
+++-+-+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
+++-+-         if self['profileType'] == 'CCsegments':
+++-+-             segments_setvec[0] = 0.
+++-+-         elif self['profileType'] == 'CVsegments':
+++-+-             segments_setvec[0] = -(kT / constants.e) * Vref
+++-+-         tPrev = 0.
+++-+--        for segIndx in range(len(segments)):
+++-+-+        for segIndx in range(self['numsegments']):
+++-+-             tNext = tPrev + self['tramp']
+++-+-             segments_tvec[2*segIndx+1] = tNext
+++-+-             tPrev = tNext
+++-+-@@ -555,12 +557,12 @@ class Config:
+++-+-             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
+++-+-             segments_tvec[2*segIndx+2] = tNext
+++-+-             tPrev = tNext
+++-+--            setNext = segments[segIndx][0]
+++-+-+            setNext = self['segments'][segIndx][0]
+++-+-             segments_setvec[2*segIndx+1] = setNext
+++-+-             segments_setvec[2*segIndx+2] = setNext
+++-+-         segments_tvec /= self['t_ref']
+++-+-         if self['profileType'] == 'CCsegments':
+++-+--            segments_setvec /= self['curr_ref']
+++-+-+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
+++-+-         elif self['profileType'] == 'CVsegments':
+++-+-             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
+++-+-         if 'segments' in self['profileType']:
+++-+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+++-+-index d6782fb..77839c5 100644
+++-+---- a/mpet/config/schemas.py
+++-+-+++ b/mpet/config/schemas.py
+++-+-@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
+++-+-                          Optional('power', default=None): Use(float),
+++-+-                          Optional('1C_current_density', default=None): Use(float),
+++-+-                          Optional('tramp', default=0.): Use(float),
+++-+--                         Optional('period', default=1e8): Use(float),
+++-+-+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
+++-+-                          'Vmax': Use(float),
+++-+-                          'Vmin': Use(float),
+++-+-                          'Vset': Use(float),
+++-+ diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+++-+-index 2fc6da1..949e5e4 100644
+++-++index 3c3bbd1..0e156b6 100644
+++-+ --- a/mpet/mod_cell.py
+++-+ +++ b/mpet/mod_cell.py
+++-+-@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
+++-+-                     time = time+config["segments"][i][1]
+++-+-                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+++-+-                     eq = self.CreateEquation("Total_Current_Constraint")
+++-+--                    eq.Residual = self.current() - config["segments"][i][0]
+++-+--
+++-+-+                    # if it is not a functional form
+++-+-+                    if "t" not in str(config["segments"][i][0]):
+++-+-+                        # check to see if it's a waveform type
+++-+-+                        eq.Residual = self.current() - config["segments"][i][0]
+++-+-+                    else:  # if it is waveform, use periodic time to find the value of function
+++-+-+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
+++-+-+                        # periodic time = mod(time, period) / nondimenionalized period
+++-+-+                        eq.Residual = f(
+++-+-+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
+++-+-+                            - self.current()
+++-+-+                        eq.CheckUnitsConsistency = False
+++-+-+     
+++-++@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
+++-++             # CCsegments implemented as discontinuous equations
+++-++             else:
+++-++                 # First segment
+++-+++                print(config["segments"])
+++-++                 time = config["segments"][0][1]
+++-++                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
+++-++                 eq = self.CreateEquation("Total_Current_Constraint")
+++-++-                eq.Residual = self.current() - config["segments"][0][0]
+++-+++                # if it is not a functional form
+++-+++                if "t" not in str(config["segments"][0][0]):
+++-+++                    # check to see if it's a waveform type
+++-+++                    eq.Residual = self.current() - config["segments"][0][0]
+++-+++                else:  # if it is waveform, use periodic time to find the value of function
+++-+++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
+++-+++                    # periodic time = mod(time, period) / nondimenionalized period
+++-+++                    eq.Residual = f(dae.Time()/config["period"][0]
+++-+++                                    - dae.Floor(dae.Time()/config["period"][0]))
+++-+++                    - self.current()
+++-+++                    eq.CheckUnitsConsistency = False
+++-++ 
+++-++                 # Middle segments
+++-++                 for i in range(1,len(config["segments"])-1):
+++-++@@ -454,7 +465,18 @@ class ModCell(dae.daeModel):
+++-+                  # Last segment
+++-+                  self.ELSE()
+++-+                  eq = self.CreateEquation("Total_Current_Constraint")
+++-++-                eq.Residual = self.current() - config["segments"][-1][0]
+++-+++                # if it is not a functional form
+++-+++                if "t" not in str(config["segments"][-1][0]):
+++-+++                    # check to see if it's a waveform type
+++-+++                    eq.Residual = self.current() - config["segments"][-1][0]
+++-+++                else:  # if it is waveform, use periodic time to find the value of function
+++-+++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
+++-+++                    # periodic time = mod(time, period) / nondimenionalized period
+++-+++                    eq.Residual = f(dae.Time()/config["period"][-1]
+++-+++                                    - dae.Floor(dae.Time()/config["period"][-1]))
+++-+++                    - self.current()
+++-+++                    eq.CheckUnitsConsistency = False
+++-+++ 
+++-++                 self.END_IF()
+++-++ 
+++-++         elif self.profileType == "CVsegments":
+++-++diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
+++-++index 868f764..2fa22f1 100644
+++-++--- a/tests/ref_outputs/test028/params_system.cfg
+++-+++++ b/tests/ref_outputs/test028/params_system.cfg
+++-++@@ -1,19 +1,20 @@
+++-++ [Sim Params]
+++-++ #LFP ACR test for current with A instead of C-rate
+++-++-profileType = CCsegments
+++-++-Crate = 1
+++-+++profileType = CC
+++-+++Crate = 0.01*sin(2*pi*t)
+++-++ Vmax = 1e10
+++-++ Vmin = -1e10
+++-++ capFrac = 0.98
+++-++ Vset = 0.12
+++-++ segments = [
+++-++-    [0.3, 0.4],
+++-++-    ['0.01*sin(2*pi*t)', 0.4],
+++-++-    ['-0.5A', 0.1],
+++-++-    ]
+++-++-period = [1e8, 1, 1e8]
+++-+++    ['0.01*sin(2*pi*t)', 1],
+++-+++    [0.1, 0.4],
+++-+++    ['-0.15A', 0.1],
+++-+++   ]
+++-+++#period = [1, 1e8, 1e8]
+++-+++period = 1
+++-++ prevDir = false
+++-++-tend = 1.2e3
+++-+++tend = 60
+++-++ tsteps = 35
+++-++ relTol = 1e-6
+++-++ absTol = 1e-6
+++-+ 
+++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
+++-+index 0ee3b77..2967dbe 100644
+++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
+++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
+++-+index 9190390..2e11800 100644
+++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
+++-+diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
+++-+index 6c26aa3..9ada8f0 100644
+++-+Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
+++-+diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
+++-+index cb9ac97..e1bf8f1 100644
+++-+--- a/tests/ref_outputs/test028/sim_output/run_info.txt
+++-++++ b/tests/ref_outputs/test028/sim_output/run_info.txt
+++-+@@ -5,7 +5,7 @@ branch name:
+++-+ feature/mod_battery_cycle
+++-+ 
+++-+ commit hash:
+++-+-acffd69
+++-++3d40fb1
+++-+ 
+++-+ to run, from the root repo directory, copy relevant files there,
+++-+ edit input_params_system.cfg to point to correct material
+++-+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+++-+ $ patch -p1 < commit.diff:
+++-+ $ python[3] mpetrun.py input_params_system.cfg
+++-+ 
+++-+-Total run time: 0.09573698043823242 s
+++-++Total run time: 0.05446434020996094 s
++++++tend = 1200
+++++ # Number disc. in time
+++++ tsteps = 200
+++++ # Numerical Tolerances
++++ diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++++-index 868f764..52f39e0 100644
+++++index 52f39e0..6a3a125 100644
++++ --- a/tests/ref_outputs/test028/params_system.cfg
++++ +++ b/tests/ref_outputs/test028/params_system.cfg
++++-@@ -1,19 +1,20 @@
++++- [Sim Params]
++++- #LFP ACR test for current with A instead of C-rate
++++- profileType = CCsegments
++++--Crate = 1
++++-+Crate = 0.01*sin(2*pi*t)
++++- Vmax = 1e10
++++- Vmin = -1e10
+++++@@ -7,9 +7,9 @@ Vmin = -1e10
++++  capFrac = 0.98
++++  Vset = 0.12
++++  segments = [
++++--    [0.3, 0.4],
++++--    ['0.01*sin(2*pi*t)', 0.4],
++++--    ['-0.5A', 0.1],
++++--    ]
++++--period = [1e8, 1, 1e8]
++++-+    ['0.01*sin(2*pi*t)', 1],
++++-+    [0.1, 0.4],
++++-+    ['-0.15A', 0.1],
++++-+   ]
++++-+period = [1, 1e8, 1e8]
++++-+#period = 1
++++- prevDir = false
++++--tend = 1.2e3
++++-+tend = 60
++++- tsteps = 35
++++- relTol = 1e-6
++++- absTol = 1e-6
++++-diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
++++-index 84991f7..6ab6103 100644
++++---- a/tests/ref_outputs/test028/sim_output/commit.diff
++++-+++ b/tests/ref_outputs/test028/sim_output/commit.diff
++++-@@ -34,88 +34,287 @@ index 3dda645..d2af1a6 100644
++++-  # Final time (only used for CV), [s]
++++-  tend = 1.2e3
++++-  # Number disc. in time
++++--diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++++--index 3b318ef..08116e7 100644
++++----- a/mpet/config/configuration.py
++++--+++ b/mpet/config/configuration.py
++++--@@ -532,7 +532,8 @@ class Config:
++++--         if self['profileType'] == 'CCsegments':
++++--             for i in range(len(self['segments'])):
++++--                 segments.append((utils.get_crate(self['segments'][i][0],
++++---                                                 self['1C_current_density']),
++++--+                                                 self['1C_current_density']) * \
++++--+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
++++--                                 self["segments"][i][1]*60/self['t_ref']))
++++--         elif self['profileType'] == 'CVsegments':
++++--             for i in range(len(self['segments'])):
++++--@@ -541,13 +542,14 @@ class Config:
++++-- 
++++--         # Current or voltage segments profiles
++++--         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
++++---        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++++--+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++++--+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
++++--         if self['profileType'] == 'CCsegments':
++++--             segments_setvec[0] = 0.
++++--         elif self['profileType'] == 'CVsegments':
++++--             segments_setvec[0] = -(kT / constants.e) * Vref
++++--         tPrev = 0.
++++---        for segIndx in range(len(segments)):
++++--+        for segIndx in range(self['numsegments']):
++++--             tNext = tPrev + self['tramp']
++++--             segments_tvec[2*segIndx+1] = tNext
++++--             tPrev = tNext
++++--@@ -555,12 +557,12 @@ class Config:
++++--             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
++++--             segments_tvec[2*segIndx+2] = tNext
++++--             tPrev = tNext
++++---            setNext = segments[segIndx][0]
++++--+            setNext = self['segments'][segIndx][0]
++++--             segments_setvec[2*segIndx+1] = setNext
++++--             segments_setvec[2*segIndx+2] = setNext
++++--         segments_tvec /= self['t_ref']
++++--         if self['profileType'] == 'CCsegments':
++++---            segments_setvec /= self['curr_ref']
++++--+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
++++--         elif self['profileType'] == 'CVsegments':
++++--             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
++++--         if 'segments' in self['profileType']:
++++--diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
++++--index d6782fb..77839c5 100644
++++----- a/mpet/config/schemas.py
++++--+++ b/mpet/config/schemas.py
++++--@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
++++--                          Optional('power', default=None): Use(float),
++++--                          Optional('1C_current_density', default=None): Use(float),
++++--                          Optional('tramp', default=0.): Use(float),
++++---                         Optional('period', default=1e8): Use(float),
++++--+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
++++--                          'Vmax': Use(float),
++++--                          'Vmin': Use(float),
++++--                          'Vset': Use(float),
++++- diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++++--index 2fc6da1..949e5e4 100644
++++-+index 3c3bbd1..d8db287 100644
++++- --- a/mpet/mod_cell.py
++++- +++ b/mpet/mod_cell.py
++++--@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
++++--                     time = time+config["segments"][i][1]
++++--                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++++--                     eq = self.CreateEquation("Total_Current_Constraint")
++++---                    eq.Residual = self.current() - config["segments"][i][0]
++++---
++++--+                    # if it is not a functional form
++++--+                    if "t" not in str(config["segments"][i][0]):
++++--+                        # check to see if it's a waveform type
++++--+                        eq.Residual = self.current() - config["segments"][i][0]
++++--+                    else:  # if it is waveform, use periodic time to find the value of function
++++--+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++++--+                        # periodic time = mod(time, period) / nondimenionalized period
++++--+                        eq.Residual = f(
++++--+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
++++-+@@ -428,10 +428,20 @@ class ModCell(dae.daeModel):
++++-+             # CCsegments implemented as discontinuous equations
++++-+             else:
++++-+                 # First segment
++++-++                print(config["segments"])
++++-+                 time = config["segments"][0][1]
++++-+                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++++-+                 eq = self.CreateEquation("Total_Current_Constraint")
++++-+-                eq.Residual = self.current() - config["segments"][0][0]
++++-++                # if it is not a functional form
++++-++                if "t" not in str(config["segments"][0][0]):
++++-++                    # check to see if it's a waveform type
++++-++                    eq.Residual = self.current() - config["segments"][0][0]
++++-++                else:  # if it is waveform, use periodic time to find the value of function
++++-++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++++-++                    # periodic time = mod(time, period) / nondimenionalized period
++++-++                    eq.Residual = f(dae.Time()/config["period"][0]
++++-++                                    - dae.Floor(dae.Time()/config["period"][0])) \
++++-++                        - self.current()
++++-+ 
++++-+                 # Middle segments
++++-+                 for i in range(1,len(config["segments"])-1):
++++-+@@ -446,15 +456,24 @@ class ModCell(dae.daeModel):
++++-+                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++++-+                         # periodic time = mod(time, period) / nondimenionalized period
++++-+                         eq.Residual = f(dae.Time()/config["period"][i]
++++-+-                                        - dae.Floor(dae.Time()/config["period"][i]))
++++-+-                        - self.current()
++++-++                                        - dae.Floor(dae.Time()/config["period"][i])) \
++++- +                            - self.current()
++++--+                        eq.CheckUnitsConsistency = False
++++--+     
++++-+                         # for some reason, this is required specifically for this equation
++++-+-                        eq.CheckUnitsConsistency = False
++++-+ 
++++-                  # Last segment
++++-                  self.ELSE()
++++-                  eq = self.CreateEquation("Total_Current_Constraint")
++++-+-                eq.Residual = self.current() - config["segments"][-1][0]
++++-++                # if it is not a functional form
++++-++                if "t" not in str(config["segments"][-1][0]):
++++-++                    # check to see if it's a waveform type
++++-++                    eq.Residual = self.current() - config["segments"][-1][0]
++++-++                else:  # if it is waveform, use periodic time to find the value of function
++++-++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++++-++                    # periodic time = mod(time, period) / nondimenionalized period
++++-++                    eq.Residual = f(dae.Time()/config["period"][-1]
++++-++                                    - dae.Floor(dae.Time()/config["period"][-1])) \
++++-++                        - self.current()
++++-++ 
++++-+                 self.END_IF()
++++-+ 
++++-+         elif self.profileType == "CVsegments":
++++-+diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++++-+index 868f764..2fa22f1 100644
++++-+--- a/tests/ref_outputs/test028/params_system.cfg
++++-++++ b/tests/ref_outputs/test028/params_system.cfg
++++-+@@ -1,19 +1,20 @@
++++-+ [Sim Params]
++++-+ #LFP ACR test for current with A instead of C-rate
++++-+-profileType = CCsegments
++++-+-Crate = 1
++++-++profileType = CC
++++-++Crate = 0.01*sin(2*pi*t)
++++-+ Vmax = 1e10
++++-+ Vmin = -1e10
++++-+ capFrac = 0.98
++++-+ Vset = 0.12
++++-+ segments = [
++++-+-    [0.3, 0.4],
++++-+-    ['0.01*sin(2*pi*t)', 0.4],
++++-+-    ['-0.5A', 0.1],
++++-+-    ]
++++-+-period = [1e8, 1, 1e8]
++++-++    ['0.01*sin(2*pi*t)', 1],
++++-++    [0.1, 0.4],
++++-++    ['-0.15A', 0.1],
++++-++   ]
++++-++#period = [1, 1e8, 1e8]
++++-++period = 1
++++-+ prevDir = false
++++-+-tend = 1.2e3
++++-++tend = 60
++++-+ tsteps = 35
++++-+ relTol = 1e-6
++++-+ absTol = 1e-6
++++-+diff --git a/tests/ref_outputs/test028/sim_output/commit.diff b/tests/ref_outputs/test028/sim_output/commit.diff
++++-+index 84991f7..6aed585 100644
++++-+--- a/tests/ref_outputs/test028/sim_output/commit.diff
++++-++++ b/tests/ref_outputs/test028/sim_output/commit.diff
++++-+@@ -34,88 +34,84 @@ index 3dda645..d2af1a6 100644
++++-+  # Final time (only used for CV), [s]
++++-+  tend = 1.2e3
++++-+  # Number disc. in time
++++-+-diff --git a/mpet/config/configuration.py b/mpet/config/configuration.py
++++-+-index 3b318ef..08116e7 100644
++++-+---- a/mpet/config/configuration.py
++++-+-+++ b/mpet/config/configuration.py
++++-+-@@ -532,7 +532,8 @@ class Config:
++++-+-         if self['profileType'] == 'CCsegments':
++++-+-             for i in range(len(self['segments'])):
++++-+-                 segments.append((utils.get_crate(self['segments'][i][0],
++++-+--                                                 self['1C_current_density']),
++++-+-+                                                 self['1C_current_density']) * \
++++-+-+                                self["1C_current_density"] / theoretical_1C_current / self['curr_ref'],
++++-+-                                 self["segments"][i][1]*60/self['t_ref']))
++++-+-         elif self['profileType'] == 'CVsegments':
++++-+-             for i in range(len(self['segments'])):
++++-+-@@ -541,13 +542,14 @@ class Config:
++++-+- 
++++-+-         # Current or voltage segments profiles
++++-+-         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
++++-+--        segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++++-+-+        #segments_setvec = np.zeros(2 * self['numsegments'] + 1)
++++-+-+        segments_setvec = [0]*(2 * self['numsegments'] + 1)
++++-+-         if self['profileType'] == 'CCsegments':
++++-+-             segments_setvec[0] = 0.
++++-+-         elif self['profileType'] == 'CVsegments':
++++-+-             segments_setvec[0] = -(kT / constants.e) * Vref
++++-+-         tPrev = 0.
++++-+--        for segIndx in range(len(segments)):
++++-+-+        for segIndx in range(self['numsegments']):
++++-+-             tNext = tPrev + self['tramp']
++++-+-             segments_tvec[2*segIndx+1] = tNext
++++-+-             tPrev = tNext
++++-+-@@ -555,12 +557,12 @@ class Config:
++++-+-             tNext = tPrev + (self['segments'][segIndx][1] * 60 - self["tramp"])
++++-+-             segments_tvec[2*segIndx+2] = tNext
++++-+-             tPrev = tNext
++++-+--            setNext = segments[segIndx][0]
++++-+-+            setNext = self['segments'][segIndx][0]
++++-+-             segments_setvec[2*segIndx+1] = setNext
++++-+-             segments_setvec[2*segIndx+2] = setNext
++++-+-         segments_tvec /= self['t_ref']
++++-+-         if self['profileType'] == 'CCsegments':
++++-+--            segments_setvec /= self['curr_ref']
++++-+-+            segments_setvec = [utils.get_crate(i, self['1C_current_density'])* self["1C_current_density"]/theoretical_1C_current / self['curr_ref'] for i in segments_setvec]
++++-+-         elif self['profileType'] == 'CVsegments':
++++-+-             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
++++-+-         if 'segments' in self['profileType']:
++++-+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
++++-+-index d6782fb..77839c5 100644
++++-+---- a/mpet/config/schemas.py
++++-+-+++ b/mpet/config/schemas.py
++++-+-@@ -58,7 +58,7 @@ system = {'Sim Params': {'profileType': lambda x:
++++-+-                          Optional('power', default=None): Use(float),
++++-+-                          Optional('1C_current_density', default=None): Use(float),
++++-+-                          Optional('tramp', default=0.): Use(float),
++++-+--                         Optional('period', default=1e8): Use(float),
++++-+-+                         Optional('period', default=1e8): Or(Use(float), Use(lambda x: np.array(ast.literal_eval(x)))),
++++-+-                          'Vmax': Use(float),
++++-+-                          'Vmin': Use(float),
++++-+-                          'Vset': Use(float),
++++-+ diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
++++-+-index 2fc6da1..949e5e4 100644
++++-++index 3c3bbd1..0e156b6 100644
++++-+ --- a/mpet/mod_cell.py
++++-+ +++ b/mpet/mod_cell.py
++++-+-@@ -438,8 +438,18 @@ class ModCell(dae.daeModel):
++++-+-                     time = time+config["segments"][i][1]
++++-+-                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++++-+-                     eq = self.CreateEquation("Total_Current_Constraint")
++++-+--                    eq.Residual = self.current() - config["segments"][i][0]
++++-+--
++++-+-+                    # if it is not a functional form
++++-+-+                    if "t" not in str(config["segments"][i][0]):
++++-+-+                        # check to see if it's a waveform type
++++-+-+                        eq.Residual = self.current() - config["segments"][i][0]
++++-+-+                    else:  # if it is waveform, use periodic time to find the value of function
++++-+-+                        f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
++++-+-+                        # periodic time = mod(time, period) / nondimenionalized period
++++-+-+                        eq.Residual = f(
++++-+-+                            dae.Time()/config["period"][i] - dae.Floor(dae.Time()/config["period"][i])) \
++++-+-+                            - self.current()
++++-+-+                        eq.CheckUnitsConsistency = False
++++-+-+     
++++-++@@ -428,10 +428,21 @@ class ModCell(dae.daeModel):
++++-++             # CCsegments implemented as discontinuous equations
++++-++             else:
++++-++                 # First segment
++++-+++                print(config["segments"])
++++-++                 time = config["segments"][0][1]
++++-++                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
++++-++                 eq = self.CreateEquation("Total_Current_Constraint")
++++-++-                eq.Residual = self.current() - config["segments"][0][0]
++++-+++                # if it is not a functional form
++++-+++                if "t" not in str(config["segments"][0][0]):
++++-+++                    # check to see if it's a waveform type
++++-+++                    eq.Residual = self.current() - config["segments"][0][0]
++++-+++                else:  # if it is waveform, use periodic time to find the value of function
++++-+++                    f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
++++-+++                    # periodic time = mod(time, period) / nondimenionalized period
++++-+++                    eq.Residual = f(dae.Time()/config["period"][0]
++++-+++                                    - dae.Floor(dae.Time()/config["period"][0]))
++++-+++                    - self.current()
++++-+++                    eq.CheckUnitsConsistency = False
++++-++ 
++++-++                 # Middle segments
++++-++                 for i in range(1,len(config["segments"])-1):
++++-++@@ -454,7 +465,18 @@ class ModCell(dae.daeModel):
++++-+                  # Last segment
++++-+                  self.ELSE()
++++-+                  eq = self.CreateEquation("Total_Current_Constraint")
++++-++-                eq.Residual = self.current() - config["segments"][-1][0]
++++-+++                # if it is not a functional form
++++-+++                if "t" not in str(config["segments"][-1][0]):
++++-+++                    # check to see if it's a waveform type
++++-+++                    eq.Residual = self.current() - config["segments"][-1][0]
++++-+++                else:  # if it is waveform, use periodic time to find the value of function
++++-+++                    f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
++++-+++                    # periodic time = mod(time, period) / nondimenionalized period
++++-+++                    eq.Residual = f(dae.Time()/config["period"][-1]
++++-+++                                    - dae.Floor(dae.Time()/config["period"][-1]))
++++-+++                    - self.current()
++++-+++                    eq.CheckUnitsConsistency = False
++++-+++ 
++++-++                 self.END_IF()
++++-++ 
++++-++         elif self.profileType == "CVsegments":
++++-++diff --git a/tests/ref_outputs/test028/params_system.cfg b/tests/ref_outputs/test028/params_system.cfg
++++-++index 868f764..2fa22f1 100644
++++-++--- a/tests/ref_outputs/test028/params_system.cfg
++++-+++++ b/tests/ref_outputs/test028/params_system.cfg
++++-++@@ -1,19 +1,20 @@
++++-++ [Sim Params]
++++-++ #LFP ACR test for current with A instead of C-rate
++++-++-profileType = CCsegments
++++-++-Crate = 1
++++-+++profileType = CC
++++-+++Crate = 0.01*sin(2*pi*t)
++++-++ Vmax = 1e10
++++-++ Vmin = -1e10
++++-++ capFrac = 0.98
++++-++ Vset = 0.12
++++-++ segments = [
++++-++-    [0.3, 0.4],
++++-++-    ['0.01*sin(2*pi*t)', 0.4],
++++-++-    ['-0.5A', 0.1],
++++-++-    ]
++++-++-period = [1e8, 1, 1e8]
++++-+++    ['0.01*sin(2*pi*t)', 1],
++++-+++    [0.1, 0.4],
++++-+++    ['-0.15A', 0.1],
++++-+++   ]
++++-+++#period = [1, 1e8, 1e8]
++++-+++period = 1
++++-++ prevDir = false
++++-++-tend = 1.2e3
++++-+++tend = 60
++++-++ tsteps = 35
++++-++ relTol = 1e-6
++++-++ absTol = 1e-6
++++-+ 
++++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
++++-+index 0ee3b77..2967dbe 100644
++++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
++++-+diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
++++-+index 9190390..2e11800 100644
++++-+Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
++++-+diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
++++-+index 6c26aa3..9ada8f0 100644
++++-+Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
++++-+diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
++++-+index cb9ac97..e1bf8f1 100644
++++-+--- a/tests/ref_outputs/test028/sim_output/run_info.txt
++++-++++ b/tests/ref_outputs/test028/sim_output/run_info.txt
++++-+@@ -5,7 +5,7 @@ branch name:
++++-+ feature/mod_battery_cycle
++++-+ 
++++-+ commit hash:
++++-+-acffd69
++++-++3d40fb1
++++-+ 
++++-+ to run, from the root repo directory, copy relevant files there,
++++-+ edit input_params_system.cfg to point to correct material
++++-+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
++++-+ $ patch -p1 < commit.diff:
++++-+ $ python[3] mpetrun.py input_params_system.cfg
++++-+ 
++++-+-Total run time: 0.09573698043823242 s
++++-++Total run time: 0.05446434020996094 s
++++- 
++++-diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
++++-index 0ee3b77..1a3921f 100644
++++-Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
++++-diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
++++-index 9190390..bf25511 100644
++++-Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
++++-diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
++++-index 6c26aa3..8cf5f10 100644
++++-Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
++++-diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
++++-index cb9ac97..03ca822 100644
++++---- a/tests/ref_outputs/test028/sim_output/run_info.txt
++++-+++ b/tests/ref_outputs/test028/sim_output/run_info.txt
++++-@@ -5,7 +5,7 @@ branch name:
++++- feature/mod_battery_cycle
++++- 
++++- commit hash:
++++--acffd69
++++-+3d40fb1
++++- 
++++- to run, from the root repo directory, copy relevant files there,
++++- edit input_params_system.cfg to point to correct material
++++-@@ -14,4 +14,4 @@ $ git checkout [commit hash]
++++- $ patch -p1 < commit.diff:
++++- $ python[3] mpetrun.py input_params_system.cfg
++++- 
++++--Total run time: 0.09573698043823242 s
++++-+Total run time: 0.057442426681518555 s
+++++-    ['0.01*sin(2*pi*t)', 1],
+++++-    [0.1, 0.4],
+++++-    ['-0.15A', 0.1],
++++++    ['sin(2*pi*t)', 1],
++++++   # [0, 0.4],
++++++   # ['-0.00001A', 0.1],
+++++    ]
+++++ period = [1, 1e8, 1e8]
+++++ #period = 1
+++  
+++ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
+++-index 0ee3b77..1a3921f 100644
++++index e4068cc..6740f17 100644
+++ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
+++ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
+++-index 9190390..bf25511 100644
++++index 4aae34e..de44171 100644
+++ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
+++ diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
+++-index 6c26aa3..8cf5f10 100644
++++index 0efad78..641a0d8 100644
+++ Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
+++ diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
+++-index cb9ac97..03ca822 100644
++++index f1ad722..a67c968 100644
+++ --- a/tests/ref_outputs/test028/sim_output/run_info.txt
+++ +++ b/tests/ref_outputs/test028/sim_output/run_info.txt
+++ @@ -5,7 +5,7 @@ branch name:
+++  feature/mod_battery_cycle
+++  
+++  commit hash:
+++--acffd69
+++-+3d40fb1
++++-3d40fb1
+++++6eee7f0
+++  
+++  to run, from the root repo directory, copy relevant files there,
+++  edit input_params_system.cfg to point to correct material
+++@@ -518,6 +675,6 @@ index cb9ac97..03ca822 100644
+++  $ patch -p1 < commit.diff:
+++  $ python[3] mpetrun.py input_params_system.cfg
+++  
+++--Total run time: 0.09573698043823242 s
+++-+Total run time: 0.057442426681518555 s
++++-Total run time: 0.06772828102111816 s
+++++Total run time: 0.10134100914001465 s
++  
++ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
++-index 0ee3b77..1a3921f 100644
+++index e4068cc..d793436 100644
++ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
++ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
++-index 9190390..bf25511 100644
+++index 4aae34e..4b759e6 100644
++ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
++ diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
++-index 6c26aa3..8cf5f10 100644
+++index 0efad78..65548bf 100644
++ Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
++ diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
++-index cb9ac97..03ca822 100644
+++index f1ad722..8034738 100644
++ --- a/tests/ref_outputs/test028/sim_output/run_info.txt
++ +++ b/tests/ref_outputs/test028/sim_output/run_info.txt
++ @@ -5,7 +5,7 @@ branch name:
++  feature/mod_battery_cycle
++  
++  commit hash:
++--acffd69
++-+3d40fb1
+++-3d40fb1
++++6eee7f0
++  
++  to run, from the root repo directory, copy relevant files there,
++  edit input_params_system.cfg to point to correct material
++@@ -518,6 +1293,6 @@ index cb9ac97..03ca822 100644
++  $ patch -p1 < commit.diff:
++  $ python[3] mpetrun.py input_params_system.cfg
++  
++--Total run time: 0.09573698043823242 s
++-+Total run time: 0.057442426681518555 s
+++-Total run time: 0.06772828102111816 s
++++Total run time: 0.11667823791503906 s
+  
+ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
+-index 0ee3b77..1a3921f 100644
++index e4068cc..fb37113 100644
+ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
+ diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
+-index 9190390..bf25511 100644
++index 4aae34e..b772c54 100644
+ Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
+ diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
+-index 6c26aa3..8cf5f10 100644
++index 0efad78..803f568 100644
+ Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
+ diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
+-index cb9ac97..03ca822 100644
++index f1ad722..c1bb7a4 100644
+ --- a/tests/ref_outputs/test028/sim_output/run_info.txt
+ +++ b/tests/ref_outputs/test028/sim_output/run_info.txt
+ @@ -5,7 +5,7 @@ branch name:
+  feature/mod_battery_cycle
+  
+  commit hash:
+--acffd69
+-+3d40fb1
++-3d40fb1
+++6eee7f0
+  
+  to run, from the root repo directory, copy relevant files there,
+  edit input_params_system.cfg to point to correct material
+@@ -518,6 +1904,6 @@ index cb9ac97..03ca822 100644
+  $ patch -p1 < commit.diff:
+  $ python[3] mpetrun.py input_params_system.cfg
+  
+--Total run time: 0.09573698043823242 s
+-+Total run time: 0.057442426681518555 s
++-Total run time: 0.06772828102111816 s
+++Total run time: 0.08576250076293945 s
  
 diff --git a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p
-index 0ee3b77..1a3921f 100644
+index e4068cc..f23dca0 100644
 Binary files a/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p and b/tests/ref_outputs/test028/sim_output/input_dict_derived_values.p differ
 diff --git a/tests/ref_outputs/test028/sim_output/input_dict_system.p b/tests/ref_outputs/test028/sim_output/input_dict_system.p
-index 9190390..bf25511 100644
+index 4aae34e..231d7fa 100644
 Binary files a/tests/ref_outputs/test028/sim_output/input_dict_system.p and b/tests/ref_outputs/test028/sim_output/input_dict_system.p differ
 diff --git a/tests/ref_outputs/test028/sim_output/output_data.mat b/tests/ref_outputs/test028/sim_output/output_data.mat
-index 6c26aa3..8cf5f10 100644
+index 0efad78..79b35e7 100644
 Binary files a/tests/ref_outputs/test028/sim_output/output_data.mat and b/tests/ref_outputs/test028/sim_output/output_data.mat differ
 diff --git a/tests/ref_outputs/test028/sim_output/run_info.txt b/tests/ref_outputs/test028/sim_output/run_info.txt
-index cb9ac97..03ca822 100644
+index f1ad722..81dc59b 100644
 --- a/tests/ref_outputs/test028/sim_output/run_info.txt
 +++ b/tests/ref_outputs/test028/sim_output/run_info.txt
 @@ -5,7 +5,7 @@ branch name:
  feature/mod_battery_cycle
  
  commit hash:
--acffd69
-+3d40fb1
+-3d40fb1
++6eee7f0
  
  to run, from the root repo directory, copy relevant files there,
  edit input_params_system.cfg to point to correct material
@@ -518,6 +2525,6 @@ index cb9ac97..03ca822 100644
  $ patch -p1 < commit.diff:
  $ python[3] mpetrun.py input_params_system.cfg
  
--Total run time: 0.09573698043823242 s
-+Total run time: 0.057442426681518555 s
+-Total run time: 0.06772828102111816 s
++Total run time: 0.08999037742614746 s
 

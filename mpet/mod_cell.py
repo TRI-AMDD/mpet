@@ -388,7 +388,7 @@ class ModCell(dae.daeModel):
                     f = sym.lambdify(t, config["currset"], modules="numpy")
                     # periodic time = mod(time, period) / nondimenionalized period
                     eq.Residual = f(
-                        dae.Time()/config["period"] - dae.Floor(dae.Time()/config["period"])) \
+                        dae.Time() - dae.Floor(dae.Time()/config["period"])*config["period"]) \
                         - self.current()
         elif self.profileType == "CV":
             # Keep applied potential constant
@@ -438,9 +438,8 @@ class ModCell(dae.daeModel):
                 else:  # if it is waveform, use periodic time to find the value of function
                     f = sym.lambdify(t, config["segments"][0][0], modules="numpy")
                     # periodic time = mod(time, period) / nondimenionalized period
-                    eq.Residual = f(dae.Time()/config["period"][0]
-                                    - dae.Floor(dae.Time()/config["period"][0])) \
-                        - self.current()
+                    eq.Residual = f(dae.Time() - dae.Floor(dae.Time()
+                                    / config["period"][0])*config["period"][0]) - self.current()
                     eq.CheckUnitsConsistency = False
 
                 # Middle segments
@@ -455,8 +454,8 @@ class ModCell(dae.daeModel):
                     else:  # if it is waveform, use periodic time to find the value of function
                         f = sym.lambdify(t, config["segments"][i][0], modules="numpy")
                         # periodic time = mod(time, period) / nondimenionalized period
-                        eq.Residual = f(dae.Time()/config["period"][i]
-                                        - dae.Floor(dae.Time()/config["period"][i])) \
+                        eq.Residual = f(dae.Time() - dae.Floor(dae.Time()
+                                        / config["period"][i])*config["period"][i]) \
                             - self.current()
                         # for some reason, this is required specifically for this equation
                         eq.CheckUnitsConsistency = False
@@ -471,9 +470,8 @@ class ModCell(dae.daeModel):
                 else:  # if it is waveform, use periodic time to find the value of function
                     f = sym.lambdify(t, config["segments"][-1][0], modules="numpy")
                     # periodic time = mod(time, period) / nondimenionalized period
-                    eq.Residual = f(dae.Time()/config["period"][-1]
-                                    - dae.Floor(dae.Time()/config["period"][-1])) \
-                        - self.current()
+                    eq.Residual = f(dae.Time() - dae.Floor(dae.Time()
+                                    / config["period"][-1])*config["period"][-1]) - self.current()
                     eq.CheckUnitsConsistency = False
 
                 self.END_IF()
