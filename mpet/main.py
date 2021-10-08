@@ -199,18 +199,10 @@ def main(paramfile, keepArchive=True):
     except Exception:
         pass
 
-    # Copy simulation output to current directory
-    tmpDir_name = "sim_output"
-    tmpDir = os.path.join(os.getcwd(), tmpDir_name)
-    try:
-        os.makedirs(tmpDir)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
-    for fname in os.listdir(outdir):
-        tocopy = os.path.join(outdir, fname)
-        if os.path.isfile(tocopy):
-            shutil.copy(tocopy, tmpDir)
-
-    if not keepArchive:
-        shutil.rmtree(outdir)
+    # Copy or move simulation output to current directory
+    tmpDir = os.path.join(os.getcwd(), "sim_output")
+    shutil.rmtree(tmpDir, ignore_errors=True)
+    if keepArchive:
+        shutil.copytree(outdir, tmpDir)
+    else:
+        shutil.move(outdir, tmpDir)
