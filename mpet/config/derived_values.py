@@ -3,7 +3,7 @@ import numpy as np
 from mpet import props_am
 from mpet.exceptions import UnknownParameterError
 from mpet.config import constants
-from mpet.mod_cell import get_elyte_function
+from mpet.props_elyte import get_elyte_function
 
 
 class DerivedValues:
@@ -192,8 +192,8 @@ class DerivedValues:
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
-            elyte_funcion = get_elyte_function(self.config)
-            return elyte_funcion()[-1]
+            elyte_function = get_elyte_function(self.config)
+            return elyte_function()[-1]
 
     def z(self):
         """Electrode capacity ratio

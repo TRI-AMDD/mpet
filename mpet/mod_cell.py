@@ -10,17 +10,14 @@ This includes the equations defining
 import daetools.pyDAE as dae
 from pyUnits import s
 
-import sys
-import os
-import importlib
 import numpy as np
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
-import mpet.props_elyte as props_elyte
 import mpet.utils as utils
+from mpet.props_elyte import get_elyte_function
 from mpet.config import constants
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
 
@@ -480,32 +477,6 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION((self.phi_applied() >= config["phimax"])
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
-
-
-def get_elyte_function(config):
-    """
-    Get function defining the properties of the electrolyte.
-    This can be either from a custom file, or from props_elyte.py if
-    no file is specified.
-
-    :param Config config: MPET configuration
-
-    :return: electrolye function
-    """
-    print('in elyte func')
-    if config["SMset_filename"] is None:
-        elyte_func = getattr(props_elyte,config["SMset"])
-    else:
-        filename = config["SMset_filename"]
-        if not os.path.isabs(filename):
-            filename = os.path.join(config.path, filename)
-        folder = os.path.dirname(os.path.abspath(filename))
-        module_name = os.path.splitext(os.path.basename(filename))[0]
-        sys.path.insert(0, folder)
-        elyte_module = importlib.import_module(module_name)
-        elyte_func = getattr(elyte_module, config["SMset"])
-        sys.path.pop(0)
-    return elyte_func
 
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
