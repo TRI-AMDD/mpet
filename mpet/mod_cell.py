@@ -10,6 +10,9 @@ This includes the equations defining
 import daetools.pyDAE as dae
 from pyUnits import s
 
+import sys
+import os
+import importlib
 import numpy as np
 
 import mpet.extern_funcs as extern_funcs
@@ -479,6 +482,32 @@ class ModCell(dae.daeModel):
                               setVariableValues=[(self.endCondition, 2)])
 
 
+def get_elyte_function(config):
+    """
+    Get function defining the properties of the electrolyte.
+    This can be either from a custom file, or from props_elyte.py if
+    no file is specified.
+
+    :param Config config: MPET configuration
+
+    :return: electrolye function
+    """
+    print('in elyte func')
+    if config["SMset_filename"] is None:
+        elyte_func = getattr(props_elyte,config["SMset"])
+    else:
+        filename = config["SMset_filename"]
+        if not os.path.isabs(filename):
+            filename = os.path.join(config.path, filename)
+        folder = os.path.dirname(os.path.abspath(filename))
+        module_name = os.path.splitext(os.path.basename(filename))[0]
+        sys.path.insert(0, folder)
+        elyte_module = importlib.import_module(module_name)
+        elyte_func = getattr(elyte_module, config["SMset"])
+        sys.path.pop(0)
+    return elyte_func
+
+
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
     zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
     nu = nup + num
@@ -503,7 +532,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
+        elyte_function = get_elyte_function(config)
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)

@@ -119,6 +119,7 @@ system = {'Sim Params': {'profileType': lambda x:
                           'nup': Use(int),
                           'num': Use(int),
                           'elyteModelType': str,
+                          Optional('SMset_filename', default=None): str,
                           'SMset': str,
                           'n': Use(int),
                           'sp': Use(int),
