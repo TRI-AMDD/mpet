@@ -1,4 +1,8 @@
 """This module handles properties associated with the active materials."""
+import importlib
+import os
+import sys
+import types
 import numpy as np
 
 import mpet.geometry as geo
@@ -57,8 +61,13 @@ class muRfuncs():
         self.eokT = constants.e / (constants.k * constants.T_ref)
         self.kToe = 1. / self.eokT
 
-        # Convert "muRfunc" to a callable function
-        self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+        # If the user provided a filename with muRfuncs, try to load
+        # the function from there
+        if self.get_trode_param("muRfunc_filename") is not None:
+            self.muRfunc = self.load_external_function()
+        else:
+            # no filename was provided, load muRfunc from this file
+            self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
 
     def get_trode_param(self, item):
         """
@@ -69,6 +78,30 @@ class muRfuncs():
         if self.ind is not None and item in self.config.params_per_particle:
             value = value[self.ind]
         return value
+
+    def load_external_function(self):
+        """
+        Load muRfunc from a file that is not part of mpet
+        """
+        filename = self.get_trode_param("muRfunc_filename")
+        if not os.path.isabs(filename):
+            filename = os.path.join(self.config.path, filename)
+        folder = os.path.dirname(os.path.abspath(filename))
+        module_name = os.path.splitext(os.path.basename(filename))[0]
+
+        # Import module  which contains the function we seek,
+        # we need to call import_module because the module import is dependent
+        # on a variable name
+        # the following lines scan be interpreted as
+        #   from [muRfunc_filename] import [muRfunc]
+        sys.path.insert(0, folder)
+        muRmodule = importlib.import_module(module_name)
+        muRfunc = getattr(muRmodule, self.get_trode_param("muRfunc"))
+        sys.path.pop(0)
+
+        # We have to make sure the function knows what 'self' is with
+        # the types.MethodType function
+        return types.MethodType(muRfunc, self)
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
