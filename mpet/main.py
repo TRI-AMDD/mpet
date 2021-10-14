@@ -82,7 +82,7 @@ def run_simulation(config, outdir):
     except Exception as e:
         print(str(e))
         simulation.ReportData(simulation.CurrentTime)
-        raise
+        pass
     except KeyboardInterrupt:
         print("\nphi_applied at ctrl-C:",
               simulation.m.phi_applied.GetValue(), "\n")
