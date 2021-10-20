@@ -13,38 +13,8 @@ function of c (electrolyte concentration, M)
 T in these equations is nondimensionalized wrt 298K
 """
 
-import os
-import sys
-import importlib
 import numpy as np
 from mpet.config import constants
-
-
-def get_elyte_function(config):
-    """
-    Get function defining the properties of the electrolyte.
-    This can be either from a custom file, or from props_elyte.py if
-    no file is specified.
-
-    :param Config config: MPET configuration
-
-    :return: electrolye function
-    """
-    if config["SMset_filename"] is None:
-        # use the SMset from the this file
-        # globals()[var] is like importing [var] from the current  file
-        elyte_func = globals()[config["SMset"]]
-    else:
-        filename = config["SMset_filename"]
-        if not os.path.isabs(filename):
-            filename = os.path.join(config.path, filename)
-        folder = os.path.dirname(os.path.abspath(filename))
-        module_name = os.path.splitext(os.path.basename(filename))[0]
-        sys.path.insert(0, folder)
-        elyte_module = importlib.import_module(module_name)
-        elyte_func = getattr(elyte_module, config["SMset"])
-        sys.path.pop(0)
-    return elyte_func
 
 
 def LiClO4_PC():

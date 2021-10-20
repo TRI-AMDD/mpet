@@ -447,6 +447,9 @@ class Config:
         self._scale_macroscopic_parameters(Vref)
         self._scale_current_voltage_segments(theoretical_1C_current, Vref)
 
+        # ensure paths tare absolute
+        self._make_paths_absolute()
+
         if prevDir:
             # load particle distrubtions etc. from previous run
             self.read(prevDir, full=False)
@@ -570,6 +573,23 @@ class Config:
         self['segments_setvec'] = segments_setvec
         if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
             self['tend'] = np.abs(self['capFrac'] / self['currset'])
+
+    def _make_paths_absolute(self):
+        """
+        Make paths in config absolute. This only applies to paths used in MPET simulations,
+        not to the cathode/anode parameter files and prevDir.
+        """
+        # filenames in global config
+        for key in ["SMset_filename"]:
+            path = self[key]
+            if path is not None and not os.path.isabs(path):
+                self[key] = os.path.normpath(os.path.join(self.path, path))
+        # filenames in trode config
+        for key in ["rxnType_filename", "muRfunc_filename"]:
+            for trode in self['trodes']:
+                path = self[trode, key]
+                if path is not None and not os.path.isabs(path):
+                    self[key] = os.path.normpath(os.path.join(self.path, path))
 
     def _distr_part(self):
         """

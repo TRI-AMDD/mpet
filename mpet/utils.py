@@ -1,6 +1,8 @@
 import subprocess as subp
 
 import os
+import sys
+import importlib
 import numpy as np
 import h5py
 import scipy.io as sio
@@ -140,3 +142,37 @@ def get_dict_key(data, string, squeeze=True, final=False):
         return np.squeeze(data[string][...])
     else:  # returns entire array
         return data[string][...]
+
+
+def import_function(filename, function, mpet_module=None):
+    """Load a function from a file that is not part of MPET, with a fallback to MPET internal
+    functions.
+
+    :param Config config: MPET configuration
+    :param str filename: .py file containing the function to import. None to load from mpet_module
+                         instead
+    :param str function: Name of the function to import
+    :param str mpet_module: MPET module to import function from if no filename is set (optional)
+
+    :return: A callable function
+    """
+    if filename is None:
+        # no filename set, load function from mpet itself
+        module = importlib.import_module(mpet_module)
+    else:
+        # Import module  which contains the function we seek,
+        # we need to call import_module because the module import is dependent
+        # on a variable name.
+        # sys.path is used to temporarily add the folder containig the module we
+        # need to import to the Python search path for imports
+        # the following lines can be interpreted as "import <module_name>"
+        folder = os.path.dirname(os.path.abspath(filename))
+        module_name = os.path.splitext(os.path.basename(filename))[0]
+        sys.path.insert(0, folder)
+        module = importlib.import_module(module_name)
+        sys.path.pop(0)
+
+    # import the function from the module
+    callable_function = getattr(module, function)
+
+    return callable_function

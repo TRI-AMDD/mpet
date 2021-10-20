@@ -11,9 +11,6 @@ In each model class it has options for different types of particles:
 These models can be instantiated from the mod_cell module to simulate various types of active
 materials within a battery electrode.
 """
-import os
-import sys
-import importlib
 import daetools.pyDAE as dae
 import numpy as np
 import scipy.sparse as sprs
@@ -24,35 +21,7 @@ import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
-import mpet.electrode.reactions as reactions
 from mpet.daeVariableTypes import mole_frac_t
-
-
-def get_reaction_function(config, trode):
-    """
-    Get function defining the reaction rates
-    This can be either from a custom file, or from reactions.py if
-    no file is specified.
-
-    :param Config config: MPET configuration
-    :param str trode: electrode to get reaction function for
-
-    :return: reaction rate function
-    """
-    if config[trode, "rxnType_filename"] is None:
-        # use the reaction rate function from mpet.electrodes.reactions
-        rxn_func = getattr(reactions, config[trode, "rxnType"])
-    else:
-        filename = config[trode, "rxnType_filename"]
-        if not os.path.isabs(filename):
-            filename = os.path.join(config.path, filename)
-        folder = os.path.dirname(os.path.abspath(filename))
-        module_name = os.path.splitext(os.path.basename(filename))[0]
-        sys.path.insert(0, folder)
-        rxn_module = importlib.import_module(module_name)
-        rxn_func = getattr(rxn_module, config[trode, "rxnType"])
-        sys.path.pop(0)
-    return rxn_func
 
 
 class Mod2var(dae.daeModel):
@@ -93,7 +62,9 @@ class Mod2var(dae.daeModel):
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
         # Get reaction rate function
-        self.calc_rxn_rate = get_reaction_function(config, trode)
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   config[trode, "rxnType"],
+                                                   mpet_module="mpet.electrode.reactions")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -332,7 +303,9 @@ class Mod1var(dae.daeModel):
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
         # Get reaction rate function
-        self.calc_rxn_rate = get_reaction_function(config, trode)
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   config[trode, "rxnType"],
+                                                   mpet_module="mpet.electrode.reactions")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
