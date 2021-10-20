@@ -425,6 +425,9 @@ class Config:
             raise Exception('The config can be processed only once as values are scaled in-place')
         self.config_processed = True
 
+        # ensure paths are absolute
+        self._make_paths_absolute()
+
         # set the random seed (do this before generating any random distributions)
         if self.D_s['randomSeed']:
             np.random.seed(self.D_s['seed'])
@@ -446,9 +449,6 @@ class Config:
             Vref -= self['a', 'phiRef']
         self._scale_macroscopic_parameters(Vref)
         self._scale_current_voltage_segments(theoretical_1C_current, Vref)
-
-        # ensure paths tare absolute
-        self._make_paths_absolute()
 
         if prevDir:
             # load particle distrubtions etc. from previous run
@@ -583,13 +583,13 @@ class Config:
         for key in ["SMset_filename"]:
             path = self[key]
             if path is not None and not os.path.isabs(path):
-                self[key] = os.path.normpath(os.path.join(self.path, path))
+                self[key] = os.path.abspath(os.path.join(self.path, path))
         # filenames in trode config
-        for key in ["rxnType_filename", "muRfunc_filename"]:
+        for key in ["rxnType_filename", "muRfunc_filename", "Dfunc_filename"]:
             for trode in self['trodes']:
                 path = self[trode, key]
                 if path is not None and not os.path.isabs(path):
-                    self[key] = os.path.normpath(os.path.join(self.path, path))
+                    self[trode, key] = os.path.abspath(os.path.join(self.path, path))
 
     def _distr_part(self):
         """
