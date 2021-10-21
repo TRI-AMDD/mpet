@@ -36,7 +36,7 @@ jobs:
     - name: Install daetools via conda
       run: |
         conda activate mpet-env
-        conda install -c https://conda.lipsum.eu -c conda-forge daetools python=${{ matrix.python-version }} pip
+        conda install -c conda-forge daetools python=${{ matrix.python-version }} pip
 
     - name: Install additional dependencies using mpet's setup.py
       run: |
