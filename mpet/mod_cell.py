@@ -14,6 +14,7 @@ import numpy as np
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
+import mpet.mod_CCCVCPcycle as mod_CCCVCPcycle
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.props_elyte as props_elyte
@@ -24,7 +25,8 @@ from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
 # Dictionary of end conditions
 endConditions = {
     1:"Vmax reached",
-    2:"Vmin reached"}
+    2:"Vmin reached",
+    3:"End condition for CCCVCPcycle reached"}
 
 
 class ModCell(dae.daeModel):
@@ -155,6 +157,15 @@ class ModCell(dae.daeModel):
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
 
+        # if cycling, set current port to cycling module
+        if self.profileType == "CCCVCPcycle":
+            self.portsOutSys = ports.portFromSys(
+                'portSys', dae.eOutletPort, self, "System port to cycling branch")
+            pCycle = mod_CCCVCPcycle.CCCVCPcycle
+            self.cycle = pCycle(config, Name="CCCVCPcycle", Parent=self)
+            self.ConnectPorts(self.portsOutSys,
+                              self.cycle.portInSys)
+
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
 
@@ -164,6 +175,17 @@ class ModCell(dae.daeModel):
         Nvol = config["Nvol"]
         Npart = config["Npart"]
         Nlyte = np.sum(list(Nvol.values()))
+
+        # if cycling, set current port to cycling module
+        if self.profileType == "CCCVCPcycle":
+            eq = self.CreateEquation("current_port")
+            eq.Residual = self.current() - self.cycle.current()
+            eq = self.CreateEquation("endCondition_port")
+            eq.Residual = self.endCondition() - self.cycle.endCondition()
+            eq = self.CreateEquation("phi_applied_port")
+            eq.Residual = self.phi_applied() - self.cycle.phi_applied()
+            eq = self.CreateEquation("ffrac_limtrode_port")
+            eq.Residual = self.ffrac[config['limtrode']]() - self.cycle.ffrac_limtrode()
 
         # Define the overall filling fraction in the electrodes
         for trode in trodes:
@@ -467,7 +489,7 @@ class ModCell(dae.daeModel):
             eq.CheckUnitsConsistency = False
 
         # Ending conditions for the simulation
-        if self.profileType in ["CC", "CCsegments"]:
+        if self.profileType in ["CC", "CCsegments", "CV", "CVsegments", "CCCVCPcycle"]:
             # Vmax reached
             self.ON_CONDITION((self.phi_applied() <= config["phimin"])
                               & (self.endCondition() < 1),
@@ -477,6 +499,12 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION((self.phi_applied() >= config["phimax"])
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
+
+            if self.profileType == "CCCVCPcycle":
+                # we need to set the end condition outside for some reason
+                self.ON_CONDITION((self.cycle.cycle_number() >= config["totalCycle"]+1)
+                                  & (self.endCondition() < 1),
+                                  setVariableValues=[(self.endCondition, 3)])
 
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
