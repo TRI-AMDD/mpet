@@ -3,9 +3,12 @@ import subprocess as subp
 import os
 import numpy as np
 import h5py
+import re
 import scipy.io as sio
 
 import daetools.pyDAE as dae
+
+from sympy.parsing.sympy_parser import parse_expr
 
 
 def mean_linear(a):

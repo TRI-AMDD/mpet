@@ -8,8 +8,8 @@ from pyUnits import s
 import daetools.pyDAE as dae
 import mpet.ports as ports
 import numpy as np
+import sympy as sym
 
-from mpet.daeVariableTypes import *
 from mpet.daeVariableTypes import elec_pot_t
 
 
@@ -62,7 +62,6 @@ class CCCVCPcycle(dae.daeModel):
 
         config = self.config
 
-        totalCycle = config["totalCycle"]
         limtrode = config["limtrode"]
 
         seg_array = np.array(config["segments"])
@@ -74,7 +73,8 @@ class CCCVCPcycle(dae.daeModel):
         equation_type = seg_array[:,5]
         maccor_step_number = np.ones(seg_array.shape[0])
 
-        print(seg_array)
+        # declare useful variable if function
+        t = sym.Symbol("t")
 
         if seg_array.shape[1] == 7:
             # if we also contain maccor step segments
@@ -94,7 +94,8 @@ class CCCVCPcycle(dae.daeModel):
             self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
             eq = self.CreateEquation("Constraint_start")
             eq.Residual = self.current() + self.last_current() / \
-                config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) - self.last_current()
+                config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) - \
+                self.last_current()
             self.ELSE()
             eq = self.CreateEquation("Constraint_start")
             eq.Residual = self.current()
@@ -131,12 +132,12 @@ class CCCVCPcycle(dae.daeModel):
             self.STATE("state_" + str(i))
             new_state = "state_" + str(i+1)
             # if is CC charge, we set up equation and voltage cutoff
-            # calculates time condition--if difference between current and prev start time is larger than time cutoff
-            # switch to next section
-            # for our conditions for switching transition states, because we have multiple different conditions
-            # for switching transition states. if they are none the default to switch is always false for that
-            # condition
-            # we use self.time_counter() < 0 as a default false condition because daeTools does not accept False
+            # calculates time condition--if difference between current and prev start time is
+            # larger than time cutof switch to next section
+            # for our conditions for switching transition states, because we have multiple
+            # different conditions. for switching transition states. if they are none the default
+            # to switch is always false for that condition we use self.time_counter() < 0 as a
+            # default false condition because daeTools does not accept False
             # if it is not None, we use a cutoff
             # if time is past the first cutoff, switch to nextstate
             time_cond = (
@@ -160,7 +161,8 @@ class CCCVCPcycle(dae.daeModel):
                     self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current() + self.last_current() / \
-                        config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) - self.last_current()
+                        config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) - \
+                        self.last_current()
                     self.ELSE()
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current()
@@ -182,11 +184,14 @@ class CCCVCPcycle(dae.daeModel):
                     # broken
                     self.ON_CONDITION(time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
-                                                         (self.maccor_cycle_counter, self.maccor_cycle_counter() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
+                                                         (self.maccor_cycle_counter,
+                                                          self.maccor_cycle_counter() + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
 
                 else:
@@ -209,14 +214,16 @@ class CCCVCPcycle(dae.daeModel):
 
             elif equation_type[i] == 1:
 
-                print("1", str(constraints[i]))
                 if "t" not in str(constraints[i]):
                     # if not waveform input, set to constant value
                     if config["tramp"] > 0:
-                        self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
+                        self.IF(dae.Time() < self.time_counter()
+                                + dae.Constant(config["tramp"]*s))
                         eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - ((constraints[i] - self.last_current())/config["tramp"] * (
-                            dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current())
+                        eq.Residual = self.current() - ((constraints[i] - self.last_current())
+                                                        / config["tramp"]
+                                                        * (dae.Time() - self.time_counter())
+                                                        / dae.Constant(1*s) + self.last_current())
                         self.ELSE()
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.current() - constraints[i]
@@ -231,20 +238,21 @@ class CCCVCPcycle(dae.daeModel):
                     # lambdifies waveform so that we can run with numpy functions
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
-                                    - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+                                    - dae.Floor((dae.Time()-self.time_counter())
+                                                / dae.Constant(per*s))) - self.current()
 
                 # if hits voltage cutoff, switch to next state
                 # if no voltage/capfrac cutoffs exist, automatically true, else is condition
                 v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() >= -voltage_cutoffs[i])
+                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() >=
+                                                              -voltage_cutoffs[i])
                 # capacity fraction depends on cathode/anode. if charging, we cut off at
                 # the capfrac
                 cap_cond = (
                     self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() <= 1 -
-                     capfrac_cutoffs[i]) if limtrode == "c" else (
+                        0 * s)) if capfrac_cutoffs[i] is None else (
+                    (self.ffrac_limtrode()
+                        <= 1 - capfrac_cutoffs[i]) if limtrode == "c" else (
                         self.ffrac_limtrode() >= capfrac_cutoffs[i]))
                 # for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                 # if end state, then we send back to state 0 and also add one to cycle_number
@@ -253,10 +261,12 @@ class CCCVCPcycle(dae.daeModel):
                     # broken
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
 
                 else:
@@ -266,7 +276,8 @@ class CCCVCPcycle(dae.daeModel):
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 # add new variable to assign +1 -1 for charge/discharge
@@ -276,12 +287,15 @@ class CCCVCPcycle(dae.daeModel):
 
                 if "t" not in str(constraints[i]):
                     if config["tramp"] > 0:
-                        # if tramp, we use a ramp step to hit the value for better numerical stability
+                        # if tramp, we use a ramp step to hit the value for better numerical
+                        # stability
                         # if not waveform input, set to constant value
                         self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                         eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - ((constraints[i] - self.last_phi_applied())/config["tramp"] * (
-                            dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_phi_applied())
+                        eq.Residual = self.phi_applied() - \
+                            ((constraints[i] - self.last_phi_applied())/config["tramp"] * (
+                                dae.Time() - self.time_counter())/dae.Constant(1*s)
+                                + self.last_phi_applied())
                         self.ELSE()
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.phi_applied() - constraints[i]
@@ -296,21 +310,33 @@ class CCCVCPcycle(dae.daeModel):
                     f = sym.lambdify(t, constraints[i], modules="numpy")
                     # lambdifies waveform so that we can run with numpy functions
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor(
-                        (dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+                    eq.Residual = f(
+                        (dae.Time()
+                         - self.time_counter())
+                        / dae.Constant(
+                            per
+                            * s)
+                        - dae.Floor(
+                            (dae.Time()
+                             - self.time_counter())
+                            / dae.Constant(
+                                per
+                                * s)))
+                    - self.phi_applied()
 
-               # capacity fraction in battery is found by the filling fraction of the limiting electrode
-                # if is anode, will be capped at cap_frac, if is cathode needs to be capped at 1-cap_frac
-                # calc capacity and curr conditions (since Crate neg, we need to flip sign) to cut off crate
-                # crate cutoff instead of voltage cutoff compared to CC
+                # capacity fraction in battery is found by the filling fraction of the limiting
+                # electrode
+                # if is anode, will be capped at cap_frac, if is cathode needs to be capped at
+                # 1-cap_frac
+                # calc capacity and curr conditions (since Crate neg, we need to flip sign) to cut
+                # off crate cutoff instead of voltage cutoff compared to CC
                 crate_cond = (self.time_counter() < dae.Constant(
                     0*s)) if crate_cutoffs[i] is None else (-self.current() <= -crate_cutoffs[i])
                 cap_cond = (
                     self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() <= 1 -
-                     capfrac_cutoffs[i]) if limtrode == "c" else (
+                        0 * s)) if capfrac_cutoffs[i] is None else (
+                    (self.ffrac_limtrode() <= 1
+                     - capfrac_cutoffs[i]) if limtrode == "c" else (
                         self.ffrac_limtrode() >= capfrac_cutoffs[i]))
                 # equation: constraining voltage
                 # if past cap_frac, switch to next state
@@ -319,17 +345,20 @@ class CCCVCPcycle(dae.daeModel):
                     # checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                 else:
-                   # checks if crate, cap frac, or time segment conditions are broken
+                    # checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
 
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 eq.Residual = self.charge_discharge() - 1
@@ -341,8 +370,12 @@ class CCCVCPcycle(dae.daeModel):
                     # if not waveform input, set to constant value
                     self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ((constraints[i] - self.last_current()*(self.last_phi_applied(
-                    ) + ndDVref))/config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current()*(self.last_phi_applied() + ndDVref))
+                    eq.Residual = self.current() * (self.phi_applied() + ndDVref) \
+                        - ((constraints[i] - self.last_current()
+                           * (self.last_phi_applied() + ndDVref))
+                           / config["tramp"] * (dae.Time() - self.time_counter())
+                           / dae.Constant(1 * s)
+                           + self.last_current() * (self.last_phi_applied() + ndDVref))
                     self.ELSE()
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
@@ -351,21 +384,21 @@ class CCCVCPcycle(dae.daeModel):
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
 
-                #eq = self.CreateEquation("Constraint_" + str(i))
-                #eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
+                # eq = self.CreateEquation("Constraint_" + str(i))
+                # eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
-                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
-                # since discharging is delithiating anode and charging is lithiating anode
+                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
+                # cathode since discharging is delithiating anode and charging is lithiating anode
                 cap_cond = (
                     self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1 -
-                     capfrac_cutoffs[i]) if limtrode == "c" else (
+                        0 * s)) if capfrac_cutoffs[i] is None else (
+                    (self.ffrac_limtrode() >= 1
+                     - capfrac_cutoffs[i]) if limtrode == "c" else (
                         self.ffrac_limtrode() <= capfrac_cutoffs[i]))
                 # voltage cutoff
                 v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <= -voltage_cutoffs[i])
+                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <=
+                                                              - voltage_cutoffs[i])
                 crate_cond = (self.time_counter() < dae.Constant(
                     0*s)) if crate_cutoffs[i] is None else (-self.current() <= -crate_cutoffs[i])
                 # if end state, then we set endCondition to 3
@@ -373,32 +406,35 @@ class CCCVCPcycle(dae.daeModel):
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                             self.phi_applied())])
 
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 eq.Residual = self.charge_discharge() + 1
 
             elif equation_type[i] == 4:
 
-                print("4", str(constraints[i]))
-
                 if "t" not in str(constraints[i]):
                     # if not waveform input, set to constant value
                     if config["tramp"] > 0:
                         self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                         eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - ((constraints[i] - self.last_current())/config["tramp"] * (
-                            dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current())
+                        eq.Residual = self.current() - ((constraints[i] - self.last_current())
+                                                        / config["tramp"]
+                                                        * (dae.Time() - self.time_counter())
+                                                        / dae.Constant(1*s) + self.last_current())
                         self.ELSE()
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.current() - constraints[i]
@@ -415,37 +451,41 @@ class CCCVCPcycle(dae.daeModel):
                     # lambdifies waveform so that we can run with numpy functions
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
-                                    - dae.Floor((dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.current()
+                                    - dae.Floor((dae.Time()-self.time_counter())
+                                                / dae.Constant(per*s))) - self.current()
 
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
-                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
-                # since discharging is delithiating anode and charging is lithiating anode
+                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
+                # cathode since discharging is delithiating anode and charging is lithiating anode
                 cap_cond = (
                     self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1 -
-                     capfrac_cutoffs[i]) if limtrode == "c" else (
+                        0 * s)) if capfrac_cutoffs[i] is None else (
+                    (self.ffrac_limtrode() >= 1
+                     - capfrac_cutoffs[i]) if limtrode == "c" else (
                         self.ffrac_limtrode() <= capfrac_cutoffs[i]))
                 # voltage cutoff
                 v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <= -voltage_cutoffs[i])
+                    0*s)) if voltage_cutoffs[i] is None else \
+                    (-self.phi_applied() <= -voltage_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
 
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 eq.Residual = self.charge_discharge() + 1
@@ -454,12 +494,16 @@ class CCCVCPcycle(dae.daeModel):
                 # if CV discharge, we set up
                 if "t" not in str(constraints[i]):
                     if config["tramp"] > 0:
-                        # if tramp, we use a ramp step to hit the value for better numerical stability
+                        # if tramp, we use a ramp step to hit the value for better numerical
+                        # stability
                         # if not waveform input, set to constant value
-                        self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
+                        self.IF(dae.Time() < self.time_counter()
+                                + dae.Constant(config["tramp"]*s))
                         eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - ((constraints[i] - self.last_phi_applied())/config["tramp"] * (
-                            dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_phi_applied())
+                        eq.Residual = self.phi_applied() - \
+                            ((constraints[i] - self.last_phi_applied())/config["tramp"]
+                             * (dae.Time() - self.time_counter())/dae.Constant(1*s)
+                             + self.last_phi_applied())
                         self.ELSE()
                         eq = self.CreateEquation("Constraint_" + str(i))
                         eq.Residual = self.phi_applied() - constraints[i]
@@ -474,8 +518,9 @@ class CCCVCPcycle(dae.daeModel):
                     f = sym.lambdify(t, constraints[i], modules="numpy")
                     # lambdifies waveform so that we can run with numpy functions
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s) - dae.Floor(
-                        (dae.Time()-self.time_counter())/dae.Constant(per*s))) - self.phi_applied()
+                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
+                                    - dae.Floor((dae.Time()-self.time_counter())
+                                                / dae.Constant(per*s))) - self.phi_applied()
 
                 # conditions for cutting off: hits capacity fraction cutoff
                 cap_cond = (
@@ -497,16 +542,19 @@ class CCCVCPcycle(dae.daeModel):
                 if i == len(constraints)-1:
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                 else:
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
 
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 eq.Residual = self.charge_discharge() + 1
@@ -518,8 +566,12 @@ class CCCVCPcycle(dae.daeModel):
                     # if not waveform input, set to constant value
                     self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = self.current()*(self.phi_applied() + ndDVref) - ((constraints[i] - self.last_current()*(self.last_phi_applied(
-                    ) + ndDVref))/config["tramp"] * (dae.Time() - self.time_counter())/dae.Constant(1*s) + self.last_current()*(self.last_phi_applied() + ndDVref))
+                    eq.Residual = self.current()*(self.phi_applied() + ndDVref) - \
+                        ((constraints[i] - self.last_current()
+                          * (self.last_phi_applied() + ndDVref))
+                         / config["tramp"] * (dae.Time() - self.time_counter())
+                         / dae.Constant(1*s) + self.last_current()
+                         * (self.last_phi_applied() + ndDVref))
                     self.ELSE()
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
@@ -529,7 +581,8 @@ class CCCVCPcycle(dae.daeModel):
                     eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
 
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
-                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a cathode
+                # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
+                # cathode
                 # conditions for cutting off: hits capacity fraction cutoff
                 cap_cond = (
                     self.time_counter() < dae.Constant(
@@ -546,23 +599,27 @@ class CCCVCPcycle(dae.daeModel):
                     self.current() <= crate_cutoffs[i])
                 # voltage cutoff
                 v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <= -voltage_cutoffs[i])
+                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <=
+                                                              -voltage_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number() + 1),
+                                      setVariableValues=[(self.cycle_number, self.cycle_number()
+                                                          + 1),
                                                          (self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
                                       setVariableValues=[(self.time_counter, dae.Time()),
                                                          (self.last_current, self.current()),
-                                                         (self.last_phi_applied, self.phi_applied())])
+                                                         (self.last_phi_applied,
+                                                          self.phi_applied())])
 
                 eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
                 eq.Residual = self.charge_discharge() - 1
