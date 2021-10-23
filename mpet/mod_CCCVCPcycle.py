@@ -8,7 +8,6 @@ from pyUnits import s
 import daetools.pyDAE as dae
 import mpet.ports as ports
 import numpy as np
-import sympy as sym
 
 from mpet.daeVariableTypes import elec_pot_t
 
@@ -72,9 +71,6 @@ class CCCVCPcycle(dae.daeModel):
         time_cutoffs = seg_array[:,4]
         equation_type = seg_array[:,5]
         maccor_step_number = np.ones(seg_array.shape[0])
-
-        # declare useful variable if function
-        t = sym.Symbol("t")
 
         if seg_array.shape[1] == 7:
             # if we also contain maccor step segments
@@ -214,32 +210,22 @@ class CCCVCPcycle(dae.daeModel):
 
             elif equation_type[i] == 1:
 
-                if "t" not in str(constraints[i]):
-                    # if not waveform input, set to constant value
-                    if config["tramp"] > 0:
-                        self.IF(dae.Time() < self.time_counter()
-                                + dae.Constant(config["tramp"]*s))
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - ((constraints[i] - self.last_current())
-                                                        / config["tramp"]
-                                                        * (dae.Time() - self.time_counter())
-                                                        / dae.Constant(1*s) + self.last_current())
-                        self.ELSE()
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - constraints[i]
-                        self.END_IF()
-                    else:
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - constraints[i]
-                else:
-                    # to recover units in dimless time
-                    per = config["period"][i]
-                    f = sym.lambdify(t, constraints[i], modules="numpy")
-                    # lambdifies waveform so that we can run with numpy functions
+                # if not waveform input, set to constant value
+                if config["tramp"] > 0:
+                    self.IF(dae.Time() < self.time_counter()
+                            + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
-                                    - dae.Floor((dae.Time()-self.time_counter())
-                                                / dae.Constant(per*s))) - self.current()
+                    eq.Residual = self.current() - ((constraints[i] - self.last_current())
+                                                    / config["tramp"]
+                                                    * (dae.Time() - self.time_counter())
+                                                    / dae.Constant(1*s) + self.last_current())
+                    self.ELSE()
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.current() - constraints[i]
+                    self.END_IF()
+                else:
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.current() - constraints[i]
 
                 # if hits voltage cutoff, switch to next state
                 # if no voltage/capfrac cutoffs exist, automatically true, else is condition
@@ -285,44 +271,23 @@ class CCCVCPcycle(dae.daeModel):
 
             elif equation_type[i] == 2:
 
-                if "t" not in str(constraints[i]):
-                    if config["tramp"] > 0:
-                        # if tramp, we use a ramp step to hit the value for better numerical
-                        # stability
-                        # if not waveform input, set to constant value
-                        self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - \
-                            ((constraints[i] - self.last_phi_applied())/config["tramp"] * (
-                                dae.Time() - self.time_counter())/dae.Constant(1*s)
-                                + self.last_phi_applied())
-                        self.ELSE()
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - constraints[i]
-                        self.END_IF()
-                    else:
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - constraints[i]
-                else:
-                    # use periodic time units of mod(Time, period), but need to multiply by period
-                    # to recover units in dimless time
-                    per = config["period"][i]
-                    f = sym.lambdify(t, constraints[i], modules="numpy")
-                    # lambdifies waveform so that we can run with numpy functions
+                if config["tramp"] > 0:
+                    # if tramp, we use a ramp step to hit the value for better numerical
+                    # stability
+                    # if not waveform input, set to constant value
+                    self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f(
-                        (dae.Time()
-                         - self.time_counter())
-                        / dae.Constant(
-                            per
-                            * s)
-                        - dae.Floor(
-                            (dae.Time()
-                             - self.time_counter())
-                            / dae.Constant(
-                                per
-                                * s)))
-                    - self.phi_applied()
+                    eq.Residual = self.phi_applied() - \
+                        ((constraints[i] - self.last_phi_applied())/config["tramp"] * (
+                            dae.Time() - self.time_counter())/dae.Constant(1*s)
+                            + self.last_phi_applied())
+                    self.ELSE()
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.phi_applied() - constraints[i]
+                    self.END_IF()
+                else:
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.phi_applied() - constraints[i]
 
                 # capacity fraction in battery is found by the filling fraction of the limiting
                 # electrode
@@ -364,6 +329,7 @@ class CCCVCPcycle(dae.daeModel):
                 eq.Residual = self.charge_discharge() - 1
 
             elif equation_type[i] == 3:
+
                 # constant power charge
                 if config["tramp"] > 0:
                     # if tramp, we use a ramp step to hit the value for better numerical stability
@@ -426,34 +392,23 @@ class CCCVCPcycle(dae.daeModel):
 
             elif equation_type[i] == 4:
 
-                if "t" not in str(constraints[i]):
-                    # if not waveform input, set to constant value
-                    if config["tramp"] > 0:
-                        self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - ((constraints[i] - self.last_current())
-                                                        / config["tramp"]
-                                                        * (dae.Time() - self.time_counter())
-                                                        / dae.Constant(1*s) + self.last_current())
-                        self.ELSE()
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - constraints[i]
-                        self.END_IF()
-                    else:
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.current() - constraints[i]
-                        # if not waveform input, set to constant value
-                else:
-                    # use periodic time units of mod(Time, period), but need to multiply by period
-                    # to recover units in dimless time
-                    per = config["period"][i]
-                    f = sym.lambdify(t, constraints[i], modules="numpy")
-                    # lambdifies waveform so that we can run with numpy functions
+                # if not waveform input, set to constant value
+                if config["tramp"] > 0:
+                    self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
-                                    - dae.Floor((dae.Time()-self.time_counter())
-                                                / dae.Constant(per*s))) - self.current()
+                    eq.Residual = self.current() - ((constraints[i] - self.last_current())
+                                                    / config["tramp"]
+                                                    * (dae.Time() - self.time_counter())
+                                                    / dae.Constant(1*s) + self.last_current())
+                    self.ELSE()
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.current() - constraints[i]
+                    self.END_IF()
+                else:
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.current() - constraints[i]
 
+                # if not waveform input, set to constant value
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
                 # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
                 # cathode since discharging is delithiating anode and charging is lithiating anode
@@ -492,35 +447,24 @@ class CCCVCPcycle(dae.daeModel):
             elif equation_type[i] == 5:
 
                 # if CV discharge, we set up
-                if "t" not in str(constraints[i]):
-                    if config["tramp"] > 0:
-                        # if tramp, we use a ramp step to hit the value for better numerical
-                        # stability
-                        # if not waveform input, set to constant value
-                        self.IF(dae.Time() < self.time_counter()
-                                + dae.Constant(config["tramp"]*s))
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - \
-                            ((constraints[i] - self.last_phi_applied())/config["tramp"]
-                             * (dae.Time() - self.time_counter())/dae.Constant(1*s)
-                             + self.last_phi_applied())
-                        self.ELSE()
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - constraints[i]
-                        self.END_IF()
-                    else:
-                        eq = self.CreateEquation("Constraint_" + str(i))
-                        eq.Residual = self.phi_applied() - constraints[i]
-                else:
-                    # use periodic time units of mod(Time, period), but need to multiply by period
-                    # to recover units in dimless time
-                    per = config["period"][i]
-                    f = sym.lambdify(t, constraints[i], modules="numpy")
-                    # lambdifies waveform so that we can run with numpy functions
+                if config["tramp"] > 0:
+                    # if tramp, we use a ramp step to hit the value for better numerical
+                    # stability
+                    # if not waveform input, set to constant value
+                    self.IF(dae.Time() < self.time_counter()
+                            + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
-                    eq.Residual = f((dae.Time()-self.time_counter())/dae.Constant(per*s)
-                                    - dae.Floor((dae.Time()-self.time_counter())
-                                                / dae.Constant(per*s))) - self.phi_applied()
+                    eq.Residual = self.phi_applied() - \
+                        ((constraints[i] - self.last_phi_applied())/config["tramp"]
+                         * (dae.Time() - self.time_counter())/dae.Constant(1*s)
+                         + self.last_phi_applied())
+                    self.ELSE()
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.phi_applied() - constraints[i]
+                    self.END_IF()
+                else:
+                    eq = self.CreateEquation("Constraint_" + str(i))
+                    eq.Residual = self.phi_applied() - constraints[i]
 
                 # conditions for cutting off: hits capacity fraction cutoff
                 cap_cond = (
