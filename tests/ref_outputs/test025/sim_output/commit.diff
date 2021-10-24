@@ -1,0 +1,1211 @@
+diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+index 40e27d6..b6fd0bc 100644
+--- a/configs/params_system.cfg
++++ b/configs/params_system.cfg
+@@ -4,10 +4,14 @@
+ 
+ [Sim Params]
+ # Constant voltage or current or segments of one of them
+-# Options: CV, CC, CCsegments, CVsegments
+-profileType = CC
++# Options: CV, CC, CCsegments, CVsegments, CCCVCPcycle
++profileType = CCCVCPcycle
+ # Battery (dis)charge c-rate (only used for CC), number of capacities / hr
+ # (positive for discharge, negative for charge)
++# It can also be set in units of A/m^2 (in which case, append A to the value
++# of the current density as in "1A")
++# If using wavefunction form, write it as a function of t (time) in min
++# in sympy format.
+ Crate = 1
+ # Optional nominal 1C current density for the cell, A/m^2
+ # 1C_current_density = 12.705
+@@ -18,16 +22,28 @@ Vmin = 2.0
+ Vset = 0.12
+ # Battery constant power (only used for CP), W/m^2
+ power = 1
++# Total number of cycles to perform. Only used in CCCVCPcycle. Optional, default
++# is 1
++totalCycle = 4
+ # CC/CV segments defining profile for profileType = CCsegments or CVsegments
+ # Segments are input as a list of tuples, with the first entry of each
+ # row being the setpoint (CC or CV) and the second being the time (in
+ # minutes) for which that setpoint is held.
++# Functional current forms need to be included as '1A'
+ # This can have as many rows (segments) as desired.
+ # Note: It's okay to leave commented lines within the segments list
++# CCCVCP sgegments are also okay:
++# if we use CCCVCPsegments for cycling, the structure of our table should be like
++# segments = [(CC_setpoint/CV_setpoint/CP_setpoint, voltage_cutoff,
++# capacity_cutoff, C-rate_cutoff, time_cutoff,
++# type_of_charge(0=increment_step, 1=CCcharge, 2=CVcharge, 3=CPcharge,
++# 4=CCdischarge, 5=CVdischarge, 6=CPdischarge)), ...]
+ segments = [
+-    (0.3, 0.4),
+-    #            (0, 0.2),
+-    (-0.5, 0.1),
++#    [0.3, 0.4],
++#    #    ['1A', 0.4],
++#    [-0.5, 0.1],
++        [-1, None, 0.95, None, None, 1],
++        [1, None, 0.05, None, None, 4],
+     ]
+ # Continuation directory. If false, begin a fresh simulation with the
+ # specified input parameters here. Otherwise, this should be the
+@@ -37,8 +53,13 @@ segments = [
+ # and Npart options).
+ # Options: false, absolute directory path
+ prevDir = false
++# Period: if using periodic wavefunction in CC, this is the period for the
++# wavefunction in use in min.
++# If we have waveform functions in our segments, then we will have a list of
++# size the number of steps, where period(i) is the period for the ith step,
++# with 0's if there is no period. Optional, default if 1e8
+ # Final time (only used for CV), [s]
+-tend = 1.2e3
++tend = 5e4
+ # Number disc. in time
+ # Note time stepping is adaptive, variable-order stepping, so this
+ # affects only the interpolated output values, not simulation
+@@ -62,7 +83,7 @@ seed = 0
+ # printing internal variable concentrations) files. hdf5 files
+ # are better for cycling, as they store less information and there is less
+ # opening/rewriting of files. Default is mat
+-dataReporter = hdf5
++dataReporter = mat
+ # Series resistance, [Ohm m^2]
+ Rser = 0.
+ # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
+@@ -106,8 +127,8 @@ specified_psd_c = False
+ specified_psd_a = False
+ # Initial electrode filling fractions
+ # (for disch, anode starts full, cathode starts empty)
+-cs0_c = 0.01
+-cs0_a = 0.99
++cs0_c = 0.95
++cs0_a = 0.05
+ 
+ [Conductivity]
+ # Simulate bulk cathode conductivity (Ohm's Law)?
+diff --git a/tests/ref_outputs/test004/sim_output/daetools_config_options.txt b/tests/ref_outputs/test004/sim_output/daetools_config_options.txt
+index d2bbfe9..c07d654 100644
+--- a/tests/ref_outputs/test004/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test004/sim_output/daetools_config_options.txt
+@@ -31,7 +31,7 @@
+         },
+         "activity": {
+             "printHeader": "false",
+-            "printStats": "true",
++            "printStats": "false",
+             "timeHorizon": "100.0",
+             "reportingInterval": "1.0",
+             "reportTimeDerivatives": "false",
+diff --git a/tests/ref_outputs/test004/sim_output/output_data.mat b/tests/ref_outputs/test004/sim_output/output_data.mat
+index 6d343cd..ad8b1ef 100644
+Binary files a/tests/ref_outputs/test004/sim_output/output_data.mat and b/tests/ref_outputs/test004/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test004/sim_output/run_info.txt b/tests/ref_outputs/test004/sim_output/run_info.txt
+index 2382f07..1bca012 100644
+--- a/tests/ref_outputs/test004/sim_output/run_info.txt
++++ b/tests/ref_outputs/test004/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.6
++0.1.5
+ 
+ branch name:
+-regression_tests
++fix/finite_volumes
+ 
+ commit hash:
+-283b554
++85d2a26
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 4.919374227523804 s
++Total run time: 2.438649892807007 s
+diff --git a/tests/ref_outputs/test009/params_c.cfg b/tests/ref_outputs/test009/params_c.cfg
+index 8282582..10e2c3a 100644
+--- a/tests/ref_outputs/test009/params_c.cfg
++++ b/tests/ref_outputs/test009/params_c.cfg
+@@ -8,7 +8,7 @@ thickness = 20e-9
+ muRfunc = LiC6
+ logPad = false
+ noise = true
+-noise_prefac = 1e-4
++noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+ Omega_b = 5.761532e-21
+diff --git a/tests/ref_outputs/test009/sim_output/commit.diff b/tests/ref_outputs/test009/sim_output/commit.diff
+index b688754..8b13789 100644
+--- a/tests/ref_outputs/test009/sim_output/commit.diff
++++ b/tests/ref_outputs/test009/sim_output/commit.diff
+@@ -1,14 +1 @@
+-diff --git a/tests/ref_outputs/test009/params_c.cfg b/tests/ref_outputs/test009/params_c.cfg
+-index 10e2c3a..8282582 100644
+---- a/tests/ref_outputs/test009/params_c.cfg
+-+++ b/tests/ref_outputs/test009/params_c.cfg
+-@@ -8,7 +8,7 @@ thickness = 20e-9
+- muRfunc = LiC6
+- logPad = false
+- noise = true
+--noise_prefac = 1e-6
+-+noise_prefac = 1e-4
+- numnoise = 200
+- Omega_a = 1.8560e-20
+- Omega_b = 5.761532e-21
+ 
+diff --git a/tests/ref_outputs/test009/sim_output/daetools_config_options.txt b/tests/ref_outputs/test009/sim_output/daetools_config_options.txt
+index d2bbfe9..c07d654 100644
+--- a/tests/ref_outputs/test009/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test009/sim_output/daetools_config_options.txt
+@@ -31,7 +31,7 @@
+         },
+         "activity": {
+             "printHeader": "false",
+-            "printStats": "true",
++            "printStats": "false",
+             "timeHorizon": "100.0",
+             "reportingInterval": "1.0",
+             "reportTimeDerivatives": "false",
+diff --git a/tests/ref_outputs/test009/sim_output/input_params_c.cfg b/tests/ref_outputs/test009/sim_output/input_params_c.cfg
+index 8282582..10e2c3a 100644
+--- a/tests/ref_outputs/test009/sim_output/input_params_c.cfg
++++ b/tests/ref_outputs/test009/sim_output/input_params_c.cfg
+@@ -8,7 +8,7 @@ thickness = 20e-9
+ muRfunc = LiC6
+ logPad = false
+ noise = true
+-noise_prefac = 1e-4
++noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+ Omega_b = 5.761532e-21
+diff --git a/tests/ref_outputs/test009/sim_output/output_data.mat b/tests/ref_outputs/test009/sim_output/output_data.mat
+index 49da935..bf33ba1 100644
+Binary files a/tests/ref_outputs/test009/sim_output/output_data.mat and b/tests/ref_outputs/test009/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test009/sim_output/run_info.txt b/tests/ref_outputs/test009/sim_output/run_info.txt
+index 51171e4..698e5f7 100644
+--- a/tests/ref_outputs/test009/sim_output/run_info.txt
++++ b/tests/ref_outputs/test009/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.6
++0.1.5
+ 
+ branch name:
+-regression_tests
++fix/finite_volumes
+ 
+ commit hash:
+-64c5c91
++85d2a26
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 4.10085916519165 s
++Total run time: 0.34839534759521484 s
+diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
+index 2a339ee..8ba06c3 100644
+--- a/tests/ref_outputs/test010/params_c.cfg
++++ b/tests/ref_outputs/test010/params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = true
++noise = false
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+diff --git a/tests/ref_outputs/test010/sim_output/daetools_config_options.txt b/tests/ref_outputs/test010/sim_output/daetools_config_options.txt
+index 89c9d5d..c07d654 100644
+--- a/tests/ref_outputs/test010/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test010/sim_output/daetools_config_options.txt
+@@ -20,7 +20,7 @@
+                     "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+                 ],
+                 "simplifyExpressions": "false",
+-                "evaluationMode": "computeStack_OpenMP",
++                "evaluationMode": "evaluationTree_OpenMP",
+                 "evaluationTree_OpenMP": {
+                     "numThreads": "0"
+                 },
+@@ -31,7 +31,7 @@
+         },
+         "activity": {
+             "printHeader": "false",
+-            "printStats": "true",
++            "printStats": "false",
+             "timeHorizon": "100.0",
+             "reportingInterval": "1.0",
+             "reportTimeDerivatives": "false",
+diff --git a/tests/ref_outputs/test010/sim_output/input_params_c.cfg b/tests/ref_outputs/test010/sim_output/input_params_c.cfg
+index 2a339ee..8ba06c3 100644
+--- a/tests/ref_outputs/test010/sim_output/input_params_c.cfg
++++ b/tests/ref_outputs/test010/sim_output/input_params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = true
++noise = false
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+diff --git a/tests/ref_outputs/test010/sim_output/output_data.mat b/tests/ref_outputs/test010/sim_output/output_data.mat
+index 0db2916..491a427 100644
+Binary files a/tests/ref_outputs/test010/sim_output/output_data.mat and b/tests/ref_outputs/test010/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test010/sim_output/run_info.txt b/tests/ref_outputs/test010/sim_output/run_info.txt
+index 9125164..db5c70e 100644
+--- a/tests/ref_outputs/test010/sim_output/run_info.txt
++++ b/tests/ref_outputs/test010/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.6
++0.1.5
+ 
+ branch name:
+-regression_tests
++fix/finite_volumes
+ 
+ commit hash:
+-b53e65b
++85d2a26
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 0.6807479858398438 s
++Total run time: 1.1364917755126953 s
+diff --git a/tests/ref_outputs/test011/params_c.cfg b/tests/ref_outputs/test011/params_c.cfg
+index b522b7c..e382371 100644
+--- a/tests/ref_outputs/test011/params_c.cfg
++++ b/tests/ref_outputs/test011/params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = true
++noise = false
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+diff --git a/tests/ref_outputs/test011/sim_output/commit.diff b/tests/ref_outputs/test011/sim_output/commit.diff
+index d2b94f8..8b13789 100644
+--- a/tests/ref_outputs/test011/sim_output/commit.diff
++++ b/tests/ref_outputs/test011/sim_output/commit.diff
+@@ -1,27 +1 @@
+-diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
+-index 8ba06c3..2a339ee 100644
+---- a/tests/ref_outputs/test010/params_c.cfg
+-+++ b/tests/ref_outputs/test010/params_c.cfg
+-@@ -7,7 +7,7 @@ thickness = 20e-9
+- [Material]
+- muRfunc = LiC6
+- logPad = false
+--noise = false
+-+noise = true
+- noise_prefac = 1e-6
+- numnoise = 200
+- Omega_a = 1.8560e-20
+-diff --git a/tests/ref_outputs/test011/params_c.cfg b/tests/ref_outputs/test011/params_c.cfg
+-index e382371..b522b7c 100644
+---- a/tests/ref_outputs/test011/params_c.cfg
+-+++ b/tests/ref_outputs/test011/params_c.cfg
+-@@ -7,7 +7,7 @@ thickness = 20e-9
+- [Material]
+- muRfunc = LiC6
+- logPad = false
+--noise = false
+-+noise = true
+- noise_prefac = 1e-6
+- numnoise = 200
+- Omega_a = 1.8560e-20
+ 
+diff --git a/tests/ref_outputs/test011/sim_output/daetools_config_options.txt b/tests/ref_outputs/test011/sim_output/daetools_config_options.txt
+index b97175f..c07d654 100644
+--- a/tests/ref_outputs/test011/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test011/sim_output/daetools_config_options.txt
+@@ -79,7 +79,7 @@
+             "NonlinConvCoefIC": "0.0033",
+             "MaxNumStepsIC": "5",
+             "MaxNumJacsIC": "4",
+-            "MaxNumItersIC": "100",
++            "MaxNumItersIC": "10",
+             "LineSearchOffIC": "false",
+             "gmres": {
+                 "kspace": "30",
+diff --git a/tests/ref_outputs/test011/sim_output/input_params_c.cfg b/tests/ref_outputs/test011/sim_output/input_params_c.cfg
+index b522b7c..e382371 100644
+--- a/tests/ref_outputs/test011/sim_output/input_params_c.cfg
++++ b/tests/ref_outputs/test011/sim_output/input_params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = true
++noise = false
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+diff --git a/tests/ref_outputs/test011/sim_output/output_data.mat b/tests/ref_outputs/test011/sim_output/output_data.mat
+index 6298fb6..ddbb848 100644
+Binary files a/tests/ref_outputs/test011/sim_output/output_data.mat and b/tests/ref_outputs/test011/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test011/sim_output/run_info.txt b/tests/ref_outputs/test011/sim_output/run_info.txt
+index 08e7290..b9a6a64 100644
+--- a/tests/ref_outputs/test011/sim_output/run_info.txt
++++ b/tests/ref_outputs/test011/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.6
++0.1.5
+ 
+ branch name:
+-regression_tests
++fix/finite_volumes
+ 
+ commit hash:
+-57c0b88
++85d2a26
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 16.58875322341919 s
++Total run time: 1.518448829650879 s
+diff --git a/tests/ref_outputs/test022/params_c.cfg b/tests/ref_outputs/test022/params_c.cfg
+index bb65487..7940297 100644
+--- a/tests/ref_outputs/test022/params_c.cfg
++++ b/tests/ref_outputs/test022/params_c.cfg
+@@ -1,5 +1,5 @@
+ [Particles]
+-type = homog_sdn
++type = homog
+ discretization = 1e-9
+ shape = C3
+ thickness = 20e-9
+diff --git a/tests/ref_outputs/test022/sim_output/commit.diff b/tests/ref_outputs/test022/sim_output/commit.diff
+index 8b13789..49986a2 100644
+--- a/tests/ref_outputs/test022/sim_output/commit.diff
++++ b/tests/ref_outputs/test022/sim_output/commit.diff
+@@ -1 +1,14 @@
++diff --git a/configs/params_graphite_1param.cfg b/configs/params_graphite_1param.cfg
++index 734d19d..b71cd43 100644
++--- a/configs/params_graphite_1param.cfg
+++++ b/configs/params_graphite_1param.cfg
++@@ -4,7 +4,7 @@
++ 
++ [Particles]
++ type = CHR
++-discretization = 2.5e-8
+++discretization = 1e-9
++ shape = cylinder
++ thickness = 20e-9
++ 
+ 
+diff --git a/tests/ref_outputs/test022/sim_output/daetools_config_options.txt b/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
+index 89c9d5d..e2f40ff 100644
+--- a/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
++++ b/tests/ref_outputs/test022/sim_output/daetools_config_options.txt
+@@ -8,10 +8,7 @@
+             "checkUnitsConsistency": "true",
+             "resetLAMatrixAfterDiscontinuity": "true",
+             "printInfo": "false",
+-            "nodes": {
+-                "useNodeMemoryPools": "false",
+-                "deleteNodesThreshold": "1000000"
+-            },
++            "deepCopyClonedNodes": "true",
+             "equations": {
+                 "info": [
+                     "If simplifyExpressions is true equation expressions will be simplified.",
+@@ -56,9 +53,8 @@
+             "printInfo": "false"
+         },
+         "IDAS": {
++            "SolveMode": "normal",
+             "relativeTolerance": "1E-5",
+-            "integrationMode": "Normal",
+-            "reportDataInOneStepMode": "false",
+             "nextTimeAfterReinitialization": "1E-7",
+             "printInfo": "false",
+             "numberOfSTNRebuildsDuringInitialization": "1000",
+@@ -67,7 +63,7 @@
+             "sensRelativeTolerance": "1E-5",
+             "sensAbsoluteTolerance": "1E-5",
+             "MaxOrd": "5",
+-            "MaxNumSteps": "1000",
++            "MaxNumSteps": "2000",
+             "InitStep": "0.0",
+             "MaxStep": "0.0",
+             "MaxErrTestFails": "10",
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p
+index 1848681..b51716c 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_c_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p
+index 1006685..59939b6 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_c_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_dD.p
+index 377aa6e..3e03729 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_dD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_dD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test022/sim_output/input_dict_system_ndD.p
+index f48ceff..a956cc9 100644
+Binary files a/tests/ref_outputs/test022/sim_output/input_dict_system_ndD.p and b/tests/ref_outputs/test022/sim_output/input_dict_system_ndD.p differ
+diff --git a/tests/ref_outputs/test022/sim_output/output_data.mat b/tests/ref_outputs/test022/sim_output/output_data.mat
+index 8ef7d49..6550289 100644
+Binary files a/tests/ref_outputs/test022/sim_output/output_data.mat and b/tests/ref_outputs/test022/sim_output/output_data.mat differ
+diff --git a/tests/ref_outputs/test022/sim_output/run_info.txt b/tests/ref_outputs/test022/sim_output/run_info.txt
+index e7048e8..9343bab 100644
+--- a/tests/ref_outputs/test022/sim_output/run_info.txt
++++ b/tests/ref_outputs/test022/sim_output/run_info.txt
+@@ -1,11 +1,11 @@
+ mpet version:
+-0.1.6
++0.1.5
+ 
+ branch name:
+-HEAD
++feature/specify_psd
+ 
+ commit hash:
+-9a80ce3
++202ff32
+ 
+ to run, from the root repo directory, copy relevant files there,
+ edit input_params_system.cfg to point to correct material
+@@ -14,4 +14,4 @@ $ git checkout [commit hash]
+ $ patch -p1 < commit.diff:
+ $ python[3] mpetrun.py input_params_system.cfg
+ 
+-Total run time: 0.26999473571777344 s
++Total run time: 0.6197531223297119 s
+diff --git a/tests/ref_outputs/test023/params_a.cfg b/tests/ref_outputs/test023/params_a.cfg
+deleted file mode 100644
+index 330481f..0000000
+--- a/tests/ref_outputs/test023/params_a.cfg
++++ /dev/null
+@@ -1,31 +0,0 @@
+-[Particles]
+-type = diffn
+-discretization = 2.5e-9
+-shape = cylinder
+-thickness = 20e-9
+-
+-[Material]
+-muRfunc = testIS_ss
+-logPad = false
+-noise = false
+-noise_prefac = 1e-6
+-numnoise = 200
+-Omega_a = 1.8560e-20
+-Omega_b = 5.761532e-21
+-Omega_c = 8.23076e-20
+-kappa = 5.0148e-10
+-B = 0.1916e9
+-EvdW = 0.0
+-rho_s = 1.3793e28
+-D = 5.3e-19
+-Dfunc = constant
+-dgammadc = 0e-30
+-cwet = 0.98
+-
+-[Reactions]
+-rxnType = BV_raw
+-k0 = 1.6e-1
+-alpha = 0.5
+-lambda = 6.26e-20
+-Rfilm = 0e-0
+-
+diff --git a/tests/ref_outputs/test023/params_c.cfg b/tests/ref_outputs/test023/params_c.cfg
+deleted file mode 100644
+index abf7b5e..0000000
+--- a/tests/ref_outputs/test023/params_c.cfg
++++ /dev/null
+@@ -1,31 +0,0 @@
+-[Particles]
+-type = homog
+-discretization = 1e-9
+-shape = sphere
+-thickness = 20e-9
+-
+-[Material]
+-muRfunc = LiMn2O4_ss2
+-logPad = false
+-noise = false
+-noise_prefac = 1e-6
+-numnoise = 200
+-Omega_a = 1.8560e-20
+-Omega_b = 5.761532e-21
+-Omega_c = 8.23076e-20
+-kappa = 5.0148e-10
+-B = 0.1916e9
+-EvdW = 0.0
+-rho_s = 1.3793e28
+-D = 5.3e-19
+-Dfunc = constant
+-dgammadc = 0e-30
+-cwet = 0.98
+-
+-[Reactions]
+-rxnType = CIET
+-k0 = 1.6e-1
+-alpha = 0.5
+-lambda = 6.26e-20
+-Rfilm = 0e-0
+-
+diff --git a/tests/ref_outputs/test023/params_system.cfg b/tests/ref_outputs/test023/params_system.cfg
+deleted file mode 100644
+index eb0fbca..0000000
+--- a/tests/ref_outputs/test023/params_system.cfg
++++ /dev/null
+@@ -1,79 +0,0 @@
+-[Sim Params]
+-profileType = CV
+-Crate = 1
+-Vmax = 1e10
+-Vmin = -1e10
+-capFrac = 0.98
+-Vset = 3.8
+-segments = [
+-	(0.3, 0.4),
+-	(-0.5, 0.1),
+-	]
+-tramp = 1e-3
+-prevDir = false
+-tend = 1.2e3
+-tsteps = 25
+-relTol = 1e-6
+-absTol = 1e-6
+-T = 298
+-randomSeed = true
+-seed = 10
+-Rser = 0.
+-Nvol_c = 2
+-Nvol_s = 2
+-Nvol_a = 2
+-Npart_c = 1
+-Npart_a = 1
+-
+-[Electrodes]
+-cathode = params_c.cfg
+-anode = params_a.cfg
+-k0_foil = 1e3
+-Rfilm_foil = 0e-0
+-
+-[Particles]
+-mean_c = 40e-9
+-stddev_c = 0e-9
+-mean_a = 100e-9
+-stddev_a = 0e-9
+-cs0_c = 0.2
+-cs0_a = 0.95
+-
+-[Conductivity]
+-simBulkCond_c = false
+-simBulkCond_a = false
+-sigma_s_c = 1e-1
+-sigma_s_a = 1e-1
+-simPartCond_c = false
+-simPartCond_a = false
+-G_mean_c = 1e-14
+-G_stddev_c = 0
+-G_mean_a = 1e-14
+-G_stddev_a = 0
+-
+-[Geometry]
+-L_c = 50e-6
+-L_a = 50e-6
+-L_s = 25e-6
+-P_L_c = 0.69
+-P_L_a = 0.95
+-poros_c = 0.3
+-poros_a = 0.3
+-poros_s = 0.7
+-BruggExp_c = -0.5
+-BruggExp_a = -0.5
+-BruggExp_s = -0.5
+-
+-[Electrolyte]
+-c0 = 1000
+-zp = 1
+-zm = -1
+-nup = 1
+-num = 1
+-elyteModelType = dilute
+-SMset = valoen_bernardi
+-n = 1
+-sp = -1
+-Dp = 2.2e-10
+-Dm = 2.94e-10
+-
+diff --git a/tests/ref_outputs/test023/sim_output/commit.diff b/tests/ref_outputs/test023/sim_output/commit.diff
+deleted file mode 100644
+index b8ff537..0000000
+--- a/tests/ref_outputs/test023/sim_output/commit.diff
++++ /dev/null
+@@ -1,16 +0,0 @@
+-diff --git a/tests/README.md b/tests/README.md
+-index 4c7575a..3da0299 100644
+---- a/tests/README.md
+-+++ b/tests/README.md
+-@@ -59,3 +59,4 @@ it is both tested as absolute and relative tolerance.
+-  - test020: hdf5 file output
+-  - test021: hdf5Fast file output and restarting hdf5 simulations
+-  - test022: Test of specified_psd_c option, LFP homog
+-+ - test023: CIET for LFP
+-diff --git a/tests/ref_outputs/test020/sim_output/output_data b/tests/ref_outputs/test020/sim_output/output_data
+-deleted file mode 100644
+-index e69de29..0000000
+-diff --git a/tests/ref_outputs/test021/sim_output/output_data b/tests/ref_outputs/test021/sim_output/output_data
+-deleted file mode 100644
+-index e69de29..0000000
+-
+diff --git a/tests/ref_outputs/test023/sim_output/daetools_config_options.txt b/tests/ref_outputs/test023/sim_output/daetools_config_options.txt
+deleted file mode 100644
+index e2f40ff..0000000
+--- a/tests/ref_outputs/test023/sim_output/daetools_config_options.txt
++++ /dev/null
+@@ -1,133 +0,0 @@
+-{
+-    "daetools": {
+-        "core": {
+-            "checkForInfiniteNumbers": "false",
+-            "eventTolerance": "1E-7",
+-            "logIndent": "    ",
+-            "pythonIndent": "    ",
+-            "checkUnitsConsistency": "true",
+-            "resetLAMatrixAfterDiscontinuity": "true",
+-            "printInfo": "false",
+-            "deepCopyClonedNodes": "true",
+-            "equations": {
+-                "info": [
+-                    "If simplifyExpressions is true equation expressions will be simplified.",
+-                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
+-                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+-                ],
+-                "simplifyExpressions": "false",
+-                "evaluationMode": "computeStack_OpenMP",
+-                "evaluationTree_OpenMP": {
+-                    "numThreads": "0"
+-                },
+-                "computeStack_OpenMP": {
+-                    "numThreads": "0"
+-                }
+-            }
+-        },
+-        "activity": {
+-            "printHeader": "false",
+-            "printStats": "true",
+-            "timeHorizon": "100.0",
+-            "reportingInterval": "1.0",
+-            "reportTimeDerivatives": "false",
+-            "reportSensitivities": "false",
+-            "stopAtModelDiscontinuity": "true",
+-            "reportDataAroundDiscontinuities": "true",
+-            "objFunctionAbsoluteTolerance": "1E-8",
+-            "constraintsAbsoluteTolerance": "1E-8",
+-            "measuredVariableAbsoluteTolerance": "1E-8"
+-        },
+-        "datareporting": {
+-            "tcpipDataReceiverAddress": "127.0.0.1",
+-            "tcpipDataReceiverPort": "50000",
+-            "tcpipNumberOfRetries": "10",
+-            "tcpipRetryAfterMilliSecs": "1000"
+-        },
+-        "logging": {
+-            "tcpipLogAddress": "127.0.0.1",
+-            "tcpipLogPort": "51000"
+-        },
+-        "minlpsolver": {
+-            "printInfo": "false"
+-        },
+-        "IDAS": {
+-            "SolveMode": "normal",
+-            "relativeTolerance": "1E-5",
+-            "nextTimeAfterReinitialization": "1E-7",
+-            "printInfo": "false",
+-            "numberOfSTNRebuildsDuringInitialization": "1000",
+-            "SensitivitySolutionMethod": "Staggered",
+-            "SensErrCon": "false",
+-            "sensRelativeTolerance": "1E-5",
+-            "sensAbsoluteTolerance": "1E-5",
+-            "MaxOrd": "5",
+-            "MaxNumSteps": "2000",
+-            "InitStep": "0.0",
+-            "MaxStep": "0.0",
+-            "MaxErrTestFails": "10",
+-            "MaxNonlinIters": "4",
+-            "MaxConvFails": "10",
+-            "NonlinConvCoef": "0.33",
+-            "SuppressAlg": "false",
+-            "NoInactiveRootWarn": "false",
+-            "NonlinConvCoefIC": "0.0033",
+-            "MaxNumStepsIC": "5",
+-            "MaxNumJacsIC": "4",
+-            "MaxNumItersIC": "10",
+-            "LineSearchOffIC": "false",
+-            "gmres": {
+-                "kspace": "30",
+-                "EpsLin": "0.05",
+-                "JacTimesVecFn": "DifferenceQuotient",
+-                "DQIncrementFactor": "1.0",
+-                "MaxRestarts": "5",
+-                "GSType": "MODIFIED_GS"
+-            }
+-        },
+-        "superlu": {
+-            "factorizationMethod": "SamePattern_SameRowPerm",
+-            "useUserSuppliedWorkSpace": "false",
+-            "workspaceSizeMultiplier": "3.0",
+-            "workspaceMemoryIncrement": "1.5"
+-        },
+-        "superlu_mt": {
+-            "numThreads": "0"
+-        },
+-        "intel_pardiso": {
+-            "numThreads": "0"
+-        },
+-        "BONMIN": {
+-            "IPOPT": {
+-                "print_level": "0",
+-                "tol": "1E-5",
+-                "linear_solver": "mumps",
+-                "hessianApproximation": "limited-memory",
+-                "mu_strategy": "adaptive"
+-            }
+-        },
+-        "NLOPT": {
+-            "printInfo": "false",
+-            "xtol_rel": "1E-6",
+-            "xtol_abs": "1E-6",
+-            "ftol_rel": "1E-6",
+-            "ftol_abs": "1E-6",
+-            "constr_tol": "1E-6"
+-        },
+-        "deal_II": {
+-            "printInfo": "false",
+-            "assembly": {
+-                "info": [
+-                    "parallelAssembly can be: Sequential or OpenMP.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
+-                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
+-                ],
+-                "parallelAssembly": "OpenMP",
+-                "numThreads": "0",
+-                "queueSize": "32"
+-            }
+-        }
+-    }
+-}
+-
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_a_dD.p b/tests/ref_outputs/test023/sim_output/input_dict_a_dD.p
+deleted file mode 100644
+index 800f246..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_a_dD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_a_ndD.p b/tests/ref_outputs/test023/sim_output/input_dict_a_ndD.p
+deleted file mode 100644
+index f0619de..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_a_ndD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_c_dD.p b/tests/ref_outputs/test023/sim_output/input_dict_c_dD.p
+deleted file mode 100644
+index b51716c..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_c_dD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_c_ndD.p b/tests/ref_outputs/test023/sim_output/input_dict_c_ndD.p
+deleted file mode 100644
+index bc0c8b4..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_c_ndD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_system_dD.p b/tests/ref_outputs/test023/sim_output/input_dict_system_dD.p
+deleted file mode 100644
+index b567c11..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_system_dD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/input_dict_system_ndD.p b/tests/ref_outputs/test023/sim_output/input_dict_system_ndD.p
+deleted file mode 100644
+index 4689fbc..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/input_dict_system_ndD.p and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/output_data.mat b/tests/ref_outputs/test023/sim_output/output_data.mat
+deleted file mode 100644
+index 3da74dd..0000000
+Binary files a/tests/ref_outputs/test023/sim_output/output_data.mat and /dev/null differ
+diff --git a/tests/ref_outputs/test023/sim_output/run_info.txt b/tests/ref_outputs/test023/sim_output/run_info.txt
+deleted file mode 100644
+index 25643e6..0000000
+--- a/tests/ref_outputs/test023/sim_output/run_info.txt
++++ /dev/null
+@@ -1,17 +0,0 @@
+-mpet version:
+-0.1.5
+-
+-branch name:
+-regression_tests
+-
+-commit hash:
+-7f34398
+-
+-to run, from the root repo directory, copy relevant files there,
+-edit input_params_system.cfg to point to correct material
+-params files, and:
+-$ git checkout [commit hash]
+-$ patch -p1 < commit.diff:
+-$ python[3] mpetrun.py input_params_system.cfg
+-
+-Total run time: 1.6681959629058838 s
+diff --git a/tests/ref_outputs/test024/params_c.cfg b/tests/ref_outputs/test024/params_c.cfg
+deleted file mode 100644
+index 45db4c6..0000000
+--- a/tests/ref_outputs/test024/params_c.cfg
++++ /dev/null
+@@ -1,31 +0,0 @@
+-[Particles]
+-type = CHR
+-discretization = 1e-9
+-shape = cylinder
+-thickness = 20e-9
+-
+-[Material]
+-muRfunc = LiFePO4
+-logPad = false
+-noise = false
+-noise_prefac = 1e-6
+-numnoise = 200
+-Omega_a = 1.8560e-20
+-Omega_b = 5.761532e-21
+-Omega_c = 8.23076e-20
+-kappa = 5.0148e-10
+-B = 0.1916e9
+-EvdW = 0.0
+-rho_s = 1.3793e28
+-D = 5.3e-19
+-Dfunc = lattice
+-dgammadc = 5e-30
+-cwet = 0.98
+-
+-[Reactions]
+-rxnType = BV
+-k0 = 1.6e-1
+-alpha = 0.5
+-lambda = 6.26e-20
+-Rfilm = 0e-0
+-
+diff --git a/tests/ref_outputs/test024/params_system.cfg b/tests/ref_outputs/test024/params_system.cfg
+deleted file mode 100644
+index 461d0aa..0000000
+--- a/tests/ref_outputs/test024/params_system.cfg
++++ /dev/null
+@@ -1,80 +0,0 @@
+-[Sim Params]
+-profileType = CP
+-Crate = 1e-2
+-power = 0.1
+-Vmax = 1e10
+-Vmin = -1e10
+-capFrac = 0.98
+-Vset = 0.12
+-segments = [
+-	(0.3, 0.4),
+-	(-0.5, 0.1),
+-	]
+-tramp = 1e-3
+-prevDir = false
+-tend = 100
+-tsteps = 35
+-relTol = 1e-6
+-absTol = 1e-6
+-T = 298
+-randomSeed = true
+-seed = 10
+-Rser = 0.
+-Nvol_c = 1
+-Nvol_s = 0
+-Nvol_a = 0
+-Npart_c = 1
+-Npart_a = 1
+-
+-[Electrodes]
+-cathode = params_c.cfg
+-anode = params_a.cfg
+-k0_foil = 1e3
+-Rfilm_foil = 0e-0
+-
+-[Particles]
+-mean_c = 40e-9
+-stddev_c = 0e-9
+-mean_a = 100e-9
+-stddev_a = 0e-9
+-cs0_c = 0.01
+-cs0_a = 0.99
+-
+-[Conductivity]
+-simBulkCond_c = false
+-simBulkCond_a = false
+-sigma_s_c = 1e-1
+-sigma_s_a = 1e-1
+-simPartCond_c = false
+-simPartCond_a = false
+-G_mean_c = 1e-14
+-G_stddev_c = 0
+-G_mean_a = 1e-14
+-G_stddev_a = 0
+-
+-[Geometry]
+-L_c = 50e-6
+-L_a = 50e-6
+-L_s = 25e-6
+-P_L_c = 0.69
+-P_L_a = 0.95
+-poros_c = 0.3
+-poros_a = 0.3
+-poros_s = 0.7
+-BruggExp_c = -0.5
+-BruggExp_a = -0.5
+-BruggExp_s = -0.5
+-
+-[Electrolyte]
+-c0 = 1000
+-zp = 1
+-zm = -1
+-nup = 1
+-num = 1
+-elyteModelType = dilute
+-SMset = valoen_bernardi
+-n = 1
+-sp = -1
+-Dp = 2.2e-10
+-Dm = 2.94e-10
+-
+diff --git a/tests/ref_outputs/test024/sim_output/commit.diff b/tests/ref_outputs/test024/sim_output/commit.diff
+deleted file mode 100644
+index 2bcd0bf..0000000
+--- a/tests/ref_outputs/test024/sim_output/commit.diff
++++ /dev/null
+@@ -1,29 +0,0 @@
+-diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+-index 3fbb93c..4071ab9 100644
+---- a/mpet/config/schemas.py
+-+++ b/mpet/config/schemas.py
+-@@ -53,7 +53,7 @@ def tobool(value):
+- 
+- #: System parameters, per section
+- system = {'Sim Params': {'profileType': lambda x:
+--                         check_allowed_values(x, ["CC", "CV", "CCsegments", "CVsegments"]),
+-+                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
+-                          'Crate': Use(float),
+-                          'power': Use(float),
+-                          Optional('1C_current_density', default=None): Use(float),
+-diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+-index 0880e35..dc91669 100644
+---- a/mpet/mod_cell.py
+-+++ b/mpet/mod_cell.py
+-@@ -389,7 +389,9 @@ class ModCell(dae.daeModel):
+-                 eq.Residual = self.phi_applied() - config["Vset"]
+-         elif self.profileType == "CP":
+-             # constant power constraint
+--            ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
+-+            ndDVref = config["c", "phiRef"]
+-+            if 'a' in config["trodes"]:
+-+                ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
+-             eq = self.CreateEquation("Total_Power_Constraint")
+-             # adding Vref since P = V*I
+-             if config["tramp"] > 0:
+-
+diff --git a/tests/ref_outputs/test024/sim_output/daetools_config_options.txt b/tests/ref_outputs/test024/sim_output/daetools_config_options.txt
+deleted file mode 100644
+index 89c9d5d..0000000
+--- a/tests/ref_outputs/test024/sim_output/daetools_config_options.txt
++++ /dev/null
+@@ -1,137 +0,0 @@
+-{
+-    "daetools": {
+-        "core": {
+-            "checkForInfiniteNumbers": "false",
+-            "eventTolerance": "1E-7",
+-            "logIndent": "    ",
+-            "pythonIndent": "    ",
+-            "checkUnitsConsistency": "true",
+-            "resetLAMatrixAfterDiscontinuity": "true",
+-            "printInfo": "false",
+-            "nodes": {
+-                "useNodeMemoryPools": "false",
+-                "deleteNodesThreshold": "1000000"
+-            },
+-            "equations": {
+-                "info": [
+-                    "If simplifyExpressions is true equation expressions will be simplified.",
+-                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
+-                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+-                ],
+-                "simplifyExpressions": "false",
+-                "evaluationMode": "computeStack_OpenMP",
+-                "evaluationTree_OpenMP": {
+-                    "numThreads": "0"
+-                },
+-                "computeStack_OpenMP": {
+-                    "numThreads": "0"
+-                }
+-            }
+-        },
+-        "activity": {
+-            "printHeader": "false",
+-            "printStats": "true",
+-            "timeHorizon": "100.0",
+-            "reportingInterval": "1.0",
+-            "reportTimeDerivatives": "false",
+-            "reportSensitivities": "false",
+-            "stopAtModelDiscontinuity": "true",
+-            "reportDataAroundDiscontinuities": "true",
+-            "objFunctionAbsoluteTolerance": "1E-8",
+-            "constraintsAbsoluteTolerance": "1E-8",
+-            "measuredVariableAbsoluteTolerance": "1E-8"
+-        },
+-        "datareporting": {
+-            "tcpipDataReceiverAddress": "127.0.0.1",
+-            "tcpipDataReceiverPort": "50000",
+-            "tcpipNumberOfRetries": "10",
+-            "tcpipRetryAfterMilliSecs": "1000"
+-        },
+-        "logging": {
+-            "tcpipLogAddress": "127.0.0.1",
+-            "tcpipLogPort": "51000"
+-        },
+-        "minlpsolver": {
+-            "printInfo": "false"
+-        },
+-        "IDAS": {
+-            "relativeTolerance": "1E-5",
+-            "integrationMode": "Normal",
+-            "reportDataInOneStepMode": "false",
+-            "nextTimeAfterReinitialization": "1E-7",
+-            "printInfo": "false",
+-            "numberOfSTNRebuildsDuringInitialization": "1000",
+-            "SensitivitySolutionMethod": "Staggered",
+-            "SensErrCon": "false",
+-            "sensRelativeTolerance": "1E-5",
+-            "sensAbsoluteTolerance": "1E-5",
+-            "MaxOrd": "5",
+-            "MaxNumSteps": "1000",
+-            "InitStep": "0.0",
+-            "MaxStep": "0.0",
+-            "MaxErrTestFails": "10",
+-            "MaxNonlinIters": "4",
+-            "MaxConvFails": "10",
+-            "NonlinConvCoef": "0.33",
+-            "SuppressAlg": "false",
+-            "NoInactiveRootWarn": "false",
+-            "NonlinConvCoefIC": "0.0033",
+-            "MaxNumStepsIC": "5",
+-            "MaxNumJacsIC": "4",
+-            "MaxNumItersIC": "10",
+-            "LineSearchOffIC": "false",
+-            "gmres": {
+-                "kspace": "30",
+-                "EpsLin": "0.05",
+-                "JacTimesVecFn": "DifferenceQuotient",
+-                "DQIncrementFactor": "1.0",
+-                "MaxRestarts": "5",
+-                "GSType": "MODIFIED_GS"
+-            }
+-        },
+-        "superlu": {
+-            "factorizationMethod": "SamePattern_SameRowPerm",
+-            "useUserSuppliedWorkSpace": "false",
+-            "workspaceSizeMultiplier": "3.0",
+-            "workspaceMemoryIncrement": "1.5"
+-        },
+-        "superlu_mt": {
+-            "numThreads": "0"
+-        },
+-        "intel_pardiso": {
+-            "numThreads": "0"
+-        },
+-        "BONMIN": {
+-            "IPOPT": {
+-                "print_level": "0",
+-                "tol": "1E-5",
+-                "linear_solver": "mumps",
+-                "hessianApproximation": "limited-memory",
+-                "mu_strategy": "adaptive"
+-            }
+-        },
+-        "NLOPT": {
+-            "printInfo": "false",
+-            "xtol_rel": "1E-6",
+-            "xtol_abs": "1E-6",
+-            "ftol_rel": "1E-6",
+-            "ftol_abs": "1E-6",
+-            "constr_tol": "1E-6"
+-        },
+-        "deal_II": {
+-            "printInfo": "false",
+-            "assembly": {
+-                "info": [
+-                    "parallelAssembly can be: Sequential or OpenMP.",
+-                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
+-                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
+-                ],
+-                "parallelAssembly": "OpenMP",
+-                "numThreads": "0",
+-                "queueSize": "32"
+-            }
+-        }
+-    }
+-}
+-
+diff --git a/tests/ref_outputs/test024/sim_output/input_dict_cathode.p b/tests/ref_outputs/test024/sim_output/input_dict_cathode.p
+deleted file mode 100644
+index ac62dca..0000000
+Binary files a/tests/ref_outputs/test024/sim_output/input_dict_cathode.p and /dev/null differ
+diff --git a/tests/ref_outputs/test024/sim_output/input_dict_derived_values.p b/tests/ref_outputs/test024/sim_output/input_dict_derived_values.p
+deleted file mode 100644
+index 6a14270..0000000
+Binary files a/tests/ref_outputs/test024/sim_output/input_dict_derived_values.p and /dev/null differ
+diff --git a/tests/ref_outputs/test024/sim_output/input_dict_system.p b/tests/ref_outputs/test024/sim_output/input_dict_system.p
+deleted file mode 100644
+index dda0b64..0000000
+Binary files a/tests/ref_outputs/test024/sim_output/input_dict_system.p and /dev/null differ
+diff --git a/tests/ref_outputs/test024/sim_output/output_data b/tests/ref_outputs/test024/sim_output/output_data
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/tests/ref_outputs/test024/sim_output/output_data.mat b/tests/ref_outputs/test024/sim_output/output_data.mat
+deleted file mode 100644
+index dd203dc..0000000
+Binary files a/tests/ref_outputs/test024/sim_output/output_data.mat and /dev/null differ
+diff --git a/tests/ref_outputs/test024/sim_output/run_info.txt b/tests/ref_outputs/test024/sim_output/run_info.txt
+deleted file mode 100644
+index ac20b7f..0000000
+--- a/tests/ref_outputs/test024/sim_output/run_info.txt
++++ /dev/null
+@@ -1,17 +0,0 @@
+-mpet version:
+-0.1.6
+-
+-branch name:
+-feature/mod_battery_cycle
+-
+-commit hash:
+-9da24d1
+-
+-to run, from the root repo directory, copy relevant files there,
+-edit input_params_system.cfg to point to correct material
+-params files, and:
+-$ git checkout [commit hash]
+-$ patch -p1 < commit.diff:
+-$ python[3] mpetrun.py input_params_system.cfg
+-
+-Total run time: 0.0719916820526123 s
+
