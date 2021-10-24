@@ -11,8 +11,6 @@ import pickle
 
 import numpy as np
 
-import mpet.utils as utils
-
 from mpet.config import constants
 from mpet.config.derived_values import DerivedValues
 from mpet.config.parameterset import ParameterSet
@@ -414,11 +412,11 @@ class Config:
         instance of ``Config``, as parameters are scaled in-place. Attempting to run it a
         second time results in an error. The processing consists of several steps:
 
-        #. Set numpy random seed (if enabled in config)
-        #. Set default values
-        #. Scale to non-dimensional values
-        #. Parse current/voltage segments
-        #. Either generate particle distributions or load from previous run
+        # . Set numpy random seed (if enabled in config)
+        # . Set default values
+        # . Scale to non-dimensional values
+        # . Parse current/voltage segments
+        # . Either generate particle distributions or load from previous run
 
         :param bool prevDir: if True, load particle distributions from previous run,
             otherwise generate them
@@ -554,9 +552,8 @@ class Config:
                     # dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None else \
                         self["segments"][i][2]
-                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
-                        self['segments'][i][3],
-                        self['1C_current_density']) * self["1C_current_density"] / \
+                    crate_cut = None if self["segments"][i][3] is None else \
+                        self['segments'][i][3] * self["1C_current_density"] / \
                         theoretical_1C_current / self['curr_ref']
                     time_cut = None if self["segments"][i][4] is None else \
                         self["segments"][i][4]*60/self['t_ref']
@@ -569,18 +566,16 @@ class Config:
                         # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
                         # cutoff, type
                         segments.append(
-                            (utils.get_crate(
-                                self["segments"][i][0],
-                                self['1C_current_density'])
-                                * self["1C_current_density"]
-                                / theoretical_1C_current
-                                / self['curr_ref'],
-                                volt_cut,
-                                capfrac_cut,
-                                None,
-                                time_cut,
-                                self["segments"][i][5],
-                                self["segments"][i][6]))
+                            (self["segments"][i][0]
+                             * self["1C_current_density"]
+                             / theoretical_1C_current
+                             / self['curr_ref'],
+                             volt_cut,
+                             capfrac_cut,
+                             None,
+                             time_cut,
+                             self["segments"][i][5],
+                             self["segments"][i][6]))
                     elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
                         # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
                         # time cutoff, type
@@ -618,9 +613,8 @@ class Config:
                     # dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None \
                         else self["segments"][i][2]
-                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
-                        self['segments'][i][3],
-                        self['1C_current_density']) * self["1C_current_density"] / \
+                    crate_cut = None if self["segments"][i][3] is None else \
+                        self['segments'][i][3] * self["1C_current_density"] / \
                         theoretical_1C_current / self['curr_ref']
                     time_cut = None if self["segments"][i][4] is None else \
                         self["segments"][i][4]*60/self['t_ref']
@@ -633,17 +627,15 @@ class Config:
                         # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
                         # cutoff, type
                         segments.append(
-                            (utils.get_crate(
-                                self["segments"][i][0],
-                                self['1C_current_density'])
-                                * self["1C_current_density"]
-                                / theoretical_1C_current
-                                / self['curr_ref'],
-                                volt_cut,
-                                capfrac_cut,
-                                None,
-                                time_cut,
-                                self["segments"][i][5]))
+                            (self["segments"][i][0]
+                             * self["1C_current_density"]
+                             / theoretical_1C_current
+                             / self['curr_ref'],
+                             volt_cut,
+                             capfrac_cut,
+                             None,
+                             time_cut,
+                             self["segments"][i][5]))
                     elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
                         # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
                         # time cutoff, type
@@ -829,7 +821,7 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
-                    kappa = self[trode, 'indvPart']['kappa'][i, j] \
+                    kappa = self[trode, 'indvPart']['kappa'][i, j]\
                         = self[trode, 'kappa'] / kappa_ref
                     nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                     self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc / kappa
@@ -868,7 +860,7 @@ class Config:
             if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder"]):
                 raise NotImplementedError("CHR and diffn req. sphere or cylinder")
 
-    @staticmethod
+    @ staticmethod
     def size2regsln(size):
         """
         This function returns the non-dimensional regular solution

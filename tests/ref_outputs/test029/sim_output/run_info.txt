@@ -14,4 +14,4 @@ $ git checkout [commit hash]
 $ patch -p1 < commit.diff:
 $ python[3] mpetrun.py input_params_system.cfg
 
-Total run time: 10.18154501914978 s
+Total run time: 0.5499100685119629 s
