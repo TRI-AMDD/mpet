@@ -13,7 +13,6 @@
 
 import os
 import sys
-from mpet.version import __version__
 # from unittest.mock import MagicMock
 
 
@@ -38,6 +37,7 @@ copyright = '2021, Daniel Cogswell'
 author = 'Daniel Cogswell'
 
 # The full version, including alpha/beta/rc tags
+from mpet.version import __version__
 release = __version__
 
 
