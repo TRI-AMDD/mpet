@@ -77,18 +77,21 @@ def get_asc_vec(var, Nvol, dt=False):
                 varout[sectn] = get_const_vec(var[sectn], Nvol[sectn])
         # Otherwise, fill with zeros
         else:
-            varout[sectn] = np.zeros(Nvol[sectn])
+            try:
+                varout[sectn] = np.zeros(Nvol[sectn])
+            except KeyError:
+                varout[sectn] = np.zeros(0)
     out = np.hstack((varout["a"], varout["s"], varout["c"]))
     return out
 
 
 def get_dxvec(L, Nvol):
     """Get a vector of cell widths spanning the full cell."""
-    if Nvol["a"]:
+    if "a" in Nvol:
         dxa = Nvol["a"] * [L["a"]/Nvol["a"]]
     else:
         dxa = []
-    if Nvol["s"]:
+    if "s" in Nvol:
         dxs = Nvol["s"] * [L["s"]/Nvol["s"]]
     else:
         dxs = []

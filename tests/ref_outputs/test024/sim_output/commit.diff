@@ -1,0 +1,29 @@
+diff --git a/mpet/config/schemas.py b/mpet/config/schemas.py
+index 3fbb93c..4071ab9 100644
+--- a/mpet/config/schemas.py
++++ b/mpet/config/schemas.py
+@@ -53,7 +53,7 @@ def tobool(value):
+ 
+ #: System parameters, per section
+ system = {'Sim Params': {'profileType': lambda x:
+-                         check_allowed_values(x, ["CC", "CV", "CCsegments", "CVsegments"]),
++                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
+                          'Crate': Use(float),
+                          'power': Use(float),
+                          Optional('1C_current_density', default=None): Use(float),
+diff --git a/mpet/mod_cell.py b/mpet/mod_cell.py
+index 0880e35..dc91669 100644
+--- a/mpet/mod_cell.py
++++ b/mpet/mod_cell.py
+@@ -389,7 +389,9 @@ class ModCell(dae.daeModel):
+                 eq.Residual = self.phi_applied() - config["Vset"]
+         elif self.profileType == "CP":
+             # constant power constraint
+-            ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
++            ndDVref = config["c", "phiRef"]
++            if 'a' in config["trodes"]:
++                ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
+             eq = self.CreateEquation("Total_Power_Constraint")
+             # adding Vref since P = V*I
+             if config["tramp"] > 0:
+
