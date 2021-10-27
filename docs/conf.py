@@ -37,7 +37,7 @@ copyright = '2021, Daniel Cogswell'
 author = 'Daniel Cogswell'
 
 # The full version, including alpha/beta/rc tags
-from mpet.version import __version__
+from mpet.version import __version__  # noqa: E402
 release = __version__
 
 
