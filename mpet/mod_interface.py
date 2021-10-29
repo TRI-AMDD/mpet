@@ -81,6 +81,8 @@ class InterfaceRegion(dae.daeModel):
 
         Nm_edges, i_edges = get_interface_internal_fluxes(ctmp, phitmp, disc, config)
 
+        disc["dxvec"][:] = 1.
+
         dvgNm = np.diff(Nm_edges) / disc["dxvec"]
         dvgi = np.diff(i_edges) / disc["dxvec"]
 
@@ -95,10 +97,20 @@ class InterfaceRegion(dae.daeModel):
             # Charge Conservation
             eq = self.CreateEquation("interface_charge_cons_vol{vInd}".format(vInd=vInd))
             eq.Residual = -dvgi[vInd]
+            # Reaction out interface from last volume
             if vInd == Nvol - 1:
                 # The volume of this particular particle
                 Vj = config["psd_vol_FracVol"][self.trode][self.vInd,self.pInd]
                 eq.Residual += config["zp"] * -(config["beta"][self.trode]
+                                                * (1-config["poros"][self.trode])
+                                                * config["P_L"][self.trode] * Vj
+                                                * self.portInParticle.dcbardt())
+            
+            # Reaction entering the interface
+            if vInd == 0:
+                # The volume of this particular particle
+                Vj = config["psd_vol_FracVol"][self.trode][self.vInd,self.pInd]
+                eq.Residual -= config["zp"] * -(config["beta"][self.trode]
                                                 * (1-config["poros"][self.trode])
                                                 * config["P_L"][self.trode] * Vj
                                                 * self.portInParticle.dcbardt())
@@ -114,7 +126,7 @@ class InterfaceRegion(dae.daeModel):
         eq.Residual = self.portOutInterfaceElyte.Nm0() - Nm_edges[0]
 
         eq = self.CreateEquation("i0_interface_to_elyte")
-        eq.Residual = self.portOutInterfaceElyte.i0() - i_edges[0]
+        eq.Residual = self.portOutInterfaceElyte.i0() - i_edges[1]
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False

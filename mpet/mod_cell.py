@@ -249,8 +249,7 @@ class ModCell(dae.daeModel):
                         # Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
                         i0 = self.portsInInterface[trode][vInd,pInd].i0()
                         # TODO: what is the reaction rate?
-                        RHS_i += -i0 * (config["beta"][trode] * (1-config["poros"][trode])
-                                        * config["P_L"][trode] * Vj)
+                        RHS_i += -i0
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
                 if config["simInterface"]:
                     eq_i.Residual = self.R_Vi[trode](vInd) - RHS_i
