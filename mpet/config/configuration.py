@@ -11,8 +11,6 @@ import pickle
 
 import numpy as np
 
-import mpet.utils as utils
-
 from mpet.config import constants
 from mpet.config.derived_values import DerivedValues
 from mpet.config.parameterset import ParameterSet
@@ -554,9 +552,8 @@ class Config:
                     # dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None else \
                         self["segments"][i][2]
-                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
-                        self['segments'][i][3],
-                        self['1C_current_density']) * self["1C_current_density"] / \
+                    crate_cut = None if self["segments"][i][3] is None else \
+                        self['segments'][i][3] * self["1C_current_density"] / \
                         theoretical_1C_current / self['curr_ref']
                     time_cut = None if self["segments"][i][4] is None else \
                         self["segments"][i][4]*60/self['t_ref']
@@ -569,18 +566,16 @@ class Config:
                         # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
                         # cutoff, type
                         segments.append(
-                            (utils.get_crate(
-                                self["segments"][i][0],
-                                self['1C_current_density'])
-                                * self["1C_current_density"]
-                                / theoretical_1C_current
-                                / self['curr_ref'],
-                                volt_cut,
-                                capfrac_cut,
-                                None,
-                                time_cut,
-                                self["segments"][i][5],
-                                self["segments"][i][6]))
+                            (self["segments"][i][0]
+                             * self["1C_current_density"]
+                             / theoretical_1C_current
+                             / self['curr_ref'],
+                             volt_cut,
+                             capfrac_cut,
+                             None,
+                             time_cut,
+                             self["segments"][i][5],
+                             self["segments"][i][6]))
                     elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
                         # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
                         # time cutoff, type
@@ -618,9 +613,8 @@ class Config:
                     # dD_s["segments"][i][2]
                     capfrac_cut = hard_cut if self["segments"][i][2] is None \
                         else self["segments"][i][2]
-                    crate_cut = None if self["segments"][i][3] is None else utils.get_crate(
-                        self['segments'][i][3],
-                        self['1C_current_density']) * self["1C_current_density"] / \
+                    crate_cut = None if self["segments"][i][3] is None else \
+                        self['segments'][i][3] * self["1C_current_density"] / \
                         theoretical_1C_current / self['curr_ref']
                     time_cut = None if self["segments"][i][4] is None else \
                         self["segments"][i][4]*60/self['t_ref']
@@ -633,17 +627,15 @@ class Config:
                         # stores Crate, voltage cutoff, capfrac cutoff, C-rate cutoff(none),  time
                         # cutoff, type
                         segments.append(
-                            (utils.get_crate(
-                                self["segments"][i][0],
-                                self['1C_current_density'])
-                                * self["1C_current_density"]
-                                / theoretical_1C_current
-                                / self['curr_ref'],
-                                volt_cut,
-                                capfrac_cut,
-                                None,
-                                time_cut,
-                                self["segments"][i][5]))
+                            (self["segments"][i][0]
+                             * self["1C_current_density"]
+                             / theoretical_1C_current
+                             / self['curr_ref'],
+                             volt_cut,
+                             capfrac_cut,
+                             None,
+                             time_cut,
+                             self["segments"][i][5]))
                     elif self["segments"][i][5] == 2 or self["segments"][i][5] == 5:
                         # stores voltage, voltage cutoff (none), capfrac cutoff, C-rate cutoff,
                         # time cutoff, type
