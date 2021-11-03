@@ -1,5 +1,9 @@
 import setuptools
-from mpet.version import __version__
+
+version = {}
+with open('mpet/version.py', 'r', encoding='utf-8') as fh:
+    exec(fh.read(), version)
+__version__ = version['__version__']
 
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
