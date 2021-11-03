@@ -1,1 +1,16 @@
+diff --git a/tests/ref_outputs/test025/params_system.cfg b/tests/ref_outputs/test025/params_system.cfg
+index 4d65978..1730c1a 100644
+--- a/tests/ref_outputs/test025/params_system.cfg
++++ b/tests/ref_outputs/test025/params_system.cfg
+@@ -6,8 +6,8 @@ Vmax = 5
+ Vmin = 2.5
+ Vset = 0.12
+ segments = [
+-            [1, None, 0.05, None, None, 4],
+-            [-1, None, 0.45, None, None, 1],
++            [1, None, 0.06, None, None, 4],
++            [-1, None, 0.44, None, None, 1],
+ 	]
+ prevDir = false
+ totalCycle = 4
 

@@ -238,8 +238,8 @@ class CCCVCPcycle(dae.daeModel):
                     self.time_counter() < dae.Constant(
                         0 * s)) if capfrac_cutoffs[i] is None else (
                     (self.ffrac_limtrode()
-                        <= 1 - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() >= capfrac_cutoffs[i]))
+                        < 1 - capfrac_cutoffs[i]) if limtrode == "c" else (
+                        self.ffrac_limtrode() > capfrac_cutoffs[i]))
                 # for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                 # if end state, then we send back to state 0 and also add one to cycle_number
                 if i == len(constraints)-1:
@@ -415,9 +415,9 @@ class CCCVCPcycle(dae.daeModel):
                 cap_cond = (
                     self.time_counter() < dae.Constant(
                         0 * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1
+                    (self.ffrac_limtrode() > 1
                      - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() <= capfrac_cutoffs[i]))
+                        self.ffrac_limtrode() < capfrac_cutoffs[i]))
                 # voltage cutoff
                 v_cond = (self.time_counter() < dae.Constant(
                     0*s)) if voltage_cutoffs[i] is None else \
