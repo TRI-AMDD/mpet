@@ -179,6 +179,7 @@ def valoen_bernardi():
             constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*(constants.c_ref)))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
 
+
 def Colclasure20():
     def tp0(Ce, T):
         T = T*constants.T_ref  # T has units in this model
@@ -229,6 +230,7 @@ def Colclasure20():
         return sigma(c, T) * (
             constants.k*constants.T_ref/(constants.e**2*Dref*constants.N_A*constants.c_ref))
     return D_ndim, sigma_ndim, therm_fac, tp0, Dref
+
 
 def solid_elyte():
     """

@@ -251,4 +251,3 @@ class DerivedValues:
         """
         return constants.k*constants.T_ref * \
             self.config['curr_ref']*self.config["1C_current_density"]/constants.e
-

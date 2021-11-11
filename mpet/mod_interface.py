@@ -105,7 +105,7 @@ class InterfaceRegion(dae.daeModel):
                                                 * (1-config["poros"][self.trode])
                                                 * config["P_L"][self.trode] * Vj
                                                 * self.portInParticle.dcbardt())
-            
+
             # Reaction entering the interface
             if vInd == 0:
                 # The volume of this particular particle
