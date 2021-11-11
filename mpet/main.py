@@ -88,7 +88,7 @@ def run_simulation(config, outdir):
     except Exception as e:
         print(str(e))
         simulation.ReportData(simulation.CurrentTime)
-        raise
+        pass
     except KeyboardInterrupt:
         print("\nphi_applied at ctrl-C:",
               simulation.m.phi_applied.GetValue(), "\n")
@@ -178,17 +178,18 @@ def main(paramfile, keepArchive=True):
     # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    noise = config['c', 'noise']
     logPad = config['c', 'logPad']
     segments = config["profileType"] in ["CCsegments","CVsegments"]
-    if (noise or logPad or (segments and config["tramp"] > 0)) \
+    if (logPad or (segments and config["tramp"] > 0)) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
-    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
-        print(cfg, file=fo)
 
     # Disable printStats
     cfg.SetString('daetools.activity.printStats','false')
+
+    # Write config file
+    with open(os.path.join(outdir, "daetools_config_options.txt"), 'w') as fo:
+        print(cfg, file=fo)
 
     # Carry out the simulation
     run_simulation(config, outdir)
@@ -204,18 +205,10 @@ def main(paramfile, keepArchive=True):
     except Exception:
         pass
 
-    # Copy simulation output to current directory
-    tmpDir_name = "sim_output"
-    tmpDir = os.path.join(os.getcwd(), tmpDir_name)
-    try:
-        os.makedirs(tmpDir)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
-    for fname in os.listdir(outdir):
-        tocopy = os.path.join(outdir, fname)
-        if os.path.isfile(tocopy):
-            shutil.copy(tocopy, tmpDir)
-
-    if not keepArchive:
-        shutil.rmtree(outdir)
+    # Copy or move simulation output to current directory
+    tmpDir = os.path.join(os.getcwd(), "sim_output")
+    shutil.rmtree(tmpDir, ignore_errors=True)
+    if keepArchive:
+        shutil.copytree(outdir, tmpDir)
+    else:
+        shutil.move(outdir, tmpDir)

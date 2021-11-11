@@ -1,1 +1,27 @@
+diff --git a/tests/ref_outputs/test010/params_c.cfg b/tests/ref_outputs/test010/params_c.cfg
+index 8ba06c3..2a339ee 100644
+--- a/tests/ref_outputs/test010/params_c.cfg
++++ b/tests/ref_outputs/test010/params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = false
++noise = true
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
+diff --git a/tests/ref_outputs/test011/params_c.cfg b/tests/ref_outputs/test011/params_c.cfg
+index e382371..b522b7c 100644
+--- a/tests/ref_outputs/test011/params_c.cfg
++++ b/tests/ref_outputs/test011/params_c.cfg
+@@ -7,7 +7,7 @@ thickness = 20e-9
+ [Material]
+ muRfunc = LiC6
+ logPad = false
+-noise = false
++noise = true
+ noise_prefac = 1e-6
+ numnoise = 200
+ Omega_a = 1.8560e-20
 

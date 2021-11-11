@@ -245,3 +245,10 @@ class DerivedValues:
         """
         return self.config['t_ref'] * self.config['kr'] * self.config['cmax'] * \
             self.config['delta'] ** 2 / (1 - self.config['delta'])
+
+    def power_ref(self):
+        """Reference power of the system
+        """
+        return constants.k*constants.T_ref * \
+            self.config['curr_ref']*self.config["1C_current_density"]/constants.e
+

@@ -477,6 +477,8 @@ class Config:
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
+        if self['power'] is not None:
+            self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
 
@@ -562,7 +564,7 @@ class Config:
             segments_setvec[2*segIndx+2] = setNext
         segments_tvec /= self['t_ref']
         if self['profileType'] == 'CCsegments':
-            segments_setvec /= self['curr_ref']
+            segments_setvec *= self["1C_current_density"]/theoretical_1C_current/self['curr_ref']
         elif self['profileType'] == 'CVsegments':
             segments_setvec = -((constants.e/kT)*segments_setvec + Vref)
         if 'segments' in self['profileType']:
