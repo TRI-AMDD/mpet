@@ -43,12 +43,8 @@ class ParameterSet:
         parser.read(fname)
 
         # load each section and validate schema
-        for section in parser.sections():
-            # get the schema
-            try:
-                config_schema = getattr(schemas, self.config_type)[section]
-            except KeyError:
-                raise Exception(f'Unknown section "{section}" in {fname}')
+        config_schemas = getattr(schemas, self.config_type)
+        for section, config_schema in config_schemas.items():
             # validate
             if section in parser:
                 section_params = config_schema.validate(dict(parser[section].items()))
