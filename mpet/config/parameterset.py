@@ -2,7 +2,7 @@ import os
 import configparser
 
 from mpet.config import schemas
-from mpet.config.constants import PARAMS_PER_TRODE, PARAMS_SEPARATOR
+from mpet.config.constants import PARAMS_PER_TRODE, PARAMS_SEPARATOR, PARAMS_ELYTE
 from mpet.exceptions import UnknownParameterError
 
 
@@ -84,6 +84,8 @@ class ParameterSet:
             trodes = self['trodes'][:]  # make a copy here to avoid adding values to the original
             if item in PARAMS_SEPARATOR and self['have_separator']:
                 trodes.append('s')
+            if item in PARAMS_ELYTE:
+                trodes.append('l')
             for trode in trodes:
                 # get the value for this electrode/separator and store it
                 key = f'{item}_{trode}'

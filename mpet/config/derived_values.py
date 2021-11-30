@@ -147,6 +147,12 @@ class DerivedValues:
         """
         return 3600. / self.config['t_ref']
 
+    def rho_ref(self):
+        """Reference mass density used for energy balances
+        """
+        m_ref = 1000  # reference is 1000 kg
+        return m_ref / self.config['L_ref']**3
+
     def sigma_s_ref(self):
         """Reference conductivity
         """
@@ -196,10 +202,8 @@ class DerivedValues:
     def k_h_ref(self):
         """Reference heat transfer coefficient
         """
-        if self.config['elyteModelType'] == 'dilute':
-            return self.config['k_h']
-        else:
-            return getattr(props_elyte, self.config['SMset'])()[-1]
+        return constants.c_ref * constants.k * \
+            self.config['L_ref']**2 / (self.config['t_ref'] * constants.N_A)
 
     def z(self):
         """Electrode capacity ratio

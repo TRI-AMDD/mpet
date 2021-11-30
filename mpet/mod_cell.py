@@ -59,6 +59,7 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        self.Q_Vp = {}
         self.ffrac = {}
         self.T_lyte = {}
         for trode in trodes:
@@ -82,6 +83,10 @@ class ModCell(dae.daeModel):
             self.R_Vp[trode] = dae.daeVariable(
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
+                [self.DmnCell[trode]])
+            self.Q_Vp[trode] = dae.daeVariable(
+                "Q_Vp_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of heat generation of positives per electrode volume",
                 [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
@@ -210,6 +215,23 @@ class ModCell(dae.daeModel):
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
+        # Define dimensionless R_Vp for each electrode volume
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
+                eq = self.CreateEquation(
+                    "Q_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                # Start with no reaction, then add reactions for each
+                # particle in the volume.
+                RHS = 0
+                # sum over particle volumes in given electrode volume
+                for pInd in range(Npart[trode]):
+                    # The volume of this particular particle
+                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
+                    RHS += -(config["beta"][trode] * (1-config["poros"][trode])
+                             * config["P_L"][trode] * Vj
+                             * self.particles[trode][vInd,pInd].q_rxn_bar())
+                eq.Residual = self.Q_Vp[trode](vInd) - RHS
+
         # Define output port variables
         for trode in trodes:
             for vInd in range(Nvol[trode]):
@@ -312,15 +334,19 @@ class ModCell(dae.daeModel):
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
+            phibulkvec = utils.get_asc_vec(self.phi_bulk, Nvol)
             Tvec = utils.get_asc_vec(self.T_lyte, Nvol)
             dTdtvec = utils.get_asc_vec(self.T_lyte, Nvol, dt=True)
             Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)
+            Qvvec = utils.get_asc_vec(self.Q_Vp, Nvol)
+            rhocp_vec = utils.get_thermal_vec(Nvol, config)
             # Apply concentration and potential boundary conditions
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             # temperature uses a constant boundary condition
             Ttmp = np.hstack((self.T_lyteGP_L(), Tvec, self.T_lyteGP_R()))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
+            phibulktmp = np.hstack((self.phi_cell(), phibulkvec, config["phi_cathode"]))
 
             Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc, config)
 
@@ -374,7 +400,7 @@ class ModCell(dae.daeModel):
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
             dvgq = np.diff(q_edges)/disc["dxvec"]
-            q_ohm = get_ohmic_heat(cvec, Tvec, i_edges, disc, config)
+            q_ohm = get_ohmic_heat(ctmp, Ttmp, phibulktmp, phitmp, disc, config, Nvol)
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
@@ -386,8 +412,8 @@ class ModCell(dae.daeModel):
                 if config['nonisothermal']:
                     # if heat generation is turned on. per volume.
                     eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
-                    eq.Residual = disc["porosvec"][vInd]*config["cp"] * \
-                        dTdtvec[vInd] - dvgq[vInd] - q_ohm[vInd]
+                    eq.Residual = rhocp_vec[vInd] * dTdtvec[vInd] - \
+                        dvgq[vInd] - q_ohm[vInd] - Qvvec[vInd]
                 else:
                     # if heat generation is turned off
                     eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
@@ -575,20 +601,34 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config):
     return Nm_edges_int, i_edges_int, q_edges_int
 
 
-def get_ohmic_heat(c_lyte, T_lyte, i_edges_int, disc, config):
-    eps_o_tau = disc["eps_o_tau"][1:-1]
+def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
+    eps_o_tau = disc["eps_o_tau"]
+    dx = disc["dx"][1:-1]
 
-    # get average current
-    i_cent = utils.mean_linear(i_edges_int)
+    wt = utils.pad_vec(disc["dxvec"])
+    sigma_s = utils.get_asc_vec(config["sigma_s"], Nvol)
+    c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
+    phi_lyte_int = utils.weighted_linear_mean(phi_lyte, wt)
+    phi_bulk_int = utils.weighted_linear_mean(phi_bulk, wt)
+    c_mid = c_lyte[1:-1]
+    T_mid = T_lyte[1:-1]
 
     # initialize sigma
-    sigma = 0
+    q_ohmic = 0
 
     if config["elyteModelType"] == "dilute":
-        sigma = eps_o_tau * config["sigma_lyte"]
+        sigma_l = eps_o_tau * config["sigma_l"]
     elif config["elyteModelType"] == "SM":
+        tp0 = getattr(props_elyte,config["SMset"])()[-3]
+
         sigma_fs = getattr(props_elyte,config["SMset"])()[1]
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
-        sigma = eps_o_tau*sigma_fs(c_lyte, T_lyte)
-    q_ohmic = i_cent**2/sigma
+        sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
+        q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid)) * \
+            np.diff(np.log(c_edges_int))/dx*np.diff(phi_lyte_int)/dx
+    # this is going to be dra
+    sigma_s = (1-eps_o_tau[1:-1]) * sigma_s
+    q_ohmic = q_ohmic + sigma_s*(np.diff(phi_bulk_int)/dx)**2 + \
+        sigma_l*(np.diff(phi_lyte_int)/dx)**2
+    # do we have to extrapolate these
     return q_ohmic

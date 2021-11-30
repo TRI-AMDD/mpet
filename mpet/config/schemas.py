@@ -114,6 +114,15 @@ system = {'Sim Params': {'profileType': lambda x:
                        'BruggExp_c': Use(float),
                        'BruggExp_a': Use(float),
                        'BruggExp_s': Use(float)},
+          'Thermal Parameters': {Optional('cp_c', default=1e8): Use(float),
+                                 Optional('cp_a', default=1e8): Use(float),
+                                 Optional('cp_l', default=1e8): Use(float),
+                                 Optional('rhom_c', default=0.2): Use(float),
+                                 Optional('rhom_a', default=0.2): Use(float),
+                                 Optional('rhom_l', default=0.2): Use(float),
+                                 Optional('k_h', default=0.2): Use(float),
+                                 Optional('h_h', default=500): Use(float),
+                                 Optional('sigma_l', default=500): Use(float)},
           'Electrolyte': {'c0': Use(float),
                           'zp': Use(int),
                           'zm': And(Use(int), lambda x: x < 0),
@@ -124,11 +133,7 @@ system = {'Sim Params': {'profileType': lambda x:
                           'n': Use(int),
                           'sp': Use(int),
                           'Dp': Use(float),
-                          'Dm': Use(float),
-                          Optional('cp', default=1e8): Use(float),
-                          Optional('sigma_lyte', default=0.2): Use(float),
-                          Optional('k_h', default=0.2): Use(float),
-                          Optional('h_h', default=500): Use(float)}}
+                          'Dm': Use(float)}}
 
 #: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,

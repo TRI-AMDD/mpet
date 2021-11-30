@@ -55,6 +55,10 @@ class Mod2var(dae.daeModel):
             "c2bar", mole_frac_t, self,
             "Average concentration in 'layer' 2 of active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.dcbar1dt = dae.daeVariable("dcbar1dt", dae.no_t, self, "Rate of particle 1 filling")
+        self.dcbar2dt = dae.daeVariable("dcbar2dt", dae.no_t, self, "Rate of particle 2 filling")
+        self.q_rxn_bar = dae.daeVariable(
+            "q_rxn_bar", dae.no_t, self, "Rate of heat generation in particle")
         if self.get_trode_param("type") not in ["ACR2"]:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1")
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2")
@@ -138,16 +142,36 @@ class Mod2var(dae.daeModel):
         for k in range(N):
             eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
 
+        # Define average rate of filling of particle for cbar1
+        eq = self.CreateEquation("dcbar1dt")
+        eq.Residual = self.dcbar1dt()
+        for k in range(N):
+            eq.Residual -= self.c1.dt(k) * volfrac_vec[k]
+
+        # Define average rate of filling of particle for cbar1
+        eq = self.CreateEquation("dcbar2dt")
+        eq.Residual = self.dcbar2dt()
+        for k in range(N):
+            eq.Residual -= self.c2.dt(k) * volfrac_vec[k]
+
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
         if self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Equations for 1D particles of 1 field varible
-            self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            eta1, eta2, c_surf1, c_surf2 = self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte,
+                                                                    ISfuncs, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            eta1, eta2, c_surf1, c_surf2 = self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte,
+                                                                    ISfuncs, noises)
+
+        # Define average rate of heat generation
+        eq = self.CreateEquation("q_rxn_bar")
+        eq.Residual = self.q_rxn_bar() - 0.5 * self.dcbar1dt() * \
+            (-eta1 - (np.log(c_surf1/(1-c_surf1))+1/self.c_lyte())) \
+            - 0.5 * self.dcbar2dt() * (-eta2 - (np.log(c_surf2/(1-c_surf2))+1/self.c_lyte()))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -183,6 +207,7 @@ class Mod2var(dae.daeModel):
         eq2 = self.CreateEquation("dc2sdt")
         eq1.Residual = self.c1.dt(0) - self.get_trode_param("delta_L")*Rxn1[0]
         eq2.Residual = self.c2.dt(0) - self.get_trode_param("delta_L")*Rxn2[0]
+        return eta1, eta2, c1_surf[-1], c2_surf[-1]
 
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         N = self.get_trode_param("N")
@@ -274,6 +299,11 @@ class Mod2var(dae.daeModel):
             eq1.Residual = LHS1_vec[k] - RHS1[k]
             eq2.Residual = LHS2_vec[k] - RHS2[k]
 
+        if self.get_trode_param("type") in ["ACR"]:
+            return eta1[-1], eta2[-1], c1_surf[-1], c2_surf[-1]
+        else:
+            return eta1, eta2, c1_surf, c2_surf
+
 
 class Mod1var(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
@@ -296,6 +326,8 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.q_rxn_bar = dae.daeVariable(
+            "q_rxn_bar", dae.no_t, self, "Rate of heat generation in particle")
         if config[trode, "type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
@@ -368,10 +400,15 @@ class Mod1var(dae.daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            eta, c_surf = self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            eta, c_surf = self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+
+        # Define average rate of heat generation
+        eq = self.CreateEquation("q_rxn_bar")
+        eq.Residual = self.q_rxn_bar() - self.dcbardt() * \
+            (-eta - (np.log(c_surf/(1-c_surf))+1/self.c_lyte()))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -393,6 +430,8 @@ class Mod1var(dae.daeModel):
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
+
+        return eta, c_surf[-1]
 
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         N = self.get_trode_param("N")
@@ -461,6 +500,11 @@ class Mod1var(dae.daeModel):
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
             eq.Residual = LHS_vec[k] - RHS[k]
+
+        if self.get_trode_param("type") in ["ACR"]:
+            return eta[-1], c_surf[-1]
+        else:
+            return eta, c_surf
 
 
 def calc_eta(muR, muO):

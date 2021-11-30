@@ -85,6 +85,7 @@ def get_elyte_disc(Nvol, L, poros, BruggExp):
 
     # Distance between cell centers
     dxtmp = np.hstack((out["dxvec"][0], out["dxvec"], out["dxvec"][-1]))
+    out["dx"] = dxtmp
     out["dxd1"] = utils.mean_linear(dxtmp)
 
     # The porosity vector

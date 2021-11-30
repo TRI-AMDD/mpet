@@ -85,6 +85,26 @@ def get_asc_vec(var, Nvol, dt=False):
     return out
 
 
+def get_thermal_vec(Nvol, config):
+    """Get a numpy array for a variable spanning the anode, separator, and cathode."""
+    varout = {}
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        if sectn in ["a", "c"]:
+            # If it's an array of dae variable objects
+            out = config['rhom'][sectn]*(1-config["poros"][sectn])**(1-config["BruggExp"][sectn]) \
+                * config['cp'][sectn] + config['rhom']['l'] * \
+                config["poros"][sectn]**config["BruggExp"][sectn]*config['cp']['l']
+            varout[sectn] = get_const_vec(out, Nvol[sectn])
+        else:
+            out = config['rhom']['l'] * \
+                config["poros"][sectn]**config["BruggExp"][sectn]*config['cp']['l']
+            varout[sectn] = get_const_vec(out, Nvol[sectn])
+    # sum solid + elyte poroisty
+    out = np.hstack((varout["a"], varout["s"], varout["c"]))
+    return out
+
+
 def get_dxvec(L, Nvol):
     """Get a vector of cell widths spanning the full cell."""
     if "a" in Nvol:

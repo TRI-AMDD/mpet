@@ -111,9 +111,14 @@ class Config:
         self.D_s = ParameterSet(None, 'system', self.path)
         # set which electrodes there are based on which dict files exist
         trodes = ['c']
+        # set up types of materials (cathode, anode electrolyte) for thermal parameters
+        materials = ['c', 'l']
         if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
             trodes.append('a')
+            materials.append('a')
         self['trodes'] = trodes
+        self['materials'] = materials
+
         # create empty electrode parametersets
         self.D_c = ParameterSet(None, 'electrode', self.path)
         if 'a' in self['trodes']:
@@ -137,9 +142,13 @@ class Config:
         self.D_s = ParameterSet(paramfile, 'system', self.path)
         # the anode and separator are optional: only if there are volumes to simulate
         trodes = ['c']
+        # set up types of materials (cathode, anode electrolyte) for thermal parameters
+        materials = ['c', 'l']
         if self.D_s['Nvol_a'] > 0:
             trodes.append('a')
+            materials.append('a')
         self['trodes'] = trodes
+        self['materials'] = materials
         # to check for separator, directly access underlying dict of system config;
         # self['Nvol']['s'] would not work because that requires have_separator to
         # be defined already
@@ -471,10 +480,11 @@ class Config:
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
         self['k_h'] = self['k_h'] / self['k_h_ref']
-        self['cp'] = self['cp'] / (self['k_h_ref'] * self['t_ref'] / self['L_ref']**3)
+        self['cp_l'] = self['cp_l'] / \
+            (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+        self['rhom_l'] = self['rhom_l'] / self['rho_ref']
         self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
-        self['sigma_lyte'] = self['sigma_lyte'] * self['k_h_ref'] * constants.T_ref / \
-            (constants.e**2 * self['D_ref'] * constants.N_A * constants.c_ref)
+        self['sigma_l'] = self['sigma_l'] / self['sigma_s_ref']
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
@@ -503,6 +513,11 @@ class Config:
                 value = self[trode, param]
                 if value is not None:
                     self[trode, param] = value / kT
+
+        for mat in self['materials']:
+            self['cp'][mat] = self['cp'][mat] / \
+                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+            self['rhom'][mat] = self['rhom'][mat] / self['rho_ref']
 
         # scalings on separator
         if self['have_separator']:
