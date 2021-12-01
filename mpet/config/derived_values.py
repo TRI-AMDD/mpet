@@ -197,7 +197,7 @@ class DerivedValues:
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
-            return getattr(props_elyte, self.config['SMset'])()[-2]
+            return getattr(props_elyte, self.config['SMset'])()[-1]
 
     def k_h_ref(self):
         """Reference heat transfer coefficient

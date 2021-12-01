@@ -5,7 +5,6 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
-import h5py
 
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
@@ -325,21 +324,20 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                        "elytei", "elyteif", "elytedivi", "elytedivif"]:
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
-        mpl.animation.Animation._blit_draw = _blit_draw
         datax = cellsvec
         c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
         c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
         c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
         datay_c = utils.get_dict_key(data, c_cath, squeeze=False)
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
-        L_c = config['L']["c"] * Lfac
+        L_c = config['L']["c"] * config['L_ref'] * Lfac
         Ltot = L_c
         if config["have_separator"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
-            L_s = config['L']["s"] * Lfac
+            L_s = config['L']["s"] * config['L_ref'] * Lfac
             Ltot += L_s
         else:
             L_s = 0
@@ -348,7 +346,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             datay_a_p = utils.get_dict_key(data, p_anode, squeeze=False)
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
-            L_a = config['L']["a"] * Lfac
+            L_a = config['L']["a"] * config['L_ref'] * Lfac
             Ltot += L_a
         else:
             L_a = 0
@@ -498,20 +496,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         timettl = False  # Plot the current simulation time as title
         # Plot title in seconds
         ttlscl, ttlunit = 1, "s"
-        # For example, to plot title in hours:
-        # ttlscl, ttlunit = 1./3600, "hr"
-        save_shot = False
-        if save_shot:
-            t0ind = 300
-            print("Time at screenshot: {ts} s".format(ts=times[t0ind]*td))
-        else:
-            t0ind = 0
+        t0ind = 0
         trode = plot_type[-1]
         if plot_type[0] == "c":
             plt_cavg = True
         else:
             plt_cavg = False
-        plt_legend = True
         plt_axlabels = True
         if config[trode, "type"] in constants.one_var_types:
             type2c = False
@@ -587,15 +577,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
                     numy = len(datay)
-                    # check if it is array, then return length. otherwise return 1
-                    numy = len(datay) if isinstance(datay, np.ndarray) else 1
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
                     lines[pInd,vInd] = line
                 ax[pInd,vInd].set_ylim(ylim)
                 ax[pInd,vInd].set_xlim((0, lens[pInd,vInd] * Lfac))
-                if plt_legend:
-                    ax[pInd, vInd].legend(loc="best")
                 if plt_axlabels:
                     ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
                     if plot_type[0] == "c":
@@ -603,14 +589,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     elif plot_type[:2] == "mu":
                         ax[pInd, vInd].set_ylabel(r"$\mu/k_\mathrm{B}T$")
                 if timettl:
-                    mpl.animation.Animation._blit_draw = _blit_draw
                     ttl = ax[pInd, vInd].text(
                         0.5, 1.04, "t = {tval:3.3f} {ttlu}".format(
                             tval=times[t0ind]*td*ttlscl, ttlu=ttlunit),
                         verticalalignment="center", horizontalalignment="center",
                         transform=ax[pInd, vInd].transAxes)
-        if save_shot:
-            fig.savefig("mpet_{pt}.pdf".format(pt=plot_type), bbox_inches="tight")
 
         def init():
             toblit = []
@@ -654,14 +637,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             lines3[pInd,vInd].set_ydata(datay3)
                             lines_local = np.vstack((lines_local, lines3))
                     else:
-                        # double check size of datay, since nosqueeze is not enough
-                        datay = utils.get_dict_key(data, cstr[pInd,vInd])
-                        if len(datay.shape) > 1:
-                            # if actually 2d array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd],
-                                                       squeeze=False)[:,tind]
-                        else:  # 1D array
-                            datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
+                        datay = utils.get_dict_key(data, cstr[pInd,vInd])[tind]
                         lines[pInd,vInd].set_ydata(datay)
                         lines_local = lines.copy()
                     toblit.extend(lines_local.reshape(-1))
@@ -723,8 +699,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmap_data = cmaps["GnYlRd_3"]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
-        # Implement hack to be able to animate title
-        mpl.animation.Animation._blit_draw = _blit_draw
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(trvec), squeeze=False, figsize=figsize)
         ttlx = 0.5 if len(trvec) < 2 else 1.1
@@ -811,7 +785,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         trode = plot_type[-1]
         fplot = (True if plot_type[-3] == "f" else False)
         t0ind = (0 if not fplot else -1)
-        mpl.animation.Animation._blit_draw = _blit_draw
         fig, ax = plt.subplots(figsize=figsize)
         ax.set_xlabel('Position in electrode [{unit}]'.format(unit=Lunit))
         ax.set_ylabel('Potential of cathode [nondim]')
@@ -853,34 +826,4 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         fig.tight_layout()
         ani.save("mpet_{type}.mp4".format(type=plot_type), fps=25, bitrate=5500)
 
-    # close file if it is a h5py file
-    if isinstance(data, h5py._hl.files.File):
-        data.close()
-
     return fig, ax, ani
-
-
-# This is a block of code which messes with some mpl internals
-# to allow for animation of a title. See
-# http://stackoverflow.com/questions/17558096/animated-title-in-mpl
-def _blit_draw(self, artists, bg_cache):
-    # Handles blitted drawing, which renders only the artists given instead
-    # of the entire figure.
-    updated_ax = []
-    for a in artists:
-        # If we haven't cached the background for this axes object, do
-        # so now. This might not always be reliable, but it's an attempt
-        # to automate the process.
-        if a.axes not in bg_cache:
-            # bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(a.axes.bbox)
-            # change here
-            bg_cache[a.axes] = a.figure.canvas.copy_from_bbox(
-                a.axes.figure.bbox)
-        a.axes.draw_artist(a)
-        updated_ax.append(a.axes)
-
-    # After rendering all the needed artists, blit each axes individually.
-    for ax in set(updated_ax):
-        # and here
-        # ax.figure.canvas.blit(ax.bbox)
-        ax.figure.canvas.blit(ax.figure.bbox)

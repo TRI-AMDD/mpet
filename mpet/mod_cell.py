@@ -579,11 +579,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config):
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
         q_edges_int = -k_h*np.diff(T_lyte)/dxd1
     elif config["elyteModelType"] == "SM":
-        D_fs, sigma_fs, k_h_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-2]
+        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
+        eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
+        k_h_edges = eps_o_tau_edges * config["k_h"]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T_lyte), wt)
-        k_h_edges = utils.weighted_harmonic_mean(eps_o_tau*k_h_fs(c_lyte, T_lyte), wt)
         sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T_lyte), wt)
 
         sp, n = config["sp"], config["n"]
@@ -619,7 +620,7 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     if config["elyteModelType"] == "dilute":
         sigma_l = eps_o_tau * config["sigma_l"]
     elif config["elyteModelType"] == "SM":
-        tp0 = getattr(props_elyte,config["SMset"])()[-3]
+        tp0 = getattr(props_elyte,config["SMset"])()[-2]
 
         sigma_fs = getattr(props_elyte,config["SMset"])()[1]
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean

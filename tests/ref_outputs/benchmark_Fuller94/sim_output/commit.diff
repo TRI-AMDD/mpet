@@ -1,0 +1,14 @@
+diff --git a/configs/params_system_Fuller94.cfg b/configs/params_system_Fuller94.cfg
+index 6ba4af5..3449a0b 100644
+--- a/configs/params_system_Fuller94.cfg
++++ b/configs/params_system_Fuller94.cfg
+@@ -17,7 +17,7 @@ segments = [
+ 	]
+ prevDir = false
+ tend = 1.2e3
+-tsteps = 200
++tsteps = 25
+ relTol = 1e-6
+ absTol = 1e-6
+ T = 298
+

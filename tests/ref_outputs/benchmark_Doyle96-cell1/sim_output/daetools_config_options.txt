@@ -1,0 +1,137 @@
+{
+    "daetools": {
+        "core": {
+            "checkForInfiniteNumbers": "false",
+            "eventTolerance": "1E-7",
+            "logIndent": "    ",
+            "pythonIndent": "    ",
+            "checkUnitsConsistency": "true",
+            "resetLAMatrixAfterDiscontinuity": "true",
+            "printInfo": "false",
+            "nodes": {
+                "useNodeMemoryPools": "false",
+                "deleteNodesThreshold": "1000000"
+            },
+            "equations": {
+                "info": [
+                    "If simplifyExpressions is true equation expressions will be simplified.",
+                    "evaluationMode specifies the mode of evaluation: evaluationTree_OpenMP or computeStack_OpenMP.",
+                    "computeStack_External is set by specifying the adComputeStackEvaluator_t object to the simulation.",
+                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system)."
+                ],
+                "simplifyExpressions": "false",
+                "evaluationMode": "computeStack_OpenMP",
+                "evaluationTree_OpenMP": {
+                    "numThreads": "0"
+                },
+                "computeStack_OpenMP": {
+                    "numThreads": "0"
+                }
+            }
+        },
+        "activity": {
+            "printHeader": "false",
+            "printStats": "true",
+            "timeHorizon": "100.0",
+            "reportingInterval": "1.0",
+            "reportTimeDerivatives": "false",
+            "reportSensitivities": "false",
+            "stopAtModelDiscontinuity": "true",
+            "reportDataAroundDiscontinuities": "true",
+            "objFunctionAbsoluteTolerance": "1E-8",
+            "constraintsAbsoluteTolerance": "1E-8",
+            "measuredVariableAbsoluteTolerance": "1E-8"
+        },
+        "datareporting": {
+            "tcpipDataReceiverAddress": "127.0.0.1",
+            "tcpipDataReceiverPort": "50000",
+            "tcpipNumberOfRetries": "10",
+            "tcpipRetryAfterMilliSecs": "1000"
+        },
+        "logging": {
+            "tcpipLogAddress": "127.0.0.1",
+            "tcpipLogPort": "51000"
+        },
+        "minlpsolver": {
+            "printInfo": "false"
+        },
+        "IDAS": {
+            "relativeTolerance": "1E-5",
+            "integrationMode": "Normal",
+            "reportDataInOneStepMode": "false",
+            "nextTimeAfterReinitialization": "1E-7",
+            "printInfo": "false",
+            "numberOfSTNRebuildsDuringInitialization": "1000",
+            "SensitivitySolutionMethod": "Staggered",
+            "SensErrCon": "false",
+            "sensRelativeTolerance": "1E-5",
+            "sensAbsoluteTolerance": "1E-5",
+            "MaxOrd": "5",
+            "MaxNumSteps": "1000",
+            "InitStep": "0.0",
+            "MaxStep": "0.0",
+            "MaxErrTestFails": "10",
+            "MaxNonlinIters": "4",
+            "MaxConvFails": "10",
+            "NonlinConvCoef": "0.33",
+            "SuppressAlg": "false",
+            "NoInactiveRootWarn": "false",
+            "NonlinConvCoefIC": "0.0033",
+            "MaxNumStepsIC": "5",
+            "MaxNumJacsIC": "4",
+            "MaxNumItersIC": "10",
+            "LineSearchOffIC": "false",
+            "gmres": {
+                "kspace": "30",
+                "EpsLin": "0.05",
+                "JacTimesVecFn": "DifferenceQuotient",
+                "DQIncrementFactor": "1.0",
+                "MaxRestarts": "5",
+                "GSType": "MODIFIED_GS"
+            }
+        },
+        "superlu": {
+            "factorizationMethod": "SamePattern_SameRowPerm",
+            "useUserSuppliedWorkSpace": "false",
+            "workspaceSizeMultiplier": "3.0",
+            "workspaceMemoryIncrement": "1.5"
+        },
+        "superlu_mt": {
+            "numThreads": "0"
+        },
+        "intel_pardiso": {
+            "numThreads": "0"
+        },
+        "BONMIN": {
+            "IPOPT": {
+                "print_level": "0",
+                "tol": "1E-5",
+                "linear_solver": "mumps",
+                "hessianApproximation": "limited-memory",
+                "mu_strategy": "adaptive"
+            }
+        },
+        "NLOPT": {
+            "printInfo": "false",
+            "xtol_rel": "1E-6",
+            "xtol_abs": "1E-6",
+            "ftol_rel": "1E-6",
+            "ftol_abs": "1E-6",
+            "constr_tol": "1E-6"
+        },
+        "deal_II": {
+            "printInfo": "false",
+            "assembly": {
+                "info": [
+                    "parallelAssembly can be: Sequential or OpenMP.",
+                    "If numThreads is 0 the default number of threads will be used (typically the number of cores in the system).",
+                    "queueSize specifies the size of the internal queue; when this size is reached the local data are copied to the global matrices."
+                ],
+                "parallelAssembly": "OpenMP",
+                "numThreads": "0",
+                "queueSize": "32"
+            }
+        }
+    }
+}
+
