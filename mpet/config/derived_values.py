@@ -151,7 +151,7 @@ class DerivedValues:
         """Reference mass density used for energy balances
         """
         m_ref = 1000  # reference is 1000 kg
-        return m_ref / self.config['L_ref']**3
+        return m_ref
 
     def sigma_s_ref(self):
         """Reference conductivity
@@ -202,8 +202,8 @@ class DerivedValues:
     def k_h_ref(self):
         """Reference heat transfer coefficient
         """
-        return constants.c_ref * constants.k * \
-            self.config['L_ref']**2 / (self.config['t_ref'] * constants.N_A)
+        return constants.c_ref * constants.k * constants.N_A * \
+            self.config['L_ref']**2 / (self.config['t_ref'])
 
     def z(self):
         """Electrode capacity ratio

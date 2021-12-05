@@ -480,9 +480,6 @@ class Config:
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
         self['k_h'] = self['k_h'] / self['k_h_ref']
-        self['cp_l'] = self['cp_l'] / \
-            (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
-        self['rhom_l'] = self['rhom_l'] / self['rho_ref']
         self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
         self['sigma_l'] = self['sigma_l'] / self['sigma_s_ref']
         self['c0'] = self['c0'] / constants.c_ref
