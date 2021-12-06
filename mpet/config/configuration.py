@@ -479,7 +479,6 @@ class Config:
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
-        self['k_h'] = self['k_h'] / self['k_h_ref']
         self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
         self['sigma_l'] = self['sigma_l'] / self['sigma_s_ref']
         self['c0'] = self['c0'] / constants.c_ref
@@ -503,6 +502,7 @@ class Config:
             self['L'][trode] = self['L'][trode] / self['L_ref']
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
+            self['k_h'][trode] = self['k_h'][trode] / self['k_h_ref']
 
             self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
@@ -519,6 +519,7 @@ class Config:
         # scalings on separator
         if self['have_separator']:
             self['L']['s'] /= self['L_ref']
+            self['k_h']['s'] = self['k_h']['s'] / self['k_h_ref']
 
     def _scale_macroscopic_parameters(self, Vref):
         """

@@ -20,9 +20,9 @@ c_ref = 1000.
 #: parameter that are defined per electrode with a ``_{electrode}`` suffix
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
                     'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
-                    'specified_psd', 'rhom', 'cp']
+                    'specified_psd', 'rhom', 'cp', 'k_h']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
-PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
+PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h']
 # PARAMETERS THAT ARE NEEDED IN A THERMAL MODEL FOR ELECTROLYTE PROPERTIES
 PARAMS_ELYTE = ['cp', 'sigma', 'rhom']
 #: parameters that are defined for each particle, and their type

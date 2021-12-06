@@ -330,7 +330,8 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("T_lyte")
             eq.Residual = self.T_lyte["c"].dt(0) - 0
         else:
-            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
+            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"],
+                                       config["k_h"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
@@ -348,7 +349,8 @@ class ModCell(dae.daeModel):
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
             phibulktmp = np.hstack((self.phi_cell(), phibulkvec, config["phi_cathode"]))
 
-            Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc, config)
+            Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc,
+                                                                  config, Nvol)
 
             # If we don't have a porous anode:
             # 1) the total current flowing into the electrolyte is set
@@ -552,7 +554,7 @@ class ModCell(dae.daeModel):
                               setVariableValues=[(self.endCondition, 2)])
 
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config):
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
     zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
     nu = nup + num
     dxd1 = disc["dxd1"]
@@ -563,11 +565,12 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config):
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
     T_edges_int = utils.weighted_linear_mean(T_lyte, wt)
 
+    k_h = utils.weighted_linear_mean(disc["khvec"], wt)
     if config["elyteModelType"] == "dilute":
         # Get porosity at cell edges using weighted harmonic mean
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         Dp = eps_o_tau_edges * config["Dp"]
-        k_h = eps_o_tau_edges * config["k_h"]
+        k_h = eps_o_tau_edges * k_h
         Dm = eps_o_tau_edges * config["Dm"]
         # neglecting soret diffusion
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
@@ -581,7 +584,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config):
     elif config["elyteModelType"] == "SM":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
-        k_h_edges = eps_o_tau_edges * config["k_h"]
+        k_h_edges = eps_o_tau_edges * k_h
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T_lyte), wt)

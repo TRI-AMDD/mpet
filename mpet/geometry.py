@@ -78,7 +78,7 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     return curv
 
 
-def get_elyte_disc(Nvol, L, poros, BruggExp):
+def get_elyte_disc(Nvol, L, poros, BruggExp, k_h):
     out = {}
     # Width of each cell
     out["dxvec"] = utils.get_dxvec(L, Nvol)
@@ -94,6 +94,10 @@ def get_elyte_disc(Nvol, L, poros, BruggExp):
 
     # Vector of Bruggeman exponents
     Brugg_pad = utils.pad_vec(utils.get_asc_vec(BruggExp, Nvol))
+
+    # The porosity vector
+    khvec = utils.get_asc_vec(k_h, Nvol)
+    out["khvec"] = utils.pad_vec(khvec)
 
     # Vector of posority/tortuosity (assuming Bruggeman)
     out["eps_o_tau"] = porosvec_pad/porosvec_pad**(Brugg_pad)
