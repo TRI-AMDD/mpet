@@ -10,7 +10,6 @@ from shutil import copyfile
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
-import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
@@ -63,7 +62,7 @@ def run_simulation(config, outdir):
     # Set the time horizon and the reporting interval
     simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
-    simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
+    simulation.ReportingTimes = config["times"]
     # Example logspacing for output times:
     # simulation.ReportingTimes = list(
     #     np.logspace(-4, np.log10(simulation.TimeHorizon), ndD_s['tsteps']))

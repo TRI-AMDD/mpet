@@ -417,6 +417,7 @@ class Config:
         #. Scale to non-dimensional values
         #. Parse current/voltage segments
         #. Either generate particle distributions or load from previous run
+        #. Create simulation times
 
         :param bool prevDir: if True, load particle distributions from previous run,
             otherwise generate them
@@ -463,6 +464,16 @@ class Config:
             self._G()
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
+
+        self._create_times()
+
+    def _create_times(self):
+        """
+
+        """
+        # The list of reporting times excludes the first index (zero, which is implied)
+        if not self["times"]:
+            self["times"] = list(np.linspace(0, self["tend"], self["tsteps"] + 1))[1:]
 
     def _scale_system_parameters(self, theoretical_1C_current):
         """

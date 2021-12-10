@@ -70,6 +70,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
                          'tsteps': And(Use(int), lambda x: x > 0),
+                         Optional('times', default=[]): Use(ast.literal_eval),
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
                          'T': Use(float),
