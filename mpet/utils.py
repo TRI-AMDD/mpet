@@ -163,14 +163,15 @@ def import_function(filename, function, mpet_module=None):
         # Import module  which contains the function we seek,
         # we need to call import_module because the module import is dependent
         # on a variable name.
-        # sys.path is used to temporarily add the folder containig the module we
-        # need to import to the Python search path for imports
+        # sys.path is used to temporarily have only the folder containig the module we
+        # need to import in the Python search path for imports
         # the following lines can be interpreted as "import <module_name>"
         folder = os.path.dirname(os.path.abspath(filename))
         module_name = os.path.splitext(os.path.basename(filename))[0]
-        sys.path.insert(0, folder)
+        old_path = sys.path
+        sys.path = [folder]
         module = importlib.import_module(module_name)
-        sys.path.pop(0)
+        sys.path = old_path
 
     # import the function from the module
     callable_function = getattr(module, function)
