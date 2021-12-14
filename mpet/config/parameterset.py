@@ -54,7 +54,6 @@ class ParameterSet:
                 # this section does not exist. Make it an empty dict, so
                 # schema can still handle optional parameters in the section
                 raw_section_params = dict()
-
             # validate the parameters
             section_params = config_schema.validate(raw_section_params)
             # verify there are no duplicate keys
