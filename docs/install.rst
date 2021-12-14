@@ -5,14 +5,14 @@ Prerequisites
 ----------------------------
 
 
-  * Python 3.5 to 3.10
+  * Python 3.6 to 3.10
   * numpy, scipy, matplotlib, pyqt5, h5py
   * daetools
 
 MPET on Windows
 -----------------------------
 
-MPET on Windows needs to use python 3.5 to python 3.7 because daetools on
+MPET on Windows needs to use python 3.6 or 3.7 because daetools on
 windows is only available for those versions.
 
 First make sure that you have a correct python version with (ana)conda for
