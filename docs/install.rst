@@ -81,14 +81,6 @@ Test your installation
 
  ``./bin/mpettest.py``
 
- Then go into the test directory
-
- ``cd tests``
-
- and compare the output with the following command
-
- ``pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py``
-
 Common Installation Bugs
 ---------------------------
 
