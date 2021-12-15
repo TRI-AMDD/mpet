@@ -5,7 +5,6 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
-import glob
 
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
@@ -695,7 +694,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
         # Smooth colormap changes:
         if color_changes == 'smooth':
             # generated with colormap.org
-            cmap_location = glob.glob(r"..\..\**\colormaps_custom.npz", recursive=True)[0]
+            cmap_location = os.path.dirname(os.path.abspath(__file__)) + r'\colormaps_custom.npz'
             cmaps = np.load(cmap_location)
             cmap_data = cmaps[smooth_type]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
