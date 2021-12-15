@@ -79,7 +79,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
     config = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
-        data_only=True)
+        data_only=True, color_changes=None, smooth_type=None)
     trodes = config["trodes"]
     CrateCurr = config["1C_current_density"]  # A/m^2
     psd_len_c = config["psd_len"]["c"]
@@ -93,25 +93,25 @@ def main(indir, genData=True, discData=True, elyteData=True,
         Nv_a, Np_a = psd_len_a.shape
     tVec, vVec = plot_data.show_data(
         indir, plot_type="vt", print_flag=False, save_flag=False,
-        data_only=True)
+        data_only=True, color_changes=None, smooth_type=None)
     ntimes = len(tVec)
 
     if genData:
         ffVec_c = plot_data.show_data(
             indir, plot_type="soc_c", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         if "a" in trodes:
             ffVec_a = plot_data.show_data(
                 indir, plot_type="soc_a", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         else:
             ffVec_a = np.ones(len(tVec))
         currVec = plot_data.show_data(
             indir, plot_type="curr", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         powerVec = plot_data.show_data(
             indir, plot_type="power", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         genMat = np.zeros((ntimes, 7))
         genMat[:,0] = tVec
         genMat[:,1] = ffVec_a
@@ -126,7 +126,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     if discData:
         cellCentersVec, facesVec = plot_data.show_data(
             indir, plot_type="discData", print_flag=False,
-            save_flag=False, data_only=True)
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)
         with open(os.path.join(indir, "discData.txt"), "w") as fo:
             print(discCCbattery, file=fo)
             print(",".join(map(str, cellCentersVec)), file=fo)
@@ -164,15 +164,16 @@ def main(indir, genData=True, discData=True, elyteData=True,
         # so we'll get a KeyError in attempting to "plot" the electrolyte current density.
         try:
             plot_data.show_data(
-                indir, plot_type="elytei", print_flag=False, save_flag=False, data_only=True)
+                indir, plot_type="elytei", print_flag=False, save_flag=False, data_only=True,
+                color_changes=None, smooth_type=None)
         except KeyError:
             valid_current = False
         elytecMat = plot_data.show_data(
             indir, plot_type="elytec", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         elytepMat = plot_data.show_data(
             indir, plot_type="elytep", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         np.savetxt(os.path.join(indir, "elyteConcData.txt"),
                    elytecMat, delimiter=dlm, header=elytecHdr)
         np.savetxt(os.path.join(indir, "elytePotData.txt"),
@@ -180,10 +181,10 @@ def main(indir, genData=True, discData=True, elyteData=True,
         if valid_current:
             elyteiMat = plot_data.show_data(
                 indir, plot_type="elytei", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             elytediviMat = plot_data.show_data(
                 indir, plot_type="elytedivi", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             np.savetxt(os.path.join(indir, "elyteCurrDensData.txt"),
                        elyteiMat, delimiter=dlm, header=elyteiHdr)
             np.savetxt(os.path.join(indir, "elyteDivCurrDensData.txt"),
@@ -229,7 +230,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     if cbarData:
         cbarDict = plot_data.show_data(
             indir, plot_type="cbar_full", print_flag=False,
-            save_flag=False, data_only=True)
+            save_flag=False, data_only=True, color_changes='discrete', smooth_type=None)
         for tr in trodes:
             Trode = get_trode_str(tr)
             fname = "cbar{l}Data.txt".format(l=Trode)
@@ -250,13 +251,13 @@ def main(indir, genData=True, discData=True, elyteData=True,
         if "a" in trodes:
             bulkp_aData = plot_data.show_data(
                 indir, plot_type="bulkp_a", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             fname = fnameBulkpBase.format(l="Anode")
             np.savetxt(os.path.join(indir, fname), bulkp_aData,
                        delimiter=dlm, header=bulkpHdr)
         bulkp_cData = plot_data.show_data(
             indir, plot_type="bulkp_c", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         fname = fnameBulkpBase.format(l="Cathode")
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
                    delimiter=dlm, header=bulkpHdr)

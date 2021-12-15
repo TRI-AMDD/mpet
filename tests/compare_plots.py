@@ -62,7 +62,8 @@ def xyCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     newSimOutDir = osp.join(testDir, "sim_output")
     oldSimOutDir = osp.join(dirDict["refs"], testName, "sim_output")
     plotsDir = dirDict["plots"]
-    kwargs = {"print_flag": False, "save_flag": False, "data_only": True}
+    kwargs = {"print_flag": False, "save_flag": False, "data_only": True,
+              "color_changes": None, "smooth_type": None}
     new_xy = pd.show_data(newSimOutDir, plot_type=ptype, **kwargs)
     old_xy = pd.show_data(oldSimOutDir, plot_type=ptype, **kwargs)
     scl = 1.3
@@ -87,7 +88,8 @@ def xyPartsCmp(testDir, dirDict, ptype, xlbl, ylbl, ttl, fname):
     newSimOutDir = osp.join(testDir, "sim_output")
     oldSimOutDir = osp.join(dirDict["refs"], testName, "sim_output")
     plotsDir = dirDict["plots"]
-    kwargs = {"print_flag": False, "save_flag": False, "data_only": True}
+    kwargs = {"print_flag": False, "save_flag": False, "data_only": True,
+              "color_changes": 'discrete', "smooth_type": None}
     new_dataDict = pd.show_data(newSimOutDir, plot_type=ptype, **kwargs)
     old_dataDict = pd.show_data(oldSimOutDir, plot_type=ptype, **kwargs)
     new_t = pd.show_data(newSimOutDir, plot_type="vt", **kwargs)[0]
