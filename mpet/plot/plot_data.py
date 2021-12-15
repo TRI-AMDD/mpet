@@ -5,6 +5,7 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
 
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
@@ -25,7 +26,8 @@ from mpet.config import Config, constants
 # mpl.rcParams['text.usetex'] = True
 
 
-def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
+def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes, smooth_type,
+              vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
@@ -670,12 +672,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         if data_only:
             return dataCbar
         # Set up colors.
-        # Define if you want smooth or discrete color changes
-        # Option: "smooth" or "discrete"
-        color_changes = "discrete"
-#        color_changes = "smooth"
+        # Uses either discrete or smooth colors
+        # Define if you want smooth or discrete color changes in plot settings (-c)
+        # Option: "discrete" or "smooth"
         # Discrete color changes:
-        if color_changes == "discrete":
+        if color_changes == 'discrete':
             # Make a discrete colormap that goes from green to yellow
             # to red instantaneously
             cdict = {
@@ -692,10 +693,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmap = mpl.colors.LinearSegmentedColormap(
                 "discrete", cdict)
         # Smooth colormap changes:
-        if color_changes == "smooth":
+        if color_changes == 'smooth':
             # generated with colormap.org
-            cmaps = np.load("colormaps_custom.npz")
-            cmap_data = cmaps["GnYlRd_3"]
+            cmap_location = glob.glob(r"..\..\**\colormaps_custom.npz", recursive=True)[0]
+            cmaps = np.load(cmap_location)
+            cmap_data = cmaps[smooth_type]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         size_frac_min = 0.10
