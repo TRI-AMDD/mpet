@@ -16,8 +16,8 @@ import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
-import mpet.props_elyte as props_elyte
 import mpet.utils as utils
+from mpet.config import constants
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
 
 # Dictionary of end conditions
@@ -27,22 +27,19 @@ endConditions = {
 
 
 class ModCell(dae.daeModel):
-    def __init__(self, Name, Parent=None, Description="", ndD_s=None,
-                 ndD_e=None):
+    def __init__(self, config, Name, Parent=None, Description=""):
         dae.daeModel.__init__(self, Name, Parent, Description)
 
-        if (ndD_s is None) or (ndD_e is None):
-            raise Exception("Need input parameter dictionaries")
-        self.ndD = ndD_s
-        self.profileType = ndD_s['profileType']
-        Nvol = ndD_s["Nvol"]
-        Npart = ndD_s["Npart"]
-        self.trodes = trodes = ndD_s["trodes"]
+        self.config = config
+        self.profileType = config['profileType']
+        Nvol = config["Nvol"]
+        Npart = config["Npart"]
+        self.trodes = trodes = config["trodes"]
 
         # Domains where variables are distributed
         self.DmnCell = {}  # domains over full cell dimensions
         self.DmnPart = {}  # domains over particles in each cell volume
-        if Nvol["s"] >= 1:  # If we have a separator
+        if config['have_separator']:  # If we have a separator
             self.DmnCell["s"] = dae.daeDomain(
                 "DmnCell_s", self, dae.unit(),
                 "Simulated volumes in the separator")
@@ -87,7 +84,7 @@ class ModCell(dae.daeModel):
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
-        if Nvol["s"] >= 1:  # If we have a separator
+        if config['have_separator']:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
                 "c_lyte_s", conc_t, self,
                 "Concentration in the electrolyte in the separator",
@@ -99,7 +96,7 @@ class ModCell(dae.daeModel):
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
         # potential.
-        if Nvol["a"] == 0 and Nvol["s"] == 0 and Nvol["c"] == 1:
+        if ('a' not in config['trodes']) and (not config['have_separator']) and Nvol["c"] == 1:
             self.SVsim = True
         else:
             self.SVsim = False
@@ -140,18 +137,18 @@ class ModCell(dae.daeModel):
                             trode=trode, vInd=vInd, pInd=pInd),
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
-                    solidType = ndD_e[trode]["indvPart"][vInd,pInd]['type']
-                    if solidType in ndD_s["2varTypes"]:
+                    solidType = config[trode, "type"]
+                    if solidType in constants.two_var_types:
                         pMod = mod_electrodes.Mod2var
-                    elif solidType in ndD_s["1varTypes"]:
+                    elif solidType in constants.one_var_types:
                         pMod = mod_electrodes.Mod1var
                     else:
                         raise NotImplementedError("unknown solid type")
                     self.particles[trode][vInd,pInd] = pMod(
-                        "partTrode{trode}vol{vInd}part{pInd}".format(
+                        config, trode, vInd, pInd,
+                        Name="partTrode{trode}vol{vInd}part{pInd}".format(
                             trode=trode, vInd=vInd, pInd=pInd),
-                        self, ndD=ndD_e[trode]["indvPart"][vInd,pInd],
-                        ndD_s=ndD_s)
+                        Parent=self)
                     self.ConnectPorts(self.portsOutLyte[trode][vInd],
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
@@ -162,9 +159,9 @@ class ModCell(dae.daeModel):
 
         # Some values of domain lengths
         trodes = self.trodes
-        ndD = self.ndD
-        Nvol = ndD["Nvol"]
-        Npart = ndD["Npart"]
+        config = self.config
+        Nvol = config["Nvol"]
+        Npart = config["Npart"]
         Nlyte = np.sum(list(Nvol.values()))
 
         # Define the overall filling fraction in the electrodes
@@ -178,7 +175,7 @@ class ModCell(dae.daeModel):
             tmp = 0
             for vInd in range(Nvol[trode]):
                 for pInd in range(Npart[trode]):
-                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
+                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
                     tmp += self.particles[trode][vInd,pInd].cbar() * Vj * dx
             eq.Residual -= tmp
 
@@ -193,8 +190,9 @@ class ModCell(dae.daeModel):
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
-                    Vj = ndD["psd_vol_FracVol"][trode][vInd,pInd]
-                    RHS += -(ndD["beta"][trode] * (1-ndD["poros"][trode]) * ndD["P_L"][trode] * Vj
+                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
+                    RHS += -(config["beta"][trode] * (1-config["poros"][trode])
+                             * config["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
@@ -218,12 +216,12 @@ class ModCell(dae.daeModel):
 
             # Simulate the potential drop along the bulk electrode
             # solid phase
-            simBulkCond = ndD['simBulkCond'][trode]
+            simBulkCond = config['simBulkCond'][trode]
             if simBulkCond:
                 # Calculate the RHS for electrode conductivity
                 phi_tmp = utils.add_gp_to_vec(utils.get_var_vec(self.phi_bulk[trode], Nvol[trode]))
                 porosvec = utils.pad_vec(utils.get_const_vec(
-                    (1-self.ndD["poros"][trode])**(1-ndD["BruggExp"][trode]), Nvol[trode]))
+                    (1-self.config["poros"][trode])**(1-config["BruggExp"][trode]), Nvol[trode]))
                 poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
                     # Potential at the current collector is from
@@ -235,9 +233,10 @@ class ModCell(dae.daeModel):
                     phi_tmp[0] = phi_tmp[1]
                     # Potential at current at current collector is
                     # reference (set)
-                    phi_tmp[-1] = ndD["phi_cathode"]
-                dx = ndD["L"][trode]/Nvol[trode]
-                dvg_curr_dens = np.diff(-poros_walls*ndD["sigma_s"][trode]*np.diff(phi_tmp)/dx)/dx
+                    phi_tmp[-1] = config["phi_cathode"]
+                dx = config["L"][trode]/Nvol[trode]
+                dvg_curr_dens = np.diff(-poros_walls*config["sigma_s"][trode]
+                                        * np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
@@ -248,15 +247,15 @@ class ModCell(dae.daeModel):
                     if trode == "a":  # anode
                         eq.Residual = self.phi_bulk[trode](vInd) - self.phi_cell()
                     else:  # cathode
-                        eq.Residual = self.phi_bulk[trode](vInd) - ndD["phi_cathode"]
+                        eq.Residual = self.phi_bulk[trode](vInd) - config["phi_cathode"]
 
             # Simulate the potential drop along the connected
             # particles
-            simPartCond = ndD['simPartCond'][trode]
+            simPartCond = config['simPartCond'][trode]
             for vInd in range(Nvol[trode]):
                 phi_bulk = self.phi_bulk[trode](vInd)
                 for pInd in range(Npart[trode]):
-                    G_l = ndD["G"][trode][vInd,pInd]
+                    G_l = config["G"][trode][vInd,pInd]
                     phi_n = self.phi_part[trode](vInd, pInd)
                     if pInd == 0:  # reference bulk phi
                         phi_l = phi_bulk
@@ -266,7 +265,7 @@ class ModCell(dae.daeModel):
                         G_r = 0
                         phi_r = phi_n
                     else:
-                        G_r = ndD["G"][trode][vInd,pInd+1]
+                        G_r = config["G"][trode][vInd,pInd+1]
                         phi_r = self.phi_part[trode](vInd, pInd+1)
                     # charge conservation equation around this particle
                     eq = self.CreateEquation(
@@ -289,7 +288,7 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            disc = geom.get_elyte_disc(Nvol, ndD["L"], ndD["poros"], ndD["BruggExp"])
+            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
@@ -299,21 +298,21 @@ class ModCell(dae.daeModel):
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
 
-            Nm_edges, i_edges = get_lyte_internal_fluxes(ctmp, phitmp, disc, ndD)
+            Nm_edges, i_edges = get_lyte_internal_fluxes(ctmp, phitmp, disc, config)
 
             # If we don't have a porous anode:
             # 1) the total current flowing into the electrolyte is set
             # 2) assume we have a Li foil with BV kinetics and the specified rate constant
             eqC = self.CreateEquation("GhostPointC_L")
             eqP = self.CreateEquation("GhostPointP_L")
-            if Nvol["a"] == 0:
+            if 'a' not in config["trodes"]:
                 # Concentration BC from mass flux
                 eqC.Residual = Nm_edges[0]
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
                 cWall = .5*(ctmp[0] + ctmp[1])
-                ecd = ndD["k0_foil"]*cWall**0.5
+                ecd = config["k0_foil"]*cWall**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
                 # oxidation here
@@ -321,15 +320,15 @@ class ModCell(dae.daeModel):
                 # eta = 2*arcsinh(-current/(-2*ecd))
                 BVfunc = -self.current() / ecd
                 eta_eff = 2*np.arcsinh(-BVfunc/2.)
-                eta = eta_eff + self.current()*ndD["Rfilm_foil"]
+                eta = eta_eff + self.current()*config["Rfilm_foil"]
 #                # Infinitely fast anode kinetics
 #                eta = 0.
                 # eta = mu_R - mu_O = -mu_O (evaluated at interface)
                 # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
                 # phiWall = -eta + phi_cell [- T*ln(c)]
                 phiWall = -eta + self.phi_cell()
-                if ndD["elyteModelType"] == "dilute":
-                    phiWall -= ndD["T"]*np.log(cWall)
+                if config["elyteModelType"] == "dilute":
+                    phiWall -= config["T"]*np.log(cWall)
                 # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
             # We have a porous anode -- no flux of charge or anions through current collector
@@ -342,19 +341,20 @@ class ModCell(dae.daeModel):
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./ndD["num"])*dvgNm[vInd]
+                eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./config["num"])*dvgNm[vInd]
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
-                eq.Residual = -dvgi[vInd] + ndD["zp"]*Rvvec[vInd]
+                eq.Residual = -dvgi[vInd] + config["zp"]*Rvvec[vInd]
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
         # C-rates.
         eq = self.CreateEquation("Total_Current")
         eq.Residual = self.current()
-        limtrode = ("c" if ndD["z"] < 1 else "a")
+        limtrode = config["limtrode"]
         dx = 1./Nvol[limtrode]
-        rxn_scl = ndD["beta"][limtrode] * (1-ndD["poros"][limtrode]) * ndD["P_L"][limtrode]
+        rxn_scl = config["beta"][limtrode] * (1-config["poros"][limtrode]) \
+            * config["P_L"][limtrode]
         for vInd in range(Nvol[limtrode]):
             if limtrode == "a":
                 eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
@@ -365,85 +365,101 @@ class ModCell(dae.daeModel):
         # phi_cell = phi_applied - I*R
         eq = self.CreateEquation("Measured_Voltage")
         eq.Residual = self.phi_cell() - (
-            self.phi_applied() - ndD["Rser"]*self.current())
+            self.phi_applied() - config["Rser"]*self.current())
 
         if self.profileType == "CC":
             # Total Current Constraint Equation
             eq = self.CreateEquation("Total_Current_Constraint")
-            if ndD["tramp"] > 0:
+            if config["tramp"] > 0:
                 eq.Residual = self.current() - (
-                    ndD["currPrev"] + (ndD["currset"] - ndD["currPrev"])
-                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"]))))
+                    config["currPrev"] + (config["currset"] - config["currPrev"])
+                    * (1 - np.exp(-dae.Time()/(config["tend"]*config["tramp"]))))
             else:
-                eq.Residual = self.current() - ndD["currset"]
+                eq.Residual = self.current() - config["currset"]
         elif self.profileType == "CV":
             # Keep applied potential constant
             eq = self.CreateEquation("applied_potential")
-            if ndD["tramp"] > 0:
+            if config["tramp"] > 0:
                 eq.Residual = self.phi_applied() - (
-                    ndD["phiPrev"] + (ndD["Vset"] - ndD["phiPrev"])
-                    * (1 - np.exp(-dae.Time()/(ndD["tend"]*ndD["tramp"])))
+                    config["phiPrev"] + (config["Vset"] - config["phiPrev"])
+                    * (1 - np.exp(-dae.Time()/(config["tend"]*config["tramp"])))
                     )
             else:
-                eq.Residual = self.phi_applied() - ndD["Vset"]
+                eq.Residual = self.phi_applied() - config["Vset"]
+        elif self.profileType == "CP":
+            # constant power constraint
+            ndDVref = config["c", "phiRef"]
+            if 'a' in config["trodes"]:
+                ndDVref = config["c", "phiRef"] - config["a", "phiRef"]
+            eq = self.CreateEquation("Total_Power_Constraint")
+            # adding Vref since P = V*I
+            if config["tramp"] > 0:
+                eq.Residual = self.current()*(self.phi_applied() + ndDVref) - (
+                    config["currPrev"]*(config["phiPrev"] + ndDVref)
+                    + (config["power"] - (config["currPrev"]*(config["phiPrev"]
+                                                              + ndDVref)))
+                    * (1 - np.exp(-dae.Time()/(config["tend"]*config["tramp"])))
+                    )
+            else:
+                eq.Residual = self.current()*(self.phi_applied() + ndDVref) - config["power"]
         elif self.profileType == "CCsegments":
-            if ndD["tramp"] > 0:
-                ndD["segments_setvec"][0] = ndD["currPrev"]
+            if config["tramp"] > 0:
+                config["segments_setvec"][0] = config["currPrev"]
                 self.segSet = extern_funcs.InterpTimeScalar(
                     "segSet", self, dae.unit(), dae.Time(),
-                    ndD["segments_tvec"], ndD["segments_setvec"])
+                    config["segments_tvec"], config["segments_setvec"])
                 eq = self.CreateEquation("Total_Current_Constraint")
                 eq.Residual = self.current() - self.segSet()
 
             # CCsegments implemented as discontinuous equations
             else:
                 # First segment
-                time = ndD["segments"][0][1]
+                time = config["segments"][0][1]
                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][0][0]
+                eq.Residual = self.current() - config["segments"][0][0]
 
                 # Middle segments
-                for i in range(1,len(ndD["segments"])-1):
-                    time = time+ndD["segments"][i][1]
+                for i in range(1,len(config["segments"])-1):
+                    time = time+config["segments"][i][1]
                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("Total_Current_Constraint")
-                    eq.Residual = self.current() - ndD["segments"][i][0]
+                    eq.Residual = self.current() - config["segments"][i][0]
 
                 # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("Total_Current_Constraint")
-                eq.Residual = self.current() - ndD["segments"][-1][0]
+                eq.Residual = self.current() - config["segments"][-1][0]
                 self.END_IF()
 
         elif self.profileType == "CVsegments":
-            if ndD["tramp"] > 0:
-                ndD["segments_setvec"][0] = ndD["phiPrev"]
+            if config["tramp"] > 0:
+                config["segments_setvec"][0] = config["phiPrev"]
                 self.segSet = extern_funcs.InterpTimeScalar(
                     "segSet", self, dae.unit(), dae.Time(),
-                    ndD["segments_tvec"], ndD["segments_setvec"])
+                    config["segments_tvec"], config["segments_setvec"])
                 eq = self.CreateEquation("applied_potential")
                 eq.Residual = self.phi_applied() - self.segSet()
 
             # CVsegments implemented as discontinuous equations
             else:
                 # First segment
-                time = ndD["segments"][0][1]
+                time = config["segments"][0][1]
                 self.IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][0][0]
+                eq.Residual = self.phi_applied() - config["segments"][0][0]
 
                 # Middle segments
-                for i in range(1,len(ndD["segments"])-1):
-                    time = time+ndD["segments"][i][1]
+                for i in range(1,len(config["segments"])-1):
+                    time = time+config["segments"][i][1]
                     self.ELSE_IF(dae.Time() < dae.Constant(time*s), 1.e-3)
                     eq = self.CreateEquation("applied_potential")
-                    eq.Residual = self.phi_applied() - ndD["segments"][i][0]
+                    eq.Residual = self.phi_applied() - config["segments"][i][0]
 
                 # Last segment
                 self.ELSE()
                 eq = self.CreateEquation("applied_potential")
-                eq.Residual = self.phi_applied() - ndD["segments"][-1][0]
+                eq.Residual = self.phi_applied() - config["segments"][-1][0]
                 self.END_IF()
 
         for eq in self.Equations:
@@ -452,20 +468,20 @@ class ModCell(dae.daeModel):
         # Ending conditions for the simulation
         if self.profileType in ["CC", "CCsegments"]:
             # Vmax reached
-            self.ON_CONDITION((self.phi_applied() <= ndD["phimin"])
+            self.ON_CONDITION((self.phi_applied() <= config["phimin"])
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 1)])
 
             # Vmin reached
-            self.ON_CONDITION((self.phi_applied() >= ndD["phimax"])
+            self.ON_CONDITION((self.phi_applied() >= config["phimax"])
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
 
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
-    zp, zm, nup, num = ndD["zp"], ndD["zm"], ndD["nup"], ndD["num"]
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
+    zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
     nu = nup + num
-    T = ndD["T"]
+    T = config["T"]
     dxd1 = disc["dxd1"]
     eps_o_tau = disc["eps_o_tau"]
 
@@ -473,11 +489,11 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
     wt = utils.pad_vec(disc["dxvec"])
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
 
-    if ndD["elyteModelType"] == "dilute":
+    if config["elyteModelType"] == "dilute":
         # Get porosity at cell edges using weighted harmonic mean
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
-        Dp = eps_o_tau_edges * ndD["Dp"]
-        Dm = eps_o_tau_edges * ndD["Dm"]
+        Dp = eps_o_tau_edges * config["Dp"]
+        Dm = eps_o_tau_edges * config["Dm"]
 #        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
 #                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
@@ -485,14 +501,16 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, ndD):
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
-    elif ndD["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,ndD["SMset"])()[:-1]
+    elif config["elyteModelType"] == "SM":
+        elyte_function = utils.import_function(config["SMset_filename"], config["SMset"],
+                                               mpet_module="mpet.props_elyte")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)
         sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T), wt)
 
-        sp, n = ndD["sp"], ndD["n_refTrode"]
+        sp, n = config["sp"], config["n"]
         # there is an error in the MPET paper, temperature dependence should be
         # in sigma and not outside of sigma
         i_edges_int = -sigma_edges * (

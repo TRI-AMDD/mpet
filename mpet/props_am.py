@@ -1,7 +1,10 @@
 """This module handles properties associated with the active materials."""
+import types
 import numpy as np
 
 import mpet.geometry as geo
+from mpet.config import constants
+from mpet.utils import import_function
 
 import types
 
@@ -18,11 +21,18 @@ class Dfuncs():
     solution (_ss) and materials based on simpler thermodynamic models.
     """
 
-    def __init__(self, Dfunc):
-        Dopts = {}
-        Dopts['lattice'] = self.lattice
-        Dopts['constant'] = self.constant
-        self.Dfunc = Dopts[Dfunc]
+    def __init__(self, Dfunc, Dfunc_filename=None):
+        # If the user provided a filename with Dfuncs, try to load
+        # the function from there, otherwise load it from this class
+        if Dfunc_filename is None:
+            # the function is loaded from this class
+            self.Dfunc = getattr(self, Dfunc)
+        else:
+            # the function is loaded from an external file
+            imported_Dfunc = import_function(Dfunc_filename, Dfunc)
+            # We have to make sure the function knows what 'self' is with
+            # the types.MethodType function
+            self.Dfunc = types.MethodType(imported_Dfunc, self)
 
     def constant(self, y):
         return 1.
@@ -44,51 +54,41 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
-
-    def __init__(self, T, ndD=None, **kwargs):
-        """ ndD can be the full dictionary of nondimensional
+    def __init__(self, config, trode, ind=None):
+        """config is the full dictionary of
         parameters for the electrode particles, as made for the
-        simulations. Otherwise, parameters can be passed directly in
-        as keyword arguments and must contain all of the needed
-        parameters for the material of interest.
-        E.g.
-        For a regular solution material:
-            muRfuncs(T, ndD)
-        or
-            muRfuncs(T, muRfunc="LiFePO4", Omga=3.4)
-        For solid solution function based on fit OCV:
-            muRfuncs(T, ndD)
-        or
-            muRfuncs(T, muRfunc="LiMn2O4_ss")
+        simulations. trode is the selected electrode.
+        ind is optinally the selected particle, provided as (vInd, pInd)
         """
-        if ndD is None:
-            ndD = kwargs
-        self.ndD = ndD
-        self.T = T  # nondimensional
-        k = 1.381e-23
-        Tabs = 298
-        e = 1.602e-19
+        self.config = config
+        self.trode = trode
+        self.ind = ind
+        self.T = config['T']  # nondimensional
         # eokT and kToe are the reference values for scalings
-        self.eokT = e/(k*Tabs)
-        self.kToe = (k*Tabs)/e
+        self.eokT = constants.e / (constants.k * constants.T_ref)
+        self.kToe = 1. / self.eokT
 
-        # Convert "muRfunc" to a callable function
+        # If the user provided a filename with muRfuncs, try to load
+        # the function from there, otherwise load it from this class
+        filename = self.get_trode_param("muRfunc_filename")
+        if filename is None:
+            # the function will be loaded from this file, specifically this class
+            self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+        else:
+            muRfunc = import_function(filename, self.get_trode_param("muRfunc"))
+            # We have to make sure the function knows what 'self' is with
+            # the types.MethodType function
+            self.muRfunc = types.MethodType(muRfunc, self)
 
-        # Import module  which contains the function we seek, the path can be
-        # adjusted later on to allow for "local" material to be used
-        # we need to call __import__ because the module import is dependent
-        # on a variable name
-        # the following line can be interpreted as
-        #   muRmodule = from mpet.electrode.materials.[var] import [var]
-        muRmodule = __import__('mpet.electrode.materials.' + ndD["muRfunc"],
-                               globals(), locals(), [ndD["muRfunc"]], 0)
-
-        # Extract the function from the module
-        muRfunc = getattr(muRmodule,ndD["muRfunc"])
-
-        # Append the function to the instance, we also have to make sure the
-        # function knows what 'self' is with the types.MethodType function
-        self.muRfunc = types.MethodType(muRfunc, self)
+    def get_trode_param(self, item):
+        """
+        Shorthand to retrieve electrode-specific value
+        """
+        value = self.config[self.trode, item]
+        # check if it is a particle-specific parameter
+        if self.ind is not None and item in self.config.params_per_particle:
+            value = value[self.ind]
+        return value
 
     def get_muR_from_OCV(self, OCV, muR_ref):
         return -self.eokT*OCV + muR_ref
@@ -118,7 +118,10 @@ class muRfuncs():
     def graphite_2param_homog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
         """ Helper function """
         y1, y2 = y
-        ISfuncs1, ISfuncs2 = ISfuncs
+        if ISfuncs is None:
+            ISfuncs1, ISfuncs2 = None, None
+        else:
+            ISfuncs1, ISfuncs2 = ISfuncs
         muR1 = self.reg_sln(y1, Omga, ISfuncs1)
         muR2 = self.reg_sln(y2, Omga, ISfuncs2)
         muR1 += Omgb*y2 + Omgc*y2*(1-y2)*(1-2*y1)
@@ -197,7 +200,7 @@ class muRfuncs():
 
     def general_non_homog(self, y, ybar):
         """ Helper function """
-        ptype = self.ndD["type"]
+        ptype = self.get_trode_param("type")
         mod1var, mod2var = False, False
         if isinstance(y, np.ndarray):
             mod1var = True
@@ -209,18 +212,18 @@ class muRfuncs():
         else:
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
-            shape = self.ndD["shape"]
-            kappa = self.ndD["kappa"]
-            B = self.ndD["B"]
+            shape = self.get_trode_param("shape")
+            kappa = self.get_trode_param("kappa")
+            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
-                    cwet = self.ndD["cwet"]
+                    cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
-                beta_s = self.ndD["beta_s"]
+                beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
                     muR_nh = self.non_homog_round_wetting(

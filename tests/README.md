@@ -4,7 +4,7 @@ When adding new features or making changes to the code, it's helpful to run a su
 
 ## Prerequisites
 
-The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, `coveralls`, `configparser`, and `h5py`.
+The testing suite has additional dependencies, which can be installed from MPET's root directory with `pip install .[test]`. These additional dependencies are: `pytest`, `coverage`, `coveralls`, and `flake8`.
 
 ## Running
 
@@ -37,6 +37,8 @@ it is both tested as absolute and relative tolerance.
 
 # List of tests
 
+ - benchmark_LIONSIMBA: isothermal comparison with the problem studied in Torchio et al., 2016.
+ - benhmark_LIONSIMBA_nonisothermal: constant temperature comparison (323K without heat generation) using the nonisothermal model implemented in LIONSIMBA
  - test001: LFP ACR C3
  - test002: LFP CHR cylinder
  - test003: LFP CHR sphere
@@ -56,5 +58,7 @@ it is both tested as absolute and relative tolerance.
  - test017: test CV continuation
  - test018: Like test014, LFP homog with CCsegments, BV, Rfilm, Rfilm_foil
  - test019: SM electrolyte with LFP homog, sep + cathode, significant elyte polarization
- - test020: Fixed temperature @ 313 K to test nonisothermal fixed temperature
+ - test020: hdf5 file output
+ - test021: hdf5Fast file output and restarting hdf5 simulations
  - test022: Test of specified_psd_c option, LFP homog
+ - test023: CIET for LFP
