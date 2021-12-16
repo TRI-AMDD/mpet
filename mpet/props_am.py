@@ -6,8 +6,6 @@ import mpet.geometry as geo
 from mpet.config import constants
 from mpet.utils import import_function
 
-import types
-
 
 class Dfuncs():
     """This class returns the filling-fraction dependent variation of
