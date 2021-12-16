@@ -4,9 +4,9 @@ import numpy as np
 def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
     """ Ferguson and Bazant 2014 """
     muRtheta = -self.eokT*0.12
-    ndD = self.ndD
+    config = self.config
     muR1homog, muR2homog = self.graphite_2param_homog(
-        y, ndD["Omga"], ndD["Omgb"], ndD["Omgc"], ndD["EvdW"], ISfuncs)
+        y, config["Omga"], config["Omgb"], config["Omgc"], config["EvdW"], ISfuncs)
     muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
     muR1 = muR1homog + muR1nonHomog
     muR2 = muR2homog + muR2nonHomog
