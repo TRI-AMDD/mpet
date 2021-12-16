@@ -71,14 +71,18 @@ class muRfuncs():
         # If the user provided a filename with muRfuncs, try to load
         # the function from there, otherwise load it from this class
         filename = self.get_trode_param("muRfunc_filename")
+        muRfunc_name = self.get_trode_param("muRfunc")
         if filename is None:
             # the function will be loaded from this file, specifically this class
-            self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+            # self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+            muRfunc = import_function(None, muRfunc_name,
+                                      mpet_module=f"mpet.electrode.materials.{muRfunc_name}")
         else:
-            muRfunc = import_function(filename, self.get_trode_param("muRfunc"))
-            # We have to make sure the function knows what 'self' is with
-            # the types.MethodType function
-            self.muRfunc = types.MethodType(muRfunc, self)
+            muRfunc = import_function(filename, muRfunc_name)
+
+        # We have to make sure the function knows what 'self' is with
+        # the types.MethodType function
+        self.muRfunc = types.MethodType(muRfunc, self)
 
     def get_trode_param(self, item):
         """
