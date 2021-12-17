@@ -4,6 +4,7 @@ In this, the model(s) are created and their variables are given initial conditio
 differential variables) or initial guesses (if they never appear in equations in which they have
 been differentiated in time).
 """
+import sys
 import os.path as osp
 
 import daetools.pyDAE as dae
@@ -211,9 +212,15 @@ class SimMPET(dae.daeSimulation):
         """
         tScale = self.tScale
         for nextTime in self.ReportingTimes:
-            self.Log.Message(
-                "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
-                    t0=self.CurrentTime*tScale, t1=nextTime*tScale), 0)
+
+            # Print logging information
+            progressStr = "{0} {1}".format(self.Log.PercentageDone,self.Log.ETA)
+            message = "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
+                t0=self.CurrentTime*tScale, t1=nextTime*tScale)
+            sys.stdout.write(f"\r{progressStr[:-1]} {message}")
+            sys.stdout.flush()
+
+            # Integrate the equations
             self.IntegrateUntilTime(nextTime, dae.eStopAtModelDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
@@ -221,5 +228,5 @@ class SimMPET(dae.daeSimulation):
             # Break when an end condition has been met
             if self.m.endCondition.npyValues:
                 description = mod_cell.endConditions[int(self.m.endCondition.npyValues)]
-                self.Log.Message("Ending condition: " + description, 0)
+                sys.stdout.write("\nEnding condition: " + description)
                 break
