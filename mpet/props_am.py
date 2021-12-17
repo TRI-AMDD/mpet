@@ -71,8 +71,7 @@ class muRfuncs():
         filename = self.get_trode_param("muRfunc_filename")
         muRfunc_name = self.get_trode_param("muRfunc")
         if filename is None:
-            # the function will be loaded from this file, specifically this class
-            # self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+            # the function will be loaded from the materials folder
             muRfunc = import_function(None, muRfunc_name,
                                       mpet_module=f"mpet.electrode.materials.{muRfunc_name}")
         else:
@@ -96,7 +95,7 @@ class muRfuncs():
         return -self.eokT*OCV + muR_ref
 
     ######
-    # Functions based on thermodynamic models
+    # Helper functions
     ######
 
     def ideal_sln(self, y, ISfuncs=None):
