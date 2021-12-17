@@ -62,9 +62,10 @@ class Mod2var(dae.daeModel):
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
         # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   config[trode, "rxnType"],
-                                                   mpet_module="mpet.electrode.reactions")
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -304,9 +305,10 @@ class Mod1var(dae.daeModel):
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
         # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   config[trode, "rxnType"],
-                                                   mpet_module="mpet.electrode.reactions")
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
