@@ -28,7 +28,8 @@ def LiClO4_PC():
         return 2.58e-10  # m^2/s
 
     def therm_fac(c, T):
-        return 1.
+        # therm_fac adjusted to account for missing a factor of 2 in Eq A-2
+        return 0.5
 
     def sigma(cin, T):
         c = cin * 1000  # mol/m^3

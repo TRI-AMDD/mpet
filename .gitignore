@@ -40,3 +40,7 @@ venv/
 .idea
 *.egg-info
 .vscode
+
+# documentation
+docs/_build
+docs/apidocs
