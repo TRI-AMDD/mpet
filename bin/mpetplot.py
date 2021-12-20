@@ -36,6 +36,7 @@ plotTypes = OrderedDict([
     ('cbar_a','average anode solid concentrations (movie)'),
     ('bulkp_c','macroscopic cathode solid phase potential(movie)'),
     ('bulkp_a','macroscopic anode solid phase potential (movie)'),
+    ('temp','temperature of full cell (movie)'),
     ('text','convert the output to plain text (csv)')
 ])
 

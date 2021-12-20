@@ -320,8 +320,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         return fig, ax
 
     # Plot electrolyte concentration or potential
-    elif plot_type in ["elytec", "elytep", "elytecf", "elytepf",
-                       "elytei", "elyteif", "elytedivi", "elytedivif"]:
+    elif plot_type in ["elytec", "elytep", "elytecf", "elytepf", "elytei",
+                       "elyteif", "elytedivi", "elytedivif", "temp"]:
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         datax = cellsvec
@@ -363,6 +363,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type in ["elytep", "elytepf"]:
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
+        elif plot_type in ["temp"]:
+            ylbl = 'Temperature [K]'
+            datay = datay_T * constants.T_ref
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
             cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
             pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
@@ -376,7 +379,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             for tInd in range(numtimes):
                 # no heat flux at boundary
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-                        cmat[tInd, :], pmat[tInd, :], Tmat[tInd, :], disc, config, Nvol)[1]
+                    cmat[tInd, :], pmat[tInd, :], Tmat[tInd, :], disc, config, Nvol)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec

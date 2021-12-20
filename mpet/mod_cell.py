@@ -392,7 +392,7 @@ class ModCell(dae.daeModel):
                 # boundary equation for temperature variables. per volume
                 eqTL.Residual = q_edges[0] + config["h_h"]*(Ttmp[0]-config["T0"])/disc["dxvec"][0]
                 eqTR.Residual = q_edges[-1] + config["h_h"] * \
-                    (Ttmp[-1]-config["T0"])/disc["dxvec"][0]
+                    (Ttmp[-1]-config["T0"])/disc["dxvec"][-1]
             else:
                 eqTL.Residual = Ttmp[0] - Ttmp[1]
                 eqTR.Residual = Ttmp[-1] - Ttmp[-2]
