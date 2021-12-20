@@ -85,6 +85,25 @@ def get_asc_vec(var, Nvol, dt=False):
     return out
 
 
+def central_diff(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes)"""
+    varout = {}
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        # If it's an array of dae variable objects
+        if sectn in array:
+            out = get_var_vec(array[sectn], Nvol[sectn])
+            out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+            varout[sectn] = (out[2:]-out[:-2])
+
+        else:
+            varout[sectn] = np.zeros(Nvol[sectn])
+    # sum solid + elyte poroisty
+    output = np.hstack((varout["a"], varout["s"], varout["c"]))/(2*dx)
+    return output
+
+
 def get_thermal_vec(Nvol, config):
     """Get a numpy array for a variable spanning the anode, separator, and cathode."""
     varout = {}
@@ -95,10 +114,10 @@ def get_thermal_vec(Nvol, config):
             out = config['rhom'][sectn]*(1-config["poros"][sectn])**(1-config["BruggExp"][sectn]) \
                 * config['cp'][sectn] + config['rhom']['l'] * \
                 config["poros"][sectn]**config["BruggExp"][sectn]*config['cp']['l']
+#            out = config['rhom'][sectn] * config['cp'][sectn]
             varout[sectn] = get_const_vec(out, Nvol[sectn])
         else:
-            out = config['rhom']['l'] * \
-                config["poros"][sectn]**config["BruggExp"][sectn]*config['cp']['l']
+            out = config['rhom']['l'] * config['cp']['l']
             varout[sectn] = get_const_vec(out, Nvol[sectn])
     # sum solid + elyte poroisty
     out = np.hstack((varout["a"], varout["s"], varout["c"]))

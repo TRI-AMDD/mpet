@@ -408,7 +408,7 @@ class Mod1var(dae.daeModel):
         # Define average rate of heat generation
         eq = self.CreateEquation("q_rxn_bar")
         eq.Residual = self.q_rxn_bar() - self.dcbardt() * \
-            (-eta - (np.log(c_surf/(1-c_surf))+1/self.c_lyte()))
+            (-eta - self.T_lyte()*(np.log(c_surf/(1-c_surf))+1/self.c_lyte()))
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
