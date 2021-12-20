@@ -325,18 +325,21 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         fplot = (True if plot_type[-1] == "f" else False)
         t0ind = (0 if not fplot else -1)
         datax = cellsvec
-        c_sep, p_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s'
-        c_anode, p_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a'
-        c_cath, p_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c'
+        c_sep, p_sep, T_sep = pfx + 'c_lyte_s', pfx + 'phi_lyte_s', pfx + 'T_lyte_s'
+        c_anode, p_anode, T_anode = pfx + 'c_lyte_a', pfx + 'phi_lyte_a', pfx + 'T_lyte_a'
+        c_cath, p_cath, T_cath = pfx + 'c_lyte_c', pfx + 'phi_lyte_c', pfx + 'T_lyte_c'
         datay_c = utils.get_dict_key(data, c_cath, squeeze=False)
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
+        datay_T = utils.get_dict_key(data, T_cath, squeeze=False)
         L_c = config['L']["c"] * config['L_ref'] * Lfac
         Ltot = L_c
         if config["have_separator"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
+            datay_s_T = utils.get_dict_key(data, T_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
             datay_p = np.hstack((datay_s_p, datay_p))
+            datay_T = np.hstack((datay_s_T, datay_T))
             L_s = config['L']["s"] * config['L_ref'] * Lfac
             Ltot += L_s
         else:
@@ -344,8 +347,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         if "a" in trodes:
             datay_a_c = utils.get_dict_key(data, c_anode, squeeze=False)
             datay_a_p = utils.get_dict_key(data, p_anode, squeeze=False)
+            datay_a_T = utils.get_dict_key(data, T_anode, squeeze=False)
             datay_c = np.hstack((datay_a_c, datay_c))
             datay_p = np.hstack((datay_a_p, datay_p))
+            datay_T = np.hstack((datay_a_T, datay_T))
             L_a = config['L']["a"] * config['L_ref'] * Lfac
             Ltot += L_a
         else:
@@ -361,15 +366,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
             cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
             pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
+            TGP_L = utils.get_dict_key(data, "T_lyteGP_L")
             cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
             pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
+            Tmat = np.hstack((TGP_L.reshape((-1,1)), datay_T, datay_T[:,-1].reshape((-1,1))))
             disc = geom.get_elyte_disc(
-                Nvol, config["L"], config["poros"], config["BruggExp"])
+                Nvol, config["L"], config["poros"], config["BruggExp"], config["k_h"])
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 # no heat flux at boundary
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-                    cmat[tInd, :], pmat[tInd, :], disc, config)[1]
+                        cmat[tInd, :], pmat[tInd, :], Tmat[tInd, :], disc, config, Nvol)[1]
             if plot_type in ["elytei", "elyteif"]:
                 ylbl = r'Current density of electrolyte [A/m$^2$]'
                 datax = facesvec
