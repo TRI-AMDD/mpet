@@ -101,6 +101,6 @@ def get_elyte_disc(Nvol, L, poros, BruggExp, k_h):
 
     # Vector of posority/tortuosity (assuming Bruggeman)
     out["eps_o_tau"] = porosvec_pad/porosvec_pad**(Brugg_pad)
-    out["min_eps_o_tau"] = (1-porosvec_pad)/(1-porosvec_pad)**(Brugg_pad)
+    out["min_eps_o_tau"] = (1-porosvec_pad)**(1-Brugg_pad)
 
     return out

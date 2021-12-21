@@ -212,7 +212,7 @@ class Mod2var(dae.daeModel):
         eq2 = self.CreateEquation("dc2sdt")
         eq1.Residual = self.c1.dt(0) - self.get_trode_param("delta_L")*Rxn1[0]
         eq2.Residual = self.c2.dt(0) - self.get_trode_param("delta_L")*Rxn2[0]
-        return eta1, eta2, c1_surf[-1], c2_surf[-1]
+        return eta1[-1], eta2[-1], c1_surf[-1], c2_surf[-1]
 
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
         N = self.get_trode_param("N")
@@ -439,7 +439,7 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
 
-        return eta, c_surf[-1]
+        return eta[-1], c_surf[-1]
 
     def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
         N = self.get_trode_param("N")
