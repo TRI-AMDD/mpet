@@ -1,8 +1,10 @@
 """This module handles properties associated with the active materials."""
+import types
 import numpy as np
 
 import mpet.geometry as geo
 from mpet.config import constants
+from mpet.utils import import_function
 
 
 class Dfuncs():
@@ -17,11 +19,18 @@ class Dfuncs():
     solution (_ss) and materials based on simpler thermodynamic models.
     """
 
-    def __init__(self, Dfunc):
-        Dopts = {}
-        Dopts['lattice'] = self.lattice
-        Dopts['constant'] = self.constant
-        self.Dfunc = Dopts[Dfunc]
+    def __init__(self, Dfunc, Dfunc_filename=None):
+        # If the user provided a filename with Dfuncs, try to load
+        # the function from there, otherwise load it from this class
+        if Dfunc_filename is None:
+            # the function is loaded from this class
+            self.Dfunc = getattr(self, Dfunc)
+        else:
+            # the function is loaded from an external file
+            imported_Dfunc = import_function(Dfunc_filename, Dfunc)
+            # We have to make sure the function knows what 'self' is with
+            # the types.MethodType function
+            self.Dfunc = types.MethodType(imported_Dfunc, self)
 
     def constant(self, y):
         return 1.
@@ -57,8 +66,17 @@ class muRfuncs():
         self.eokT = constants.e / (constants.k * constants.T_ref)
         self.kToe = 1. / self.eokT
 
-        # Convert "muRfunc" to a callable function
-        self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+        # If the user provided a filename with muRfuncs, try to load
+        # the function from there, otherwise load it from this class
+        filename = self.get_trode_param("muRfunc_filename")
+        if filename is None:
+            # the function will be loaded from this file, specifically this class
+            self.muRfunc = getattr(self, self.get_trode_param("muRfunc"))
+        else:
+            muRfunc = import_function(filename, self.get_trode_param("muRfunc"))
+            # We have to make sure the function knows what 'self' is with
+            # the types.MethodType function
+            self.muRfunc = types.MethodType(muRfunc, self)
 
     def get_trode_param(self, item):
         """

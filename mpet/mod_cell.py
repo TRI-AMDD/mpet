@@ -16,7 +16,6 @@ import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
-import mpet.props_elyte as props_elyte
 import mpet.utils as utils
 from mpet.config import constants
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t, temp_t
@@ -578,7 +577,9 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
                        ** 2*Dp + num*zm**2*Dm)/T_edges_int*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
+        elyte_function = utils.import_function(config["SMset_filename"], config["SMset"],
+                                               mpet_module="mpet.props_elyte")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T_lyte), wt)
@@ -618,9 +619,9 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     if config["elyteModelType"] == "dilute":
         sigma_l = eps_o_tau[1:-1] * config["sigma_l"]
     elif config["elyteModelType"] == "SM":
-        tp0 = getattr(props_elyte,config["SMset"])()[-2]
-
-        sigma_fs = getattr(props_elyte,config["SMset"])()[1]
+        elyte_function = utils.import_function(config["SMset_filename"], config["SMset"],
+                                               mpet_module="mpet.props_elyte")
+        sigma_fs, thermFac, tp0 = elyte_function()[1:-1]
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
         q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid)) * \

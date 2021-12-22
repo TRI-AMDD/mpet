@@ -20,8 +20,9 @@ setuptools.setup(
     url='https://bitbucket.org/bazantgroup/mpet',
     packages=['mpet','mpet.plot','mpet.electrode','mpet.config'],
     install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema'],
-    extras_require={'test':['pytest','coverage', 'coveralls', 'flake8']},
-    python_requires='>=3.5',
+    extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
+                    'doc':['sphinx','sphinx_rtd_theme']},
+    python_requires='>=3.6',
     scripts=['bin/mpetrun.py','bin/mpetplot.py'],
     classifiers=[
         "Programming Language :: Python :: 3",

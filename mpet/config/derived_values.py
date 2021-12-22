@@ -1,8 +1,9 @@
 import numpy as np
 
-from mpet import props_elyte, props_am
+from mpet import props_am
 from mpet.exceptions import UnknownParameterError
 from mpet.config import constants
+from mpet.utils import import_function
 
 
 class DerivedValues:
@@ -197,7 +198,9 @@ class DerivedValues:
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
-            return getattr(props_elyte, self.config['SMset'])()[-1]
+            elyte_function = import_function(self.config["SMset_filename"], self.config["SMset"],
+                                             mpet_module="mpet.props_elyte")
+            return elyte_function()[-1]
 
     def k_h_ref(self):
         """Reference heat transfer coefficient
