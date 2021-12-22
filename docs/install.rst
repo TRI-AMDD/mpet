@@ -5,29 +5,54 @@ Prerequisites
 ----------------------------
 
 
-  * Python 3.5 to 3.9
+  * Python 3.6 to 3.10
   * numpy, scipy, matplotlib, pyqt5, h5py
+  * daetools
 
-Python 3.5-3.7 on Ubuntu
+MPET on Windows
 -----------------------------
 
-Prerequisites
+MPET on Windows needs to use python 3.6 or 3.7 because daetools on
+windows is only available for those versions.
 
- * libgl1-mesa-glx
- * libpython3.5, libpython3.6, or libpython3.7 (to match your Python version)
- * libgfortran3
- * DAE Tools version 1.9.0
+First make sure that you have a correct python version with (ana)conda for
+example:
 
-Python 3.8/3.9 on Ubuntu
+
+.. code-block:: bash
+
+  conda create -n mpet python=3.7 pip
+  conda activate mpet
+
+Then install daetools via PyPi
+
+
+.. code-block:: bash
+
+  conda activate mpet
+  pip install daetools
+
+
+Then either clone the MPET repository if you want to work on the source code, or
+install the mpet package through PyPi (see steps below)
+
+
+MPET on Linux
 -----------------------------
 
-Prerequisites
+The easiest way to install MPET on Linux is via conda
 
- * libgl1-mesa-glx
- * libpython3.8 or libpython3.9 (to match your Python version)
- * libgfortran5
- * libsuperlu5
- * DAE tools version 1.9.1 from github.com/v1kko/daetools
+Install the daetools dependency via conda (in a new environment called mpet)
+
+
+.. code-block:: bash
+
+  conda create -n mpet -c conda-forge daetools
+  conda activate mpet
+
+Then either clone the MPET repository if you want to work on the source code, or
+install the mpet package through PyPi (see steps below)
+
 
 Install via PyPi
 -----------------------------
@@ -51,18 +76,16 @@ Test your installation
 
  ``pip install -e .[test]``
 
- Then go into the test directory
+ 
+ Then you can run the tests with
 
- ``cd tests``
-
- and run the following command
-
- ``pytest --baseDir=ref_outputs --modDir=../bin/workdir/modified compare_tests.py``
+ ``./bin/mpettest.py``
 
 Common Installation Bugs
 ---------------------------
 
 One of the most common bugs is with QT plugins (it is not acutally a problem with MPET, but with one of the packages that MPET uses). The bug will usually cause plots to not be able to initialize and have the following error message:
+
 
 .. code-block:: RST
 
@@ -77,6 +100,7 @@ If not, try turning on debugging for QT plugins with
 ``export QT_DEBUG_PLUGINS=1``. 
 
 Often, the library issue that appears is 
+
 
 .. code-block:: RST
 
