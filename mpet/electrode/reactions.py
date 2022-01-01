@@ -1,6 +1,5 @@
 import daetools.pyDAE as dae
 import numpy as np
-import scipy.special as spcl
 
 eps = -1e-12
 
@@ -72,23 +71,19 @@ def Marcus(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
     return Rate
 
 
-def MHC_kfunc(eta, lmbda):
-    a = 1. + np.sqrt(lmbda)
-    if isinstance(eta, dae.pyCore.adouble):
-        ERF = dae.Erf
-    else:
-        ERF = spcl.erf
+def MHC_kfunc(eta, lmbda, T):
+    a = 1. + np.sqrt(lmbda/T)
     # evaluate with eta for oxidation, -eta for reduction
-    return (np.sqrt(np.pi*lmbda) / (1 + np.exp(-eta))
-            * (1. - ERF((lmbda - np.sqrt(a + eta**2))
-               / (2*np.sqrt(lmbda)))))
+    return (np.sqrt(np.pi*lmbda/T) / (1 + np.exp(-eta/T))
+            * (1. - dae.Erf((lmbda/T - np.sqrt(a + (eta/T)**2))
+               / (2*np.sqrt(lmbda/T)))))
 
 
 def MHC(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
         act_lyte=None, lmbda=None, alpha=None):
     # See Zeng, Smith, Bai, Bazant 2014
     # Convert to "MHC overpotential"
-    k0 = k0/MHC_kfunc(0., lmbda)
+    k0 = k0/MHC_kfunc(0., lmbda, T)
     eta_f = eta + T*np.log(c_lyte/c_sld)
     gamma_ts = 1./(1. - c_sld)
     alpha = 0.5
@@ -96,12 +91,12 @@ def MHC(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
     if isinstance(eta, np.ndarray):
         Rate = np.empty(len(eta), dtype=object)
         for i, etaval in enumerate(eta):
-            krd = k0*MHC_kfunc(-eta_f[i], lmbda)
-            kox = k0*MHC_kfunc(eta_f[i], lmbda)
+            krd = k0*MHC_kfunc(-eta_f[i], lmbda, T)
+            kox = k0*MHC_kfunc(eta_f[i], lmbda, T)
             Rate[i] = ecd_extras[i]*(krd*c_lyte - kox*c_sld[i])
     else:
-        krd = k0*MHC_kfunc(-eta_f, lmbda)
-        kox = k0*MHC_kfunc(eta_f, lmbda)
+        krd = k0*MHC_kfunc(-eta_f, lmbda, T)
+        kox = k0*MHC_kfunc(eta_f, lmbda, T)
         Rate = np.exp(-E_A/T + E_A/1) * ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
 
@@ -114,11 +109,11 @@ def CIET(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
     if isinstance(eta, np.ndarray):
         Rate = np.empty(len(eta), dtype=object)
         for i, etaval in enumerate(eta):
-            krd = k0*MHC_kfunc(-eta_f[i], lmbda)
-            kox = k0*MHC_kfunc(eta_f[i], lmbda)
+            krd = k0*MHC_kfunc(-eta_f[i], lmbda, T)
+            kox = k0*MHC_kfunc(eta_f[i], lmbda, T)
             Rate[i] = ecd_extras[i]*(krd*c_lyte - kox*c_sld[i])
     else:
-        krd = k0*MHC_kfunc(-eta_f, lmbda)
-        kox = k0*MHC_kfunc(eta_f, lmbda)
+        krd = k0*MHC_kfunc(-eta_f, lmbda, T)
+        kox = k0*MHC_kfunc(eta_f, lmbda, T)
         Rate = np.exp(-E_A/T + E_A/1) * ecd_extras*(krd*c_lyte - kox*c_sld)
     return Rate
