@@ -60,9 +60,9 @@ system = {'Sim Params': {'profileType': lambda x:
                          Optional('tramp', default=0.): Use(float),
                          'Vmax': Use(float),
                          'Vmin': Use(float),
-                         'Vset': Use(float),
+                         Optional('Vset', default=None): Use(float),
                          Optional('capFrac', default=1.0): Use(float),
-                         'segments': Use(parse_segments),
+                         Optional('segments', default=[]): Use(parse_segments),
                          Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
                          'tsteps': And(Use(int), lambda x: x > 0),
@@ -123,8 +123,8 @@ system = {'Sim Params': {'profileType': lambda x:
                           'SMset': str,
                           'n': Use(int),
                           'sp': Use(int),
-                          'Dp': Use(float),
-                          'Dm': Use(float)}}
+                          Optional('Dp', default=None): Use(float),
+                          Optional('Dm', default=None): Use(float)}}
 
 #: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,

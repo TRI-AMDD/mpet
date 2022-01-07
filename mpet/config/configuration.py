@@ -471,8 +471,10 @@ class Config:
         # non-dimensional scalings
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
-        self['Dp'] = self['Dp'] / self['D_ref']
-        self['Dm'] = self['Dm'] / self['D_ref']
+        if self['Dp'] is not None:
+            self['Dp'] = self['Dp'] / self['D_ref']
+        if self['Dm'] is not None:
+            self['Dm'] = self['Dm'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
@@ -516,7 +518,8 @@ class Config:
 
         # scaling/addition of macroscopic input information
         factor = constants.e / (constants.k * constants.T_ref)
-        self['Vset'] = -(factor * self['Vset'] + Vref)
+        if self['Vset'] is not None:
+            self['Vset'] = -(factor * self['Vset'] + Vref)
         self['phimin'] = -(factor * self['Vmax'] + Vref)
         self['phimax'] = -(factor * self['Vmin'] + Vref)
 
