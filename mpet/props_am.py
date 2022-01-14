@@ -1,42 +1,13 @@
-"""This module handles properties associated with the active materials."""
+"""This module handles properties associated with the active materials.
+Only helper functions are defined here.
+Diffusion functions are defined in mpet.electrode.diffusion
+Chemical potential functions are defined in mpet.electrode.materials"""
 import types
 import numpy as np
 
 import mpet.geometry as geo
 from mpet.config import constants
 from mpet.utils import import_function
-
-
-class Dfuncs():
-    """This class returns the filling-fraction dependent variation of
-    the transport coefficient, D(y), such that
-    Flux = -D_ref*D(y)*grad(y) for solid solution transport or
-    Flux = -D_ref*D(y)*grad(mu) for thermo-based transport
-    where y here is the filling fraction, D_ref has dimensions of
-    length^2/time, D(y) is dimensionless, and mu, the chemical
-    potential, has been scaled to the thermal energy, k*Tref. For more
-    details on the two forms, see muRfuncs which defines both solid
-    solution (_ss) and materials based on simpler thermodynamic models.
-    """
-
-    def __init__(self, Dfunc, Dfunc_filename=None):
-        # If the user provided a filename with Dfuncs, try to load
-        # the function from there, otherwise load it from this class
-        if Dfunc_filename is None:
-            # the function is loaded from this class
-            self.Dfunc = getattr(self, Dfunc)
-        else:
-            # the function is loaded from an external file
-            imported_Dfunc = import_function(Dfunc_filename, Dfunc)
-            # We have to make sure the function knows what 'self' is with
-            # the types.MethodType function
-            self.Dfunc = types.MethodType(imported_Dfunc, self)
-
-    def constant(self, y):
-        return 1.
-
-    def lattice(self, y):
-        return y*(1-y)
 
 
 class muRfuncs():
