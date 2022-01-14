@@ -192,8 +192,9 @@ class DerivedValues:
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
         else:
-            elyte_function = import_function(self.config["SMset_filename"], self.config["SMset"],
-                                             mpet_module="mpet.props_elyte")
+            SMset = self.config["SMset"]
+            elyte_function = import_function(self.config["SMset_filename"], SMset,
+                                             mpet_module=f"mpet.electrolyte.{SMset}")
             return elyte_function()[-1]
 
     def z(self):
