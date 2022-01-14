@@ -471,8 +471,10 @@ class Config:
         # non-dimensional scalings
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
-        self['Dp'] = self['Dp'] / self['D_ref']
-        self['Dm'] = self['Dm'] / self['D_ref']
+        if self['Dp'] is not None:
+            self['Dp'] = self['Dp'] / self['D_ref']
+        if self['Dm'] is not None:
+            self['Dm'] = self['Dm'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
@@ -494,9 +496,10 @@ class Config:
             self['L'][trode] = self['L'][trode] / self['L_ref']
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
-
-            self[trode, 'lambda'] = self[trode, 'lambda'] / kT
-            self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            if self[trode, 'lambda'] is not None:
+                self[trode, 'lambda'] = self[trode, 'lambda'] / kT
+            if self[trode, 'B'] is not None:
+                self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
             for param in ['Omega_a', 'Omega_b', 'Omega_c', 'EvdW']:
                 value = self[trode, param]
                 if value is not None:
@@ -515,7 +518,8 @@ class Config:
 
         # scaling/addition of macroscopic input information
         factor = constants.e / (constants.k * constants.T_ref)
-        self['Vset'] = -(factor * self['Vset'] + Vref)
+        if self['Vset'] is not None:
+            self['Vset'] = -(factor * self['Vset'] + Vref)
         self['phimin'] = -(factor * self['Vmax'] + Vref)
         self['phimax'] = -(factor * self['Vmin'] + Vref)
 
@@ -723,10 +727,12 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
-                    kappa = self[trode, 'indvPart']['kappa'][i, j] \
-                        = self[trode, 'kappa'] / kappa_ref
-                    nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
-                    self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc / kappa
+                    if self[trode, 'kappa'] is not None:
+                        self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
+                    if self[trode, 'dgammadc'] is not None:
+                        nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
+                        self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
+                            / self[trode, 'indvPart']['kappa'][i, j]
                     self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
