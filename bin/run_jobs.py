@@ -30,19 +30,19 @@ def create_pbs_cluster(time, nproc, mem, queue, dashboard_port):
     return cluster
 
 
-#def run_mpet(client, mpet_configs):
+# def run_mpet(client, mpet_configs):
 #    """Run MPET on each config file present in the mpet_configs folder"""
 #    with open(mpet_configs, 'r') as fp:
 #        config_files = fp.readlines()
 
 #    folder = os.path.dirname(mpet_configs)
 
-    #commands = [f'. ~/.bashrc && conda activate mpet && cd ~/batteries/output && mpetrun.py '
+    # commands = [f'. ~/.bashrc && conda activate mpet && cd ~/batteries/output && mpetrun.py '
     #            f'{os.path.join(folder, fname.strip())} -o {fname.strip()} 2>&1 > output.txt'
     #            for fname in config_files]
 #    print('Running', commands)
 #    futures = client.map(os.system, commands)
-    #futures = client.map(main.main('./configs/params_system.cfg'))
+    # futures = client.map(main.main('./configs/params_system.cfg'))
 #    print('Waiting for MPET to finish')
 #    client.gather(futures)
 #    print('Done')
@@ -105,10 +105,10 @@ if __name__ == '__main__':
     files = [f'{os.path.join(folder, fname.strip())}' for fname in config_files]
 
     print('Running', files)
-    #main.main(files[0]) # This works
+    # main.main(files[0]) # This works
     futures = client.map(run_mpet, files)
     print('Waiting for MPET to finish')
-    #input()
+
     print('going to gather futures')
     client.gather(futures)
     print('Done')
