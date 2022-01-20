@@ -158,12 +158,8 @@ class ModCell(dae.daeModel):
 
         # if cycling, set current port to cycling module
         if self.profileType == "CCCVCPcycle":
-            self.portsOutSys = ports.portFromSys(
-                'portSys', dae.eOutletPort, self, "System port to cycling branch")
             pCycle = mod_CCCVCPcycle.CCCVCPcycle
             self.cycle = pCycle(config, Name="CCCVCPcycle", Parent=self)
-            self.ConnectPorts(self.portsOutSys,
-                              self.cycle.portInSys)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -174,17 +170,6 @@ class ModCell(dae.daeModel):
         Nvol = config["Nvol"]
         Npart = config["Npart"]
         Nlyte = np.sum(list(Nvol.values()))
-
-        # if cycling, set current port to cycling module
-        if self.profileType == "CCCVCPcycle":
-            eq = self.CreateEquation("current_port")
-            eq.Residual = self.current() - self.cycle.current()
-            eq = self.CreateEquation("endCondition_port")
-            eq.Residual = self.endCondition() - self.cycle.endCondition()
-            eq = self.CreateEquation("phi_applied_port")
-            eq.Residual = self.phi_applied() - self.cycle.phi_applied()
-            eq = self.CreateEquation("ffrac_limtrode_port")
-            eq.Residual = self.ffrac[config['limtrode']]() - self.cycle.ffrac_limtrode()
 
         # Define the overall filling fraction in the electrodes
         for trode in trodes:

@@ -6,7 +6,6 @@ from daetools.pyDAE.variable_types import time_t
 from pyUnits import s
 
 import daetools.pyDAE as dae
-import mpet.ports as ports
 import numpy as np
 
 from mpet.daeVariableTypes import elec_pot_t
@@ -49,12 +48,11 @@ class CCCVCPcycle(dae.daeModel):
             self,
             "keeps track of which maccor step number we are on")
 
-        self.portInSys = ports.portFromSys(
-            "portInSys", dae.eInletPort, self, "Inlet port from system")
-        self.current = self.portInSys.current
-        self.endCondition = self.portInSys.endCondition
-        self.phi_applied = self.portInSys.phi_applied
-        self.ffrac_limtrode = self.portInSys.ffrac_limtrode
+        # Get variables from the parent model        
+        self.current = Parent.current
+        self.endCondition = Parent.endCondition
+        self.phi_applied = Parent.phi_applied
+        self.ffrac_limtrode = Parent.ffrac[config['limtrode']]
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
