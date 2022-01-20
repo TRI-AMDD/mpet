@@ -102,7 +102,9 @@ def main(paramfile, keepArchive=True):
     config = Config(paramfile)
 
     # Directories we'll store output in.
-    outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    config_file = os.path.basename(paramfile)
+    config_base = os.path.splitext(config_file)[0]
+    outdir_name = "_".join((time.strftime("%Y%m%d_%H%M%S", time.localtime()), config_base))
     outdir_path = os.path.join(os.getcwd(), "history")
     outdir = os.path.join(outdir_path, outdir_name)
     # Make sure there's a place to store the output
@@ -211,3 +213,24 @@ def main(paramfile, keepArchive=True):
         shutil.copytree(outdir, tmpDir)
     else:
         shutil.move(outdir, tmpDir)
+    try:
+        with open(os.path.join(tmpDir, 'written_output.txt'), 'a') as fo:
+            print("[Sim Params] \nprofileType = ", config['profileType'],
+                  "\nCrate = ", config['Crate'], "\nVmax =", config['Vmax'],
+                  "\nVmin = ", config['Vmin'], "\nVset = ", config['Vset'],
+                  "\npower = ", config['power'],"\nsegments = ", config['segments'],
+                  "\nprevDir = ", config['prevDir'],"\ntend = ", config['tend'],
+                  "\ntsteps = ", config['tsteps'],"\nrelTol = ", config['relTol'],
+                  "\nabsTol = ", config['absTol'],"\nT = ", config['T'],
+                  "\nrandomSeed = ", config['randomSeed'],"\nseed = ", config['seed'],
+                  "\ndataReporter = ", config['dataReporter'],"\nRser = ", config['Rser'],
+                  "\nNvol = ", config['Nvol'],"\nNpart = ", config['Npart'],
+                  file=fo, flush=True)
+            print("\n[Electrodes]", config.D_c, file=fo)
+            print("\n[Particles]", file=fo)
+            print("\n[Conductivity]", file=fo)
+            print("\n[Geometry]", file=fo)
+            print("\n[Electrolyte]", file=fo)
+            print("\n[Interface]", file=fo, flush=True)
+    except Exception:
+        pass
