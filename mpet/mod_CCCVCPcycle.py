@@ -106,9 +106,8 @@ class CCCVCPcycle(dae.daeModel):
         else:
             eq.Residual = self.charge_discharge() + 1
 
-        eq = self.CreateEquation("Maccor_Step_Number_Equation")
         # add new variable to assign maccor step number in equation
-        eq.Residual = self.maccor_step_number() - 1
+        self.maccor_step_number.AssignValue(1)
 
         # switch to next state
         self.ON_CONDITION(dae.Time() > self.time_counter(),
@@ -145,9 +144,8 @@ class CCCVCPcycle(dae.daeModel):
 
             # increment maccor cycle counter and switch to next state
 
-            eq = self.CreateEquation("Maccor_Step_Number_Equation")
             # add new variable to assign maccor step number in equation
-            eq.Residual = self.maccor_step_number() - maccor_step_number[i]
+            self.maccor_step_number.AssignValue(maccor_step_number[i])
 
             if equation_type[i] == 0:
                 # if we are incrementing total_cycle

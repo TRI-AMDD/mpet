@@ -224,7 +224,7 @@ class SimMPET(dae.daeSimulation):
                     data, cycle_header + "last_phi_applied", final=True))
                 cyc.maccor_cycle_counter.AssignValue(utils.get_dict_key(
                     data, cycle_header + "maccor_cycle_counter", final=True))
-                cyc.maccor_step_number.SetInitialGuess(utils.get_dict_key(
+                cyc.maccor_step_number.AssignValue(utils.get_dict_key(
                     data, cycle_header + "maccor_step_number", final=True))
 
                 # used to determine new time cutoffs at each section
