@@ -18,8 +18,6 @@ class CCCVCPcycle(dae.daeModel):
 
         self.config = config
 
-        self.charge_discharge = dae.daeVariable(
-            "charge_discharge", dae.no_t, self, "+1 indicates charge, and -1 indicates discharge")
         self.time_counter = dae.daeVariable(
             "time_counter", time_t, self, "restarts counter every time a new section is hit")
         self.last_current = dae.daeVariable(
@@ -98,14 +96,6 @@ class CCCVCPcycle(dae.daeModel):
             eq = self.CreateEquation("Constraint_start")
             eq.Residual = self.current()
 
-        # add new variable to assign +1 -1 for charge/discharge
-        # set different initial values
-        eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-        if equation_type[0] <= 3:
-            eq.Residual = self.charge_discharge() - 1
-        else:
-            eq.Residual = self.charge_discharge() + 1
-
         # add new variable to assign maccor step number in equation
         self.maccor_step_number.AssignValue(1)
 
@@ -162,10 +152,6 @@ class CCCVCPcycle(dae.daeModel):
                 else:
                     eq = self.CreateEquation("Constraint" + str(i))
                     eq.Residual = self.current()
-
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                # add new variable to assign +1 -1 for charge/discharge
-                eq.Residual = self.charge_discharge() - 1
 
                 # switch to next step immediately
                 time_cond = (dae.Time() > self.time_counter())
@@ -261,9 +247,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_phi_applied,
                                                           self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                # add new variable to assign +1 -1 for charge/discharge
-                eq.Residual = self.charge_discharge() - 1
 
             elif equation_type[i] == 2:
 
@@ -320,9 +303,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_current, self.current()),
                                                          (self.last_phi_applied,
                                                           self.phi_applied())])
-
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                eq.Residual = self.charge_discharge() - 1
 
             elif equation_type[i] == 3:
 
@@ -383,9 +363,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_phi_applied,
                                                              self.phi_applied())])
 
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                eq.Residual = self.charge_discharge() + 1
-
             elif equation_type[i] == 4:
 
                 # if not waveform input, set to constant value
@@ -438,8 +415,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_phi_applied,
                                                           self.phi_applied())])
 
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                eq.Residual = self.charge_discharge() + 1
             elif equation_type[i] == 5:
 
                 # if CV discharge, we set up
@@ -495,9 +470,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_current, self.current()),
                                                          (self.last_phi_applied,
                                                           self.phi_applied())])
-
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                eq.Residual = self.charge_discharge() + 1
 
             elif equation_type[i] == 6:
 
@@ -560,9 +532,6 @@ class CCCVCPcycle(dae.daeModel):
                                                          (self.last_current, self.current()),
                                                          (self.last_phi_applied,
                                                           self.phi_applied())])
-
-                eq = self.CreateEquation("Charge_Discharge_Sign_Equation")
-                eq.Residual = self.charge_discharge() - 1
 
         self.END_STN()
 
