@@ -99,8 +99,8 @@ class CCCVCPcycle(dae.daeModel):
         # add new variable to assign maccor step number in equation
         self.maccor_step_number.AssignValue(1)
 
-        # switch to next state
-        self.ON_CONDITION(dae.Time() > self.time_counter(),
+        # switch to next state unless cycle limit reached
+        self.ON_CONDITION(self.cycle_number() <= dae.Constant(config['totalCycle']),
                           switchToStates=[('CCCV', 'state_0')],
                           setVariableValues=[(self.time_counter, dae.Time()),
                                              (self.last_current, self.current()),
