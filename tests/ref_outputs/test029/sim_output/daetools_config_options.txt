@@ -79,7 +79,7 @@
             "NonlinConvCoefIC": "0.0033",
             "MaxNumStepsIC": "5",
             "MaxNumJacsIC": "4",
-            "MaxNumItersIC": "10",
+            "MaxNumItersIC": "100",
             "LineSearchOffIC": "false",
             "gmres": {
                 "kspace": "30",

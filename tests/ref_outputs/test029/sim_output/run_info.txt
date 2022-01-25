@@ -5,7 +5,7 @@ branch name:
 feature/mod_battery_cycle_only
 
 commit hash:
-9dd88c0
+1521d9c
 
 to run, from the root repo directory, copy relevant files there,
 edit input_params_system.cfg to point to correct material
@@ -14,4 +14,4 @@ $ git checkout [commit hash]
 $ patch -p1 < commit.diff:
 $ python[3] mpetrun.py input_params_system.cfg
 
-Total run time: 0.9027960300445557 s
+Total run time: 1.859006643295288 s
