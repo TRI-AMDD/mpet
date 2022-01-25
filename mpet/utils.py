@@ -184,7 +184,7 @@ def get_density(material_type):
         return 3.6e3
         # https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf
 
-        
+
 def import_function(filename, function, mpet_module=None):
     """Load a function from a file that is not part of MPET, with a fallback to MPET internal
     functions.

@@ -21,32 +21,22 @@ class CCCVCPcycle(dae.daeModel):
         self.time_counter = dae.daeVariable(
             "time_counter", time_t, self, "restarts counter every time a new section is hit")
         self.last_current = dae.daeVariable(
-            "last_current",
-            dae.no_t,
-            self,
+            "last_current", dae.no_t, self,
             "tracks the current at the last step before a step is taken, used for ramp")
         self.last_phi_applied = dae.daeVariable(
-            "last_phi_applied",
-            elec_pot_t,
-            self,
+            "last_phi_applied", elec_pot_t, self,
             "tracks the current at the last step before a step is taken, used for ramp")
         self.cycle_number = dae.daeVariable(
-            "cycle_number",
-            dae.no_t,
-            self,
+            "cycle_number", dae.no_t, self,
             "keeps track of which cycle number we are on in the mpet simulations")
         self.maccor_cycle_counter = dae.daeVariable(
-            "maccor_cycle_counter",
-            dae.no_t,
-            self,
+            "maccor_cycle_counter", dae.no_t, self,
             "keeps track of which maccor cycle_number we are on")
         self.maccor_step_number = dae.daeVariable(
-            "maccor_step_number",
-            dae.no_t,
-            self,
+            "maccor_step_number", dae.no_t, self,
             "keeps track of which maccor step number we are on")
 
-        # Get variables from the parent model        
+        # Get variables from the parent model
         self.current = Parent.current
         self.endCondition = Parent.endCondition
         self.phi_applied = Parent.phi_applied
@@ -162,33 +152,26 @@ class CCCVCPcycle(dae.daeModel):
                     # broken
                     self.ON_CONDITION(time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.maccor_cycle_counter,
-                                                          self.maccor_cycle_counter() + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.maccor_cycle_counter,
+                                           self.maccor_cycle_counter() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
 
                 else:
                     # checks if the voltage, capacity fraction, or time segment conditions are
                     # broken
-                    self.ON_CONDITION(
-                        time_cond,
-                        switchToStates=[
-                            ('CCCV',
-                             new_state)],
-                        setVariableValues=[
-                            (self.maccor_cycle_counter,
-                             self.maccor_cycle_counter() + 1),
-                            (self.time_counter,
-                             dae.Time()),
-                            (self.last_current,
-                             self.current()),
-                            (self.last_phi_applied,
-                             self.phi_applied())])
+                    self.ON_CONDITION(time_cond,
+                                      switchToStates=[('CCCV', new_state)],
+                                      setVariableValues=[
+                                          (self.maccor_cycle_counter,
+                                           self.maccor_cycle_counter()+1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
             elif equation_type[i] == 1:
 
@@ -229,12 +212,11 @@ class CCCVCPcycle(dae.daeModel):
                     # broken
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
 
                 else:
@@ -242,10 +224,10 @@ class CCCVCPcycle(dae.daeModel):
                     # broken
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                     # increases time_counter to increment to the beginning of the next segment
 
             elif equation_type[i] == 2:
@@ -289,20 +271,19 @@ class CCCVCPcycle(dae.daeModel):
                     # checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                 else:
                     # checks if crate, cap frac, or time segment conditions are broken
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
             elif equation_type[i] == 3:
 
@@ -348,20 +329,19 @@ class CCCVCPcycle(dae.daeModel):
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                             self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
             elif equation_type[i] == 4:
 
@@ -400,20 +380,19 @@ class CCCVCPcycle(dae.daeModel):
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
             elif equation_type[i] == 5:
 
@@ -457,19 +436,18 @@ class CCCVCPcycle(dae.daeModel):
                 if i == len(constraints)-1:
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                 else:
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
             elif equation_type[i] == 6:
 
@@ -518,20 +496,19 @@ class CCCVCPcycle(dae.daeModel):
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', 'state_start')],
-                                      setVariableValues=[(self.cycle_number, self.cycle_number()
-                                                          + 1),
-                                                         (self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.cycle_number, self.cycle_number() + 1),
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
                 else:
                     # if hits capacity fraction or voltage cutoff, switch to next state
                     self.ON_CONDITION(v_cond | cap_cond | crate_cond | time_cond,
                                       switchToStates=[('CCCV', new_state)],
-                                      setVariableValues=[(self.time_counter, dae.Time()),
-                                                         (self.last_current, self.current()),
-                                                         (self.last_phi_applied,
-                                                          self.phi_applied())])
+                                      setVariableValues=[
+                                          (self.time_counter, dae.Time()),
+                                          (self.last_current, self.current()),
+                                          (self.last_phi_applied, self.phi_applied())])
 
         self.END_STN()
 
