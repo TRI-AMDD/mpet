@@ -30,24 +30,28 @@ def create_pbs_cluster(time, nproc, mem, queue, dashboard_port):
     return cluster
 
 
-# def run_mpet(client, mpet_configs):
-#    """Run MPET on each config file present in the mpet_configs folder"""
-#    with open(mpet_configs, 'r') as fp:
-#        config_files = fp.readlines()
+def create_local_cluster(mem, dashboard_port):
+    """Create a local cluster for use with dask"""
+    cluster = LocalCluster(memory_limit=mem,
+                           dashboard_address=dashboard_port)
+    return cluster
 
-#    folder = os.path.dirname(mpet_configs)
 
-    # commands = [f'. ~/.bashrc && conda activate mpet && cd ~/batteries/output && mpetrun.py '
-    #            f'{os.path.join(folder, fname.strip())} -o {fname.strip()} 2>&1 > output.txt'
-    #            for fname in config_files]
-#    print('Running', commands)
-#    futures = client.map(os.system, commands)
-    # futures = client.map(main.main('./configs/params_system.cfg'))
-#    print('Waiting for MPET to finish')
-#    client.gather(futures)
-#    print('Done')
-def run_mpet(files):
-    return main.main(files)
+def run_mpet(client, mpet_configs):
+    """Run MPET on each config file present in the mpet_configs folder"""
+    with open(mpet_configs, 'r') as fp:
+        config_files = fp.readlines()
+
+    folder = os.path.dirname(mpet_configs)
+    files = [f'{os.path.join(folder, fname.strip())}' for fname in config_files]
+    print('Running mpet for these config files:', files)
+
+    futures = client.map(main.main, files)
+    print('Waiting for MPET to finish')
+    client.gather(futures)
+    print('Done')
+
+    return
 
 
 if __name__ == '__main__':
@@ -59,7 +63,8 @@ if __name__ == '__main__':
     parser.add_argument('--nproc', '-n', type=int, required=True,
                         help='Number of CPU cores per job')
     parser.add_argument('--mem', '-m', required=True,
-                        help='Max memory usage per job')
+                        help=('Max memory usage per job. When using a '
+                              'local cluster it sets the memory limit per worker process.'))
     parser.add_argument('--queue', '-q', default='default',
                         help='Queue to use (default: %(default)s)')
     parser.add_argument('--dashboard_port', '-d', type=int, default=4096,
@@ -89,7 +94,7 @@ if __name__ == '__main__':
     elif main_settings['scheduler'] == 'pbs':
         cluster = create_pbs_cluster(**cluster_settings)
     elif main_settings['scheduler'] == 'local':
-        cluster = LocalCluster(n_workers=1, threads_per_worker=1,memory_limit='1GB')
+        cluster = create_local_cluster(**cluster_settings)
 
     # Scale Dask cluster automatically based on scheduler activity (only if not local cluster)
     if main_settings['scheduler'] != 'local':
@@ -97,20 +102,6 @@ if __name__ == '__main__':
                       maximum_jobs=main_settings['max_jobs'])
     client = Client(cluster)
 
-    mpet_configs = os.path.abspath(main_settings['mpet_configs'])
-    with open(mpet_configs, 'r') as fp:
-        config_files = fp.readlines()
-
-    folder = os.path.dirname(mpet_configs)
-    files = [f'{os.path.join(folder, fname.strip())}' for fname in config_files]
-
-    print('Running', files)
-    # main.main(files[0]) # This works
-    futures = client.map(run_mpet, files)
-    print('Waiting for MPET to finish')
-
-    print('going to gather futures')
-    client.gather(futures)
-    print('Done')
+    run_mpet(client, os.path.abspath(main_settings['mpet_configs']))
 
     client.shutdown()
