@@ -95,7 +95,7 @@ if __name__ == '__main__':
     elif main_settings['scheduler'] == 'pbs':
         cluster = create_pbs_cluster(**cluster_settings)
     elif main_settings['scheduler'] == 'local':
-        cluster = create_local_cluster(**cluster_settings)
+        cluster = create_local_cluster(args.mem, args.dashboard_port)
 
     # Scale Dask cluster automatically based on scheduler activity (only if not local cluster)
     if main_settings['scheduler'] != 'local':
