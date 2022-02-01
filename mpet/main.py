@@ -206,11 +206,15 @@ def main(paramfile, keepArchive=True, keepFullRun=False):
     except Exception:
         pass
 
-    # Copy or move simulation output to current directory
+    # Copy or move simulation output to current directory. If running multiple jobs,
+    # make sure to keep all sim_output
     tmpDir = os.path.join(os.getcwd(), "sim_output")
     if not keepFullRun:
         shutil.rmtree(tmpDir, ignore_errors=True)
-    tmpsubDir = os.path.join(tmpDir, outdir_name)
+        tmpsubDir = tmpDir
+    else:
+        tmpsubDir = os.path.join(tmpDir, outdir_name)
+
     if keepArchive:
         shutil.copytree(outdir, tmpsubDir)
     else:
