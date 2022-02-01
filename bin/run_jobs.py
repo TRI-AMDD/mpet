@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shutil
 import mpet.main as main
 
 from dask_jobqueue import SLURMCluster, PBSCluster
@@ -40,6 +41,10 @@ def create_local_cluster(mem, dashboard_port):
 
 def run_mpet(client, mpet_configs):
     """Run MPET on each config file present in the mpet_configs folder"""
+    # In order to copy or move simulation output to current directory, remove old existing folder
+    tmpDir = os.path.join(os.getcwd(), "sim_output")
+    shutil.rmtree(tmpDir, ignore_errors=True)
+
     with open(mpet_configs, 'r') as fp:
         config_files = fp.readlines()
 
@@ -47,7 +52,7 @@ def run_mpet(client, mpet_configs):
     files = [f'{os.path.join(folder, fname.strip())}' for fname in config_files]
     print('Running mpet for these config files:', files)
 
-    futures = client.map(main.main, files)
+    futures = client.map(main.main, files, keepFullRun=True)
     print('Waiting for MPET to finish')
     client.gather(futures)
     print('Done')

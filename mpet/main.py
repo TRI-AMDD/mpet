@@ -95,7 +95,7 @@ def run_simulation(config, outdir):
     simulation.Finalize()
 
 
-def main(paramfile, keepArchive=True):
+def main(paramfile, keepArchive=True, keepFullRun=False):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
@@ -208,13 +208,15 @@ def main(paramfile, keepArchive=True):
 
     # Copy or move simulation output to current directory
     tmpDir = os.path.join(os.getcwd(), "sim_output")
-    shutil.rmtree(tmpDir, ignore_errors=True)
+    if not keepFullRun:
+        shutil.rmtree(tmpDir, ignore_errors=True)
+    tmpsubDir = os.path.join(tmpDir, outdir_name)
     if keepArchive:
-        shutil.copytree(outdir, tmpDir)
+        shutil.copytree(outdir, tmpsubDir)
     else:
-        shutil.move(outdir, tmpDir)
+        shutil.move(outdir, tmpsubDir)
     try:
-        with open(os.path.join(tmpDir, 'written_output.txt'), 'a') as fo:
+        with open(os.path.join(tmpsubDir, 'written_output.txt'), 'a') as fo:
             print("[Sim Params] \nprofileType = ", config['profileType'],
                   "\nCrate = ", config['Crate'], "\nVmax =", config['Vmax'],
                   "\nVmin = ", config['Vmin'], "\nVset = ", config['Vset'],
