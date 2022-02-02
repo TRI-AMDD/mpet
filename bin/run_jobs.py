@@ -39,7 +39,7 @@ def create_local_cluster(mem, dashboard_port):
     return cluster
 
 
-def run_mpet(client, mpet_configs):
+def run_mpet(client, output_folder, mpet_configs):
     """Run MPET on each config file present in the mpet_configs folder"""
     # In order to copy or move simulation output to current directory, remove old existing folder
     tmpDir = os.path.join(os.getcwd(), "sim_output")
@@ -52,7 +52,13 @@ def run_mpet(client, mpet_configs):
     files = [f'{os.path.join(folder, fname.strip())}' for fname in config_files]
     print('Running mpet for these config files:', files)
 
-    futures = client.map(main.main, files, keepFullRun=True)
+    # function to run MPET in directory given as input to run_mpet
+    def run_mpet_instance(*args, **kwargs):
+        print("RUNNING IN {output_folder}")
+        os.chdir(output_folder)
+        main.main(*args, **kwargs)
+
+    futures = client.map(run_mpet_instance, files, keepFullRun=True)
     print('Waiting for MPET to finish')
     client.gather(futures)
     print('Done')
@@ -108,6 +114,9 @@ if __name__ == '__main__':
                       maximum_jobs=main_settings['max_jobs'])
     client = Client(cluster)
 
-    run_mpet(client, os.path.abspath(main_settings['mpet_configs']))
+    # Store output in folder this script was called from
+    output_folder = os.getcwd()
+
+    run_mpet(client, output_folder, os.path.abspath(main_settings['mpet_configs']))
 
     client.shutdown()
