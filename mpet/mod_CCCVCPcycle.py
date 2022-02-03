@@ -113,14 +113,8 @@ class CCCVCPcycle(dae.daeModel):
             # default false condition because daeTools does not accept False
             # if it is not None, we use a cutoff
             # if time is past the first cutoff, switch to nextstate
-            time_cond = (
-                self.time_counter() < dae.Constant(
-                    0
-                    * s)) if time_cutoffs[i] is None else (
-                dae.Time()
-                - self.time_counter() >= dae.Constant(
-                    time_cutoffs[i]
-                    * s))
+            time_cond = (self.time_counter() < dae.Constant(0*s)) if time_cutoffs[i] is None \
+                else (dae.Time() - self.time_counter() >= dae.Constant(time_cutoffs[i]*s))
 
             # increment maccor cycle counter and switch to next state
 
@@ -194,17 +188,14 @@ class CCCVCPcycle(dae.daeModel):
 
                 # if hits voltage cutoff, switch to next state
                 # if no voltage/capfrac cutoffs exist, automatically true, else is condition
-                v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() >=
-                                                              -voltage_cutoffs[i])
+                v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] is None \
+                    else (-self.phi_applied() >= -voltage_cutoffs[i])
                 # capacity fraction depends on cathode/anode. if charging, we cut off at
                 # the capfrac
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0 * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode()
-                        < 1 - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() > capfrac_cutoffs[i]))
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() < 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() > capfrac_cutoffs[i]))
                 # for capacity condition, cathode is capped at 1-cap_frac, anode is at cap_Frac
                 # if end state, then we send back to state 0 and also add one to cycle_number
                 if i == len(constraints)-1:
@@ -256,14 +247,13 @@ class CCCVCPcycle(dae.daeModel):
                 # 1-cap_frac
                 # calc capacity and curr conditions (since Crate neg, we need to flip sign) to cut
                 # off crate cutoff instead of voltage cutoff compared to CC
-                crate_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if crate_cutoffs[i] is None else (-self.current() <= -crate_cutoffs[i])
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0 * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() <= 1
-                     - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() >= capfrac_cutoffs[i]))
+                crate_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] is None \
+                    else (-self.current() <= -crate_cutoffs[i])
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() <= 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() >= capfrac_cutoffs[i]))
                 # equation: constraining voltage
                 # if past cap_frac, switch to next state
                 # if end state, then we set endCondition to 3
@@ -312,18 +302,16 @@ class CCCVCPcycle(dae.daeModel):
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
                 # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
                 # cathode since discharging is delithiating anode and charging is lithiating anode
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0 * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1
-                     - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() <= capfrac_cutoffs[i]))
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() >= 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() <= capfrac_cutoffs[i]))
                 # voltage cutoff
-                v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <=
-                                                              - voltage_cutoffs[i])
-                crate_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if crate_cutoffs[i] is None else (-self.current() <= -crate_cutoffs[i])
+                v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] is None \
+                    else (-self.phi_applied() <= - voltage_cutoffs[i])
+                crate_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] is None \
+                    else (-self.current() <= -crate_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     # if hits capacity fraction or voltage cutoff, switch to next state
@@ -365,16 +353,13 @@ class CCCVCPcycle(dae.daeModel):
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
                 # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
                 # cathode since discharging is delithiating anode and charging is lithiating anode
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0 * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() > 1
-                     - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() < capfrac_cutoffs[i]))
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() > 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() < capfrac_cutoffs[i]))
                 # voltage cutoff
-                v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else \
-                    (-self.phi_applied() <= -voltage_cutoffs[i])
+                v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] is None \
+                    else (-self.phi_applied() <= -voltage_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     # if hits capacity fraction or voltage cutoff, switch to next state
@@ -417,21 +402,14 @@ class CCCVCPcycle(dae.daeModel):
                     eq.Residual = self.phi_applied() - constraints[i]
 
                 # conditions for cutting off: hits capacity fraction cutoff
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1
-                     - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() <= capfrac_cutoffs[i]))
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() >= 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() <= capfrac_cutoffs[i]))
                 # or hits crate limit
-                crate_cond = (
-                    self.time_counter() < dae.Constant(
-                        0
-                        * s)) if crate_cutoffs[i] is None else (
-                    self.current() <= crate_cutoffs[i])
-                # if i != len(constraints)-1:
-                #
+                crate_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] is None \
+                    else (self.current() <= crate_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     self.ON_CONDITION(crate_cond | cap_cond | time_cond,
@@ -474,23 +452,17 @@ class CCCVCPcycle(dae.daeModel):
                 # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
                 # cathode
                 # conditions for cutting off: hits capacity fraction cutoff
-                cap_cond = (
-                    self.time_counter() < dae.Constant(
-                        0
-                        * s)) if capfrac_cutoffs[i] is None else (
-                    (self.ffrac_limtrode() >= 1
-                     - capfrac_cutoffs[i]) if limtrode == "c" else (
-                        self.ffrac_limtrode() <= capfrac_cutoffs[i]))
+                cap_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if capfrac_cutoffs[i] is None \
+                    else ((self.ffrac_limtrode() >= 1 - capfrac_cutoffs[i]) if limtrode == "c"
+                          else (self.ffrac_limtrode() <= capfrac_cutoffs[i]))
                 # or hits crate limit
-                crate_cond = (
-                    self.time_counter() < dae.Constant(
-                        0
-                        * s)) if crate_cutoffs[i] is None else (
-                    self.current() <= crate_cutoffs[i])
+                crate_cond = \
+                    (self.time_counter() < dae.Constant(0*s)) if crate_cutoffs[i] is None \
+                    else (self.current() <= crate_cutoffs[i])
                 # voltage cutoff
-                v_cond = (self.time_counter() < dae.Constant(
-                    0*s)) if voltage_cutoffs[i] is None else (-self.phi_applied() <=
-                                                              -voltage_cutoffs[i])
+                v_cond = (self.time_counter() < dae.Constant(0*s)) if voltage_cutoffs[i] is None \
+                    else (-self.phi_applied() <= -voltage_cutoffs[i])
                 # if end state, then we set endCondition to 3
                 if i == len(constraints)-1:
                     # if hits capacity fraction or voltage cutoff, switch to next state
