@@ -171,8 +171,7 @@ class CCCVCPcycle(dae.daeModel):
 
                 # if not waveform input, set to constant value
                 if config["tramp"] > 0:
-                    self.IF(dae.Time() < self.time_counter()
-                            + dae.Constant(config["tramp"]*s))
+                    self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current() - ((constraints[i] - self.last_current())
                                                     / config["tramp"]
@@ -219,7 +218,6 @@ class CCCVCPcycle(dae.daeModel):
                                           (self.time_counter, dae.Time()),
                                           (self.last_current, self.current()),
                                           (self.last_phi_applied, self.phi_applied())])
-                    # increases time_counter to increment to the beginning of the next segment
 
             elif equation_type[i] == 2:
 
@@ -297,8 +295,6 @@ class CCCVCPcycle(dae.daeModel):
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
 
-                # eq = self.CreateEquation("Constraint_" + str(i))
-                # eq.Residual = self.current()*(self.phi_applied() + ndDVref) - constraints[i]
                 # if CC discharge, we set up capacity cutoff and voltage cutoff
                 # needs to be minimized at capfrac for an anode and capped at 1-capfrac for a
                 # cathode since discharging is delithiating anode and charging is lithiating anode
@@ -386,8 +382,7 @@ class CCCVCPcycle(dae.daeModel):
                     # if tramp, we use a ramp step to hit the value for better numerical
                     # stability
                     # if not waveform input, set to constant value
-                    self.IF(dae.Time() < self.time_counter()
-                            + dae.Constant(config["tramp"]*s))
+                    self.IF(dae.Time() < self.time_counter() + dae.Constant(config["tramp"]*s))
                     eq = self.CreateEquation("Constraint_" + str(i))
                     eq.Residual = self.phi_applied() - \
                         ((constraints[i] - self.last_phi_applied())/config["tramp"]
