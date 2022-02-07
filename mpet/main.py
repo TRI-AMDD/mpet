@@ -219,24 +219,3 @@ def main(paramfile, keepArchive=True, keepFullRun=False):
         shutil.copytree(outdir, tmpsubDir)
     else:
         shutil.move(outdir, tmpsubDir)
-    try:
-        with open(os.path.join(tmpsubDir, 'written_output.txt'), 'a') as fo:
-            print("[Sim Params] \nprofileType = ", config['profileType'],
-                  "\nCrate = ", config['Crate'], "\nVmax =", config['Vmax'],
-                  "\nVmin = ", config['Vmin'], "\nVset = ", config['Vset'],
-                  "\npower = ", config['power'],"\nsegments = ", config['segments'],
-                  "\nprevDir = ", config['prevDir'],"\ntend = ", config['tend'],
-                  "\ntsteps = ", config['tsteps'],"\nrelTol = ", config['relTol'],
-                  "\nabsTol = ", config['absTol'],"\nT = ", config['T'],
-                  "\nrandomSeed = ", config['randomSeed'],"\nseed = ", config['seed'],
-                  "\ndataReporter = ", config['dataReporter'],"\nRser = ", config['Rser'],
-                  "\nNvol = ", config['Nvol'],"\nNpart = ", config['Npart'],
-                  file=fo, flush=True)
-            print("\n[Electrodes]", config.D_c, file=fo)
-            print("\n[Particles]", file=fo)
-            print("\n[Conductivity]", file=fo)
-            print("\n[Geometry]", file=fo)
-            print("\n[Electrolyte]", file=fo)
-            print("\n[Interface]", file=fo, flush=True)
-    except Exception:
-        pass
