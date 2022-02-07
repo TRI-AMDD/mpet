@@ -441,8 +441,9 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
-            dx = 1/np.size(c) #some doubt here, is it better to use size(c) or size(c[1:-1]) ?
-            # beta_s = self.get_trode_param("beta_s") #it's normalized by the particle lenght, it shouldn't
+            dx = 1/np.size(c)  #  some doubt here, is it better to use size(c) or size(c[1:-1]) ?
+            #  beta_s = self.get_trode_param("beta_s")
+            #  it's normalized by the particle lenght, it shouldn't
             beta_s = 70 #tentative value
 
             eqL = self.CreateEquation("leftBC")
@@ -464,7 +465,7 @@ class Mod1var(dae.daeModel):
             else:
                 actR_surf = actR[-1]
         if self.get_trode_param("type") in ["ACR"]:
-            eta = calc_eta(muR_surf[1:-1], muO) #using internal values is not so nice
+            eta = calc_eta(muR_surf[1:-1], muO)  # using internal values is not so nice
         else:
             eta = calc_eta(muR_surf, muO)
         if self.get_trode_param("type") in ["ACR"]:
@@ -523,6 +524,7 @@ class Mod1var(dae.daeModel):
             else:
                 eq.Residual = LHS_vec[k] - RHS[k]
 
+
 # new surface diffusion equation 
 # dc/dt = Rxn + surf_diff 
 # it models the possibility of the Li-ions to move into the particles 
@@ -536,9 +538,9 @@ def calc_surf_diff(c_surf, muR_surf, D):
     c_surf_short = np.empty(N_2-1,dtype=object)
     for i in range(N_2-1):
         c_surf_short[i] = (c_surf_long[i]+c_surf_long[i+1])/2
-
     surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf)))/(dxs**2)
     return surf_diff
+
 
 def calc_eta(muR, muO):
     return muR - muO
@@ -625,7 +627,7 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
         mu_lyte = T*np.log(act_lyte) + phi_lyte
     elif elyteModelType == "solid":
         a_slyte = config['a_slyte']
-        act_lyte = c_lyte * np.exp(a_slyte * (1 - c_lyte)) 
+        act_lyte = c_lyte*np.exp(a_slyte*(1 - c_lyte)) 
         mu_lyte = T * np.log(act_lyte) + phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
