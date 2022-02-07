@@ -439,10 +439,10 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
-            dx = 1/np.size(c)  #  some doubt here, is it better to use size(c) or size(c[1:-1]) ?
+            dx = 1/np.size(c)  # some doubt here, is it better to use size(c) or size(c[1:-1]) ?
             #  beta_s = self.get_trode_param("beta_s")
             #  it's normalized by the particle lenght, it shouldn't
-            beta_s = 70 # tentative value
+            beta_s = 70  # tentative value
 
             eqL = self.CreateEquation("leftBC")
             eqL.Residual = c_surf[0] - c_surf[2] - 2*dx*beta_s*c_surf[1]*(1-c_surf[1])

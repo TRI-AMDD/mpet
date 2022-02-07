@@ -386,9 +386,9 @@ class muRfuncs():
         dxs = 1./N
         ytmp[1:-1] = y
         ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2  \
-                         + (1/6)*np.diff(y,3)[0]*dxs**3
+                                                + (1/6)*np.diff(y,3)[0]*dxs**3
         ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2 \
-                         + (1/6)*np.diff(y,3)[-1]*dxs**3
+                                                + (1/6)*np.diff(y,3)[-1]*dxs**3
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
