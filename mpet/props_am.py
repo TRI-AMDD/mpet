@@ -251,7 +251,7 @@ class muRfuncs():
         Vasileiadis 2017
         """
         muRtheta = -self.eokT * 1.55
-        muRhomog = self.reg_sln(y, self.config["Omega_a"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR / self.T)
@@ -294,7 +294,7 @@ class muRfuncs():
         else:
             muR = T*np.log(y/(1-y))
         return muR
-
+ 
     def reg_sln(self, y, Omga, ISfuncs=None):
         """ Helper function """
         muR_IS = self.ideal_sln(y, ISfuncs=ISfuncs)
@@ -364,15 +364,29 @@ class muRfuncs():
                   )*step_down(y, 0.35, width)
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
+    
+    #old wetting
+    # def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
+    #     """ Helper function """
+    #     N = len(y)
+    #     ytmp = np.empty(N+2, dtype=object)
+    #     ytmp[1:-1] = y
+    #     ytmp[0] = ywet
+    #     ytmp[-1] = ywet
+    #     dxs = 1./N
+    #     curv = np.diff(ytmp, 2)/(dxs**2)
+    #     muR_nh = -kappa*curv + B*(y - ybar)
+    #     return muR_nh
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
+        # the taylor expansion at the edges is used
         N = len(y)
         ytmp = np.empty(N+2, dtype=object)
-        ytmp[1:-1] = y
-        ytmp[0] = ywet
-        ytmp[-1] = ywet
         dxs = 1./N
+        ytmp[1:-1] = y
+        ytmp[0]  = y[0]  + np.diff(y)[0]*dxs  + 0.5*np.diff(y,2)[0]*dxs**2  + (1/6)*np.diff(y,3)[0]*dxs**3
+        ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2 + (1/6)*np.diff(y,3)[-1]*dxs**3
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
