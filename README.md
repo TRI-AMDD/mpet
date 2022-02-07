@@ -50,7 +50,7 @@ If you have many simulations you want to run, you can use `bin/run_jobs.py` to r
     params_system_XX.cfg\
     params_system_YY.cfg</i>\
     etc.
-2. Run multiple simulaiton on a cluster using `run_jobs.py`. Pass the text file containing the system parameter files (e.g. `configs/parallel_configs.txt`) and the cluster arguments:
+2. Run multiple simulations on a cluster using `run_jobs.py`. The simplest way to run it, is to run the script on the login node. Pass the text file containing the system parameter files (e.g. `configs/parallel_configs.txt`) and the cluster arguments:
     - `-s`: scheduler type. Options: `slurm`, `pbs`, and `local`. Default is `slurm`.
     - `-t`: Maximum walltime per job (hh:mm:ss format). Argument is not used with a local cluster.
     - `-n`: Number of CPU cores per job. Argument is not used with a local cluster.
