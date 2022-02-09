@@ -308,9 +308,9 @@ class Mod1var(dae.daeModel):
 
         if self.get_trode_param("type") in ["ACR"]:
             self.c_left_GP = dae.daeVariable("c_left", mole_frac_t, self,
-                                    "Concentration on the left side of active particle")
+                                             "Concentration on the left side of active particle")
             self.c_right_GP = dae.daeVariable("c_right", mole_frac_t, self,
-                                    "Concentration on the right side of active particle")
+                                              "Concentration on the right side of active particle")
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
@@ -442,11 +442,16 @@ class Mod1var(dae.daeModel):
             dx = 1/np.size(c)  # some doubt here, is it better to use size(c) or size(c[1:-1]) ?
             beta_s = self.get_trode_param("beta_s")
 
+            print("beta_s*dx*cs0*(1-cs0) + cs0 = ", beta_s*dx*0.99*(1-0.99)+0.99)
+
             eqL = self.CreateEquation("leftBC")
-            eqL.Residual = c_surf[0] - c_surf[2] - 2*dx*beta_s*c_surf[1]*(1-c_surf[1])
+            # eqL.Residual = c_surf[0] - c_surf[2] - 2*dx*beta_s*c_surf[1]*(1-c_surf[1])
+            eqL.Residual = c_surf[0] - c_surf[1] - dx*beta_s*c_surf[1]*(1-c_surf[1])
+         
 
             eqR = self.CreateEquation("rightBC")
-            eqR.Residual = c_surf[-1] - c_surf[-3] - 2*dx*beta_s*c_surf[-2]*(1-c_surf[-2])
+            # eqR.Residual = c_surf[-1] - c_surf[-3] - 2*dx*beta_s*c_surf[-2]*(1-c_surf[-2])
+            eqR.Residual = c_surf[-1] - c_surf[-2] - dx*beta_s*c_surf[-2]*(1-c_surf[-2])
 
         if self.get_trode_param("type") in ["ACR"]:
             muR_surf, actR_surf = calc_muR(
@@ -530,10 +535,6 @@ def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
     dxs = 1./N_2
     c_surf_long = c_surf
-    # c_surf_short = np.empty(N_2-1,dtype=object)
-    # for i in range(N_2-1):
-    #     c_surf_short[i] = (c_surf_long[i]+c_surf_long[i+1])/2
-
     c_surf_short = (c_surf_long[0:-1] + c_surf_long[1:])/2
     surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf)))/(dxs**2)
     return surf_diff
