@@ -440,9 +440,7 @@ class Mod1var(dae.daeModel):
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
             dx = 1/np.size(c)  # some doubt here, is it better to use size(c) or size(c[1:-1]) ?
-            #  beta_s = self.get_trode_param("beta_s")
-            #  it's normalized by the particle lenght, it shouldn't
-            beta_s = 70  # tentative value
+            beta_s = self.get_trode_param("beta_s")
 
             eqL = self.CreateEquation("leftBC")
             eqL.Residual = c_surf[0] - c_surf[2] - 2*dx*beta_s*c_surf[1]*(1-c_surf[1])
@@ -532,9 +530,11 @@ def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
     dxs = 1./N_2
     c_surf_long = c_surf
-    c_surf_short = np.empty(N_2-1,dtype=object)
-    for i in range(N_2-1):
-        c_surf_short[i] = (c_surf_long[i]+c_surf_long[i+1])/2
+    # c_surf_short = np.empty(N_2-1,dtype=object)
+    # for i in range(N_2-1):
+    #     c_surf_short[i] = (c_surf_long[i]+c_surf_long[i+1])/2
+
+    c_surf_short = (c_surf_long[0:-1] + c_surf_long[1:])/2
     surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf)))/(dxs**2)
     return surf_diff
 
