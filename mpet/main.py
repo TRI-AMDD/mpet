@@ -95,14 +95,16 @@ def run_simulation(config, outdir):
     simulation.Finalize()
 
 
-def main(paramfile, keepArchive=True):
+def main(paramfile, keepArchive=True, keepFullRun=False):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     config = Config(paramfile)
 
     # Directories we'll store output in.
-    outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    config_file = os.path.basename(paramfile)
+    config_base = os.path.splitext(config_file)[0]
+    outdir_name = "_".join((time.strftime("%Y%m%d_%H%M%S", time.localtime()), config_base))
     outdir_path = os.path.join(os.getcwd(), "history")
     outdir = os.path.join(outdir_path, outdir_name)
     # Make sure there's a place to store the output
@@ -204,10 +206,16 @@ def main(paramfile, keepArchive=True):
     except Exception:
         pass
 
-    # Copy or move simulation output to current directory
+    # Copy or move simulation output to current directory. If running multiple jobs,
+    # make sure to keep all sim_output
     tmpDir = os.path.join(os.getcwd(), "sim_output")
-    shutil.rmtree(tmpDir, ignore_errors=True)
-    if keepArchive:
-        shutil.copytree(outdir, tmpDir)
+    if not keepFullRun:
+        shutil.rmtree(tmpDir, ignore_errors=True)
+        tmpsubDir = tmpDir
     else:
-        shutil.move(outdir, tmpDir)
+        tmpsubDir = os.path.join(tmpDir, outdir_name)
+
+    if keepArchive:
+        shutil.copytree(outdir, tmpsubDir)
+    else:
+        shutil.move(outdir, tmpsubDir)

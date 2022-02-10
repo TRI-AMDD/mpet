@@ -23,7 +23,7 @@ setuptools.setup(
     extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
                     'doc':['sphinx','sphinx_rtd_theme']},
     python_requires='>=3.5',
-    scripts=['bin/mpetrun.py','bin/mpetplot.py'],
+    scripts=['bin/mpetrun.py','bin/mpetplot.py','bin/run_jobs.py'],
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
