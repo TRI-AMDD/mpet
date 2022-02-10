@@ -832,7 +832,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         cycle_numbers = np.arange(1, tot_cycle + 1)  # get cycle numbers on x axis
         # first figure out the number of cycles
         # find mass of limiting electrode
-        density = utils.get_density(config[limtrode, "material_type"])  # kg/m^3
         # get the currents (are multiplied by 0 if it is not the segment we want)
         currents = cap * current  # A/m^2
         voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
@@ -887,11 +886,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         # discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
         # both of these arrays
         gravimetric_caps_disch = -discharge_capacities/(config["P_L"][limtrode] * (
-            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref'])
-            * density) / 1000  # mAh/g
+            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref']))  # mAh/m^3
         gravimetric_caps_ch = charge_capacities/(config["P_L"][limtrode] * (
-            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref'])
-            * density) / 1000  # mAh/g
+            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref']))  # mAh/m^3
         # discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600
         # #mAh/m^2 since int over time
         # get the total capacites that we output in the data file with padded zeros
@@ -924,7 +921,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 label='Discharge')
             ax.legend()
             ax.set_xlabel("Cycle Number")
-            ax.set_ylabel("Capacity [mAh/g]")
+            ax.set_ylabel(r"Capacity [mAh/$m^3$]")
             ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             if save_flag:
                 fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")

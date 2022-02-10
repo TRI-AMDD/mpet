@@ -172,19 +172,6 @@ def get_negative_sign_change_arrays(input_array):
     return neg_indices_start, neg_indices_end, pos_indices_start, pos_indices_end
 
 
-def get_density(material_type):
-    """Gets active material density from input material type, in units of kg/m^3"""
-    if material_type == "LMO":  # cathode, so do LiMn2O4
-        return 4.01e3
-    elif material_type == "LiC6":
-        return 2.26e3  # anode, so do graphite
-    elif material_type == "NCA":
-        return 4.45e3
-    elif material_type == "LFP":
-        return 3.6e3
-        # https://cdn.intechopen.com/pdfs/18671/InTech-Lifepo4_cathode_material.pdf
-
-
 def import_function(filename, function, mpet_module=None):
     """Load a function from a file that is not part of MPET, with a fallback to MPET internal
     functions.
