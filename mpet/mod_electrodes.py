@@ -306,7 +306,7 @@ class Mod1var(dae.daeModel):
 
 # Creation of the ghost points to assit BC
 
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
             self.c_left_GP = dae.daeVariable("c_left", mole_frac_t, self,
                                              "Concentration on the left side of active particle")
             self.c_right_GP = dae.daeVariable("c_right", mole_frac_t, self,
@@ -316,7 +316,7 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
-        if config[trode, "type"] not in ["ACR"]:
+        if config[trode, "type"] not in ["ACR", "ACR_Diff"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
@@ -389,12 +389,12 @@ class Mod1var(dae.daeModel):
             eq.Residual -= self.c.dt(k) * volfrac_vec[k]
 
         c = np.empty(N, dtype=object)
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
             ctmp = utils.get_var_vec(self.c,N)
             c = np.hstack((self.c_left_GP(),ctmp,self.c_right_GP()))
         else:
             c[:] = [self.c(k) for k in range(N)]
-        if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
             self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
@@ -437,23 +437,27 @@ class Mod1var(dae.daeModel):
         dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             c_surf = c
-            dx = 1/np.size(c)  # some doubt here, is it better to use size(c) or size(c[1:-1]) ?
-            beta_s = self.get_trode_param("beta_s")
 
-            print("beta_s*dx*cs0*(1-cs0) + cs0 = ", beta_s*dx*0.99*(1-0.99)+0.99)
+            if self.get_trode_param("type") in ["ACR_Diff"]:
+                dx = 1/np.size(c)  # some doubt here, is it better to use size(c) or size(c[1:-1]) ?
+                beta_s = self.get_trode_param("beta_s")
 
-            eqL = self.CreateEquation("leftBC")
-            # eqL.Residual = c_surf[0] - c_surf[2] - 2*dx*beta_s*c_surf[1]*(1-c_surf[1])
-            eqL.Residual = c_surf[0] - c_surf[1] - dx*beta_s*c_surf[1]*(1-c_surf[1])
-         
+                # print('\n', beta_s * dx * 0.99 * 0.01, '\n')
 
-            eqR = self.CreateEquation("rightBC")
-            # eqR.Residual = c_surf[-1] - c_surf[-3] - 2*dx*beta_s*c_surf[-2]*(1-c_surf[-2])
-            eqR.Residual = c_surf[-1] - c_surf[-2] - dx*beta_s*c_surf[-2]*(1-c_surf[-2])
+                eqL = self.CreateEquation("leftBC")
+                eqL.Residual = c_surf[0] - c_surf[1] - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008)
 
-        if self.get_trode_param("type") in ["ACR"]:
+                eqR = self.CreateEquation("rightBC")
+                eqR.Residual = c_surf[-1] - c_surf[-2] - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008)
+
+                # if c_surf[0] > 0.999 or c_surf[-1] > 0.999:
+                #     c_surf[0] = 0.999
+                #     c_surf[-1] = 0.999
+
+
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
@@ -464,16 +468,16 @@ class Mod1var(dae.daeModel):
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
             eta = calc_eta(muR_surf[1:-1], muO)  # using internal values is not so nice
         else:
             eta = calc_eta(muR_surf, muO)
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
                                 for i in range(N)])
         else:
             eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
             Rxn = self.calc_rxn_rate(
                 eta_eff, c_surf[1:-1], self.c_lyte(), self.get_trode_param("k0"),
                 self.get_trode_param("E_A"), T, actR_surf[1:-1], act_lyte,
@@ -483,7 +487,7 @@ class Mod1var(dae.daeModel):
                 eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
                 self.get_trode_param("E_A"), T, actR_surf, act_lyte,
                 self.get_trode_param("lambda"), self.get_trode_param("alpha"))
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
                 eq.Residual = self.Rxn(i) - Rxn[i]
@@ -492,7 +496,7 @@ class Mod1var(dae.daeModel):
             eq.Residual = self.Rxn() - Rxn
 
         # Get solid particle fluxes (if any) and RHS
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
@@ -514,12 +518,11 @@ class Mod1var(dae.daeModel):
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
-        # in case of ACR model LHS_vec = dcdt_vec
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
             surf_diff_vec = calc_surf_diff(c_surf, muR_surf,self.get_trode_param("D"))
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            if self.get_trode_param("type") in ["ACR"]:
+            if self.get_trode_param("type") in ["ACR_Diff"]:
                 eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
             else:
                 eq.Residual = LHS_vec[k] - RHS[k]
