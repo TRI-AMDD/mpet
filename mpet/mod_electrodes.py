@@ -441,16 +441,16 @@ class Mod1var(dae.daeModel):
             c_surf = c
 
             if self.get_trode_param("type") in ["ACR_Diff"]:
-                dx = 1/np.size(c)  # some doubt here, is it better to use size(c), so N+2 slices,  or size(c[1:-1]) ?
+                dx = 1/np.size(c) 
+                # some doubt here, is it better to use size(c), so N+2 slices,  or size(c[1:-1]) ?
                 beta_s = self.get_trode_param("beta_s")
-
                 # if beta_s is too big c_surf[0] > 1, a better method is needed
-
                 eqL = self.CreateEquation("leftBC")
-                eqL.Residual = c_surf[0] - c_surf[1] - dx*beta_s*(c_surf[1])*(1-c_surf[1])
-
+                eqL.Residual = c_surf[0] - c_surf[1] + \
+                               - dx*beta_s*(c_surf[1])*(1-c_surf[1])
                 eqR = self.CreateEquation("rightBC")
-                eqR.Residual = c_surf[-1] - c_surf[-2] - dx*beta_s*(c_surf[-2])*(1-c_surf[-2])
+                eqR.Residual = c_surf[-1] - c_surf[-2] + \
+                               - dx*beta_s*(c_surf[-2])*(1-c_surf[-2])
 
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
@@ -514,7 +514,7 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         if self.get_trode_param("type") in ["ACR_Diff"]:
-            surf_diff_vec = calc_surf_diff(c_surf, muR_surf,self.get_trode_param("D"))
+            surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("D"))
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
             if self.get_trode_param("type") in ["ACR_Diff"]:
@@ -523,12 +523,12 @@ class Mod1var(dae.daeModel):
                 eq.Residual = LHS_vec[k] - RHS[k]
 
 
-# new surface diffusion equation 
-# dc/dt = Rxn + surf_diff 
-# it models the possibility of the Li-ions to move into the particles 
+# new surface diffusion equation
+# dc/dt = Rxn + surf_diff
+# it models the possibility of the Li-ions to move into the particles
 # it sesibly modifies the physics of the problem making it more realistic
 # it is much slower
-# needs a N+2 long array of muR_surf 
+# needs a N+2 long array of muR_surf
 def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
     dxs = 1./N_2
@@ -627,7 +627,6 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
         mu_lyte = T * np.log(act_lyte) + phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
-
 
 def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
     muRfunc = props_am.muRfuncs(config, trode, ind).muRfunc
