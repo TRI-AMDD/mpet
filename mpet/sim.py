@@ -88,7 +88,7 @@ class SimMPET(dae.daeSimulation):
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
-                                part.c.SetInitialCondition(k, cs0)  
+                                part.c.SetInitialCondition(k, cs0)
                                 if self.config["c","type"] in ["ACR_Diff"]:
                                     part.c_left_GP.SetInitialGuess(cs0)
                                     part.c_right_GP.SetInitialGuess(cs0)

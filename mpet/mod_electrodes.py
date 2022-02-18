@@ -441,16 +441,16 @@ class Mod1var(dae.daeModel):
             c_surf = c
 
             if self.get_trode_param("type") in ["ACR_Diff"]:
-                dx = 1/np.size(c) 
+                dx = 1/np.size(c)
                 # some doubt here, is it better to use size(c), so N+2 slices,  or size(c[1:-1]) ?
                 beta_s = self.get_trode_param("beta_s")
                 # if beta_s is too big c_surf[0] > 1, a better method is needed
                 eqL = self.CreateEquation("leftBC")
                 eqL.Residual = c_surf[0] - c_surf[1] + \
-                               - dx*beta_s*(c_surf[1])*(1-c_surf[1])
+                                - dx*beta_s*(c_surf[1])*(1-c_surf[1])
                 eqR = self.CreateEquation("rightBC")
                 eqR.Residual = c_surf[-1] - c_surf[-2] + \
-                               - dx*beta_s*(c_surf[-2])*(1-c_surf[-2])
+                                - dx*beta_s*(c_surf[-2])*(1-c_surf[-2])
 
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
@@ -508,7 +508,7 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS = -np.diff(Flux_vec * area_vec) 
+            RHS = -np.diff(Flux_vec * area_vec)
 
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
@@ -623,10 +623,11 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
         mu_lyte = T*np.log(act_lyte) + phi_lyte
     elif elyteModelType == "solid":
         a_slyte = config['a_slyte']
-        act_lyte = c_lyte*np.exp(a_slyte*(1 - c_lyte)) 
+        act_lyte = c_lyte*np.exp(a_slyte*(1 - c_lyte))
         mu_lyte = T * np.log(act_lyte) + phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
+
 
 def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
     muRfunc = props_am.muRfuncs(config, trode, ind).muRfunc
