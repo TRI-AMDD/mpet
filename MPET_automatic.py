@@ -137,7 +137,7 @@ def change_CCsegments_complete(file_name, WritingCrate, RestingTime, ReadingCrat
             break
     line[index+2] = '   ('+str(WritingCrate)+','+str(abs(timestop/WritingCrate))+'),\n'
     line[index+3] = '   ('+str(0)+','+str(abs(RestingTime))+'),\n'
-    line[index+4] = '   ('+str(ReadingCrate)+','+str(abs(0.8*(60-timestop)/ReadingCrate))+'),\n'
+    line[index+4] = '   ('+str(ReadingCrate)+','+str(abs(0.9*(60-timestop)/ReadingCrate))+'),\n'
     file_out = open(file_name,"w")
     file_out.writelines(line)
     file_out.close()
@@ -167,17 +167,17 @@ Sign = 1  # 1 for disch, -1 for charging
 if Sign == 1:
     change_initial_part_conc(file_name, 0.01)
 elif Sign == -1:
-    change_initial_part_conc(file_name,0.99)
+    change_initial_part_conc(file_name,0.98)
 os.chdir(dir_path)
 
 # put the parameters or the array of parameters you want to loop
-Crates_vec = Sign*np.array([0.05,5,10])
-thickness_vec = [100]
-stddev_vec = [1,50]
-bulk_cond_vec = [0.1,1,10]
-Soc_stop = [50]  # stopping at 75% SoC
-ReadingCrate = 5  # using 5C to read after the stop
-restingTime_vec = [10]  # resting for x minutes
+Crates_vec = Sign*np.array([0.5,1,3,5,10])
+thickness_vec = [30]
+stddev_vec = [1]
+bulk_cond_vec = [0.1]
+Soc_stop = [50]  # stopping at % SoC
+ReadingCrate = Sign*5  # using 5C to read after the stop
+restingTime_vec = [5]  # resting for x minutes
 
 cwd = os.getcwd()
 for SoC in Soc_stop:
