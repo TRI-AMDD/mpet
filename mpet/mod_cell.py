@@ -389,9 +389,9 @@ class ModCell(dae.daeModel):
                 eqP.Residual = phitmp[0] - phitmp[1]
             if config['nonisothermal']:
                 # boundary equation for temperature variables. per volume
-                eqTL.Residual = q_edges[0] + config["h_h"]*(Ttmp[0]-config["T0"])/disc["dxvec"][0]
+                eqTL.Residual = q_edges[0] + config["h_h"]*(Ttmp[0]-config["T0"])
                 eqTR.Residual = q_edges[-1] + config["h_h"] * \
-                    (Ttmp[-1]-config["T0"])/disc["dxvec"][-1]
+                    (Ttmp[-1]-config["T0"])
             else:
                 eqTL.Residual = Ttmp[0] - Ttmp[1]
                 eqTR.Residual = Ttmp[-1] - Ttmp[-2]
@@ -609,7 +609,7 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     sigma_s = utils.get_asc_vec(config["sigma_s"], Nvol)
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
     dphilytedx = utils.central_diff(phi_lyte, Nvol, dx)
-    dphibulkdx = utils.central_diff(phi_bulk, Nvol, dx)
+    dphibulkdx = utils.central_diff(phi_bulk, Nvol, dx, False)
     c_mid = c_lyte[1:-1]
     T_mid = T_lyte[1:-1]
 
@@ -624,8 +624,8 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
         sigma_fs, thermFac, tp0 = elyte_function()[1:-1]
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
-        q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid)) * \
-            np.diff(np.log(c_edges_int))/dx*dphilytedx
+        q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid))*T_mid \
+            *np.diff(np.log(c_edges_int))/dx*dphilytedx
     # this is going to be dra
     sigma_s = min_eps_o_tau[1:-1] * sigma_s
 

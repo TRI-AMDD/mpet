@@ -172,8 +172,8 @@ class Mod2var(dae.daeModel):
         eq = self.CreateEquation("q_rxn_bar")
         if self.config["ent_heat_gen"]:
             eq.Residual = self.q_rxn_bar() - 0.5 * self.dcbar1dt() * \
-                (eta1 + self.T_lyte()*(np.log(c_surf1/(1-c_surf1))-1/self.c_lyte())) \
-                - 0.5 * self.dcbar2dt() * (eta2 + self.T_lyte()
+                (eta1 - self.T_lyte()*(np.log(c_surf1/(1-c_surf1))-1/self.c_lyte())) \
+                - 0.5 * self.dcbar2dt() * (eta2 - self.T_lyte()
                                            * (np.log(c_surf2/(1-c_surf2))-1/self.c_lyte()))
         else:
             eq.Residual = self.q_rxn_bar() - 0.5 * self.dcbar1dt() * eta1 \
@@ -418,7 +418,7 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("q_rxn_bar")
         if self.config["ent_heat_gen"]:
             eq.Residual = self.q_rxn_bar() - self.dcbardt() * \
-                (eta + self.T_lyte()*(np.log(c_surf/(1-c_surf))-1/self.c_lyte()))
+                (eta - self.T_lyte()*(np.log(c_surf/(1-c_surf))-1/self.c_lyte()))
         else:
             eq.Residual = self.q_rxn_bar() - self.dcbardt() * eta
 

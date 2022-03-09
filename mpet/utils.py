@@ -87,7 +87,7 @@ def get_asc_vec(var, Nvol, dt=False):
     return out
 
 
-def central_diff(array, Nvol, dx):
+def central_diff(array, Nvol, dx, with_separator = True):
     """Gets central diff for derivatives for use in thermal derivatives (which are split between
     the individual electrodes)"""
     varout = {}
@@ -103,7 +103,15 @@ def central_diff(array, Nvol, dx):
                 varout[sectn] = np.zeros(0)
         else:
             # if anode does not exist
-            varout[sectn] = np.zeros(Nvol[sectn] if sectn in Nvol else 0)
+            if sectn in Nvol:
+                if with_separator:
+                    out = get_var_vec(array[sectn], Nvol[sectn])
+                    out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+                    varout[sectn] = (out[2:]-out[:-2])
+                else:
+                    varout[sectn] = np.zeros(Nvol[sectn])
+            else:
+                varout[sectn] = np.zeros(0)
     # sum solid + elyte poroisty
     output = np.hstack((varout["a"], varout["s"], varout["c"]))/(2*dx)
     return output
