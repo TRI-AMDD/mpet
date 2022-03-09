@@ -87,11 +87,11 @@ def get_asc_vec(var, Nvol, dt=False):
     return out
 
 
-def central_diff(array, Nvol, dx, with_separator = True):
+def central_diff_bulk(array, Nvol, dx):
     """Gets central diff for derivatives for use in thermal derivatives (which are split between
-    the individual electrodes)"""
+    the individual electrodes) for bulk"""
     varout = {}
-    for sectn in ["a", "s", "c"]:
+    for sectn in ["a", "c", "s"]:
         # If we have information within this battery section
         if sectn in ["a", "c"]:
             if sectn in array.keys():
@@ -104,16 +104,28 @@ def central_diff(array, Nvol, dx, with_separator = True):
         else:
             # if anode does not exist
             if sectn in Nvol:
-                if with_separator:
-                    out = get_var_vec(array[sectn], Nvol[sectn])
-                    out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
-                    varout[sectn] = (out[2:]-out[:-2])
-                else:
-                    varout[sectn] = np.zeros(Nvol[sectn])
+                varout[sectn] = np.zeros(Nvol[sectn])
             else:
                 varout[sectn] = np.zeros(0)
     # sum solid + elyte poroisty
     output = np.hstack((varout["a"], varout["s"], varout["c"]))/(2*dx)
+    return output
+
+
+def central_diff_lyte(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes) for electrolyte"""
+    out = np.zeros(0)
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        if sectn in array.keys():
+            # if it is one of the electrode sections
+            out = np.append(out, get_var_vec(array[sectn], Nvol[sectn]))
+        else:
+            out = np.append(out, np.zeros(0))
+    # now we have stacked everything
+    out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+    output = (out[2:]-out[:-2])/(2*dx)
     return output
 
 

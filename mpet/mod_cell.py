@@ -603,13 +603,13 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
 def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     eps_o_tau = disc["eps_o_tau"]
     min_eps_o_tau = disc["min_eps_o_tau"]
-    dx = disc["dxvec"]
+    dx = disc["dxd2"]
 
     wt = utils.pad_vec(disc["dxvec"])
     sigma_s = utils.get_asc_vec(config["sigma_s"], Nvol)
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
-    dphilytedx = utils.central_diff(phi_lyte, Nvol, dx)
-    dphibulkdx = utils.central_diff(phi_bulk, Nvol, dx, False)
+    dphilytedx = utils.central_diff_lyte(phi_lyte, Nvol, dx)
+    dphibulkdx = utils.central_diff_bulk(phi_bulk, Nvol, dx)
     c_mid = c_lyte[1:-1]
     T_mid = T_lyte[1:-1]
 
