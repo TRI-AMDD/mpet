@@ -387,14 +387,9 @@ class ModCell(dae.daeModel):
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
-            if config['nonisothermal']:
-                # boundary equation for temperature variables. per volume
-                eqTL.Residual = q_edges[0] + config["h_h"]*(Ttmp[0]-config["T0"])
-                eqTR.Residual = q_edges[-1] + config["h_h"] * \
-                    (Ttmp[-1]-config["T0"])
-            else:
-                eqTL.Residual = Ttmp[0] - Ttmp[1]
-                eqTR.Residual = Ttmp[-1] - Ttmp[-2]
+            # boundary equation for temperature variables. per volume
+            eqTL.Residual = Ttmp[0] - config["T0"]
+            eqTR.Residual = Ttmp[-1] - config["T0"]
 
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
@@ -597,6 +592,9 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int, T_edges_int))*i_edges_int))
     q_edges_int = -k_h*np.diff(T_lyte)/dxd1
+    # replace boundary conditions since they are ghost points with convective BCs
+    q_edges_int[0] = config["h_h"]*(1 - T_lyte[1])
+    q_edges_int[-1] = config["h_h"]*(T_lyte[-2] - 1)
     return Nm_edges_int, i_edges_int, q_edges_int
 
 
@@ -625,7 +623,7 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
         q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid))*T_mid \
-            *np.diff(np.log(c_edges_int))/dx*dphilytedx
+            * np.diff(np.log(c_edges_int))/dx*dphilytedx
     # this is going to be dra
     sigma_s = min_eps_o_tau[1:-1] * sigma_s
 
