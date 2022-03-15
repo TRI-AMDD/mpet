@@ -506,6 +506,9 @@ class Config:
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
             self['k_h'][trode] = self['k_h'][trode] / self['k_h_ref']
+            self['cp'][trode] = self['cp'][trode] / \
+                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+            self['rhom'][trode] = self['rhom'][trode] / self['rho_ref']
 
             self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
@@ -514,15 +517,13 @@ class Config:
                 if value is not None:
                     self[trode, param] = value / kT
 
-        for mat in self['materials']:
-            self['cp'][mat] = self['cp'][mat] / \
-                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
-            self['rhom'][mat] = self['rhom'][mat] / self['rho_ref']
-
         # scalings on separator
         if self['have_separator']:
             self['L']['s'] /= self['L_ref']
             self['k_h']['s'] = self['k_h']['s'] / self['k_h_ref']
+            self['cp']['s'] = self['cp']['s'] / \
+                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+            self['rhom']['s'] = self['rhom']['s'] / self['rho_ref']
 
     def _scale_macroscopic_parameters(self, Vref):
         """

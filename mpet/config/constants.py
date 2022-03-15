@@ -22,9 +22,9 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
                     'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
                     'specified_psd', 'rhom', 'cp', 'k_h']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
-PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h']
+PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h', 'cp', 'rhom']
 # PARAMETERS THAT ARE NEEDED IN A THERMAL MODEL FOR ELECTROLYTE PROPERTIES
-PARAMS_ELYTE = ['cp', 'sigma', 'rhom']
+PARAMS_ELYTE = ['sigma']
 #: parameters that are defined for each particle, and their type
 PARAMS_PARTICLE = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float, 'E_D': float,

@@ -134,22 +134,13 @@ def get_thermal_vec(Nvol, config):
     varout = {}
     for sectn in ["a", "s", "c"]:
         # If we have information within this battery section
-        if sectn in ["a", "c"]:
-            if sectn in config["poros"].keys():
-                # If it's an array of dae variable objects
-                out = config['rhom'][sectn] * \
-                    (1-config["poros"][sectn])**(1-config["BruggExp"][sectn]) \
-                    * config['cp'][sectn] + config['rhom']['l'] * \
-                    config["poros"][sectn]**config["BruggExp"][sectn]*config['cp']['l']
-#                out = config['rhom'][sectn] * config['cp'][sectn]
-                varout[sectn] = get_const_vec(out, Nvol[sectn])
-            else:
-                # if anode does not exist
-                varout[sectn] = np.zeros(0)
+        if sectn in Nvol:
+            # If it's an array of dae variable objects
+            out = config['rhom'][sectn] * config['cp'][sectn]
+            varout[sectn] = get_const_vec(out, Nvol[sectn])
         else:
-            # if electrolyte section
-            out = config['rhom']['l'] * config['cp']['l']
-            varout[sectn] = get_const_vec(out, Nvol[sectn] if sectn in Nvol else 0)
+            # if anode does not exist
+            varout[sectn] = np.zeros(0)
 
     # sum solid + elyte poroisty
     out = np.hstack((varout["a"], varout["s"], varout["c"]))
