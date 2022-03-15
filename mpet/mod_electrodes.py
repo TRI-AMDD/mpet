@@ -552,9 +552,9 @@ def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
     if noise is None:
-        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(c)/dr
     else:
-        Flux_vec[1:N] = -D * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
             np.diff(c + noise(dae.Time().Value))/dr
     return Flux_vec
 
