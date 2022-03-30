@@ -149,7 +149,7 @@ class Mod2var(dae.daeModel):
         c2 = np.empty(N, dtype=object)
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
+        if self.get_trode_param("type") in ["diffn2", "CHR2", "ACR2"]:
             # Equations for 1D particles of 1 field varible
             self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
@@ -213,9 +213,17 @@ class Mod2var(dae.daeModel):
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
             mu2R_surf, act2R_surf = mu2R[-1], act2R[-1]
-        eta1 = calc_eta(mu1R_surf, muO)
-        eta2 = calc_eta(mu2R_surf, muO)
+            eta1 = calc_eta(mu1R_surf, muO)
+            eta2 = calc_eta(mu2R_surf, muO)
         if self.get_trode_param("type") in ["ACR2"]:
+            c1_surf = c1
+            c2_surf = c2
+            (mu1R, mu2R), (act1R, act2R) = calc_muR(
+                (c1, c2), (self.c1bar(), self.c2bar()), self.config, self.trode, self.ind, ISfuncs)
+            mu1R_surf, act1R_surf = mu1R, act1R
+            mu2R_surf, act2R_surf = mu2R, act2R
+            eta1 = calc_eta(mu1R, muO)
+            eta2 = calc_eta(mu2R, muO)
             eta1_eff = np.array([eta1[i]
                                  + self.Rxn1(i)*self.get_trode_param("Rfilm") for i in range(N)])
             eta2_eff = np.array([eta2[i]
@@ -244,7 +252,10 @@ class Mod2var(dae.daeModel):
             eq2.Residual = self.Rxn2() - Rxn2
 
         # Get solid particle fluxes (if any) and RHS
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
+        if self.get_trode_param("type") in ["ACR2"]:
+            RHS1 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
+            RHS2 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+        elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
             Flux1_bc = -0.5 * self.Rxn1()
@@ -447,10 +458,10 @@ class Mod1var(dae.daeModel):
                 # if beta_s is too big c_surf[0] > 1, a better method is needed
                 eqL = self.CreateEquation("leftBC")
                 eqL.Residual = c_surf[0] - c_surf[1] + \
-                                - dx*beta_s*(c_surf[1])*(1-c_surf[1])
+                                - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008)
                 eqR = self.CreateEquation("rightBC")
                 eqR.Residual = c_surf[-1] - c_surf[-2] + \
-                                - dx*beta_s*(c_surf[-2])*(1-c_surf[-2])
+                                - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008)
 
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(

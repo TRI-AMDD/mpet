@@ -376,7 +376,7 @@ class muRfuncs():
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
-
+    
     def non_homog_rect_variational(self, y, ybar, B, kappa):
         """ Helper function """
         # the taylor expansion at the edges is used
@@ -425,7 +425,12 @@ class muRfuncs():
                         muR_nh = self.non_homog_rect_variational(
                             y, ybar, B, kappa)
                 elif mod2var:
-                    raise NotImplementedError("no 2param C3 model known")
+                    cwet = self.get_trode_param("cwet")
+                    muR1_nh = self.non_homog_rect_fixed_csurf(
+                            y[0], (0.5*ybar[0]+0.5*ybar[1]), B, kappa, cwet)
+                    muR2_nh = self.non_homog_rect_fixed_csurf(
+                            y[1], (0.5*ybar[0]+0.5*ybar[1]), B, kappa, cwet)
+                    muR_nh = (muR1_nh, muR2_nh)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
@@ -454,6 +459,26 @@ class muRfuncs():
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
+        
+    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs=(None, None)):
+        """ New test material """
+        muRtheta1 = -self.eokT*4.1
+        muRtheta2 = -self.eokT*3.6
+        if ISfuncs is None:
+            ISfuncs1, ISfuncs2 = None, None
+        else:
+            ISfuncs1, ISfuncs2 = ISfuncs
+        y1, y2 = y
+        muR1 = self.reg_sln(y1, self.get_trode_param('Omega_a'), ISfuncs1)
+        muR2 = self.reg_sln(y2, self.get_trode_param('Omega_b'), ISfuncs2)
+        muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
+        muR1 += muR1nonHomog
+        muR2 += muR2nonHomog
+        actR1 = np.exp(muR1/self.T)
+        actR2 = np.exp(muR2/self.T)
+        muR1 += muRtheta1 + muR_ref
+        muR2 += muRtheta2 + muR_ref
+        return (muR1, muR2), (actR1, actR2)
 
     def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
         """ Ferguson and Bazant 2014 """

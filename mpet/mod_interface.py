@@ -159,18 +159,18 @@ def get_interface_internal_fluxes(c, phi, disc, config):
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["interfaceSMset"])()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
-        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c), wt)
-        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c), wt)
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c, T), wt)
+        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c, T), wt)
 
-        sp, n = config["sp"], config["n_refTrode"]
+        sp, n = config["sp"], config["n"]
         i_edges_int = -sigma_edges/T * (
             np.diff(phi)/dxd1
-            + nu*T*(sp/(n*nup)+tp0(c_edges_int)/(zp*nup))
-            * thermFac(c_edges_int)
+            + nu*T*(sp/(n*nup)+tp0(c_edges_int, T)/(zp*nup))
+            * thermFac(c_edges_int, T)
             * np.diff(np.log(c))/dxd1
             )
         Nm_edges_int = num*(-D_edges*np.diff(c)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int))*i_edges_int))
+                            + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     elif config["interfaceModelType"] == "solid":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["interfaceSMset"])()[:-1]
 
