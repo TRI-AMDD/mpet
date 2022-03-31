@@ -379,6 +379,9 @@ class ModCell(dae.daeModel):
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
                 cWall = .5*(ctmp[0] + ctmp[1])
                 ecd = config["k0_foil"]*cWall**0.5
+                # Concentration is fixed for solid.
+                if config["elyteModelType"] == "solid":
+                    ecd = config["k0_foil"]*1**0.5
                 # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
                 # oxidation here
@@ -408,9 +411,6 @@ class ModCell(dae.daeModel):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = disc["porosvec"][vInd]*dcdtvec[vInd] + (1./config["num"])*dvgNm[vInd]
-                if config["elyteModelType"] == "solid":
-                    eq.Residual += -config["kd"] * (config["cmax"] - cvec[vInd]) \
-                        + config["kr"] * cvec[vInd] ** 2
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + config["zp"]*Rvvec[vInd]
@@ -591,20 +591,30 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
                             + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     elif config["elyteModelType"] == "solid":
         D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["SMset"])()[:-1]
+        a_slyte = config["a_slyte"]
+        tp0 = 0.99999
+        c_edges_int_norm = c_edges_int / config["cmax"]
 
         # Get diffusivity at cell edges using weighted harmonic mean
-        D_edges = utils.weighted_harmonic_mean(eps_o_tau * D_fs(c_lyte), wt)
-
+        #D_edges = utils.weighted_harmonic_mean(eps_o_tau * D_fs(c_lyte), wt)
+        eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         # sp, n = ndD["sp"], ndD["n_refTrode"]
         # D_fs is specified in solid_elyte_func in props_elyte.py
-        Dm = config["Dm"]
-        a_slyte = config["a_slyte"]
-        k = constants.k
+        Dp = eps_o_tau_edges * config["Dp"]
+        Dm = (zp * Dp - zp * Dp *tp0) / (tp0 * zm)
 
-        i_edges_int = (-((nup*zp*D_edges*(1/(1-c_edges_int)-a_slyte/(k*T)*2*c_edges_int)
-                          + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup * zp ** 2 * D_edges + num * zm ** 2 * Dm) / T
+        Dp0 = Dp / (1-c_edges_int_norm) # should be c0/cmax
+
+        Dchemp = Dp0 * (1 - 2 * a_slyte * c_edges_int_norm + 2 * a_slyte * c_edges_int_norm**2)
+        Dchemm = Dm
+
+        Damb = (zp * Dp * Dchemm + zm * Dm * Dchemp) / (zp * Dp - zm * Dm)
+
+        i_edges_int = (-((nup*zp*Dchemp + num*zm*Dchemm)*np.diff(c_lyte)/dxd1)
+                       - (nup * zp ** 2 * Dp0 * (1 - c_edges_int_norm) + num * zm ** 2 * Dm) / T
                        * c_edges_int * np.diff(phi_lyte) / dxd1)
-        Nm_edges_int = num * (-D_edges * np.diff(c_lyte) / dxd1
-                              + (1. / (num * zm) * (1 - tp0(c_edges_int)) * i_edges_int))
+
+        Nm_edges_int = num * (-Damb * np.diff(c_lyte) / dxd1
+                              + (1. / (num * zm) * (1 - tp0) * i_edges_int))
+
     return Nm_edges_int, i_edges_int
