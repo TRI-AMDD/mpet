@@ -417,7 +417,6 @@ class Config:
         #. Scale to non-dimensional values
         #. Parse current/voltage segments
         #. Either generate particle distributions or load from previous run
-        #. Create simulation times
 
         :param bool prevDir: if True, load particle distributions from previous run,
             otherwise generate them
@@ -440,7 +439,7 @@ class Config:
 
         # use custom concentration when using solid electrolyte model
         if self['elyteModelType'] == 'solid':
-            self['c0'] = self['delta'] * self['cmax']
+            self['c0'] = self['c0']
 
         # apply scalings
         self._scale_system_parameters(theoretical_1C_current)
@@ -465,16 +464,6 @@ class Config:
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
 
-        self._create_times()
-
-    def _create_times(self):
-        """
-
-        """
-        # The list of reporting times excludes the first index (zero, which is implied)
-        if not self["times"]:
-            self["times"] = list(np.linspace(0, self["tend"], self["tsteps"] + 1))[1:]
-
     def _scale_system_parameters(self, theoretical_1C_current):
         """
         Scale system parameters to non-dimensional values. This method should be called only once,
@@ -486,6 +475,11 @@ class Config:
         self['Dp'] = self['Dp'] / self['D_ref']
         self['Dm'] = self['Dm'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
+        self['cmax'] = self['cmax'] / constants.c_ref
+        self['Dp_i'] = self['Dp_i'] / self['D_ref']
+        self['Dm_i'] = self['Dm_i'] / self['D_ref']
+        self['c0_int'] = self['c0_int'] / constants.c_ref
+        self['cmax_i'] = self['cmax_i'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
         if self['power'] is not None:
@@ -601,6 +595,8 @@ class Config:
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
 
+        self['gamma_contact'] = {}
+
         for trode in self['trodes']:
             solidType = self[trode, 'type']
             Nvol = self['Nvol'][trode]
@@ -625,6 +621,23 @@ class Config:
                 if raw.shape != (Nvol, Npart):
                     raise ValueError('Specified particle size distribution discretization '
                                      'of volumes inequal to the one specified in the config file')
+
+            stddev_c = self['stddev_gamma_c']
+            mean_c = self['mean_gamma_c']
+
+            if 0 < mean_c < 1:
+                # Contact penalty for BV
+                mean_c = mean_c # to make distribution start at 1 if gamma is 1
+                var_c = stddev_c**2
+                mu_c = np.log((mean_c**2) / np.sqrt(var_c + mean_c**2))
+                sigma_c = np.sqrt(np.log(var_c/(mean_c**2) + 1))
+                raw_c = 1 - np.random.lognormal(mu_c, sigma_c, size=(Nvol, Npart))
+                raw_c[raw_c <= 0.0001] = 0.0001
+                gamma_contact = raw_c
+            elif mean_c == 1:
+                gamma_contact = np.ones((Nvol, Npart))
+            else:
+                raise NotImplementedError(f'Contact error should be between 0 and 1')
 
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
@@ -669,6 +682,7 @@ class Config:
             self['psd_area'][trode] = psd_area
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
+            self['gamma_contact'][trode] = gamma_contact
 
     def _G(self):
         """
@@ -716,6 +730,7 @@ class Config:
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
+                    gamma_cont = self['gamma_contact'][trode][i,j]
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
                     i_s_ref = constants.e * F_s_ref  # A/m^2
@@ -730,7 +745,7 @@ class Config:
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
-                        / (constants.e * F_s_ref)
+                        / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \

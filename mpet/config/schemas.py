@@ -70,7 +70,6 @@ system = {'Sim Params': {'profileType': lambda x:
                          Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
                          'tsteps': And(Use(int), lambda x: x > 0),
-                         Optional('times', default=[]): Use(ast.literal_eval),
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
                          'T': Use(float),
@@ -91,6 +90,8 @@ system = {'Sim Params': {'profileType': lambda x:
                         'stddev_c': Use(float),
                         'mean_a': Use(float),
                         'stddev_a': Use(float),
+                        'mean_gamma_c': Use(float),
+                        'stddev_gamma_c': Use(float),
                         'cs0_c': Use(float),
                         'cs0_a': Use(float),
                         Optional('specified_psd_c', default=False):
@@ -129,10 +130,7 @@ system = {'Sim Params': {'profileType': lambda x:
                           'sp': Use(int),
                           'Dp': Use(float),
                           'Dm': Use(float),
-                          Optional('delta'): Use(float),
                           Optional('cmax'): Use(float),
-                          Optional('kr'): Use(float),
-                          Optional('c0_fac'): Use(float),
                           Optional('a_slyte'): Use(float)},
           'Interface': {'simInterface': Use(tobool),
                         'Nvol_i': And(Use(int), lambda x: x > 0),
@@ -140,7 +138,11 @@ system = {'Sim Params': {'profileType': lambda x:
                         'BruggExp_i': Use(float),
                         'poros_i': Use(float),
                         'interfaceModelType': str,
-                        'interfaceSMset': str}}
+                        'interfaceSMset': str,
+                        'c0_int': Use(float),
+                        'cmax_i': Use(float),
+                        'Dp_i': Use(float),
+                        'Dm_i': Use(float)}}
 
 #: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
