@@ -367,27 +367,81 @@ class muRfuncs():
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
-        N = len(y)
-        ytmp = np.empty(N+2, dtype=object)
-        ytmp[1:-1] = y
-        ytmp[0] = ywet
-        ytmp[-1] = ywet
-        dxs = 1./N
-        curv = np.diff(ytmp, 2)/(dxs**2)
-        muR_nh = -kappa*curv + B*(y - ybar)
+        if isinstance(y, np.ndarray):
+            N = len(y)
+            ytmp = np.empty(N+2, dtype=object)
+            ytmp[1:-1] = y
+            ytmp[0] = ywet
+            ytmp[-1] = ywet
+            dxs = 1./N
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            stech_Mn = 0.5
+            stech_Fe = 0.5
+            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N = len(y[0])
+
+            ytmp1 = np.empty(N+2, dtype=object)
+            ytmp1[1:-1] = y[0]
+            ytmp1[0] = ywet
+            ytmp1[-1] = ywet
+            dxs = 1./N
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = (-kappa*curv1
+                       + B*(y[0] - ybar[0]))
+
+            ytmp2 = np.empty(N+2, dtype=object)
+            ytmp2[1:-1] = y[1]
+            ytmp2[0] = ywet
+            ytmp2[-1] = ywet
+            dxs = 1./N
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = (-kappa*curv2 
+                       + B*(y[1] - ybar[1]))
+
+            muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
     
     def non_homog_rect_variational(self, y, ybar, B, kappa):
         """ Helper function """
         # the taylor expansion at the edges is used
-        N_2 = len(y)
-        ytmp = np.empty(N_2+2, dtype=object)
-        dxs = 1./N_2
-        ytmp[1:-1] = y
-        ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
-        ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
-        curv = np.diff(ytmp, 2)/(dxs**2)
-        muR_nh = -kappa*curv + B*(y - ybar)
+        if isinstance(y, np.ndarray):
+            N_2 = len(y)
+            ytmp = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp[1:-1] = y
+            ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
+            ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            y1 = y[0]
+            y2 = y[1]
+            stech_Mn = 0.5
+            stech_Fe = 0.5
+            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N_2 = len(y[0])
+
+            ytmp1 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp1[1:-1] = y1
+            ytmp1[0] = y1[0] + np.diff(y1)[0]*dxs + 0.5*np.diff(y1,2)[0]*dxs**2
+            ytmp1[-1] = y1[-1] + np.diff(y1)[-1]*dxs + 0.5*np.diff(y1,2)[-1]*dxs**2
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
+
+            ytmp2 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp2[1:-1] = y2
+            ytmp2[0] = y2[0] + np.diff(y2)[0]*dxs + 0.5*np.diff(y2,2)[0]*dxs**2
+            ytmp2[-1] = y2[-1] + np.diff(y2)[-1]*dxs + 0.5*np.diff(y2,2)[-1]*dxs**2
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
+
+            muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
@@ -413,10 +467,10 @@ class muRfuncs():
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.get_trode_param("shape")
-            kappa = self.get_trode_param("kappa")
-            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
                     if self.get_trode_param("type") in ["ACR"]:
                         cwet = self.get_trode_param("cwet")
                         muR_nh = self.non_homog_rect_fixed_csurf(
@@ -425,13 +479,16 @@ class muRfuncs():
                         muR_nh = self.non_homog_rect_variational(
                             y, ybar, B, kappa)
                 elif mod2var:
+                    kappa= self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
-                    muR1_nh = self.non_homog_rect_fixed_csurf(
-                            y[0], (0.5*ybar[0]+0.5*ybar[1]), B, kappa, cwet)
-                    muR2_nh = self.non_homog_rect_fixed_csurf(
-                            y[1], (0.5*ybar[0]+0.5*ybar[1]), B, kappa, cwet)
-                    muR_nh = (muR1_nh, muR2_nh)
+                    muR_nh = self.non_homog_rect_fixed_csurf(
+                        y, ybar, B, kappa, cwet)
+                    # muR_nh = self.non_homog_rect_variational(
+                    #     y, ybar, B, kappa)
             elif shape in ["cylinder", "sphere"]:
+                kappa = self.get_trode_param("kappa")
+                B = self.get_trode_param("B")
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
@@ -460,17 +517,20 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
         
-    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs=(None, None)):
+    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs = None):
         """ New test material """
         muRtheta1 = -self.eokT*4.1
-        muRtheta2 = -self.eokT*3.6
+        muRtheta2 = -self.eokT*3.9
         if ISfuncs is None:
             ISfuncs1, ISfuncs2 = None, None
         else:
             ISfuncs1, ISfuncs2 = ISfuncs
         y1, y2 = y
+        Omgc = self.get_trode_param('Omega_c')
         muR1 = self.reg_sln(y1, self.get_trode_param('Omega_a'), ISfuncs1)
         muR2 = self.reg_sln(y2, self.get_trode_param('Omega_b'), ISfuncs2)
+        muR1 += Omgc*y2*y1
+        muR2 += Omgc*y1*y2
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 += muR1nonHomog
         muR2 += muR2nonHomog

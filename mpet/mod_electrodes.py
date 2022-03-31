@@ -137,23 +137,23 @@ class Mod2var(dae.daeModel):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - .5*(self.c1bar() + self.c2bar())
+        eq.Residual = self.cbar() - (0.5*self.c1bar() + 0.5*self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= (0.5*self.c1.dt(k) + 0.5*self.c2.dt(k)) * volfrac_vec[k]
 
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
         if self.get_trode_param("type") in ["diffn2", "CHR2", "ACR2"]:
-            # Equations for 1D particles of 1 field varible
+            # Equations for 1D particles of 2 field varibles
             self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
-            # Equations for 0D particles of 1 field variables
+            # Equations for 0D particles of 2 field variables
             self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
 
         for eq in self.Equations:
@@ -253,8 +253,8 @@ class Mod2var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR2"]:
-            RHS1 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
-            RHS2 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+            RHS1 = np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
+            RHS2 = np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
         elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
