@@ -555,7 +555,11 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
 
 
 def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
-    elyteModelType = config["elyteModelType"]
+    
+    if config["simInterface"]:
+        elyteModelType = config["interfaceModelType"]
+    else:
+        elyteModelType = config["elyteModelType"]
 
     if elyteModelType == "SM":
         mu_lyte = phi_lyte
@@ -565,8 +569,9 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
         mu_lyte = T*np.log(act_lyte) + phi_lyte
     elif elyteModelType == "solid":
         a_slyte = config['a_slyte']
-        act_lyte = c_lyte * np.exp(a_slyte * (1 - c_lyte))
-        mu_lyte = T * np.log(act_lyte) + phi_lyte
+        cmax = config['cmax']
+        act_lyte = (c_lyte / cmax) / (1 - (c_lyte / cmax))* np.exp(a_slyte * (1 - 2*c_lyte))
+        mu_lyte = phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
 
