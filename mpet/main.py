@@ -79,7 +79,7 @@ def run_simulation(config, outdir):
     # Solve at time=0 (initialization)
     # Increase the number of Newton iterations for more robust initialization
     dae.daeGetConfig().SetString("daetools.IDAS.MaxNumItersIC","1000")
-    dae.daeGetConfig().SetString("daetools.IDAS.MaxNumSteps","1000")
+    dae.daeGetConfig().SetString("daetools.IDAS.MaxNumSteps","100000")
     simulation.SolveInitial()
 
     # Run

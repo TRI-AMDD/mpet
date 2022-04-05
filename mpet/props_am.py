@@ -258,6 +258,15 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
 
+    def NMC811(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = -self.eokT * 3.8
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
+        muR = muRhomog + muRnonHomog
+        actR = np.exp(muR / self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
     def testIS_ss(self, y, ybar, muR_ref, ISfuncs=None):
         """Ideal solution material for testing."""
         OCV = -self.kToe*np.log(y/(1-y))
@@ -444,6 +453,46 @@ class muRfuncs():
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
+    def non_homog_rect_variational_0TE(self, y, ybar, B, kappa):
+        """ Helper function """
+        # the taylor expansion at the edges is used
+        if isinstance(y, np.ndarray):
+            N_2 = len(y)
+            ytmp = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp[1:-1] = y
+            ytmp[0] = y[0]
+            ytmp[-1] = y[-1]
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            y1 = y[0]
+            y2 = y[1]
+            stech_Mn = 0.5
+            stech_Fe = 0.5
+            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N_2 = len(y[0])
+
+            ytmp1 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp1[1:-1] = y1
+            ytmp1[0] = y1[0]
+            ytmp1[-1] = y1[-1]
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
+
+            ytmp2 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp2[1:-1] = y2
+            ytmp2[0] = y2[0]
+            ytmp2[-1] = y2[-1]
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
+
+            muR_nh = (muR1_nh, muR2_nh)
+        return muR_nh
+
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
@@ -482,10 +531,10 @@ class muRfuncs():
                     kappa= self.get_trode_param("kappa")
                     B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
-                    muR_nh = self.non_homog_rect_fixed_csurf(
-                        y, ybar, B, kappa, cwet)
-                    # muR_nh = self.non_homog_rect_variational(
-                    #     y, ybar, B, kappa)
+                    # muR_nh = self.non_homog_rect_fixed_csurf(
+                    #     y, ybar, B, kappa, cwet)
+                    muR_nh = self.non_homog_rect_variational_0TE(
+                        y, ybar, B, kappa)
             elif shape in ["cylinder", "sphere"]:
                 kappa = self.get_trode_param("kappa")
                 B = self.get_trode_param("B")
@@ -519,19 +568,26 @@ class muRfuncs():
         
     def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs = None):
         """ New test material """
-        muRtheta1 = -self.eokT*4.1
-        muRtheta2 = -self.eokT*3.9
+        muRtheta1 = -self.eokT*4.05
+        muRtheta2 = -self.eokT*3.5
+        print('Mu theta 1: ' , muRtheta1)
+        print('Mu theta 2: ' , muRtheta2)
         if ISfuncs is None:
             ISfuncs1, ISfuncs2 = None, None
         else:
             ISfuncs1, ISfuncs2 = ISfuncs
         y1, y2 = y
+        Omga = self.get_trode_param('Omega_a')
+        Omgb = self.get_trode_param('Omega_b')
         Omgc = self.get_trode_param('Omega_c')
+        print(Omga)
         muR1 = self.reg_sln(y1, self.get_trode_param('Omega_a'), ISfuncs1)
-        muR2 = self.reg_sln(y2, self.get_trode_param('Omega_b'), ISfuncs2)
-        muR1 += Omgc*y2*y1
-        muR2 += Omgc*y1*y2
+        muR2 = self.reg_sln(y2, self.get_trode_param('Omega_a')*0.8, ISfuncs2)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
+        muR1 += (0*y2 + Omgb*(1-2*y1)*y2*(1-y2) + 0.1*(1-2*y2)
+                + 2*Omgc*(1-2*y1)*y1*(1-y1)*y2**2*(y2-1)**2)
+        muR2 += (0*y1 + Omgb*(1-2*y2)*y1*(1-y1) + 0.1*(1-2*y1)
+                + 2*Omgc*(1-2*y2)*y2*(1-y2)*y1**2*(y1-1)**2)
         muR1 += muR1nonHomog
         muR2 += muR2nonHomog
         actR1 = np.exp(muR1/self.T)
