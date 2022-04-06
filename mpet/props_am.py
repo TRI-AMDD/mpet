@@ -259,7 +259,7 @@ class muRfuncs():
         return muR, actR
 
     def NMC811(self, y, ybar, muR_ref, ISfuncs=None):
-        muRtheta = -self.eokT * 3.8
+        muRtheta = -self.eokT * 3.9
         muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
