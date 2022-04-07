@@ -584,10 +584,8 @@ class muRfuncs():
         muR1 = self.reg_sln(y1, self.get_trode_param('Omega_a'), ISfuncs1)
         muR2 = self.reg_sln(y2, self.get_trode_param('Omega_a')*0.8, ISfuncs2)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
-        muR1 += (0*y2 + Omgb*(1-2*y1)*y2*(1-y2) + 0.1*(1-2*y2)
-                + 2*Omgc*(1-2*y1)*y1*(1-y1)*y2**2*(y2-1)**2)
-        muR2 += (0*y1 + Omgb*(1-2*y2)*y1*(1-y1) + 0.1*(1-2*y1)
-                + 2*Omgc*(1-2*y2)*y2*(1-y2)*y1**2*(y1-1)**2)
+        muR1 += (Omgb*(1-2*y1)*y2*(1-y2) + Omgc*(1-2*y2))
+        muR2 += (Omgb*(1-2*y2)*y1*(1-y1) + Omgc*(1-2*y1))
         muR1 += muR1nonHomog
         muR2 += muR2nonHomog
         actR1 = np.exp(muR1/self.T)
