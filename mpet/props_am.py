@@ -407,12 +407,12 @@ class muRfuncs():
             ytmp2[-1] = ywet
             dxs = 1./N
             curv2 = np.diff(ytmp2, 2)/(dxs**2)
-            muR2_nh = (-kappa*curv2 
+            muR2_nh = (-kappa*curv2
                        + B*(y[1] - ybar[1]))
 
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
-    
+
     def non_homog_rect_variational(self, y, ybar, B, kappa):
         """ Helper function """
         # the taylor expansion at the edges is used
@@ -565,7 +565,7 @@ class muRfuncs():
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
-        
+
     def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ New test material """
         muRtheta1 = -self.eokT*4.05
