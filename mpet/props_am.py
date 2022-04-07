@@ -387,9 +387,9 @@ class muRfuncs():
             muR_nh = -kappa*curv + B*(y - ybar)
         elif (isinstance(y, tuple) and len(y) == 2
                 and isinstance(y[0], np.ndarray)):
-            stech_Mn = 0.5
-            stech_Fe = 0.5
-            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
             N = len(y[0])
 
             ytmp1 = np.empty(N+2, dtype=object)
@@ -429,9 +429,9 @@ class muRfuncs():
                 and isinstance(y[0], np.ndarray)):
             y1 = y[0]
             y2 = y[1]
-            stech_Mn = 0.5
-            stech_Fe = 0.5
-            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
             N_2 = len(y[0])
 
             ytmp1 = np.empty(N_2+2, dtype=object)
@@ -469,9 +469,9 @@ class muRfuncs():
                 and isinstance(y[0], np.ndarray)):
             y1 = y[0]
             y2 = y[1]
-            stech_Mn = 0.5
-            stech_Fe = 0.5
-            ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
             N_2 = len(y[0])
 
             ytmp1 = np.empty(N_2+2, dtype=object)
@@ -528,7 +528,7 @@ class muRfuncs():
                         muR_nh = self.non_homog_rect_variational(
                             y, ybar, B, kappa)
                 elif mod2var:
-                    kappa= self.get_trode_param("kappa")
+                    kappa = self.get_trode_param("kappa")
                     B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
                     # muR_nh = self.non_homog_rect_fixed_csurf(
@@ -566,12 +566,10 @@ class muRfuncs():
         muR += muRtheta + muR_ref
         return muR, actR
         
-    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs = None):
+    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs=None):
         """ New test material """
         muRtheta1 = -self.eokT*4.05
         muRtheta2 = -self.eokT*3.5
-        print('Mu theta 1: ' , muRtheta1)
-        print('Mu theta 2: ' , muRtheta2)
         if ISfuncs is None:
             ISfuncs1, ISfuncs2 = None, None
         else:
@@ -580,9 +578,8 @@ class muRfuncs():
         Omga = self.get_trode_param('Omega_a')
         Omgb = self.get_trode_param('Omega_b')
         Omgc = self.get_trode_param('Omega_c')
-        print(Omga)
-        muR1 = self.reg_sln(y1, self.get_trode_param('Omega_a'), ISfuncs1)
-        muR2 = self.reg_sln(y2, self.get_trode_param('Omega_a')*0.8, ISfuncs2)
+        muR1 = self.reg_sln(y1, Omga, ISfuncs1)
+        muR2 = self.reg_sln(y2, Omga*0.8, ISfuncs2)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
         muR1 += (Omgb*(1-2*y1)*y2*(1-y2) + Omgc*(1-2*y2))
         muR2 += (Omgb*(1-2*y2)*y1*(1-y1) + Omgc*(1-2*y1))
@@ -673,13 +670,13 @@ class muRfuncs():
         T = self.T
         x = y
         OCV_ref = (4.22882816e+00 +
-                - 7.46680452e-01*x - 6.46487121e-01*x**2
-                + 1.98317348e+02*x**3 - 3.38658221e+03*x**4
-                + 2.55770620e+04*x**5 - 1.10532458e+05*x**6
-                + 3.00933346e+05*x**7 - 5.36070100e+05*x**8
-                + 6.24445330e+05*x**9 - 4.52755354e+05*x**10
-                + 1.70441348e+05*x**11 - 2.11992531e+03*x**12
-                - 2.26426671e+04*x**13 + 5.91243316e+03*x**14)
+                   - 7.46680452e-01*x - 6.46487121e-01*x**2
+                   + 1.98317348e+02*x**3 - 3.38658221e+03*x**4
+                   + 2.55770620e+04*x**5 - 1.10532458e+05*x**6
+                   + 3.00933346e+05*x**7 - 5.36070100e+05*x**8
+                   + 6.24445330e+05*x**9 - 4.52755354e+05*x**10
+                   + 1.70441348e+05*x**11 - 2.11992531e+03*x**12
+                   - 2.26426671e+04*x**13 + 5.91243316e+03*x**14)
         k1 = -0.001
         k2 = 0.199521039
         k3 = -0.928373822

@@ -457,11 +457,11 @@ class Mod1var(dae.daeModel):
                 beta_s = self.get_trode_param("beta_s")
                 # if beta_s is too big c_surf[0] > 1, a better method is needed
                 eqL = self.CreateEquation("leftBC")
-                eqL.Residual = c_surf[0] - c_surf[1] + \
-                                - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008)
+                eqL.Residual = (c_surf[0] - c_surf[1] + 
+                                - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
                 eqR = self.CreateEquation("rightBC")
-                eqR.Residual = c_surf[-1] - c_surf[-2] + \
-                                - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008)
+                eqR.Residual = (c_surf[-1] - c_surf[-2] + 
+                                - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008))
 
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
