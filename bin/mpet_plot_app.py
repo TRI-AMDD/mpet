@@ -378,7 +378,7 @@ def update_graph(xaxis_column_name, model_selection
 #             for k in range(dff["Nvola"][np.in1d(dff['Model'], i)]):
 #                 fig.add_trace(
 #                     go.Line(
-#                         x=dff['Time (s)'][np.in1d(dff['Model'], i)], 
+#                         x=dff['Time (s)'][np.in1d(dff['Model'], i)],
 #                         y=utils.get_dict_key(data, sol_str, squeeze=False)[:,-1],
 #                         row=1, col=1)
 
