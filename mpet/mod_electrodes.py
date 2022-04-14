@@ -253,8 +253,8 @@ class Mod2var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR2"]:
-            RHS1 = np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
-            RHS2 = np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+            RHS1 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
+            RHS2 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
         elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.

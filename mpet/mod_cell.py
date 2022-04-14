@@ -295,6 +295,11 @@ class ModCell(dae.daeModel):
                 dx = config["L"][trode]/Nvol[trode]
                 dvg_curr_dens = np.diff(-poros_walls*config["sigma_s"][trode]
                                         * np.diff(phi_tmp)/dx)/dx
+
+                # dvg_curr_dens = np.diff(-poros_walls*(config["sigma_s"][trode]*(1-0.15)
+                #                         + config["sigma_s"][trode]
+                #                         * 0.15*2.71828**(-np.diff(phi_tmp)))
+                #                         * np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(

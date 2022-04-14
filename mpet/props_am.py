@@ -531,10 +531,10 @@ class muRfuncs():
                     kappa = self.get_trode_param("kappa")
                     B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
-                    # muR_nh = self.non_homog_rect_fixed_csurf(
-                    #     y, ybar, B, kappa, cwet)
-                    muR_nh = self.non_homog_rect_variational_0TE(
-                        y, ybar, B, kappa)
+                    muR_nh = self.non_homog_rect_fixed_csurf(
+                        y, ybar, B, kappa, cwet)
+                    # muR_nh = self.non_homog_rect_variational_0TE(
+                    #     y, ybar, B, kappa)
             elif shape in ["cylinder", "sphere"]:
                 kappa = self.get_trode_param("kappa")
                 B = self.get_trode_param("B")
@@ -579,10 +579,14 @@ class muRfuncs():
         Omgb = self.get_trode_param('Omega_b')
         Omgc = self.get_trode_param('Omega_c')
         muR1 = self.reg_sln(y1, Omga, ISfuncs1)
-        muR2 = self.reg_sln(y2, Omga*0.8, ISfuncs2)
+        muR2 = self.reg_sln(y2, Omga, ISfuncs2)
         muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
-        muR1 += (Omgb*(1-2*y1)*y2*(1-y2) + Omgc*(1-2*y2))
-        muR2 += (Omgb*(1-2*y2)*y1*(1-y1) + Omgc*(1-2*y1))
+        # muR1 += (Omgb*(1-2*y1)*y2*(1-y2) + Omgc*(1-2*y2) - Omgc)
+        # muR2 += (Omgb*(1-2*y2)*y1*(1-y1) + Omgc*(1-2*y1) - Omgc)
+        muR1 += (Omgb*(6*y1**2 - 6*y1 + 1)
+                 + Omgc*((1-2*y1)**3-4*y1*(1-y1)*(1-2*y1)))
+        muR2 += (Omgb*(6*y2**2 - 6*y2 + 1)
+                 + Omgc*((1-2*y2)**3-4*y2*(1-y2)*(1-2*y2)))
         muR1 += muR1nonHomog
         muR2 += muR2nonHomog
         actR1 = np.exp(muR1/self.T)
