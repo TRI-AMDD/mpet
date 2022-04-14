@@ -32,7 +32,7 @@ MPET is also available on [PyPI](https://pypi.org/project/mpet/), the Python Pac
 5.  Run `mpetrun.py`, passing `params_system.cfg` as an argument:
     `mpetrun.py params_system.cfg`
 
-The software will save the simulation output in a time-stamped subdirectory within a directory called `history`. The data contents of the most recent output will also be copied to a directory called `sim_output`. Each output directory should contain:
+The software will save the simulation output in a time-stamped subdirectory, which is also stamped with the name of the used system parameter file, within a directory called `history`. The data contents of the most recent output will also be copied to a directory called `sim_output`. Each output directory should contain:
 
 - the output data (`.mat` file)
 - copies of the input parameters files defining the simulation
@@ -42,8 +42,28 @@ The software will save the simulation output in a time-stamped subdirectory with
 - processed, dimensional and nondimensional parameters as
   Python-pickled dictionary objects
 
+## Running multiple simulations on a cluster
+If you have many simulations you want to run, you can use `bin/run_jobs.py` to run them efficiently on a cluster using [Dask](https://dask.org), either locally or on a slurm or PBS cluster. Using the parallel running option requires the following packages to be installed: `dask distributed` and `dask-jobqueue`.
+
+1. Follow steps 1-4 from the description above for each of the simulations you want to run. Then create a text file in your working directory containing the system parameter files for your simulations. This text file should contain the file names of each of the system parameter configuration files for which you want to run a simulation. For example, if you have all your parameter files saved in the `configs` directory, create: `configs/parallel_configs.txt`, which contains the lines:\
+    <i>params_system.cfg\
+    params_system_XX.cfg\
+    params_system_YY.cfg</i>\
+    etc.
+2. Run multiple simulations on a cluster using `run_jobs.py`. The simplest way to run it, is to run the script on the login node. Pass the text file containing the system parameter files (e.g. `configs/parallel_configs.txt`) and the cluster arguments:
+    - `-s`: scheduler type. Options: `slurm`, `pbs`, and `local`. Default is `slurm`.
+    - `-t`: Maximum walltime per job (hh:mm:ss format). Argument is not used with a local cluster.
+    - `-n`: Number of CPU cores per job. Argument is not used with a local cluster.
+    - `-m`: Max memory usage per job. When using a local cluster it sets the memory limit per worker process.
+    - `-q`: Queue to use. Argument is not used with a local cluster.
+    - `-d`: Port for Dask dashboard (default 4096).
+    - `--min_jobs`: Minimum number of jobs to launch. Default = 1. Argument is not used with a local cluster.
+    - `--max_jobs`: Maximum number of jobs to launch. Default = 1. Argument is not used with a local cluster.
+3. The simulation output is the same as described above. For each simulation a separate output folder is created in the `history` folder.
+
+
 ## Analysis
-Analyze output with `mpetplot.py`. Pass output data directory, then use the optional plotting arguments. The options for `mpetplot.py`:
+Analyze output with `mpetplot.py`. Pass the output data directory, then use the optional plotting arguments. The options for `mpetplot.py` are:
 - `-pt` for plotting types
 - `-t` for saving output to text format
 - `-s` for options to save the plot
