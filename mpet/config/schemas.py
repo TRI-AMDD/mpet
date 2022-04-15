@@ -2,7 +2,6 @@
 
 import ast
 from distutils.util import strtobool
-from email.policy import default
 
 from schema import Schema, Use, Optional, And, Or
 import numpy as np
