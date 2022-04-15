@@ -190,7 +190,7 @@ class DerivedValues:
         """
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
-        if self.config['elyteModelType'] == 'solid':
+        elif self.config['elyteModelType'] == 'solid':
             return self.config['Damb']
         else:
             return getattr(props_elyte, self.config['SMset'])()[-1]
