@@ -140,7 +140,8 @@ class SimMPET(dae.daeSimulation):
                         # Set concentration and potential in interface region
                         if config["simInterface"]:
                             for k in range(config["Nvol_i"]):
-                                self.m.interfaces[tr][i,j].c.SetInitialCondition(k, config["c0"])
+                                self.m.interfaces[tr][i,j].c.SetInitialCondition(k,
+                                                                                 config["c0_int"])
                                 self.m.interfaces[tr][i,j].phi.SetInitialGuess(k, 0)
 
         else:

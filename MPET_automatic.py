@@ -201,12 +201,11 @@ for SoC in Soc_stop:
 
                         thickness = 'Thick_'+str(thick)
                         stdev = '_Stddev_'+str(stddev)
-                        stop = '_SoCStop_'+ str(SoC)
+                        stop = '_SoCStop_'+str(SoC)
                         crate = '_Crate_'+str(Crate)
                         bulkcon = '_bulkCon_'+str(bulk)
 
                         new_name = 'k00.01_ ' + stop + crate
-
 
                         # new_name = ('Thick_'+str(thick)+'_Stddev_'+str(stddev)+'_SoCStop_'
                         #             + str(SoC) + '_Crate_'+str(Crate)+'_bulkCon_'+str(bulk))
