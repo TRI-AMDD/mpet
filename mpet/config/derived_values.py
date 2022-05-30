@@ -190,6 +190,8 @@ class DerivedValues:
         """
         if self.config['elyteModelType'] == 'dilute':
             return self.config['Damb']
+        elif self.config['elyteModelType'] == 'solid':
+            return self.config['Damb']
         else:
             return getattr(props_elyte, self.config['SMset'])()[-1]
 
@@ -239,12 +241,6 @@ class DerivedValues:
         """Reference electrostatic potential of given electrode
         """
         return -self.config[trode, 'muR_ref'][0]
-
-    def kd(self):
-        """TODO: what is this parameter?
-        """
-        return self.config['t_ref'] * self.config['kr'] * self.config['cmax'] * \
-            self.config['delta'] ** 2 / (1 - self.config['delta'])
 
     def power_ref(self):
         """Reference power of the system

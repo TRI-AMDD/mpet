@@ -440,7 +440,7 @@ class Config:
 
         # use custom concentration when using solid electrolyte model
         if self['elyteModelType'] == 'solid':
-            self['c0'] = self['delta'] * self['cmax']
+            self['c0'] = self['c0']
 
         # apply scalings
         self._scale_system_parameters(theoretical_1C_current)
@@ -492,6 +492,15 @@ class Config:
             self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
+
+        if self['elyteModelType'] == 'solid':
+            self['cmax'] = self['cmax'] / constants.c_ref
+
+        if self['simInterface']:
+            self['Dp_i'] = self['Dp_i'] / self['D_ref']
+            self['Dm_i'] = self['Dm_i'] / self['D_ref']
+            self['c0_int'] = self['c0_int'] / constants.c_ref
+            self['cmax_i'] = self['cmax_i'] / constants.c_ref
 
     def _scale_electrode_parameters(self):
         """
@@ -601,6 +610,8 @@ class Config:
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
 
+        self['gamma_contact'] = {}
+
         for trode in self['trodes']:
             solidType = self[trode, 'type']
             Nvol = self['Nvol'][trode]
@@ -626,10 +637,27 @@ class Config:
                     raise ValueError('Specified particle size distribution discretization '
                                      'of volumes inequal to the one specified in the config file')
 
+            stddev_c = self['stddev_gamma_c']
+            mean_c = self['mean_gamma_c']
+
+            if 0 < mean_c < 1:
+                # Contact penalty for BV
+                mean_c = mean_c  # to make distribution start at 1 if gamma is 1
+                var_c = stddev_c**2
+                mu_c = np.log((mean_c**2) / np.sqrt(var_c + mean_c**2))
+                sigma_c = np.sqrt(np.log(var_c/(mean_c**2) + 1))
+                raw_c = 1 - np.random.lognormal(mu_c, sigma_c, size=(Nvol, Npart))
+                raw_c[raw_c <= 0.0001] = 0.0001
+                gamma_contact = raw_c
+            elif mean_c == 1:
+                gamma_contact = np.ones((Nvol, Npart))
+            else:
+                raise NotImplementedError('Contact error should be between 0 and 1')
+
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
             solidDisc = self[trode, 'discretization']
-            if solidType in ['ACR']:
+            if solidType in ['ACR','ACR_Diff','ACR2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
@@ -669,6 +697,7 @@ class Config:
             self['psd_area'][trode] = psd_area
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
+            self['gamma_contact'][trode] = gamma_contact
 
     def _G(self):
         """
@@ -716,6 +745,7 @@ class Config:
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
+                    gamma_cont = self['gamma_contact'][trode][i,j]
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
                     i_s_ref = constants.e * F_s_ref  # A/m^2
@@ -731,6 +761,9 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
+                    if self['mean_gamma_c'] != 1.0:
+                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
+                            / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
@@ -756,8 +789,8 @@ class Config:
         for trode in self['trodes']:
             solidShape = self[trode, 'shape']
             solidType = self[trode, 'type']
-            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
-                raise Exception("ACR and homog_sdn req. C3 shape")
+            if solidType in ["ACR", "ACR_Diff", "homog_sdn", "ACR2"] and solidShape != "C3":
+                raise Exception("ACR, ACR_Diff, ACR2 and homog_sdn req. C3 shape")
             if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder"]):
                 raise NotImplementedError("CHR and diffn req. sphere or cylinder")
 

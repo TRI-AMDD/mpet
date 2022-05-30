@@ -251,9 +251,20 @@ class muRfuncs():
         Vasileiadis 2017
         """
         muRtheta = -self.eokT * 1.55
-        muRhomog = self.reg_sln(y, self.config["Omega_a"], ISfuncs)
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
+        actR = np.exp(muR / self.T)
+        muR += muRtheta + muR_ref
+        return muR, actR
+
+    def NMC811(self, y, ybar, muR_ref, ISfuncs=None):
+        muRtheta = -self.eokT * 3.88
+        muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"), ISfuncs)
+        muRnonHomog = self.general_non_homog(y, ybar)
+        muR = muRhomog + muRnonHomog
+        Omgb = self.get_trode_param("Omega_b")
+        muR += Omgb*((1-2*y)**2 - 2*y*(1-y))
         actR = np.exp(muR / self.T)
         muR += muRtheta + muR_ref
         return muR, actR
@@ -367,14 +378,121 @@ class muRfuncs():
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
-        N = len(y)
-        ytmp = np.empty(N+2, dtype=object)
-        ytmp[1:-1] = y
-        ytmp[0] = ywet
-        ytmp[-1] = ywet
-        dxs = 1./N
-        curv = np.diff(ytmp, 2)/(dxs**2)
-        muR_nh = -kappa*curv + B*(y - ybar)
+        if isinstance(y, np.ndarray):
+            N = len(y)
+            ytmp = np.empty(N+2, dtype=object)
+            ytmp[1:-1] = y
+            ytmp[0] = ywet
+            ytmp[-1] = ywet
+            dxs = 1./N
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N = len(y[0])
+
+            ytmp1 = np.empty(N+2, dtype=object)
+            ytmp1[1:-1] = y[0]
+            ytmp1[0] = ywet
+            ytmp1[-1] = ywet
+            dxs = 1./N
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = (-kappa*curv1
+                       + B*(y[0] - ybar[0]))
+
+            ytmp2 = np.empty(N+2, dtype=object)
+            ytmp2[1:-1] = y[1]
+            ytmp2[0] = ywet
+            ytmp2[-1] = ywet
+            dxs = 1./N
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = (-kappa*curv2
+                       + B*(y[1] - ybar[1]))
+
+            muR_nh = (muR1_nh, muR2_nh)
+        return muR_nh
+
+    def non_homog_rect_variational(self, y, ybar, B, kappa):
+        """ Helper function """
+        # the taylor expansion at the edges is used
+        if isinstance(y, np.ndarray):
+            N_2 = len(y)
+            ytmp = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp[1:-1] = y
+            ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
+            ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            y1 = y[0]
+            y2 = y[1]
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N_2 = len(y[0])
+
+            ytmp1 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp1[1:-1] = y1
+            ytmp1[0] = y1[0] + np.diff(y1)[0]*dxs + 0.5*np.diff(y1,2)[0]*dxs**2
+            ytmp1[-1] = y1[-1] + np.diff(y1)[-1]*dxs + 0.5*np.diff(y1,2)[-1]*dxs**2
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
+
+            ytmp2 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp2[1:-1] = y2
+            ytmp2[0] = y2[0] + np.diff(y2)[0]*dxs + 0.5*np.diff(y2,2)[0]*dxs**2
+            ytmp2[-1] = y2[-1] + np.diff(y2)[-1]*dxs + 0.5*np.diff(y2,2)[-1]*dxs**2
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
+
+            muR_nh = (muR1_nh, muR2_nh)
+        return muR_nh
+
+    def non_homog_rect_variational_0TE(self, y, ybar, B, kappa):
+        """ Helper function """
+        # the taylor expansion at the edges is used
+        if isinstance(y, np.ndarray):
+            N_2 = len(y)
+            ytmp = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp[1:-1] = y
+            ytmp[0] = y[0]
+            ytmp[-1] = y[-1]
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            y1 = y[0]
+            y2 = y[1]
+            # stech_Mn = 0.5
+            # stech_Fe = 0.5
+            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+            N_2 = len(y[0])
+
+            ytmp1 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp1[1:-1] = y1
+            ytmp1[0] = y1[0]
+            ytmp1[-1] = y1[-1]
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
+
+            ytmp2 = np.empty(N_2+2, dtype=object)
+            dxs = 1./N_2
+            ytmp2[1:-1] = y2
+            ytmp2[0] = y2[0]
+            ytmp2[-1] = y2[-1]
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
+
+            muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
@@ -400,16 +518,28 @@ class muRfuncs():
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.get_trode_param("shape")
-            kappa = self.get_trode_param("kappa")
-            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
+                    if self.get_trode_param("type") in ["ACR"]:
+                        cwet = self.get_trode_param("cwet")
+                        muR_nh = self.non_homog_rect_fixed_csurf(
+                            y, ybar, B, kappa, cwet)
+                    elif self.get_trode_param("type") in ["ACR_Diff"]:
+                        muR_nh = self.non_homog_rect_variational(
+                            y, ybar, B, kappa)
+                elif mod2var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
-                elif mod2var:
-                    raise NotImplementedError("no 2param C3 model known")
+                    # muR_nh = self.non_homog_rect_variational_0TE(
+                    #     y, ybar, B, kappa)
             elif shape in ["cylinder", "sphere"]:
+                kappa = self.get_trode_param("kappa")
+                B = self.get_trode_param("B")
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
@@ -437,6 +567,35 @@ class muRfuncs():
         actR = np.exp(muR/self.T)
         muR += muRtheta + muR_ref
         return muR, actR
+
+    def LiFeMnPO4(self, y, ybar, muR_ref, ISfuncs=None):
+        """ New test material """
+        muRtheta1 = -self.eokT*4.05
+        muRtheta2 = -self.eokT*3.5
+        if ISfuncs is None:
+            ISfuncs1, ISfuncs2 = None, None
+        else:
+            ISfuncs1, ISfuncs2 = ISfuncs
+        y1, y2 = y
+        Omga = self.get_trode_param('Omega_a')
+        Omgb = self.get_trode_param('Omega_b')
+        Omgc = self.get_trode_param('Omega_c')
+        muR1 = self.reg_sln(y1, Omga, ISfuncs1)
+        muR2 = self.reg_sln(y2, Omga, ISfuncs2)
+        muR1nonHomog, muR2nonHomog = self.general_non_homog(y, ybar)
+        # muR1 += (Omgb*(1-2*y1)*y2*(1-y2) + Omgc*(1-2*y2) - Omgc)
+        # muR2 += (Omgb*(1-2*y2)*y1*(1-y1) + Omgc*(1-2*y1) - Omgc)
+        muR1 += (Omgb*(6*y1**2 - 6*y1 + 1)
+                 + Omgc*((1-2*y1)**3-4*y1*(1-y1)*(1-2*y1)))
+        muR2 += (Omgb*(6*y2**2 - 6*y2 + 1)
+                 + Omgc*((1-2*y2)**3-4*y2*(1-y2)*(1-2*y2)))
+        muR1 += muR1nonHomog
+        muR2 += muR2nonHomog
+        actR1 = np.exp(muR1/self.T)
+        actR2 = np.exp(muR2/self.T)
+        muR1 += muRtheta1 + muR_ref
+        muR2 += muRtheta2 + muR_ref
+        return (muR1, muR2), (actR1, actR2)
 
     def LiC6(self, y, ybar, muR_ref, ISfuncs=(None, None)):
         """ Ferguson and Bazant 2014 """
@@ -496,6 +655,34 @@ class muRfuncs():
         r12 = 95.96
         OCV_ref = (-r1 + r2*y**2 - r3*y**4 + r4*y**6 - r5*y**8 + r6 * y**10) / \
             (-r7 + r8*y**2 - r9*y**4 + r10*y**6 - r11*y**8 + r12*y**10)
+        k1 = -0.001
+        k2 = 0.199521039
+        k3 = -0.928373822
+        k4 = 1.364550689000003
+        k5 = -0.6115448939999998
+        k6 = 1
+        k7 = -5.661479886999997
+        k8 = 11.47636191
+        k9 = -9.82431213599998
+        k10 = 3.048755063
+        dUdT = k1*(k2+k3*y+k4*y**2+k5*y**3)/(k6+k7*y+k8*y**2+k9*y**3+k10*y**4)
+        OCV = OCV_ref + dUdT*(T-1)*constants.T_ref
+        muR = self.get_muR_from_OCV(OCV, muR_ref)
+        actR = None
+        return muR, actR
+
+    def NMC811_fitted(self, y, ybar, muR_ref, ISfuncs=None):
+        """ Torchio et al, 2016. """
+        T = self.T
+        x = y
+        OCV_ref = (4.22882816e+00 +
+                   - 7.46680452e-01*x - 6.46487121e-01*x**2
+                   + 1.98317348e+02*x**3 - 3.38658221e+03*x**4
+                   + 2.55770620e+04*x**5 - 1.10532458e+05*x**6
+                   + 3.00933346e+05*x**7 - 5.36070100e+05*x**8
+                   + 6.24445330e+05*x**9 - 4.52755354e+05*x**10
+                   + 1.70441348e+05*x**11 - 2.11992531e+03*x**12
+                   - 2.26426671e+04*x**13 + 5.91243316e+03*x**14)
         k1 = -0.001
         k2 = 0.199521039
         k3 = -0.928373822

@@ -63,22 +63,21 @@ def BV_Colclasure20(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
     return Rate
 
 
-def BV_gamma(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
-             act_lyte=None, lmbda=None, alpha=None):
+def BV_NMC_Park2021(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
+                    act_lyte=None, lmbda=None, alpha=None):
+    ecd = k0*act_lyte/(1+np.exp(25*(c_sld-0.6)))
+    Rate = ecd * np.exp(-E_A/T + E_A/1) * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    return Rate
+
+
+def BV_Lim2016(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
+               act_lyte=None, lmbda=None, alpha=None):
     if act_R is None:
         act_R = c_sld/(1-c_sld)
     gamma_ts = (1./(1-c_sld))
-    mean = 0.05
-    stddev = 0.01
-    var = stddev**2
-    mu = np.log((mean**2) / np.sqrt(var + mean**2))
-    sigma = np.sqrt(np.log(var/(mean**2) + 1))
-    gamma = 1 - np.random.lognormal(mu,sigma,None)
-    if gamma < 0:
-        gamma = 0.001
-    ecd = (k0 * act_lyte**(1-alpha)
-           * act_R**(alpha) / gamma_ts)
-    Rate = gamma * ecd * np.exp(-E_A/T + E_A/1) * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
+    ecd = (3*k0*act_lyte*(c_sld**alpha)
+           * ((1-c_sld)**(1-alpha))/gamma_ts)
+    Rate = ecd * np.exp(-E_A/T + E_A/1) * (np.exp(-alpha*eta/T) - np.exp((1-alpha)*eta/T))
     return Rate
 
 

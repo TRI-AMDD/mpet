@@ -11,9 +11,9 @@ N_A = 6.022e23
 #: Reference flux, C/mol
 F = e * N_A
 #: General particle classification (1 var)
-two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
+two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn", "ACR2"]
 #: General particle classification (2 var)
-one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
+one_var_types = ["ACR","ACR_Diff", "diffn", "CHR", "homog", "homog_sdn"]
 #: Reference concentration, mol/m^3 = 1M
 c_ref = 1000.
 
