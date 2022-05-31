@@ -172,8 +172,16 @@ class DerivedValues:
     def cap(self, trode):
         """Theoretical capacity of given electrode
         """
-        return constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
+        capacity = constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
             * self.config['P_L'][trode] * self.config[trode, 'rho_s']
+        if np.all(self.config['specified_poros'][trode]):
+            sum_porosity = 0
+            for i in self.config['specified_poros'][trode]:
+                sum_porosity = sum_porosity + i
+            avg_porosity = sum_porosity/np.size(self.config['specified_poros'][trode])
+            capacity = constants.e * self.config['L'][trode] * (1 - avg_porosity) \
+                * self.config['P_L'][trode] * self.config[trode, 'rho_s']
+        return capacity
 
     def numsegments(self):
         """Number of segments in voltage/current profile
