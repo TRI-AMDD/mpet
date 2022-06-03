@@ -287,128 +287,118 @@ This dashboard shows visualisations of all the MPET simulation output saved in t
 defaultmodel = (dff['Model'].unique()[0])
 # Define components of app
 app.layout = html.Div(style={'backgroundColor': colors['background']},
-    children=[
-    html.Div(style={'backgroundColor': 'LightSteelblue'},
-    children=[
-    dcc.Markdown(
-        children=markdown_text,
-        style={
-            'textAlign': 'center',
-            'color': colors['text'],
-            'font-family':'Sans-serif'}),
-    html.H4(children='Select models to display in all plots:',
-            style={'font-family':'Sans-serif'}),
-    dcc.Checklist(options=dff['Model'].unique(),
-                  value=dff['Model'].unique(),
-                  id='model-selection',
-                  labelStyle={'display': 'block'},
-                  style={'font-family':'Sans-serif',
-                  'margin-bottom': '20px', 'background': 'LightSteelblue'}),
-    html.Hr(style={"color": 'black', 'borderWidth': '10'}),
-    ]),
+                      children=[
+                      html.Div(style={'backgroundColor': 'LightSteelblue'},
+                               children=[
+                               dcc.Markdown(
+                                   children=markdown_text,
+                                   style={'textAlign': 'center',
+                                          'color': colors['text'],
+                                          'font-family':'Sans-serif'}),
+                                   html.H4(children='Select models to display in all plots:',
+                                           style={'font-family':'Sans-serif'}),
+                                   dcc.Checklist(options=dff['Model'].unique(),
+                                                 value=dff['Model'].unique(),
+                                                 id='model-selection',
+                                                 labelStyle={'display': 'block'},
+                                                 style={'font-family':'Sans-serif',
+                                                        'margin-bottom': '20px',
+                                                        'background': 'LightSteelblue'}),
+                                   html.Hr(style={"color": 'black', 'borderWidth': '10'})]),
 
-    html.H3(children='Voltage',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Dropdown(['Time (s)', 'Cathode Filling Fraction'],
-                 'Time (s)',
-                 id='xaxis-column',
-                 style={'width':'50%', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='Voltage-graph-double'),
+                      html.H3(children='Voltage',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Dropdown(['Time (s)', 'Cathode Filling Fraction'], 'Time (s)',
+                                   id='xaxis-column',
+                                   style={'width':'50%', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='Voltage-graph-double'),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Solid surface concentration anode',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                 id='select_surf_a_model',
-                 style={'width':'50%', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='Surface-concentration-anode'),
+                      html.H3(children='Solid surface concentration anode',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                                   id='select_surf_a_model',
+                                   style={'width':'50%', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='Surface-concentration-anode'),
 
-    html.H3(children='Solid surface concentration cathode',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                 id='select_surf_c_model',
-                 style={'width':'50%', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='Surface-concentration-cathode'),
+                      html.H3(children='Solid surface concentration cathode',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                                   id='select_surf_c_model',
+                                   style={'width':'50%', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='Surface-concentration-cathode'),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Overall utilization / state of charge of electrode',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='Cathode-filling-fraction'),
-    dcc.Graph(id='Anode-filling-fraction'),
+                      html.H3(children='Overall utilization / state of charge of electrode',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='Cathode-filling-fraction'),
+                      dcc.Graph(id='Anode-filling-fraction'),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Average concentration of electrolyte',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='elytecons'),
+                      html.H3(children='Average concentration of electrolyte',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='elytecons'),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Electrolyte concentration',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      html.H3(children='Electrolyte concentration',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Current profile',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Graph(id="current"),
+                      html.H3(children='Current profile',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id="current"),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Power',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Graph(id="power"),
+                      html.H3(children='Power',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id="power"),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Electrolyte concentration and potential',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    dcc.Graph(id='electrolyte-concentration-ani'),
-    # dcc.Slider(
-    #     dff_c['fraction'].min(),
-    #     dff_c['fraction'].max(),
-    #     step=1,
-    #     value=dff_c['fraction'].min(),
-    #     #  marks={str(fraction):str(fraction)for fraction in round(dff_c['fraction'],1).unique()}
-    #     id='concentration-slider'
-    # ),
+                      html.H3(children='Electrolyte concentration and potential',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='electrolyte-concentration-ani'),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Solid particle-average concentrations',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      html.H3(children='Solid particle-average concentrations',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='All solid concentrations or potentials',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      html.H3(children='All solid concentrations or potentials',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Average solid concentrations',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      html.H3(children='Average solid concentrations',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'}),
 
-    html.H3(children='Cathode potential',
-            style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      html.H3(children='Cathode potential',
+                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    html.Hr(style={"color": 'black'}),
-    html.Hr(style={"color": 'black'})
-])
+                      html.Hr(style={"color": 'black'}),
+                      html.Hr(style={"color": 'black'})
+                      ])
 
 
 # Do alllll the callbacks
