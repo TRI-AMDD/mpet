@@ -3,10 +3,12 @@ import plotly.express as px
 import pandas as pd
 import os
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import mpet.geometry as geom
-import mpet.mod_cell as mod_cell
-import mpet.utils as utils
+from mpet import mod_cell
+from mpet import utils
 from mpet.config import Config, constants
 
 #  from plotly.subplots import make_subplots
@@ -209,6 +211,28 @@ for indir in dataFiles:
         "cavg": cavg
     })
 
+    # add data for surface concentration to df
+    if "a" in trodes:
+        trode = "a"
+        str_base = (pfx
+                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
+                    + sStr + "c")
+        for pInd in range(Npart[trode]):
+            for vInd in range(Nvol[trode]):
+                sol_str = str_base.format(pInd=pInd, vInd=vInd)
+                sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
+                df[sol_str] = sol_str_data
+    if "c" in trodes:
+        trode = "c"
+        str_base = (pfx
+                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
+                    + sStr + "c")
+        for pInd in range(Npart[trode]):
+            for vInd in range(Nvol[trode]):
+                sol_str = str_base.format(pInd=pInd, vInd=vInd)
+                sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
+                df[sol_str] = sol_str_data
+
     dff = pd.concat([dff, df], ignore_index=True)
 
     # build dataframe for plots electrolyte concentration or potential
@@ -244,11 +268,7 @@ for indir in dataFiles:
                 md = dx
                 mdx = j
         select = dff_c[dff_c["fraction orig"] == mdx]
-        print(select)
-        print()
         dff_c_sub = pd.concat([dff_c_sub, select], ignore_index=True)
-    print(dff_c_sub)
-    input()
 ############################
 # Define plots
 ############################
@@ -264,24 +284,29 @@ This dashboard shows visualisations of all the MPET simulation output saved in t
 "sim_output."
 '''
 
+defaultmodel = (dff['Model'].unique()[0])
 # Define components of app
-app.layout = html.Div(style={'backgroundColor': colors['background']}, children=[
+app.layout = html.Div(style={'backgroundColor': colors['background']},
+    children=[
+    html.Div(style={'backgroundColor': 'LightSteelblue'},
+    children=[
     dcc.Markdown(
         children=markdown_text,
         style={
             'textAlign': 'center',
             'color': colors['text'],
-            'font-family':'Sans-serif'
-        }
-    ),
-
+            'font-family':'Sans-serif'}),
     html.H4(children='Select models to display in all plots:',
             style={'font-family':'Sans-serif'}),
     dcc.Checklist(options=dff['Model'].unique(),
                   value=dff['Model'].unique(),
                   id='model-selection',
                   labelStyle={'display': 'block'},
-                  style={'font-family':'Sans-serif'}),
+                  style={'font-family':'Sans-serif',
+                  'margin-bottom': '20px', 'background': 'LightSteelblue'}),
+    html.Hr(style={"color": 'black', 'borderWidth': '10'}),
+    ]),
+
     html.H3(children='Voltage',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Dropdown(['Time (s)', 'Cathode Filling Fraction'],
@@ -289,27 +314,62 @@ app.layout = html.Div(style={'backgroundColor': colors['background']}, children=
                  id='xaxis-column',
                  style={'width':'50%', 'font-family':'Sans-serif'}),
     dcc.Graph(id='Voltage-graph-double'),
-    html.H3(children='Surface concentration anode',
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
+    html.H3(children='Solid surface concentration anode',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-    #  dcc.Graph(id='Surface-concentration-anode'),
-    html.H3(children='Surface concentration cathode',
+    dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                 id='select_surf_a_model',
+                 style={'width':'50%', 'font-family':'Sans-serif'}),
+    dcc.Graph(id='Surface-concentration-anode'),
+
+    html.H3(children='Solid surface concentration cathode',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+    dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                 id='select_surf_c_model',
+                 style={'width':'50%', 'font-family':'Sans-serif'}),
+    dcc.Graph(id='Surface-concentration-cathode'),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Overall utilization / state of charge of electrode',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Graph(id='Cathode-filling-fraction'),
     dcc.Graph(id='Anode-filling-fraction'),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Average concentration of electrolyte',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Graph(id='elytecons'),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Electrolyte concentration',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
 
     html.H3(children='Current profile',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Graph(id="current"),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Power',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Graph(id="power"),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Electrolyte concentration and potential',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
     dcc.Graph(id='electrolyte-concentration-ani'),
@@ -321,27 +381,37 @@ app.layout = html.Div(style={'backgroundColor': colors['background']}, children=
     #     #  marks={str(fraction):str(fraction)for fraction in round(dff_c['fraction'],1).unique()}
     #     id='concentration-slider'
     # ),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Solid particle-average concentrations',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
 
     html.H3(children='All solid concentrations or potentials',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
+
     html.H3(children='Average solid concentrations',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'}),
 
     html.H3(children='Cathode potential',
             style={'textAlign': 'center', 'font-family':'Sans-serif'}),
 
-    # dcc.Graph(
-    #    id='Voltage-graph-fraction',
-    #    figure=fig2
-    # ),
-
-    # callback plots
+    html.Hr(style={"color": 'black'}),
+    html.Hr(style={"color": 'black'})
 ])
 
 
+# Do alllll the callbacks
 @app.callback(
     Output('Voltage-graph-double', 'figure'),
     Input('xaxis-column', 'value'),
@@ -353,7 +423,7 @@ def update_graph(xaxis_column_name, model_selection
     fig = px.line(x=dff[xaxis_column_name][np.in1d(dff['Model'], model_selection)],
                   y=dff['Voltage (V)'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     fig.update_yaxes(title='Voltage (V)',
                      type='linear')
     fig.update_xaxes(title=xaxis_column_name,
@@ -362,35 +432,58 @@ def update_graph(xaxis_column_name, model_selection
     return fig
 
 
-# @app.callback(
-#     Output('Surface-concentration-anode', 'figure'),
-#     Input('model-selection', 'value')
-#     )
-# def update_graph(model_selection
-#                  ):
-#     for i in model_selection:
-#         str_base = (pfx
-#                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='a')
-#                     + sStr + "c")
-#         fig = make_subplots(rows=dff["Nparta"][np.in1d(dff['Model'], i)],
-#                             cols=dff["Nvola"][np.in1d(dff['Model'], i)])
-#         for j in range(dff["Nparta"][np.in1d(dff['Model'], i)]):
-#             for k in range(dff["Nvola"][np.in1d(dff['Model'], i)]):
-#                 fig.add_trace(
-#                     go.Line(
-#                         x=dff['Time (s)'][np.in1d(dff['Model'], i)],
-#                         y=utils.get_dict_key(data, sol_str, squeeze=False)[:,-1],
-#                         row=1, col=1)
+@app.callback(
+    Output('Surface-concentration-anode', 'figure'),
+    Input('select_surf_a_model', 'value')
+    )
+def update_graph_surfa(select_model):
+    str_base = (pfx
+                + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='a')
+                + sStr + "c")
+    r = int(max(dff["Nparta"][dff['Model'] == select_model]))
+    c = int(max(dff["Nvola"][dff['Model'] == select_model]))
+    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                        x_title='Time [s]', y_title='Solid surface concentration',
+                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+    for rr in range(0, r):
+        for cc in range(0, c):
+            sol_str = str_base.format(pInd=rr, vInd=cc)
+            datax = dff['Time (s)'][dff['Model'] == select_model]
+            datay = dff[sol_str][dff['Model'] == select_model]
+            fig.add_trace(
+                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                row=rr+1, col=cc+1)
+    fig.update_yaxes(range=[0,1.01])
+    fig.update_layout(showlegend=False)
+    return fig
 
-#     fig.update_layout(height=600, width=800, title_text="Side By Side Subplots")
 
-#     #  fig = px.line(x=dff[xaxis_column_name][np.in1d(dff['Model'], model_selection)],
-#     #              y=dff['Voltage (V)'][np.in1d(dff['Model'], model_selection)],
-#     #              color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-#     #  fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
-#     fig.update_yaxes(range=[0, 1.01], title='Nvol', type='linear')
-#     #  fig.update_xaxes(title='Npart',type='linear')
-#     return fig
+@app.callback(
+    Output('Surface-concentration-cathode', 'figure'),
+    Input('select_surf_c_model', 'value')
+    )
+def update_graph_surfc(select_model):
+    str_base = (pfx
+                + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='c')
+                + sStr + "c")
+    r = int(max(dff["Npartc"][dff['Model'] == select_model]))
+    c = int(max(dff["Nvolc"][dff['Model'] == select_model]))
+    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                        x_title='Time (s)', y_title='Solid surface concentration',
+                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+    for rr in range(0, r):
+        for cc in range(0, c):
+            sol_str = str_base.format(pInd=rr, vInd=cc)
+            datax = dff['Time (s)'][dff['Model'] == select_model]
+            datay = dff[sol_str][dff['Model'] == select_model]
+            fig.add_trace(
+                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                row=rr+1, col=cc+1)
+    fig.update_yaxes(range=[0,1.01])
+    fig.update_layout(showlegend=False)
+    return fig
 
 
 @app.callback(
@@ -402,9 +495,9 @@ def update_graph2(model_selection):
                   y=dff['Cathode Filling Fraction'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
     fig.update_yaxes(range=[0,1], title='Cathode Filling Fraction')
-    fig.update_xaxes(title='Time (s)')
+    fig.update_xaxes(title='Time [s]')
 
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
 
     return fig
 
@@ -419,8 +512,8 @@ def update_graph3(model_selection):
                   y=dff['Anode Filling Fraction'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
     fig.update_yaxes(range=[0,1], title='Anode Filling Fraction')
-    fig.update_xaxes(title='Time (s)')
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_xaxes(title='Time [s]')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     return fig
 
 
@@ -433,8 +526,8 @@ def update_graph32(model_selection):
                   y=dff['cavg'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
     fig.update_yaxes(title='Avg. Concentration of electrolyte [nondim]')
-    fig.update_xaxes(title='Time (s)')
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_xaxes(title='Time [s]')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     return fig
 
 
@@ -448,8 +541,8 @@ def update_graph4(model_selection):
                   y=dff['Current'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
     fig.update_yaxes(title='Current [C-rate]')
-    fig.update_xaxes(title='Time (s)')
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_xaxes(title='Time [s]')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     return fig
 
 
@@ -463,32 +556,9 @@ def update_graph5(model_selection):
                   y=dff['Power'][np.in1d(dff['Model'], model_selection)],
                   color=dff["Model"][np.in1d(dff['Model'], model_selection)])
     fig.update_yaxes(title=u'Power [W/m\u00b2]')
-    fig.update_xaxes(title='Time (s)')
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_xaxes(title='Time [s]')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     return fig
-
-
-""" @app.callback(
-    Output('electrolyte-concentration-slider', 'figure'),
-    Input('concentration-slider', 'value'),
-    Input('model-selection', 'value'))
-def update_figure(selected_perc, model_selection):
-    print('selected_perc',selected_perc)
-    print('model_selection',model_selection)
-    print(dff_c[round(dff_c['fraction'], 1) == selected_perc])
-    #  filtered_df = dff_c[np.in1d(dff['Model'], model_selection)]
-    filtered_df = dff_c[round(dff_c['fraction'], 1) == selected_perc]
-
-    fig = px.line(filtered_df,
-                  x="cellsvec",
-                  y="Concentration electrolyte",
-                  color="Model")
-    fig.update_yaxes(title='Concentration of electrolyte [M]')
-    fig.update_xaxes(title='Battery Position [microm]')
-    # fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_layout(transition_duration=500)
-
-    return fig """
 
 
 @app.callback(
@@ -509,8 +579,8 @@ def display_animated_graph(model_selection):
                   animation_frame="fraction")
     fig.update_yaxes(title='Concentration of electrolyte [M]',
                      range=[0.9*min_y, 1.1*max_y])
-    fig.update_xaxes(title='Battery Position [microm]')
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+    fig.update_xaxes(title=' Battery Position [microm] ')
+    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
     fig.update_layout(transition_duration=500)
 
     return fig
