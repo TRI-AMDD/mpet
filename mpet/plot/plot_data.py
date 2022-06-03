@@ -242,6 +242,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
                 ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
                 datay = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
                 line, = ax[pInd,vInd].plot(times, datay)
+        if save_flag:
+            fig.savefig("mpet_surf.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot SoC profile
@@ -286,6 +288,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
             return times*td, cavg
         np.set_printoptions(precision=8)
         ax.plot(times*td, cavg)
+        if save_flag:
+            fig.savefig("mpet_elytecons.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot current profile

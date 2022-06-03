@@ -27,6 +27,7 @@ plotTypes = OrderedDict([
     ('surf_a','anode surface concentrations'),
     ('soc_c','cathode state of charge'),
     ('soc_a','anode state of charge'),
+    ('elytecons', 'Avg. Concentration of electrolyte'),
     ('csld_c','solid concentrations of cathode particles'),
     ('csld_a','solid concentrations of anode particles'),
     ('cbarLine_c','average concentration in each cathode particle'),
