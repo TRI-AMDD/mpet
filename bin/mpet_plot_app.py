@@ -5,7 +5,6 @@ import os
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import sys
 import argparse
 from argparse import RawTextHelpFormatter
 
@@ -18,7 +17,8 @@ from mpet.config import Config, constants
 #  import plotly.graph_objects as go
 desc = """ Dashboard that shows all plots and compares the resutls of different models."""
 parser = argparse.ArgumentParser(description=desc, formatter_class=RawTextHelpFormatter)
-parser.add_argument('-d', '--dataDir', help='Directory that contains folders with simulation output')
+parser.add_argument('-d', '--dataDir',
+                    help='Directory that contains folders with simulation output')
 args = parser.parse_args()
 
 app = Dash(__name__)
