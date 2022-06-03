@@ -288,7 +288,7 @@ defaultmodel = (dff['Model'].unique()[0])
 # Define components of app
 app.layout = html.Div(style={'backgroundColor': colors['background']},
                       children=[
-                      html.Div(style={'backgroundColor': 'LightSteelblue'},
+                      html.Div(style={'backgroundColor': 'DodgerBlue'},
                                children=[
                                dcc.Markdown(
                                    children=markdown_text,
@@ -303,7 +303,7 @@ app.layout = html.Div(style={'backgroundColor': colors['background']},
                                                  labelStyle={'display': 'block'},
                                                  style={'font-family':'Sans-serif',
                                                         'margin-bottom': '20px',
-                                                        'background': 'LightSteelblue'}),
+                                                        'background': 'DodgerBlue'}),
                                    html.Hr(style={"color": 'black', 'borderWidth': '10'})]),
 
                       html.H3(children='Voltage',
