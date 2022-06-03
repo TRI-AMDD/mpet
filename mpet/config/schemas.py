@@ -117,6 +117,12 @@ system = {'Sim Params': {'profileType': lambda x:
                        'poros_c': Use(float),
                        'poros_a': Use(float),
                        'poros_s': Use(float),
+                       Optional('specified_poros_c', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
+                       Optional('specified_poros_a', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
+                       Optional('specified_poros_s', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
                        'BruggExp_c': Use(float),
                        'BruggExp_a': Use(float),
                        'BruggExp_s': Use(float)},

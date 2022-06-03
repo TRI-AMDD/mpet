@@ -456,7 +456,6 @@ class muRfuncs():
         return muR_nh
 
     def non_homog_rect_variational_0TE(self, y, ybar, B, kappa):
-        """ Helper function """
         # the taylor expansion at the edges is used
         if isinstance(y, np.ndarray):
             N_2 = len(y)

@@ -172,14 +172,14 @@ elif Sign == -1:
 os.chdir(dir_path)
 
 # put the parameters or the array of parameters you want to loop
-Crates_vec = Sign*np.array([3])
+Crates_vec = Sign*np.array([5])
 thickness_vec = [30]
-stddev_vec = [50]
+stddev_vec = [20]
 bulk_cond_vec = [1]
-Soc_stop = [30,50,70]
+Soc_stop = [50]
 # Soc_stop = [99]  # stopping at % SoC
-ReadingCrate = Sign*1  # using 5C to read after the stop
-restingTime_vec = [0]  # resting for x minutes
+ReadingCrate = Sign*3  # using 5C to read after the stop
+restingTime_vec = [30]  # resting for x minutes
 
 cwd = os.getcwd()
 for SoC in Soc_stop:
