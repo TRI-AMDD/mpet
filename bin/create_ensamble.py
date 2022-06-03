@@ -3,22 +3,21 @@
 import configparser
 import sys
 import itertools
-from copy import deepcopy
 import os
 
-#Values that need ensamble
+# Values that need ensamble
 ensamble = [
-  [("Geometry","L_c")  , ["2","43"]],
-  [("Geometry","L_a")  , ["3","5","43"]],
+    [("Geometry","L_c"), ["2","43"]],
+    [("Geometry","L_a"), ["3","5","43"]],
 ]
 
-#helpers
-keys = [ vals[0] for vals in ensamble ]
-val  = [ vals[1] for vals in ensamble ]
+# helpers
+keys = [vals[0] for vals in ensamble]
+val = [vals[1] for vals in ensamble]
 
 
 if __name__ == '__main__':
-  # Read in file
+   # Read in file
   if len(sys.argv) < 2:
     print("need the config file [python create_enamble.py <baseconfig>]")
     exit(1)
