@@ -281,8 +281,9 @@ class ModCell(dae.daeModel):
                 porosvec = utils.pad_vec(utils.get_const_vec(
                     (1-self.config["poros"][trode])**(1-config["BruggExp"][trode]), Nvol[trode]))
                 if np.all(self.config['specified_poros'][trode]):
-                    porosvec = (np.ones(Nvol[trode])
-                                - self.config['specified_poros'][trode])**(1 - self.config["BruggExp"][trode])
+                    porosvec = (
+                        (np.ones(Nvol[trode]) - self.config['specified_poros'][trode]))**(
+                            (1 - self.config["BruggExp"][trode]))
                     porosvec = utils.pad_vec(porosvec)
                 poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
@@ -364,7 +365,8 @@ class ModCell(dae.daeModel):
             if np.all(self.config['specified_poros'][trode]):
                 porosvec = self.config['specified_poros'][trode]
                 disc["porosvec"] = porosvec
-                disc["eps_o_tau"] = utils.pad_vec(porosvec/porosvec**(self.config["BruggExp"][trode]))
+                disc["eps_o_tau"] = utils.pad_vec(porosvec/porosvec**(
+                    (self.config["BruggExp"][trode])))
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
