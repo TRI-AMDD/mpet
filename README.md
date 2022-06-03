@@ -94,7 +94,7 @@ Movie output requires that you have `ffmpeg` or `mencoder` (part of `MPlayer`) i
 
 ## Comparison of different models using Dash
 You can compare the result of different models using the dashboard build with [Dash](https://dash.plotly.com). To compare the results of all models saved in subfolders of the folder `sim_output`, run the command:
-`mpet_plot_app.py sim_output`. It will try to open the dashbaord in your web browser.
+`mpet_plot_app.py -d sim_output`. It will try to open the dashbaord in your web browser.
 Running this script requires the following packages to be installed: `dash` and `pandas`.
 
 
