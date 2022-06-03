@@ -5,6 +5,9 @@ import os
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import sys
+import argparse
+from argparse import RawTextHelpFormatter
 
 import mpet.geometry as geom
 from mpet import mod_cell
@@ -13,6 +16,10 @@ from mpet.config import Config, constants
 
 #  from plotly.subplots import make_subplots
 #  import plotly.graph_objects as go
+desc = """ Dashboard that shows all plots and compares the resutls of different models."""
+parser = argparse.ArgumentParser(description=desc, formatter_class=RawTextHelpFormatter)
+parser.add_argument('-d', '--dataDir', help='Directory that contains folders with simulation output')
+args = parser.parse_args()
 
 app = Dash(__name__)
 
@@ -26,9 +33,8 @@ colors = {
 
 # Import data from all folders in sim_output into one dataframe
 # Read in the simulation results and calcuations data
-dataDir = "sim_output"
-dataFiles = [os.path.join(dataDir, f) for f in os.listdir(dataDir)
-             if os.path.isdir(os.path.join(dataDir, f))]
+dataFiles = [os.path.join(args.dataDir, f) for f in os.listdir(args.dataDir)
+             if os.path.isdir(os.path.join(args.dataDir, f))]
 dff = pd.DataFrame()
 dff_c_sub = pd.DataFrame()
 dff_cd_sub = pd.DataFrame()
@@ -188,7 +194,7 @@ for indir in dataFiles:
     anode = pfx + 'c_lyte_a'
     cath = pfx + 'c_lyte_c'
     cvec = utils.get_dict_key(data, cath)
-    if Nvol["s"]:
+    if config["have_separator"]:
         cvec_s = utils.get_dict_key(data, sep)
         cvec = np.hstack((cvec_s, cvec))
     if "a" in trodes:
