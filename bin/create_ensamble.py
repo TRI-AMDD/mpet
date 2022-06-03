@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 import configparser
 import sys
 import itertools
 from copy import deepcopy
+import os
 
 #Values that need ensamble
 ensamble = [
@@ -10,8 +13,8 @@ ensamble = [
 ]
 
 #helpers
-keys = [ vals[0] for vals in ensamble]
-val = [ vals[1] for vals in ensamble ]
+keys = [ vals[0] for vals in ensamble ]
+val  = [ vals[1] for vals in ensamble ]
 
 
 if __name__ == '__main__':
@@ -30,7 +33,7 @@ if __name__ == '__main__':
     params = dict(zip(keys,combination))
     print(params)
 
-    new_cfg = deepcopy(cfg)
+    new_cfg = cfg
     
     nicename = []
     for key, val in params.items():
@@ -39,5 +42,6 @@ if __name__ == '__main__':
 
 
     # Write config 
-    with open("-".join(nicename) + ".cfg", "w") as f:
+    cfg_dir = os.path.dirname(sys.argv[1])
+    with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
       new_cfg.write(f)
