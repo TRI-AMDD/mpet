@@ -217,27 +217,31 @@ for indir in dataFiles:
         "cavg": cavg
     })
 
-    # add data for surface concentration to df
-    if "a" in trodes:
-        trode = "a"
+    for trode in trodes:
         str_base = (pfx
                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
+        partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         for pInd in range(Npart[trode]):
             for vInd in range(Nvol[trode]):
                 sol_str = str_base.format(pInd=pInd, vInd=vInd)
                 sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
                 df[sol_str] = sol_str_data
-    if "c" in trodes:
-        trode = "c"
-        str_base = (pfx
-                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
-                    + sStr + "c")
-        for pInd in range(Npart[trode]):
-            for vInd in range(Nvol[trode]):
-                sol_str = str_base.format(pInd=pInd, vInd=vInd)
-                sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
-                df[sol_str] = sol_str_data
+                # for cbar data
+                if config[trode, "type"] in constants.one_var_types:
+                    str_cbar_base = pfx + partStr + "cbar"
+                    sol_cbar_str = str_cbar_base.format(pInd=pInd, vInd=vInd)
+                    sol_cbar_str_data = utils.get_dict_key(data, sol_cbar_str)
+                    df[sol_cbar_str] = sol_cbar_str_data
+                elif config[trode, "type"] in constants.two_var_types:
+                    str1_cbar_base = pfx + partStr + "c1bar"
+                    str2_cbar_base = pfx + partStr + "c2bar"
+                    sol1_cbar_str = str1_cbar_base.format(pInd=pInd, vInd=vInd)
+                    sol2_cbar_str = str2_cbar_base.format(pInd=pInd, vInd=vInd)
+                    sol1_cbar_str_data = utils.get_dict_key(data, sol1_cbar_str)
+                    sol2_cbar_str_data = utils.get_dict_key(data, sol2_cbar_str)
+                    df[sol1_cbar_str] = sol1_cbar_str_data
+                    df[sol2_cbar_str] = sol2_cbar_str_data
 
     dff = pd.concat([dff, df], ignore_index=True)
 
@@ -278,9 +282,6 @@ for indir in dataFiles:
 ############################
 # Define plots
 ############################
-# fig = px.line(dff, x="Time (s)", y="Cathode Filling Fraction", color="Model")
-
-# fig2 = px.line(dff, x="Time (s)", y="Anode Filling Fraction", color="Model")
 
 # Define Markdown text
 markdown_text = '''
@@ -322,18 +323,12 @@ app.layout = html.Div(style={'backgroundColor': colors['background']},
                       html.Hr(style={"color": 'black'}),
                       html.Hr(style={"color": 'black'}),
 
-                      html.H3(children='Solid surface concentration anode',
+                      html.H3(children='Solid surface concentration',
                               style={'textAlign': 'center', 'font-family':'Sans-serif'}),
                       dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                                   id='select_surf_a_model',
+                                   id='select_surf_model',
                                    style={'width':'50%', 'font-family':'Sans-serif'}),
                       dcc.Graph(id='Surface-concentration-anode'),
-
-                      html.H3(children='Solid surface concentration cathode',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                                   id='select_surf_c_model',
-                                   style={'width':'50%', 'font-family':'Sans-serif'}),
                       dcc.Graph(id='Surface-concentration-cathode'),
 
                       html.Hr(style={"color": 'black'}),
@@ -381,8 +376,13 @@ app.layout = html.Div(style={'backgroundColor': colors['background']},
                       html.Hr(style={"color": 'black'}),
                       html.Hr(style={"color": 'black'}),
 
-                      html.H3(children='Solid particle-average concentrations',
+                      html.H3(children='Average concentration in each particle of electrode',
                               style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                                   id='select_cbarline_model',
+                                   style={'width':'50%', 'font-family':'Sans-serif'}),
+                      dcc.Graph(id='cbarline_c'),
+                      dcc.Graph(id='cbarline_a'),
 
                       html.Hr(style={"color": 'black'}),
                       html.Hr(style={"color": 'black'}),
@@ -430,34 +430,37 @@ def update_graph(xaxis_column_name, model_selection
 
 @app.callback(
     Output('Surface-concentration-anode', 'figure'),
-    Input('select_surf_a_model', 'value')
+    Input('select_surf_model', 'value')
     )
 def update_graph_surfa(select_model):
-    str_base = (pfx
-                + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='a')
-                + sStr + "c")
-    r = int(max(dff["Nparta"][dff['Model'] == select_model]))
-    c = int(max(dff["Nvola"][dff['Model'] == select_model]))
-    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                        x_title='Time [s]', y_title='Solid surface concentration',
-                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-    for rr in range(0, r):
-        for cc in range(0, c):
-            sol_str = str_base.format(pInd=rr, vInd=cc)
-            datax = dff['Time (s)'][dff['Model'] == select_model]
-            datay = dff[sol_str][dff['Model'] == select_model]
-            fig.add_trace(
-                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
-                row=rr+1, col=cc+1)
-    fig.update_yaxes(range=[0,1.01])
-    fig.update_layout(showlegend=False)
+    try:
+        str_base = (pfx
+                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='a')
+                    + sStr + "c")
+        r = int(max(dff["Nparta"][dff['Model'] == select_model]))
+        c = int(max(dff["Nvola"][dff['Model'] == select_model]))
+        fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                            x_title='Time [s]', y_title='Solid surface concentration',
+                            row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                            column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+        for rr in range(0, r):
+            for cc in range(0, c):
+                sol_str = str_base.format(pInd=rr, vInd=cc)
+                datax = dff['Time (s)'][dff['Model'] == select_model]
+                datay = dff[sol_str][dff['Model'] == select_model]
+                fig.add_trace(
+                    trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                    row=rr+1, col=cc+1)
+        fig.update_yaxes(range=[0,1.01])
+        fig.update_layout(showlegend=False)
+    except ValueError:
+        fig = px.line(title='Selected model has no anode')
     return fig
 
 
 @app.callback(
     Output('Surface-concentration-cathode', 'figure'),
-    Input('select_surf_c_model', 'value')
+    Input('select_surf_model', 'value')
     )
 def update_graph_surfc(select_model):
     str_base = (pfx
@@ -478,7 +481,7 @@ def update_graph_surfc(select_model):
                 trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                 row=rr+1, col=cc+1)
     fig.update_yaxes(range=[0,1.01])
-    fig.update_layout(showlegend=False)
+    fig.update_layout(showlegend=False, title='Cathode')
     return fig
 
 
@@ -580,6 +583,93 @@ def display_animated_graph(model_selection):
     fig.update_layout(transition_duration=500)
 
     return fig
+
+
+@app.callback(
+    Output('cbarline_c', 'figure'),
+    Input('select_cbarline_model', 'value')
+    )
+def update_graph_cbarlinec(select_model):
+    trode = "c"
+    partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
+    r = int(max(dff["Npartc"][dff['Model'] == select_model]))
+    c = int(max(dff["Nvolc"][dff['Model'] == select_model]))
+    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                        x_title='Time (s)', y_title='Particle Average Filling Fraction',
+                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+    type2c = False
+    if config[trode, "type"] in constants.one_var_types:
+        str_cbar_base = pfx + partStr + "cbar"
+    elif config[trode, "type"] in constants.two_var_types:
+        type2c = True
+        str1_cbar_base = pfx + partStr + "c1bar"
+        str2_cbar_base = pfx + partStr + "c2bar"
+    for rr in range(0, r):
+        for cc in range(0, c):
+            datax = dff['Time (s)'][dff['Model'] == select_model]
+            if type2c is True:
+                sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
+                sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
+                datay = dff[sol1_str][dff['Model'] == select_model]
+                datay2 = dff[sol2_str][dff['Model'] == select_model]
+                fig.add_trace(
+                    trace=go.Scatter(x=datax, y=datay2, line_color='red'),
+                    row=rr+1, col=cc+1)
+            else:
+                sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
+                datay = dff[sol_str][dff['Model'] == select_model]
+            fig.add_trace(
+                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                row=rr+1, col=cc+1)
+    fig.update_yaxes(range=[0,1.01])
+    fig.update_layout(showlegend=False, title='Cathode')
+    return fig
+
+
+@app.callback(
+    Output('cbarline_a', 'figure'),
+    Input('select_cbarline_model', 'value')
+    )
+def update_graph_cbarlinea(select_model):
+    try:
+        trode = "a"
+        partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
+        r = int(max(dff["Nparta"][dff['Model'] == select_model]))
+        c = int(max(dff["Nvola"][dff['Model'] == select_model]))
+        fig2 = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                             x_title='Time (s)', y_title='Particle Average Filling Fraction',
+                             row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                             column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+        type2c = False
+        if config[trode, "type"] in constants.one_var_types:
+            str_cbar_base = pfx + partStr + "cbar"
+        elif config[trode, "type"] in constants.two_var_types:
+            type2c = True
+            str1_cbar_base = pfx + partStr + "c1bar"
+            str2_cbar_base = pfx + partStr + "c2bar"
+        for rr in range(0, r):
+            for cc in range(0, c):
+                datax = dff['Time (s)'][dff['Model'] == select_model]
+                if type2c is True:
+                    sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
+                    sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
+                    datay = dff[sol1_str][dff['Model'] == select_model]
+                    datay2 = dff[sol2_str][dff['Model'] == select_model]
+                    fig2.add_trace(
+                        trace=go.Scatter(x=datax, y=datay2, line_color='red'),
+                        row=rr+1, col=cc+1)
+                else:
+                    sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
+                    datay = dff[sol_str][dff['Model'] == select_model]
+                fig2.add_trace(
+                    trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                    row=rr+1, col=cc+1)
+        fig2.update_yaxes(range=[0,1.01])
+        fig2.update_layout(showlegend=False, title='Anode')
+    except ValueError:
+        fig2 = px.line(title='Selected model has no anode')
+    return fig2
 
 
 if __name__ == '__main__':
