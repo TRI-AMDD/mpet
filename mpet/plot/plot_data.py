@@ -587,7 +587,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
                 ax[pInd,vInd].set_ylim(ylim)
                 ax[pInd,vInd].set_xlim((0, lens[pInd,vInd] * Lfac))
                 if plt_axlabels:
-                    ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
+                    if config[trode, "type"] in ["ACR", "ACr_diff", "ACR2"]:
+                        ax[pInd, vInd].set_xlabel(r"$x$ [{Lunit}]".format(Lunit=Lunit))
+                    else:
+                        ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
                     if plot_type[0] == "c":
                         ax[pInd, vInd].set_ylabel(r"$\widetilde{{c}}$")
                     elif plot_type[:2] == "mu":
