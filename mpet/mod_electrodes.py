@@ -534,12 +534,6 @@ class Mod1var(dae.daeModel):
                 eq.Residual = LHS_vec[k] - RHS[k]
 
 
-# new surface diffusion equation
-# dc/dt = Rxn + surf_diff
-# it models the possibility of the Li-ions to move into the particles
-# it sesibly modifies the physics of the problem making it more realistic
-# it is much slower
-# needs a N+2 long array of muR_surf
 def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
     dxs = 1./N_2
