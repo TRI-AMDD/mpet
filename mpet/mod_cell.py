@@ -618,8 +618,9 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     if config["elyteModelType"] == "dilute":
         sigma_l = eps_o_tau[1:-1] * config["sigma_l"]
     elif config["elyteModelType"] == "SM":
-        elyte_function = utils.import_function(config["SMset_filename"], config["SMset"],
-                                               mpet_module="mpet.props_elyte")
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
         sigma_fs, thermFac, tp0 = elyte_function()[1:-1]
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
