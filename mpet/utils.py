@@ -75,6 +75,8 @@ def get_asc_vec(var, Nvol, dt=False):
             if isinstance(var[sectn], dae.pyCore.daeVariable):
                 varout[sectn] = get_var_vec(var[sectn], Nvol[sectn], dt)
             # Otherwise, it's a parameter that varies with electrode section
+            elif isinstance(var[sectn], np.ndarray):
+                varout[sectn] = var[sectn]
             else:
                 varout[sectn] = get_const_vec(var[sectn], Nvol[sectn])
         # Otherwise, fill with zeros

@@ -320,13 +320,13 @@ class Mod1var(dae.daeModel):
                                  "Concentration in active particle",
                                  [self.Dmn])
 
-# Creation of the ghost points to assit BC
+        # Creation of the ghost points to assit BC
 
         if self.get_trode_param("type") in ["ACR_Diff"]:
             self.c_left_GP = dae.daeVariable("c_left", mole_frac_t, self,
-                                             "Concentration on the left side of active particle")
+                                             "Concentration on the left side of the particle")
             self.c_right_GP = dae.daeVariable("c_right", mole_frac_t, self,
-                                              "Concentration on the right side of active particle")
+                                              "Concentration on the right side of the particle")
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
