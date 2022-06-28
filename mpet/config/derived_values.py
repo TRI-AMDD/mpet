@@ -244,9 +244,9 @@ class DerivedValues:
 
         solidType = self.config[trode, 'type']
         if solidType in constants.two_var_types:
-            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), self.config['T0'], 0.)[0][0]
+            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), self.config['T'], 0.)[0][0]
         elif solidType in constants.one_var_types:
-            muR_ref = -muRfunc(cs0, cs0bar, self.config['T0'], 0.)[0]
+            muR_ref = -muRfunc(cs0, cs0bar, self.config['T'], 0.)[0]
         else:
             raise ValueError(f'Unknown solid type: {solidType}')
         return muR_ref

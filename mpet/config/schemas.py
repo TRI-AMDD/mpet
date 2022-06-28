@@ -68,7 +68,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          'tsteps': And(Use(int), lambda x: x > 0),
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
-                         'T0': Use(float),
+                         'T': Use(float),
                          Optional('nonisothermal', default=False): Use(tobool),
                          'randomSeed': Use(tobool),
                          Optional('seed'): And(Use(int), lambda x: x >= 0),

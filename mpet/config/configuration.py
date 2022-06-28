@@ -478,7 +478,7 @@ class Config:
         from :meth:`_process_config`.
         """
         # non-dimensional scalings
-        self['T0'] = self['T0'] / constants.T_ref
+        self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
         self['sigma_l'] = self['sigma_l'] / self['sigma_s_ref']

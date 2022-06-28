@@ -388,8 +388,8 @@ class ModCell(dae.daeModel):
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
             # boundary equation for temperature variables. per volume
-            eqTL.Residual = Ttmp[0] - config["T0"]
-            eqTR.Residual = Ttmp[-1] - config["T0"]
+            eqTL.Residual = Ttmp[0] - config["T"]
+            eqTR.Residual = Ttmp[-1] - config["T"]
 
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
