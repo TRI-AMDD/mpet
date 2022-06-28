@@ -361,7 +361,7 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            if np.all(config["specified_poros"]["c"]):      
+            if np.all(config["specified_poros"]["c"]):
                 config_poros = config["specified_poros"]
             else:
                 config_poros = config["poros"]
