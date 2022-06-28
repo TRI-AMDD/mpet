@@ -280,8 +280,9 @@ class ModCell(dae.daeModel):
                 porosvec = utils.pad_vec(utils.get_const_vec(
                     (1-self.config["poros"][trode])**(1-config["BruggExp"][trode]), Nvol[trode]))
                 if np.all(self.config['specified_poros'][trode]):
+                    specified_por = self.config['specified_poros'][trode]
                     porosvec = (
-                        (np.ones(Nvol[trode]) - self.config['specified_poros'][trode]))**(
+                        (np.ones(Nvol[trode]) - specified_por))**(
                             (1 - self.config["BruggExp"][trode]))
                     porosvec = utils.pad_vec(porosvec)
                 poros_walls = utils.mean_harmonic(porosvec)
@@ -360,12 +361,12 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
-            if np.all(self.config['specified_poros'][trode]):
-                porosvec = self.config['specified_poros'][trode]
-                disc["porosvec"] = porosvec
-                disc["eps_o_tau"] = utils.pad_vec(porosvec/porosvec**(
-                    (self.config["BruggExp"][trode])))
+            if np.all(config["specified_poros"]["c"]):
+                
+                config_poros = config["specified_poros"]
+            else:
+                config_poros = config["poros"]
+            disc = geom.get_elyte_disc(Nvol, config["L"], config_poros, config["BruggExp"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
