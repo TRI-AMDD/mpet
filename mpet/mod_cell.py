@@ -17,7 +17,6 @@ import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 from mpet.mod_interface import InterfaceRegion
 import mpet.ports as ports
-import mpet.props_elyte as props_elyte
 import mpet.utils as utils
 from mpet.config import constants
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
@@ -588,7 +587,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)

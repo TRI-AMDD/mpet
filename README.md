@@ -8,39 +8,9 @@ If you use this software in academic work, please cite the relevant references d
 
 Smith, R. B., and Bazant M. Z., Multiphase Porous Electrode Theory, [Journal of the Electrochemical Society](https://doi.org/10.1149/2.0171711jes), 2017, 164 (11) E3291-E3310, [arXiv preprint](https://arxiv.org/abs/1702.08432).
 
-## Prerequisites
+## Documentation
 
-1.  [Python 3.7](https://www.python.org/) with the following packages installed: `numpy`, `scipy`, `matplotlib`, `pyqt5`, and `h5py`.
-2.  [DAE Tools](http://www.daetools.com/) version 1.9.0, which can be [downloaded here](https://sourceforge.net/projects/daetools/files/daetools/1.9.0/).
-
-## Installation
-
-1.  Install the prerequisites above.
-2.  Download the [latest release of MPET](https://bitbucket.org/bazantgroup/mpet/downloads/?tab=tags), or clone a copy of this source code repository.
-3.  Enter the mpet folder, and use the setup.py script to install the mpet Python package:
-    - We recommend using the pip package manager: `pip install .`
-    - The legacy approach also works: `python setup.py install`
-
-MPET is also available on [PyPI](https://pypi.org/project/mpet/), the Python Package Index, and can be installed with `pip install mpet`.
-
-## Simulation
-
-1.  Copy the overall system parameters file, `configs/params_system.cfg`, to your working directory.
-2.  Copy the material parameter files referred to in the system parameters file (e.g. `configs/params_LFP.cfg` and `configs/params__graphite_1param.cfg`) to the working directory.
-3.  Edit `params_system.cfg` to suit the simulation you're trying to run. Be sure to reference a material parameters file for the cathode and optionally one (the same or separate file) for the anode.
-4.  Edit the material parameters file(s) serving as the electrode materials.
-5.  Run `mpetrun.py`, passing `params_system.cfg` as an argument:
-    `mpetrun.py params_system.cfg`
-
-The software will save the simulation output in a time-stamped subdirectory, which is also stamped with the name of the used system parameter file, within a directory called `history`. The data contents of the most recent output will also be copied to a directory called `sim_output`. Each output directory should contain:
-
-- the output data (`.mat` file)
-- copies of the input parameters files defining the simulation
-- a copy of the daetools config parameters (e.g. solver tolerances)
-- information about the script used to run the simulation
-- information about the simulation (e.g. run time)
-- processed, dimensional and nondimensional parameters as
-  Python-pickled dictionary objects
+Documentation is available here ([https://mpet.readthedocs.io](https://mpet.readthedocs.io)) for installing, running, and analyzing results with mpet.
 
 ## Running multiple simulations on a cluster
 If you have many simulations you want to run, you can use `bin/run_jobs.py` to run them efficiently on a cluster using [Dask](https://dask.org), either locally or on a slurm or PBS cluster. Using the parallel running option requires the following packages to be installed: `dask distributed` and `dask-jobqueue`.

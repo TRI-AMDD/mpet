@@ -42,19 +42,20 @@ class ParameterSet:
         parser.optionxform = str
         parser.read(fname)
 
-        # load each section and validate schema
-        config_schemas = getattr(schemas, self.config_type)
-        for section, config_schema in config_schemas.items():
-            # validate
-            if section in parser:
-                section_params = config_schema.validate(dict(parser[section].items()))
-            else:
-                # this section is missing in the config file, use defaults if they exist
-                try:
-                    section_params = schemas.DEFAULT_SECTIONS[section]
-                except KeyError:
-                    # No default for this section, raise an error
-                    raise Exception(f'Mandatory section missing from config file: {section}')
+        # get schemas for all potential sections
+        section_schemas = getattr(schemas, self.config_type)
+
+        # load each potential section and validate schema
+        for section, config_schema in section_schemas.items():
+            # try to read this section from the file
+            try:
+                raw_section_params = dict(parser[section])
+            except KeyError:
+                # this section does not exist. Make it an empty dict, so
+                # schema can still handle optional parameters in the section
+                raw_section_params = dict()
+            # validate the parameters
+            section_params = config_schema.validate(raw_section_params)
             # verify there are no duplicate keys
             for key in section_params.keys():
                 if key in self.params:

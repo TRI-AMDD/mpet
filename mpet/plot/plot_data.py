@@ -136,8 +136,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
               np.array(config['mean']["c"])*Lfac)
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
               np.array(config['stddev']["c"])*Lfac)
-#        print "reg sln params:"
-#        print ndD["Omga"]
         print("ndim B_c:", config["c", "B"])
         if config["have_separator"]:
             print("Nvol_s:", Nvol["s"])
@@ -147,9 +145,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
         print("Npart_c:", Npart["c"])
         if 'a' in config["trodes"]:
             print("Npart_a:", Npart["a"])
-        print("Dp [m^2/s]:", config['Dp'] * config['D_ref'])
-        print("Dm [m^2/s]:", config['Dm'] * config['D_ref'])
-        print("Damb [m^2/s]:", config['Damb'] * config['D_ref'])
         print("td [s]:", config["t_ref"])
         for trode in trodes:
             if trode == "a":

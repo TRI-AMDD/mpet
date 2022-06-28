@@ -24,7 +24,6 @@ import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
 import mpet.utils as utils
-import mpet.electrode.reactions as reactions
 from mpet.daeVariableTypes import mole_frac_t
 
 
@@ -65,8 +64,11 @@ class Mod2var(dae.daeModel):
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
-        # Get reaction rate function from dictionary name
-        self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
+        # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -260,7 +262,10 @@ class Mod2var(dae.daeModel):
             # flux of Li at the surface.
             Flux1_bc = -0.5 * self.Rxn1()
             Flux2_bc = -0.5 * self.Rxn2()
-            Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc")).Dfunc
+            Dfunc_name = self.get_trode_param("Dfunc")
+            Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                          Dfunc_name,
+                                          f"mpet.electrode.diffusion.{Dfunc_name}")
             if self.get_trode_param("type") == "diffn2":
                 pass
 #                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
@@ -332,8 +337,11 @@ class Mod1var(dae.daeModel):
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
-        # Get reaction rate function from dictionary name
-        self.calc_rxn_rate = getattr(reactions, config[trode, "rxnType"])
+        # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -508,7 +516,10 @@ class Mod1var(dae.daeModel):
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
             Flux_bc = -self.Rxn()
-            Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc")).Dfunc
+            Dfunc_name = self.get_trode_param("Dfunc")
+            Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                          Dfunc_name,
+                                          f"mpet.electrode.diffusion.{Dfunc_name}")
             if self.get_trode_param("type") == "diffn":
                 Flux_vec = calc_flux_diffn(c, self.get_trode_param("D"), Dfunc,
                                            self.get_trode_param("E_D"), Flux_bc, dr, T, noise)

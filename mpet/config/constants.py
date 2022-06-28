@@ -16,6 +16,8 @@ two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn", "ACR2"]
 one_var_types = ["ACR","ACR_Diff", "diffn", "CHR", "homog", "homog_sdn"]
 #: Reference concentration, mol/m^3 = 1M
 c_ref = 1000.
+#: Reaction rate epsilon for values close to zero
+reactions_epsilon = 1e-12
 
 #: parameter that are defined per electrode with a ``_{electrode}`` suffix
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
