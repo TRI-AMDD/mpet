@@ -608,7 +608,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     elif config["elyteModelType"] == "solid":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["SMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
         a_slyte = config["a_slyte"]
         tp0 = 0.99999
         c_edges_int_norm = c_edges_int / config["cmax"]
