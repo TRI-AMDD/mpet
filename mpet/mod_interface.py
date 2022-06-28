@@ -1,7 +1,7 @@
 import numpy as np
 
 import daetools.pyDAE as dae
-from mpet import ports, utils, props_elyte
+from mpet import ports, utils
 import mpet.geometry as geom
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t
 
@@ -172,9 +172,10 @@ def get_interface_internal_fluxes(c, phi, disc, config):
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["interfaceModelType"] == "SM":
-        # D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["interfaceSMset"])()[:-1]
-
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["interfaceSMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c, T), wt)
@@ -193,7 +194,10 @@ def get_interface_internal_fluxes(c, phi, disc, config):
                             + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
 
     elif config["interfaceModelType"] == "solid":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["interfaceSMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         a_slyte = config["a_slyte"]
         tp0 = 0.99999
