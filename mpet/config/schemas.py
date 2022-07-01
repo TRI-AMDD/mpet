@@ -125,7 +125,7 @@ system = {'Sim Params': {'profileType': lambda x:
                                  Optional('k_h_s', default=0.2): Use(float),
                                  Optional('h_h', default=500): Use(float),
                                  Optional('sigma_l', default=500): Use(float),
-                                 Optional('ent_heat_gen', default=True): Use(tobool)},
+                                 Optional('ent_heat_gen', default=False): Use(tobool)},
           'Electrolyte': {'c0': Use(float),
                           'zp': Use(int),
                           'zm': And(Use(int), lambda x: x < 0),
