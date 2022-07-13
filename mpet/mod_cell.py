@@ -119,10 +119,6 @@ class ModCell(dae.daeModel):
             self.c_lyteGP_L = dae.daeVariable("c_lyteGP_L", conc_t, self, "c_lyte left BC GP")
             self.phi_lyteGP_L = dae.daeVariable(
                 "phi_lyteGP_L", elec_pot_t, self, "phi_lyte left BC GP")
-            self.T_lyteGP_L = dae.daeVariable(
-                "T_lyteGP_L", temp_t, self, "T_lyte left BC GP")
-            self.T_lyteGP_R = dae.daeVariable(
-                "T_lyteGP_R", temp_t, self, "T_lyte left BC GP")
         self.phi_applied = dae.daeVariable(
             "phi_applied", elec_pot_t, self,
             "Overall battery voltage (at anode current collector)")
@@ -343,7 +339,7 @@ class ModCell(dae.daeModel):
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             # temperature uses a constant boundary condition
-            Ttmp = np.hstack((self.T_lyteGP_L(), Tvec, self.T_lyteGP_R()))
+            Ttmp = np.hstack((config["T"], Tvec, config["T"]))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
 
             Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc,
@@ -354,8 +350,6 @@ class ModCell(dae.daeModel):
             # 2) assume we have a Li foil with BV kinetics and the specified rate constant
             eqC = self.CreateEquation("GhostPointC_L")
             eqP = self.CreateEquation("GhostPointP_L")
-            eqTL = self.CreateEquation("GhostPointT_L")
-            eqTR = self.CreateEquation("GhostPointT_R")
             if 'a' not in config["trodes"]:
                 # Concentration BC from mass flux
                 eqC.Residual = Nm_edges[0]
@@ -387,9 +381,6 @@ class ModCell(dae.daeModel):
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
-            # boundary equation for temperature variables. per volume
-            eqTL.Residual = Ttmp[0] - config["T"]
-            eqTR.Residual = Ttmp[-1] - config["T"]
 
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
