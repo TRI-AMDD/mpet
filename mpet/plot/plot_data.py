@@ -300,6 +300,27 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
+    # Plot maximum temperature profile
+    if plot_type == "max_temp":
+        T_sep, T_anode, T_cath = pfx + 'T_lyte_s', pfx + 'T_lyte_a', pfx + 'T_lyte_c'
+        datay_T = utils.get_dict_key(data, T_cath, squeeze=False)
+        if config["have_separator"]:
+            datay_s_T = utils.get_dict_key(data, T_sep, squeeze=False)
+            datay_T = np.hstack((datay_s_T, datay_T))
+        if "a" in trodes:
+            datay_a_T = utils.get_dict_key(data, T_anode, squeeze=False)
+            datay_T = np.hstack((datay_a_T, datay_T))
+        Tmax = np.max(datay_T * Tref, axis=1)
+        if data_only:
+            return times*td, Tmax
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, Tmax)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("Maximum Temperature [K]")
+        if save_flag:
+            fig.savefig("mpet_max_temp.png", bbox_inches="tight")
+        return fig, ax
+
     if plot_type == "power":
         current = utils.get_dict_key(data, pfx + 'current') * (3600/td) * (cap/3600)  # in A/m^2
         voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
