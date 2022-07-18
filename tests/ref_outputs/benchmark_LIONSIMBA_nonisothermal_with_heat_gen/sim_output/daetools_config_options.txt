@@ -10,7 +10,8 @@
             "printInfo": "false",
             "nodes": {
                 "useNodeMemoryPools": "false",
-                "deleteNodesThreshold": "1000000"
+                "deleteNodesThreshold": "1000000",
+                "significantDecimalsForConstantsHash": "10"
             },
             "equations": {
                 "info": [

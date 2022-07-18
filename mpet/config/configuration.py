@@ -481,7 +481,6 @@ class Config:
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
         self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
-        self['sigma_l'] = self['sigma_l'] / self['sigma_s_ref']
         if self['Dp'] is not None:
             self['Dp'] = self['Dp'] / self['D_ref']
         if self['Dm'] is not None:

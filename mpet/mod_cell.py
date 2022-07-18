@@ -607,7 +607,13 @@ def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
     q_ohmic = 0
 
     if config["elyteModelType"] == "dilute":
-        sigma_l = eps_o_tau[1:-1] * config["sigma_l"]
+        zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
+
+        # Get porosity at cell edges using weighted harmonic mean
+        Dp = eps_o_tau[1:-1] * config["Dp"]
+        Dm = eps_o_tau[1:-1] * config["Dm"]
+        sigma_l = ((nup*zp*Dp + num*zm*Dm)*np.diff(c_edges_int)/dx) - \
+            (nup*zp ** 2*Dp + num*zm**2*Dm)/T_mid*c_mid
     elif config["elyteModelType"] == "SM":
         SMset = config["SMset"]
         elyte_function = utils.import_function(config["SMset_filename"], SMset,
