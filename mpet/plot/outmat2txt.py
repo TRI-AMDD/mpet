@@ -47,7 +47,7 @@ elytepHdr = ("Electrolyte Electric Potential [V]\n" + RowsStr + CCStr)
 elyteiHdr = ("Electrolyte Current Density [A/m^2]\n" + RowsStr + FCStr)
 elytediviHdr = ("Electrolyte Divergence of Current Density [A/m^3]\n"
                 + RowsStr + CCStr)
-tempHdr = ("Temperature [K]\n" + RowsStr + CCStr)
+tempHdr = ("Electrolyte Temperature [K]\n" + RowsStr + CCStr)
 
 seeDiscStr = "See discData.txt for particle indexing information."
 partStr = "partTrode{l}vol{j}part{i}_"
@@ -266,7 +266,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
         tempMat = plot_data.show_data(
             indir, plot_type="temp", print_flag=False,
             save_flag=False, data_only=True)[1]
-        np.savetxt(os.path.join(indir, "tempData.txt"),
+        np.savetxt(os.path.join(indir, "elyteTempData.txt"),
                    tempMat, delimiter=dlm, header=tempHdr)
 
     return
