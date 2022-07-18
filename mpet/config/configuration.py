@@ -510,6 +510,12 @@ class Config:
             self['cp'][trode] = self['cp'][trode] / \
                 (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
             self['rhom'][trode] = self['rhom'][trode] / self['rho_ref']
+            if self['nonisothermal']:
+                if self['rhom'][trode] == 0 or self['cp'][trode] == 0 or self['k_h'][trode] == 0:
+                    raise Exception(
+                        "Please provide all nonisothermal parameters for the "
+                        + trode
+                        + " electrode and ensure they are nonzero")
 
             if self[trode, 'lambda'] is not None:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
@@ -527,6 +533,11 @@ class Config:
             self['cp']['s'] = self['cp']['s'] / \
                 (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
             self['rhom']['s'] = self['rhom']['s'] / self['rho_ref']
+            if self['nonisothermal']:
+                if self['rhom']['s'] == 0 or self['cp']['s'] == 0 or self['k_h']['s'] == 0:
+                    raise Exception(
+                        "Please provide all nonisothermal parameters for the "
+                        + " separator and ensure they are nonzero")
 
     def _scale_macroscopic_parameters(self, Vref):
         """
