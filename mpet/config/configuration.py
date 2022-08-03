@@ -575,8 +575,6 @@ class Config:
         self['segments'] = segments
         self['segments_tvec'] = segments_tvec
         self['segments_setvec'] = segments_setvec
-        if self['profileType'] == 'CC' and not np.allclose(self['currset'], 0., atol=1e-12):
-            self['tend'] = np.abs(self['capFrac'] / self['currset'])
 
     def _make_paths_absolute(self):
         """

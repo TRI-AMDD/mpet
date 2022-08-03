@@ -61,7 +61,6 @@ system = {'Sim Params': {'profileType': lambda x:
                          'Vmax': Use(float),
                          'Vmin': Use(float),
                          Optional('Vset', default=None): Use(float),
-                         Optional('capFrac', default=1.0): Use(float),
                          Optional('segments', default=[]): Use(parse_segments),
                          Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
