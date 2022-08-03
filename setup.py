@@ -18,12 +18,18 @@ setuptools.setup(
     author_email='cogswell@mit.edu',
     license='MIT',
     url='https://bitbucket.org/bazantgroup/mpet',
-    packages=['mpet','mpet.plot','mpet.electrode','mpet.config'],
+    packages=[
+        'mpet','mpet.plot',
+        'mpet.electrode.diffusion',
+        'mpet.electrode.materials',
+        'mpet.electrode.reactions',
+        'mpet.electrolyte','mpet.config'
+    ],
     install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema',
                       'dask-jobqueue', 'dash'],
     extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
                     'doc':['sphinx','sphinx_rtd_theme']},
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     scripts=['bin/mpetrun.py','bin/mpetplot.py','bin/run_jobs.py'],
     classifiers=[
         "Programming Language :: Python :: 3",

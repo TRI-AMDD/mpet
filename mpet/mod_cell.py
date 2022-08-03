@@ -17,7 +17,6 @@ import mpet.geometry as geom
 import mpet.mod_electrodes as mod_electrodes
 from mpet.mod_interface import InterfaceRegion
 import mpet.ports as ports
-import mpet.props_elyte as props_elyte
 import mpet.utils as utils
 from mpet.config import constants
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
@@ -281,8 +280,9 @@ class ModCell(dae.daeModel):
                 porosvec = utils.pad_vec(utils.get_const_vec(
                     (1-self.config["poros"][trode])**(1-config["BruggExp"][trode]), Nvol[trode]))
                 if np.all(self.config['specified_poros'][trode]):
+                    specified_por = self.config['specified_poros'][trode]
                     porosvec = (
-                        (np.ones(Nvol[trode]) - self.config['specified_poros'][trode]))**(
+                        (np.ones(Nvol[trode]) - specified_por))**(
                             (1 - self.config["BruggExp"][trode]))
                     porosvec = utils.pad_vec(porosvec)
                 poros_walls = utils.mean_harmonic(porosvec)
@@ -361,12 +361,11 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
-            if np.all(self.config['specified_poros'][trode]):
-                porosvec = self.config['specified_poros'][trode]
-                disc["porosvec"] = porosvec
-                disc["eps_o_tau"] = utils.pad_vec(porosvec/porosvec**(
-                    (self.config["BruggExp"][trode])))
+            if np.all(config["specified_poros"]["c"]):
+                config_poros = config["specified_poros"]
+            else:
+                config_poros = config["poros"]
+            disc = geom.get_elyte_disc(Nvol, config["L"], config_poros, config["BruggExp"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
@@ -588,7 +587,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
 #        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["elyteModelType"] == "SM":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte,config["SMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
         D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)
@@ -606,7 +608,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
     elif config["elyteModelType"] == "solid":
-        D_fs, sigma_fs, thermFac, tp0 = getattr(props_elyte, config["SMset"])()[:-1]
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
         a_slyte = config["a_slyte"]
         tp0 = 0.99999
         c_edges_int_norm = c_edges_int / config["cmax"]

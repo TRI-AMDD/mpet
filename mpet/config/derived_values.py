@@ -1,8 +1,9 @@
 import numpy as np
 
-from mpet import props_elyte, props_am
+from mpet import props_am
 from mpet.exceptions import UnknownParameterError
 from mpet.config import constants
+from mpet.utils import import_function
 
 
 class DerivedValues:
@@ -201,7 +202,10 @@ class DerivedValues:
         elif self.config['elyteModelType'] == 'solid':
             return self.config['Damb']
         else:
-            return getattr(props_elyte, self.config['SMset'])()[-1]
+            SMset = self.config["SMset"]
+            elyte_function = import_function(self.config["SMset_filename"], SMset,
+                                             mpet_module=f"mpet.electrolyte.{SMset}")
+            return elyte_function()[-1]
 
     def z(self):
         """Electrode capacity ratio
