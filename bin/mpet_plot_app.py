@@ -1,4 +1,7 @@
-from dash import Dash, dcc, html, Input, Output
+import dash
+from dash import html, dcc
+import dash_bootstrap_components as dbc
+from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
 import os
@@ -13,34 +16,30 @@ from mpet import mod_cell
 from mpet import utils
 from mpet.config import Config, constants
 
-#  from plotly.subplots import make_subplots
-#  import plotly.graph_objects as go
+
+###################################################################
+# Part 1
+# Import data from all subfolders in provided dataDir
+# Prepare all data (get everything in correct dataframe) for plotting
+# This is based on plot_data.py
+###################################################################
 desc = """ Dashboard that shows all plots and compares the resutls of different models."""
 parser = argparse.ArgumentParser(description=desc, formatter_class=RawTextHelpFormatter)
 parser.add_argument('-d', '--dataDir',
-                    help='Directory that contains folders with simulation output')
+                    help='Directory that contains subfolders with simulation output')
 args = parser.parse_args()
 
-app = Dash(__name__)
-
-# Define colors to be used
-colors = {
-    'background': '#FFFFFF',
-    'text': '#000000',
-    'bg_table': '#B9B6B6',
-    'text_table': '#111111',
-}
-
-# Import data from all folders in sim_output into one dataframe
-# Read in the simulation results and calcuations data
 dataFiles = [os.path.join(args.dataDir, f) for f in os.listdir(args.dataDir)
              if os.path.isdir(os.path.join(args.dataDir, f))]
 dff = pd.DataFrame()
 dff_c_sub = pd.DataFrame()
 dff_cd_sub = pd.DataFrame()
 dff_csld_sub = pd.DataFrame()
+dff_bulkp = pd.DataFrame()
+df_cbar = pd.DataFrame()
 
 for indir in dataFiles:
+    print('Loading data from:', indir)
     pfx = 'mpet.'
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
@@ -116,11 +115,11 @@ for indir in dataFiles:
     # surface concentration
     # soc profile
     ffvec_c = utils.get_dict_key(data, pfx + 'ffrac_c')
-    try:
+    if "a" in trodes:
         ffvec_a = utils.get_dict_key(data, pfx + 'ffrac_a')
         nparta = Npart["a"]
         nvola = Nvol["a"]
-    except KeyError:
+    else:
         ffvec_a = 0
         nparta = 0
         nvola = 0
@@ -164,10 +163,8 @@ for indir in dataFiles:
     xmin = 0
     xmax = Ltot
     # elytec
-    ylbl_ce = 'Concentration of electrolyte [M]'
     datay_ce = datay_c * c_ref / 1000.
     # elytep
-    ylbl_pe = 'Potential of electrolyte [V]'
     datay_pe = datay_p*(k*Tref/e) - Vstd
     cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
     pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
@@ -179,11 +176,9 @@ for indir in dataFiles:
         i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
             cmat[tInd, :], pmat[tInd, :], disc, config)[1]
     # elytei
-    ylbl_cd = r'Current density of electrolyte [A/m$^2$]'
     datax_cd = facesvec
     datay_cd = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
     # elytedivi
-    ylbl_d = r'Divergence of electrolyte current density [A/m$^3$]'
     datax_d = cellsvec
     datay_d = np.diff(i_edges, axis=1) / disc["dxvec"]
     datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
@@ -202,7 +197,7 @@ for indir in dataFiles:
         cvec_a = utils.get_dict_key(data, anode)
         cvec = np.hstack((cvec_a, cvec))
     cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
-
+    # Get all data in dataframes
     df = pd.DataFrame({
         "Model": model,
         "Config trode type": config[trode, "type"],
@@ -218,10 +213,16 @@ for indir in dataFiles:
         "Power": power,
         "cavg": cavg
     })
-
     for trode in trodes:
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         str_base = (pfx + partStr + "c")
+        lens = psd_len[trode]
+        spacing = 1.0 / Nvol[trode]
+        size_fracs = 0.4*np.ones((Nvol[trode], Npart[trode]))
+        if np.max(lens) != np.min(lens):
+            size_fracs = (lens - np.min(lens))/(np.max(lens) - np.min(lens))
+        size_frac_min = 0.2
+        sizes = (size_fracs*(1-size_frac_min) + size_frac_min) / Nvol[trode]
         for pInd in range(Npart[trode]):
             for vInd in range(Nvol[trode]):
                 sol_str = str_base.format(pInd=pInd, vInd=vInd)
@@ -233,6 +234,18 @@ for indir in dataFiles:
                     sol_cbar_str = str_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol_cbar_str_data = utils.get_dict_key(data, sol_cbar_str)
                     df[sol_cbar_str] = sol_cbar_str_data
+                    # for cbar movie
+                    df_c = pd.DataFrame({
+                        'Model': model,
+                        'Time': np.round(timestd),
+                        'Cbar': sol_cbar_str_data,
+                        'r': pInd,
+                        'c': vInd,
+                        'rc': str(pInd)+str(vInd),
+                        'Relative size': sizes[vInd,pInd],
+                        'Trode': trode
+                        })
+                    df_cbar = pd.concat([df_cbar, df_c])
                 elif config[trode, "type"] in constants.two_var_types:
                     str1_cbar_base = pfx + partStr + "c1bar"
                     str2_cbar_base = pfx + partStr + "c2bar"
@@ -242,85 +255,134 @@ for indir in dataFiles:
                     sol2_cbar_str_data = utils.get_dict_key(data, sol2_cbar_str)
                     df[sol1_cbar_str] = sol1_cbar_str_data
                     df[sol2_cbar_str] = sol2_cbar_str_data
-
     dff = pd.concat([dff, df], ignore_index=True)
-
     # build dataframe for plots electrolyte concentration or potential
     # and for csld subplot animation (time, pind, vind, y)
-    dff_c = pd.DataFrame()
-    dff_cd = pd.DataFrame()
+    dff_c = pd.DataFrame({"Model": model,
+                          "Time fraction": np.round(np.repeat(tfrac, np.shape(datay_ce)[1])),
+                          "fraction orig": np.repeat(tfrac, np.shape(datay_ce)[1]),
+                          "cellsvec": np.tile(cellsvec, np.shape(datay_ce)[0]),
+                          "Concentration electrolyte": datay_ce.flatten(),
+                          "Potential electrolyte": datay_pe.flatten(),
+                          "Divergence electrolyte curr dens": datay_d.flatten()
+                          })
+    dff_cd = pd.DataFrame({"Model": model,
+                           "Time fraction": np.round(np.repeat(tfrac, np.shape(datay_cd)[1])),
+                           "fraction orig": np.repeat(tfrac, np.shape(datay_cd)[1]),
+                           "facesvec": np.tile(facesvec, np.shape(datay_cd)[0]),
+                           "Curreny density electrolyte": datay_cd.flatten()
+                           })
+    # Build dataframes for bulkp and csld
+    dff_bulkp_c = pd.DataFrame()
     dff_csld = pd.DataFrame()
-    for i in range(len(datay_ce)):
-        df_c = pd.DataFrame({"Model": model,
-                             "fraction": round(tfrac[i]),
-                             "fraction orig": tfrac[i],
-                             "cellsvec": cellsvec[:],
-                             "Concentration electrolyte": datay_ce[i,:],
-                             "Potential electrolyte": datay_pe[i,:],
-                             "Divergence electrolyte curr dens": datay_d[i,:]
-                             })
-        dff_c = pd.concat([dff_c, df_c], ignore_index=True)
-    for i in range(len(datay_cd)):
-        df_cd = pd.DataFrame({"Model": model,
-                              "fraction": round(tfrac[i]),
-                              "fraction orig": tfrac[i],
-                              "facesvec": facesvec[:],
-                              "Curreny density electrolyte": datay_cd[i,:]
-                              })
-        dff_cd = pd.concat([dff_cd, df_cd], ignore_index=True)
-    for t in range(len(timestd)):
-        for trode in trodes:
-            partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
-            for pInd in range(Npart[trode]):
-                for vInd in range(Nvol[trode]):
-                    lens_str = "lens_{vInd}_{pInd}".format(vInd=vInd, pInd=pInd)
-                    if config[trode, "type"] in constants.one_var_types:
-                        cstr_base = pfx + partStr + "c"
-                        cstr = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                        datay = utils.get_dict_key(data, cstr)[t]
-                        datax = np.linspace(0, psd_len[trode][vInd,pInd] * Lfac, len(datay))
-                        if trode == trodes[0] and pInd == 0 and vInd == 0:
-                            df_csld = pd.DataFrame({"Model": model,
-                                                    "time (s)": timestd[t],
-                                                    "time fraction": round(tfrac[t]),
-                                                    "fraction orig": tfrac[t],
-                                                    lens_str: datax,
-                                                    cstr: datay
-                                                    })
-                        else:
-                            df_csld[lens_str] = pd.Series(datax)
-                            df_csld[cstr] = pd.Series(datay)
-                    elif config[trode, "type"] in constants.two_var_types:
-                        c1str_base = pfx + partStr + "c1"
-                        c2str_base = pfx + partStr + "c2"
-                        c3str_base = pfx + partStr + "cav"
-                        c1str = c1str_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                        c2str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                        c3str = c3str_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                        datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[t]
-                        datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[t]
-                        datay3 = 0.5*(datay1 + datay2)
-                        numy = len(datay1) if isinstance(datay1, np.ndarray) else 1
-                        datax = np.linspace(0, psd_len[trode][vInd,pInd] * Lfac, numy)
-                        if pInd == 0 and vInd == 0:
-                            df_csld = pd.DataFrame({"Model": model,
-                                                    "time (s)": timestd[t],
-                                                    "time fraction": round(tfrac[i]),
-                                                    "fraction orig": tfrac[i],
-                                                    lens_str: datax,
-                                                    c1str: datay1,
-                                                    c2str: datay2,
-                                                    c3str: datay3
-                                                    })
-                        else:
-                            df_csld[lens_str] = pd.Series(datax)
-                            df_csld[c1str] = pd.Series(datay1)
-                            df_csld[c2str] = pd.Series(datay2)
-                            df_csld[c3str] = pd.Series(datay3)
+    # cstr can have varying length, determine maximum length
+    if config[trode, "type"] in constants.one_var_types:
+        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
+        cstr_base = pfx + partStr + "c"
+        maxlength = max([np.shape(utils.get_dict_key(data, cstr_base.format(
+                        trode=t, pInd=p, vInd=v)))[1]
+            for t in trodes for p in range(Npart[trode]) for v in range(Nvol[trode])])
+    else:
+        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
+        maxlength = max([np.shape(utils.get_dict_key(data, (pfx + partStr + "c1").format(
+                        trode=t, pInd=p, vInd=v)))[1]
+            for t in trodes for p in range(Npart[trode]) for v in range(Nvol[trode])])
+    for trode in trodes:
+        bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
+        dataybulkp = utils.get_dict_key(data, bulkp).flatten()
+        if trode == "a":
+            dataxbulkp = cellsvec[:Nvol["a"]]
+        elif trode == "c":
+            dataxbulkp = cellsvec[-Nvol["c"]:]
+        datat = np.repeat(timestd, len(dataxbulkp))
+        datatfrac = np.repeat(tfrac, len(dataxbulkp))
+        dataxbulkp = np.repeat([dataxbulkp], len(timestd), axis=0).flatten()
+        df_b = pd.DataFrame({
+            "Model": model,
+            "Time (s)": datat,
+            "Time fraction (%)": np.round(datatfrac),
+            "fraction orig": datatfrac,
+            "Trode": trode,
+            "Potential (nondim)": dataybulkp,
+            "Position in electrode": dataxbulkp})
+        dff_bulkp_c = pd.concat([dff_bulkp_c, df_b])
+        partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
+        for pInd in range(Npart[trode]):
+            for vInd in range(Nvol[trode]):
+                lens_str = "lens_{vInd}_{pInd}".format(vInd=vInd, pInd=pInd)
+                if config[trode, "type"] in constants.one_var_types:
+                    cstr_base = pfx + partStr + "c"
+                    cstr = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay = np.empty([len(timestd), maxlength]) + np.nan
+                    yy = utils.get_dict_key(data, cstr)
+                    datay[0:len(timestd), 0:np.shape(yy)[1]] = yy
+                    datax = np.empty(maxlength) + np.nan
+                    datax[0:np.shape(yy)[1]] = np.linspace(0, psd_len[trode][vInd,pInd] * Lfac,
+                                                           np.shape(yy)[1])
+                    if trode == trodes[0] and pInd == 0 and vInd == 0:
+                        df_csld = pd.DataFrame({"Model": model,
+                                                "Config trode type": config[trode, "type"],
+                                                "Npartc": Npart["c"],
+                                                "Nvolc": Nvol["c"],
+                                                "Nparta": nparta,
+                                                "Nvola": nvola,
+                                                "time (s)": np.repeat(timestd, np.shape(datay)[1]),
+                                                "Time fraction": np.repeat(np.round(tfrac),
+                                                                           np.shape(datay)[1]),
+                                                "fraction orig": np.repeat(tfrac,
+                                                                           np.shape(datay)[1]),
+                                                lens_str: np.repeat([datax], len(datay),
+                                                                    axis=0).flatten(),
+                                                cstr: datay.flatten()
+                                                })
+                    else:
+                        df_csld[lens_str] = np.repeat([datax], len(datay), axis=0).flatten()
+                        df_csld[cstr] = datay.flatten()
+                elif config[trode, "type"] in constants.two_var_types:
+                    c1str_base = pfx + partStr + "c1"
+                    c2str_base = pfx + partStr + "c2"
+                    c3str_base = pfx + partStr + "cav"
+                    c1str = c1str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c2str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c3str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    datay1 = datay2 = datay3 = np.empty([len(timestd), maxlength]) + np.nan
+                    yy1 = utils.get_dict_key(data, c1str[pInd,vInd])
+                    datay1[0:len(timestd), 0:np.shape(yy1)[1]] = yy1
+                    yy2 = utils.get_dict_key(data, c2str[pInd,vInd])
+                    datay2[0:len(timestd), 0:np.shape(yy2)[1]] = yy2
+                    datay3 = 0.5*(datay1 + datay2)
+                    datax = np.empty(maxlength) + np.nan
+                    numy = len(datay1) if isinstance(yy1, np.ndarray) else 1
+                    datax[0:np.shape(yy1)[1]] = np.linspace(0, psd_len[trode][vInd,pInd] * Lfac,
+                                                            numy)
+                    if trode == trodes[0] and pInd == 0 and vInd == 0:
+                        df_csld = pd.DataFrame({"Model": model,
+                                                "Config trode type": config[trode, "type"],
+                                                "Npartc": Npart["c"],
+                                                "Nvolc": Nvol["c"],
+                                                "Nparta": nparta,
+                                                "Nvola": nvola,
+                                                "time (s)": np.repeat(timestd,
+                                                                      np.shape(datay1)[1]),
+                                                "Time fraction": np.repeat(np.round(tfrac),
+                                                                           np.shape(datay1)[1]),
+                                                "fraction orig": np.repeat(tfrac,
+                                                                           np.shape(datay1)[1]),
+                                                lens_str: np.repeat([datax], len(datay1),
+                                                                    axis=0).flatten(),
+                                                c1str: datay1.flatten(),
+                                                c2str: datay2.flatten(),
+                                                c3str: datay3.flatten()
+                                                })
+                    else:
+                        df_csld[lens_str] = np.repeat([datax], len(datay1), axis=0).flatten(),
+                        df_csld[c1str] = datay1.flatten()
+                        df_csld[c2str] = datay2.flatten()
+                        df_csld[c3str] = datay3.flatten()
         dff_csld = pd.concat([dff_csld, df_csld], ignore_index=True)
     # make subselection dataframe with one fraction per rounded fraction
-    for i in np.unique(dff_c["fraction"]):
-        df_sub = dff_c[dff_c["fraction"] == i]
+    for i in np.unique(dff_c["Time fraction"]):
+        df_sub = dff_c[dff_c["Time fraction"] == i]
         md = 1.0
         mdx = 0.0
         for j in np.unique(df_sub["fraction orig"]):
@@ -330,32 +392,28 @@ for indir in dataFiles:
                 mdx = j
         select = dff_c[dff_c["fraction orig"] == mdx]
         dff_c_sub = pd.concat([dff_c_sub, select], ignore_index=True)
-    for i in np.unique(dff_cd["fraction"]):
-        df_cd_sub = dff_cd[dff_cd["fraction"] == i]
-        md = 1.0
-        mdx = 0.0
-        for j in np.unique(df_cd_sub["fraction orig"]):
-            dx = abs(i-j)
-            if dx < md:
-                md = dx
-                mdx = j
         select = dff_cd[dff_cd["fraction orig"] == mdx]
         dff_cd_sub = pd.concat([dff_cd_sub, select], ignore_index=True)
-    for i in np.unique(dff_csld["time fraction"]):
-        df_csld_sub = dff_csld[dff_csld["time fraction"] == i]
-        md = 1.0
-        mdx = 0.0
-        for j in np.unique(df_csld_sub["fraction orig"]):
-            dx = abs(i-j)
-            if dx < md:
-                md = dx
-                mdx = j
         select = dff_csld[dff_csld["fraction orig"] == mdx]
         dff_csld_sub = pd.concat([dff_csld_sub, select], ignore_index=True)
-############################
-# Define plots
-############################
+        select = dff_bulkp_c[dff_bulkp_c["fraction orig"] == mdx]
+        dff_bulkp = pd.concat([dff_bulkp, select], ignore_index=True)
 
+###################################################################
+# Part 2
+# Define plots (define that there is a grpah and perform callback (see part 3))
+# style elements
+###################################################################
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CERULEAN])
+
+# Define colors to be used
+colors = {
+    'background': '#FFFFFF',
+    'lithium': '#2fa4e7',
+    'text': '#000000',
+    'bg_table': '#B9B6B6',
+    'text_table': '#111111',
+}
 # Define Markdown text
 markdown_text = '''
 # MPET visualisation
@@ -365,586 +423,496 @@ This dashboard shows visualisations of all the MPET simulation output saved in t
 
 defaultmodel = (dff['Model'].unique()[0])
 # Define components of app
-app.layout = html.Div(style={'backgroundColor': colors['background']},
-                      children=[
-                      html.Div(style={'backgroundColor': 'DodgerBlue'},
-                               children=[
-                               dcc.Markdown(
-                                   children=markdown_text,
-                                   style={'textAlign': 'center',
-                                          'color': colors['text'],
-                                          'font-family':'Sans-serif'}),
-                                   html.H4(children='Select models to display in all plots:',
-                                           style={'font-family':'Sans-serif'}),
-                                   dcc.Checklist(options=dff['Model'].unique(),
-                                                 value=dff['Model'].unique(),
-                                                 id='model-selection',
-                                                 labelStyle={'display': 'block'},
-                                                 style={'font-family':'Sans-serif',
-                                                        'margin-bottom': '20px',
-                                                        'background': 'DodgerBlue'}),
-                                   html.Hr(style={"color": 'black', 'borderWidth': '10'})]),
-                      # v/vt
-                      html.H3(children='Voltage',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Dropdown(['Time (s)', 'Cathode Filling Fraction'], 'Time (s)',
-                                   id='xaxis-column',
-                                   style={'width':'50%', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='Voltage-graph-double'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # curr
-                      html.H3(children='Current profile',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id="current"),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # power
-                      html.H3(children='Power',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id="power"),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # elytec
-                      html.H3(children='Electrolyte concentration',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='electrolyte-concentration-ani'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # elytep
-                      html.H3(children='Electrolyte potential',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='electrolyte-potential-ani'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # elytei
-                      html.H3(children='Electrolyte current density',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='electrolyte-cd-ani'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # elytedivi
-                      html.H3(children='Divergence of electrolyte current density',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='electrolyte-decd-ani'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # surfc/surfa
-                      html.H3(children='Solid surface concentration',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                                   id='select_surf_model',
-                                   style={'width':'50%', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='Surface-concentration-anode'),
-                      dcc.Graph(id='Surface-concentration-cathode'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # soc_c/soc_a
-                      html.H3(children='Overall utilization / state of charge of electrode',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='Cathode-filling-fraction'),
-                      dcc.Graph(id='Anode-filling-fraction'),
+app.layout = html.Div([
+    dbc.Row(dbc.Col(
+        html.H1("MPET visualisation",
+            style={'textAlign': 'center', 'background': colors['lithium'], 'color': 'white',
+                   'margin-top': '10px', 'margin-bottom': '10px'}),
+        ),),
+    dbc.Row(dbc.Col([
+        html.Div("Select models to display in all plots", 
+            style={'color': colors['lithium'], 'margin-left': '20px'}),
+        dcc.Checklist(
+            options=dff['Model'].unique(),
+            value=dff['Model'].unique(),
+            id='model-selection',
+            labelStyle={'display': 'block'},
+            style={'margin-bottom': '20px', 'margin-left': '20px',},
+            )]
+        ),),
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    html.H2("General properties", style={'margin-left': '20px'}),
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    dbc.Row([
+        dbc.Col([
+            # v/vt
+            dbc.Card([
+                html.H4(
+                    children='Voltage',
+                    style={'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}
+                    ),
+                dcc.Dropdown(
+                    ['Time (s)', 'Cathode Filling Fraction'],
+                    'Time (s)',
+                    id='xaxis-column',
+                    style={'font-family':'Sans-serif', 'margin-left': '10px', 'width': '80%'}),
+                dcc.Loading(children=[dcc.Graph(id='Voltage-graph-double')],
+                            color=colors['lithium'], type="dot", fullscreen=False)],
+                style={'margin-bottom': '20px', 'margin-left': '10px'}
+                ),
+            # power
+            dbc.Card([
+                html.H4(children='Power', style={
+                    'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id="power")],
+                            color=colors['lithium'], type="dot", fullscreen=False,)
+                ], style={'margin-bottom': '20px', 'margin-left': '10px'})
+            ],
+            width=4,),
+        dbc.Col([
+            # Curr
+            dbc.Card([
+                html.H4(
+                    children='Current profile',
+                    style={'textAlign': 'center', 'font-family':'Sans-serif',
+                           'margin-bottom': '45px', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id="current")],
+                            color=colors['lithium'], type="dot", fullscreen=False),
+            ], style={'margin-bottom': '20px'}),
+            # elytecons
+            dbc.Card([
+                html.H4(children='Average concentration of electrolyte',
+                        style={'textAlign': 'center', 'font-family':'Sans-serif',
+                               'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id='elytecons'),],
+                            color=colors['lithium'], type="dot", fullscreen=False,),
+            ], style={'margin-bottom': '20px'})],
+            width=4,),
+        dbc.Col([
+            # soc
+            dbc.Card([
+                html.H4(children='Overall utilization',
+                        style={'textAlign': 'center', 'font-family':'Sans-serif',
+                               'margin-top': '10px'}),
+                html.H4(children='(state of charge of electrode)',
+                        style={'textAlign': 'center', 'font-family':'Sans-serif'}),
+                dcc.Loading(children=[
+                    html.H5(
+                        children='Cathode',
+                        style={'textAlign': 'center', 'font-family':'Sans-serif',
+                            'color': '#7f7f7f', 'margin-top': '10px'}),
+                    dcc.Graph(id='Cathode-filling-fraction'),
+                    html.H5(
+                        children='Anode',
+                        style={'textAlign': 'center', 'font-family':'Sans-serif',
+                               'color': '#7f7f7f', 'margin-top': '5px', 'margin-bottom': '0px'}),
+                    dcc.Graph(id='Anode-filling-fraction'),
+                    ],
+                    color=colors['lithium'], type="dot", fullscreen=False,),
+                ], style={'margin-bottom': '20px', 'margin-right': '10px'})],
+                width=4,),
+        ]
+    ),
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    html.H2("Details of electrolyte", style={'margin-left': '20px'}),
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    dbc.Row([
+        dbc.Col([
+            # elytec
+            dbc.Card([
+                html.H4(children='Electrolyte concentration',
+                        style={'textAlign': 'center', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id='electrolyte-concentration-ani')],
+                            color=colors['lithium'], type="dot", fullscreen=False,),
+            ], style={'margin-bottom': '20px', 'margin-left': '10px'}),
+            # elytep
+            dbc.Card([
+                html.H4(children='Electrolyte potential',
+                        style={'textAlign': 'center', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id='electrolyte-potential-ani'),],
+                            color=colors['lithium'], type="dot", fullscreen=False,),
+            ], style={'margin-bottom': '20px', 'margin-left': '10px'}),
+        ], width=6),
+        dbc.Col([
+            # elytei
+            dbc.Card([
+                html.H4(children='Electrolyte current density',
+                        style={'textAlign': 'center', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id='electrolyte-cd-ani'),],
+                            color=colors['lithium'], type="dot", fullscreen=False,),
+            ], style={'margin-bottom': '20px', 'margin-right': '10px'}),
+            # elytedivi
+            dbc.Card([
+                html.H4(children='Divergence of electrolyte current density',
+                        style={'textAlign': 'center', 'margin-top': '10px'}),
+                dcc.Loading(children=[dcc.Graph(id='electrolyte-decd-ani'),],
+                            color=colors['lithium'], type="dot", fullscreen=False,),
+            ], style={'margin-bottom': '20px', 'margin-right': '10px'}),
+        ], width=6),
+    ]),
+    # bulkp
+    dbc.Row(dbc.Col(dbc.Card([
+        html.H4(children='Macroscopic cathode/anode solid phase potential',
+                style={'textAlign': 'center', 'margin-top': '10px'}),
+        dcc.Loading(children=[dcc.Graph(id='bulkp'),],
+                    color=colors['lithium'], type="dot", fullscreen=False,),
+        ], style={'margin-left': '10px', 'margin-right': '10px'}), width=12)),
+    #
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    html.H2("Details of concentrations for individual models", style={'margin-left': '20px'}),
+    html.Hr(style={"color": colors['lithium'], "height":'5px'}),
+    dbc.Row(dbc.Col([
+        html.Div("Select model to display",
+            style={'color': colors['lithium'], 'margin-left': '20px'}),
+        dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
+                     id='select_single_model',
+                     style={'width':'50%', 'margin-left': '10px', 'margin-bottom': '20px'})]
+        ),),
+    # cbar
+    dbc.Row(dbc.Col(dbc.Card([
+        html.H4(children='Average solid concentrations',
+                style={'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}),
+        dcc.Loading(children=[dcc.Graph(id='cbar_c'),
+                              dcc.Graph(id='cbar_a'),],
+                    color=colors['lithium'], type="dot", fullscreen=False,),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    # surf
+    dbc.Row(dbc.Col(dbc.Card([
+        html.H4(children='Solid surface concentration',
+                style={'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}),
+        dcc.Loading(children=[dcc.Graph(id='Surface-concentration-cathode'),
+                              dcc.Graph(id='Surface-concentration-anode'),],
+                    color=colors['lithium'], type="dot", fullscreen=False,),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    # csld
+    dbc.Row(dbc.Col(dbc.Card([
+        html.H4(children='All solid concentrations',
+                style={'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}),
+        html.H5(children='Time percentage',
+                style={'textAlign': 'left', 'font-family':'Sans-serif', 'margin-left': '10px'}),
+        dcc.Slider(
+            0,100,step=1,value=0,
+            id='timefraction_slider',
+            marks={
+                0: '0', 5: '5', 10: '10', 15: '15', 20: '20',
+                25: '25', 30: '30', 35: '35', 40: '40', 45: '45',
+                50: '50', 55: '55', 60: '60', 65: '65', 70: '70',
+                75: '75', 80: '80', 85: '85', 90: '90', 95: '95',
+                100: '100'
+            }, tooltip={"placement": "top", "always_visible": True}),
+        dcc.Graph(id='csld_c'),
+        dcc.Graph(id='csld_a'),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    # cbarline
+    dbc.Row(dbc.Col(dbc.Card([
+        html.H4(children='Average concentration in each particle of electrode',
+                style={'textAlign': 'center', 'font-family':'Sans-serif', 'margin-top': '10px'}),
+        dcc.Loading(children=[dcc.Graph(id='cbarline_c'),
+                              dcc.Graph(id='cbarline_a'),],
+                    color=colors['lithium'], type="dot", fullscreen=False,),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+])
 
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # elytecons
-                      html.H3(children='Average concentration of electrolyte',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='elytecons'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # csld
-                      html.H3(children='All solid concentrations',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                                   id='select_csld_model',
-                                   style={'width':'50%', 'font-family':'Sans-serif'}),
-                      html.H4(children='Time percentage',
-                              style={'textAlign': 'left', 'font-family':'Sans-serif'}),
-                      dcc.Slider(0,100,step=1,value=0,
-                                 id='timefraction_slider',
-                                 marks={
-                                    0: '0', 5: '5', 10: '10', 15: '15', 20: '20',
-                                    25: '25', 30: '30', 35: '35', 40: '40', 45: '45',
-                                    50: '50', 55: '55', 60: '60', 65: '65', 70: '70',
-                                    75: '75', 80: '80', 85: '85', 90: '90', 95: '95',
-                                    100: '100'
-                                 }, tooltip={"placement": "top", "always_visible": True}),
-                      dcc.Graph(id='csld_c'),
-                      dcc.Graph(id='csld_a'),
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # cbarline
-                      html.H3(children='Average concentration in each particle of electrode',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-                      dcc.Dropdown(options=dff['Model'].unique(), value=defaultmodel,
-                                   id='select_cbarline_model',
-                                   style={'width':'50%', 'font-family':'Sans-serif'}),
-                      dcc.Graph(id='cbarline_c'),
-                      dcc.Graph(id='cbarline_a'),
 
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-                      # 
-                      html.H3(children='Average solid concentrations',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'}),
-
-                      html.H3(children='Cathode potential',
-                              style={'textAlign': 'center', 'font-family':'Sans-serif'}),
-
-                      html.Hr(style={"color": 'black'}),
-                      html.Hr(style={"color": 'black'})
-                      ])
+###################################################################
+# Part 3
+# Define callback functions to get interactive plots
+###################################################################
+@app.callback(
+    Output('current', 'figure'),
+    Output('power', 'figure'),
+    Output('Cathode-filling-fraction', 'figure'),
+    Output('Anode-filling-fraction', 'figure'),
+    Output('elytecons', 'figure'),
+    Input('model-selection', 'value')
+    )
+def update_graphs_multimodels(model_selection):
+    m_select = dff[np.in1d(dff['Model'], model_selection)]
+    # plots
+    current = plot_multimodel(m_select, 'Current', ytitle='Current (C-rate)')
+    power = plot_multimodel(m_select, 'Power', ytitle=u'Power (W/m\u00b2)')
+    fillfrac_c = plot_multimodel(m_select, 'Cathode Filling Fraction',
+                                 ytitle='Cathode Filling Fraction')
+    fillfrac_a = plot_multimodel(m_select, 'Anode Filling Fraction',
+                                 ytitle='Anode Filling Fraction')
+    elytecons = plot_multimodel(m_select, 'cavg',
+                                ytitle='Avg. Concentration of electrolyte (nondim)')
+    return current, power, fillfrac_c, fillfrac_a, elytecons
 
 
-# Do alllll the callbacks
 @app.callback(
     Output('Voltage-graph-double', 'figure'),
     Input('xaxis-column', 'value'),
     Input('model-selection', 'value')
     )
-def update_graph(xaxis_column_name, model_selection
-                 ):
-    fig = px.line(x=dff[xaxis_column_name][np.in1d(dff['Model'], model_selection)],
-                  y=dff['Voltage (V)'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_yaxes(title='Voltage (V)',
-                     type='linear')
-    fig.update_xaxes(title=xaxis_column_name,
-                     type='linear'
-                     )
-    return fig
+def update_graphs_multimodels_voltage(xaxis_column_name, model_selection):
+    m_select = dff[np.in1d(dff['Model'], model_selection)]
+    voltage = plot_multimodel(m_select, 'Voltage (V)', xaxis=xaxis_column_name)
+    return voltage
 
 
 @app.callback(
-    Output('Surface-concentration-anode', 'figure'),
-    Input('select_surf_model', 'value')
+    Output('electrolyte-concentration-ani', 'figure'),
+    Output('electrolyte-potential-ani', 'figure'),
+    Output('electrolyte-cd-ani', 'figure'),
+    Output('electrolyte-decd-ani', 'figure'),
+    Output('bulkp', 'figure'),
+    Input('model-selection', 'value')
     )
-def update_graph_surfa(select_model):
+def callback_multimodel_movies(model_selection):
+    m_select_dff_c = dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)]
+    m_select_dff_cd = dff_cd_sub[np.in1d(dff_cd_sub['Model'], model_selection)]
+    m_select_dff_bulkp = dff_bulkp[np.in1d(dff_bulkp['Model'], model_selection)]
+    electrolyte_concentration = ani_elytrolyte(m_select_dff_c, "cellsvec",
+                                               "Concentration electrolyte",
+                                               "Time fraction", 'Concentration of electrolyte (M)')
+    eletrolyte_potential = ani_elytrolyte(m_select_dff_c, "cellsvec", "Potential electrolyte",
+                                          "Time fraction", 'Potential of electrolyte (V)')
+    curr_dens = ani_elytrolyte(m_select_dff_cd, "facesvec",
+                               "Curreny density electrolyte",
+                               "Time fraction", u"Current density of electrolyte (A/m\u00b2)")
+    div_curr_dens = ani_elytrolyte(m_select_dff_c, "cellsvec",
+                                   "Divergence electrolyte curr dens",
+                                   "Time fraction",
+                                   u"Divergence electrolyte current density (A/m\u00b3)")
+    bulkp = ani_bulkp(m_select_dff_bulkp)
+    return electrolyte_concentration, eletrolyte_potential, curr_dens, div_curr_dens, bulkp
+
+
+@app.callback(
+    Output('Surface-concentration-cathode', 'figure'),
+    Output('Surface-concentration-anode', 'figure'),
+    Output('cbarline_c', 'figure'),
+    Output('cbarline_a', 'figure'),
+    Output('cbar_c', 'figure'),
+    Output('cbar_a', 'figure'),
+    Input('select_single_model', 'value')
+    )
+def update_graphs_single_models(select_single_model):
+    m_select = dff[dff['Model'] == select_single_model]
+    # plots
+    subplt_solid_surf_con_c = subplt_solid_surf_con("Cathode", m_select)
+    subplt_solid_surf_con_a = subplt_solid_surf_con("Anode", m_select)
+    cbarline_c, cbarline_a = subplots_cbarlinec(m_select)
+    cbar_c, cbar_a = ani_cbar(select_single_model)
+    return (subplt_solid_surf_con_c, subplt_solid_surf_con_a,
+            cbarline_c, cbarline_a, cbar_c, cbar_a
+            )
+
+
+@app.callback(
+    Output('csld_c', 'figure'),
+    Output('csld_a', 'figure'),
+    Input('select_single_model', 'value'),
+    Input('timefraction_slider', 'value')
+    )
+def update_csld(select_single_model, timefraction_slider):
+    m_select_csld = dff_csld_sub[dff_csld_sub['Model'] == select_single_model]
+    csld_c, csld_a = subplots_t_csld(m_select_csld, timefraction_slider)
+    return (csld_c, csld_a)
+
+
+# Plot functions
+def plot_multimodel(df, yaxis, ytitle=None, xaxis='Time (s)'):
+    plot = px.line(df, x=xaxis, y=yaxis, color="Model")
+    if xaxis != 'Time (s)':
+        plot.update_xaxes(title=xaxis)
+    if ytitle:
+        plot.update_yaxes(title=ytitle)
+    plot.update_layout(legend=dict(
+        yanchor="bottom",
+        y=1.02,
+        xanchor="left",
+        x=0.01
+    ))
+    return plot
+
+
+def ani_elytrolyte(df, xname, yname, ani, ytitle):
+    max_y = max(df[yname])
+    min_y = min(df[yname])
+    fig = px.line(df,
+                  x=xname,
+                  y=yname,
+                  color="Model",
+                  animation_frame=ani,
+                  animation_group=xname)
+    fig.update_yaxes(title=ytitle,
+                     range=[0.9*min_y, 1.1*max_y])
+    fig.update_xaxes(title=u'Battery Position (\u00B5m)')
+    fig.update_layout(legend=dict(
+        yanchor="bottom",
+        y=1.02,
+        xanchor="left",
+        x=0.01
+    ))
+    return fig
+
+
+def subplt_solid_surf_con(trodes, df):
+    trode = trodes[0].lower()
     try:
         str_base = (pfx
-                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='a')
+                    + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
-        r = int(max(dff["Nparta"][dff['Model'] == select_model]))
-        c = int(max(dff["Nvola"][dff['Model'] == select_model]))
+        r = int(max(df["Npart"+trode]))
+        c = int(max(df["Nvol"+trode]))
         fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                            x_title='Time [s]', y_title='Solid surface concentration',
+                            x_title='Time (s)', y_title='Solid surface concentration',
                             row_titles=['Particle ' + str(n) for n in range(1, r+1)],
                             column_titles=['Volume ' + str(n) for n in range(1, c+1)])
         for rr in range(0, r):
             for cc in range(0, c):
                 sol_str = str_base.format(pInd=rr, vInd=cc)
-                datax = dff['Time (s)'][dff['Model'] == select_model]
-                datay = dff[sol_str][dff['Model'] == select_model]
+                datax = df['Time (s)']
+                datay = df[sol_str]
                 fig.add_trace(
                     trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                     row=rr+1, col=cc+1)
         fig.update_yaxes(range=[0,1.01])
-        fig.update_layout(height=((r+1)*150), showlegend=False, title='Anode')
+        fig.update_layout(height=((r+1)*150), showlegend=False, title=trodes)
     except ValueError:
-        fig = px.line(title='Selected model has no anode')
+        fig = px.line(title='Selected model has no '+trodes.lower())
+        fig.update_xaxes(visible=False, showgrid=False)
+        fig.update_yaxes(visible=False, showgrid=False)
     return fig
 
 
-@app.callback(
-    Output('Surface-concentration-cathode', 'figure'),
-    Input('select_surf_model', 'value')
-    )
-def update_graph_surfc(select_model):
-    str_base = (pfx
-                + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode='c')
-                + sStr + "c")
-    r = int(max(dff["Npartc"][dff['Model'] == select_model]))
-    c = int(max(dff["Nvolc"][dff['Model'] == select_model]))
-    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                        x_title='Time (s)', y_title='Solid surface concentration',
-                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-    for rr in range(0, r):
-        for cc in range(0, c):
-            sol_str = str_base.format(pInd=rr, vInd=cc)
-            datax = dff['Time (s)'][dff['Model'] == select_model]
-            datay = dff[sol_str][dff['Model'] == select_model]
-            fig.add_trace(
-                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
-                row=rr+1, col=cc+1)
-    fig.update_yaxes(range=[0,1.01])
-    fig.update_layout(height=((r+1)*150), showlegend=False, title='Cathode')
-    return fig
-
-
-@app.callback(
-    Output('Cathode-filling-fraction', 'figure'),
-    Input('model-selection', 'value')
-    )
-def update_graph2(model_selection):
-    fig = px.line(x=dff['Time (s)'][np.in1d(dff['Model'], model_selection)],
-                  y=dff['Cathode Filling Fraction'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_yaxes(range=[0,1], title='Cathode Filling Fraction')
-    fig.update_xaxes(title='Time [s]')
-
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-
-    return fig
-
-
-@app.callback(
-    Output('Anode-filling-fraction', 'figure'),
-    Input('model-selection', 'value')
-    )
-def update_graph3(model_selection):
-
-    fig = px.line(x=dff['Time (s)'][np.in1d(dff['Model'], model_selection)],
-                  y=dff['Anode Filling Fraction'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_yaxes(range=[0,1], title='Anode Filling Fraction')
-    fig.update_xaxes(title='Time [s]')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    return fig
-
-
-@app.callback(
-    Output('elytecons', 'figure'),
-    Input('model-selection', 'value')
-    )
-def update_graph32(model_selection):
-    fig = px.line(x=dff['Time (s)'][np.in1d(dff['Model'], model_selection)],
-                  y=dff['cavg'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_yaxes(title='Avg. Concentration of electrolyte [nondim]')
-    fig.update_xaxes(title='Time [s]')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    return fig
-
-
-@app.callback(
-    Output('current', 'figure'),
-    Input('model-selection', 'value')
-    )
-def update_graph4(model_selection):
-    fig = px.line(x=dff['Time (s)'][np.in1d(dff['Model'], model_selection)],
-                  y=dff['Current'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_yaxes(title='Current [C-rate]')
-    fig.update_xaxes(title='Time [s]')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    return fig
-
-
-@app.callback(
-    Output('power', 'figure'),
-    Input('model-selection', 'value')
-    )
-def update_graph5(model_selection):
-    fig = px.line(x=dff['Time (s)'][np.in1d(dff['Model'], model_selection)],
-                  y=dff['Power'][np.in1d(dff['Model'], model_selection)],
-                  color=dff["Model"][np.in1d(dff['Model'], model_selection)])
-    fig.update_yaxes(title=u'Power [W/m\u00b2]')
-    fig.update_xaxes(title='Time [s]')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    return fig
-
-
-@app.callback(
-    Output('electrolyte-concentration-ani', 'figure'),
-    Input('model-selection', 'value'))
-def display_animated_graph(model_selection):
-    m_select = dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)]
-    max_y = max(m_select["Concentration electrolyte"])
-    min_y = min(m_select["Concentration electrolyte"])
-    fig = px.line(dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)],
-                  x="cellsvec",
-                  y="Concentration electrolyte",
-                  color="Model",
-                  animation_frame="fraction")
-    fig.update_yaxes(title='Concentration of electrolyte [M]',
-                     range=[0.9*min_y, 1.1*max_y])
-    fig.update_xaxes(title=' Battery Position [microm] ')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_layout(transition_duration=500)
-
-    return fig
-
-
-@app.callback(
-    Output('electrolyte-potential-ani', 'figure'),
-    Input('model-selection', 'value'))
-def display_animated_graph_pot(model_selection):
-    m_select = dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)]
-    max_y = max(m_select["Potential electrolyte"])
-    min_y = min(m_select["Potential electrolyte"])
-    fig = px.line(dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)],
-                  x="cellsvec",
-                  y="Potential electrolyte",
-                  color="Model",
-                  animation_frame="fraction")
-    fig.update_yaxes(title='Potential of electrolyte [V]',
-                     range=[1.1*min_y, 0.9*max_y])
-    fig.update_xaxes(title=' Battery Position [microm] ')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_layout(transition_duration=500)
-    return fig
-
-
-@app.callback(
-    Output('electrolyte-cd-ani', 'figure'),
-    Input('model-selection', 'value'))
-def display_animated_graph_cd(model_selection):
-    m_select = dff_cd_sub[np.in1d(dff_cd_sub['Model'], model_selection)]
-    max_y = max(m_select["Curreny density electrolyte"])
-    min_y = min(m_select["Curreny density electrolyte"])
-    fig = px.line(dff_cd_sub[np.in1d(dff_cd_sub['Model'], model_selection)],
-                  x="facesvec",
-                  y="Curreny density electrolyte",
-                  color="Model",
-                  animation_frame="fraction")
-    fig.update_yaxes(title='Current density of electrolyte [A/m^2]',
-                     range=[0.9*min_y, 1.1*max_y])
-    fig.update_xaxes(title=' Battery Position [microm] ')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_layout(transition_duration=0)
-    return fig
-
-
-@app.callback(
-    Output('electrolyte-decd-ani', 'figure'),
-    Input('model-selection', 'value'))
-def display_animated_graph_elytedivi(model_selection):
-    m_select = dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)]
-    max_y = max(m_select["Divergence electrolyte curr dens"])
-    min_y = min(m_select["Divergence electrolyte curr dens"])
-    fig = px.line(dff_c_sub[np.in1d(dff_c_sub['Model'], model_selection)],
-                  x="cellsvec",
-                  y="Divergence electrolyte curr dens",
-                  color="Model",
-                  animation_frame="fraction")
-    fig.update_yaxes(title='Divergence of electrolyte current density [A/m^3]',
-                     range=[0.9*min_y, 1.1*max_y])
-    fig.update_xaxes(title=' Battery Position [microm] ')
-    fig.update_layout(margin={'l': 40, 'b': 80, 't': 10, 'r': 0}, hovermode='closest')
-    fig.update_layout(transition_duration=500)
-    return fig
-
-
-@app.callback(
-    Output('csld_c', 'figure'),
-    Input('select_csld_model', 'value'),
-    Input('timefraction_slider', 'value'))
-def display_animated_subplot_c(model_selection, tf):
-    trode = "c"
-    partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
-    r = int(max(dff["Npartc"][dff['Model'] == model_selection]))
-    c = int(max(dff["Nvolc"][dff['Model'] == model_selection]))
-    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                        x_title='Position (microm)',
-                        y_title='Solid Concentrations of Particles in Electrode',
-                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-    type2c = False
-    df_select = dff_csld_sub[dff_csld_sub['Model'] == model_selection]
-    df_select = df_select[df_select['time fraction'] == int(tf)]
-    if dff["Config trode type"][dff['Model']
-                                == model_selection].iloc[0] in constants.one_var_types:
-        type2c = False
-    elif dff["Config trode type"][dff['Model']
-                                  == model_selection].iloc[0] in constants.two_var_types:
-        type2c = True
-    for rr in range(0, r):
-        for cc in range(0, c):
-            lens_str = "lens_{vInd}_{pInd}".format(vInd=cc, pInd=rr)
-            if type2c is True:
-                c1str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c1"
-                c2str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c2"
-                c3str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "cav"
-                c1str = c1str_base
-                c2str = c2str_base
-                c3str = c3str_base
-                datax = df_select[lens_str]
-                datay1 = df_select[c1str]
-                datay2 = df_select[c2str]
-                datay3 = df_select[c3str]
-                fig.add_trace(
-                    trace=go.Scatter(x=datax, y=datay1, line_color='red'),
-                    row=rr+1, col=cc+1)
-                fig.add_trace(
-                    trace=go.Scatter(x=datax, y=datay2, line_color='blue'),
-                    row=rr+1, col=cc+1)
-                fig.add_trace(
-                    trace=go.Scatter(x=datax, y=datay3, line_color='grey'),
-                    row=rr+1, col=cc+1)
-            else:
-                cstr_base = pfx + partStr.format(trode=trode, vInd=cc, pInd=rr) + "c"
-                cstr = cstr_base
-                datax = df_select[lens_str]
-                datay = df_select[cstr]
-                fig.add_trace(
-                    trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
-                    row=rr+1, col=cc+1)
-    fig.update_yaxes(range=[0,1.01])
-    fig.update_layout(height=((r+1)*150), showlegend=False,
-                      title='Cathode, time = {time} s'.format(
-                      time=round(df_select["time (s)"].iloc[0])))
-    return fig
-
-
-@app.callback(
-    Output('csld_a', 'figure'),
-    Input('select_csld_model', 'value'),
-    Input('timefraction_slider', 'value'))
-def display_animated_subplot_a(model_selection, tf):
-    try:
-        trode = "a"
-        partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
-        r = int(max(dff["Npartc"][dff['Model'] == model_selection]))
-        c = int(max(dff["Nvolc"][dff['Model'] == model_selection]))
-        fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                            x_title='Position (microm)',
-                            y_title='Solid Concentrations of Particles in Electrode',
-                            row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                            column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-        type2c = False
-        df_select = dff_csld_sub[dff_csld_sub['Model'] == model_selection]
-        df_select = df_select[df_select['time fraction'] == int(tf)]
-        if dff["Config trode type"][dff['Model']
-                                    == model_selection].iloc[0] in constants.one_var_types:
+def subplots_t_csld(df, tf):
+    for trodes in ["Cathode", "Anode"]:
+        try:
+            trode = trodes[0].lower()
+            partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
+            r = int(max(df["Npart"+trode]))
+            c = int(max(df["Nvol"+trode]))
+            fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                                x_title=u'Position (\u00B5m)',
+                                y_title='Solid Concentrations of Particles in Electrode',
+                                row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                                column_titles=['Volume ' + str(n) for n in range(1, c+1)])
             type2c = False
-        elif dff["Config trode type"][dff['Model']
-                                      == model_selection].iloc[0] in constants.two_var_types:
-            type2c = True
-        for rr in range(0, r):
-            for cc in range(0, c):
-                lens_str = "lens_{vInd}_{pInd}".format(vInd=cc, pInd=rr)
-                if type2c is True:
-                    c1str = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c1"
-                    if np.isnan(max(df_select[c1str])):
-                        raise ValueError
-                    c2str = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c2"
-                    c3str = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "cav"
-                    datax = df_select[lens_str]
-                    datay1 = df_select[c1str]
-                    datay2 = df_select[c2str]
-                    datay3 = df_select[c3str]
-                    fig.add_trace(
-                        trace=go.Scatter(x=datax, y=datay1, line_color='red'),
-                        row=rr+1, col=cc+1)
-                    fig.add_trace(
-                        trace=go.Scatter(x=datax, y=datay2, line_color='blue'),
-                        row=rr+1, col=cc+1)
-                    fig.add_trace(
-                        trace=go.Scatter(x=datax, y=datay3, line_color='grey'),
-                        row=rr+1, col=cc+1)
-                else:
-                    cstr = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c"
-                    if np.isnan(max(df_select[cstr])):
-                        raise ValueError
-                    datax = df_select[lens_str]
-                    datay = df_select[cstr]
+            df_select = df[df['Time fraction'] == int(tf)]
+            if df_select["Config trode type"].iloc[0] in constants.one_var_types:
+                type2c = False
+            elif df_select["Config trode type"].iloc[0] in constants.two_var_types:
+                type2c = True
+            for rr in range(0, r):
+                for cc in range(0, c):
+                    lens_str = "lens_{vInd}_{pInd}".format(vInd=cc, pInd=rr)
+                    if type2c is True:
+                        c1str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c1"
+                        c2str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "c2"
+                        c3str_base = pfx + partStr.format(trode=trode, pInd=rr, vInd=cc) + "cav"
+                        datax = df_select[lens_str]
+                        datay1 = df_select[c1str_base]
+                        datay2 = df_select[c2str_base]
+                        datay3 = df_select[c3str_base]
+                        fig.add_trace(
+                            trace=go.Scatter(x=datax, y=datay1, line_color='red'),
+                            row=rr+1, col=cc+1)
+                        fig.add_trace(
+                            trace=go.Scatter(x=datax, y=datay2, line_color='blue'),
+                            row=rr+1, col=cc+1)
+                        fig.add_trace(
+                            trace=go.Scatter(x=datax, y=datay3, line_color='grey'),
+                            row=rr+1, col=cc+1)
+                    else:
+                        cstr_base = pfx + partStr.format(trode=trode, vInd=cc, pInd=rr) + "c"
+                        cstr = cstr_base
+                        datax = df_select[lens_str]
+                        datay = df_select[cstr]
+                        fig.add_trace(
+                            trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
+                            row=rr+1, col=cc+1)
+            fig.update_yaxes(range=[0,1.01])
+            fig.update_layout(height=((r+1)*150), showlegend=False,
+                              title=trodes+', time = {time} s'.format(
+                              time=round(df_select["time (s)"].iloc[0])))
+        except ValueError:
+            fig = px.line(title='Selected model has no '+trodes.lower())
+            fig.update_xaxes(visible=False, showgrid=False)
+            fig.update_yaxes(visible=False, showgrid=False)
+        if trode == "c":
+            fig1 = fig
+    return fig1, fig
+
+
+def subplots_cbarlinec(df):
+    for trodes in ["Cathode", "Anode"]:
+        trode = trodes[0].lower()
+        try:
+            partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
+            r = int(max(df["Npart"+trode]))
+            c = int(max(df["Nvol"+trode]))
+            fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
+                                x_title='Time (s)', y_title='Particle Average Filling Fraction',
+                                row_titles=['Particle ' + str(n) for n in range(1, r+1)],
+                                column_titles=['Volume ' + str(n) for n in range(1, c+1)])
+            type2c = False
+            # this does not work if models with multiple plot types
+            if (df["Config trode type"].iloc[0] in constants.one_var_types):
+                str_cbar_base = pfx + partStr + "cbar"
+            elif (df["Config trode type"].iloc[0] in constants.two_var_types):
+                type2c = True
+                str1_cbar_base = pfx + partStr + "c1bar"
+                str2_cbar_base = pfx + partStr + "c2bar"
+            for rr in range(0, r):
+                for cc in range(0, c):
+                    datax = df['Time (s)']
+                    if type2c is True:
+                        sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
+                        sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
+                        datay = df[sol1_str]
+                        datay2 = df[sol2_str]
+                        fig.add_trace(
+                            trace=go.Scatter(x=datax, y=datay2, line_color='red'),
+                            row=rr+1, col=cc+1)
+                    else:
+                        sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
+                        datay = df[sol_str]
                     fig.add_trace(
                         trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                         row=rr+1, col=cc+1)
-        fig.update_yaxes(range=[0,1.01])
-        fig.update_layout(height=((r+1)*150), showlegend=False,
-                          title='Anode, time = {time} s'.format(
-                          time=round(df_select["time (s)"].iloc[0]))
-                          )
-    except ValueError:
-        fig = px.line(title='Selected model has no anode')
-    return fig
+            fig.update_yaxes(range=[0,1.01])
+            fig.update_layout(height=((r+1)*150), showlegend=False, title=trodes)
+        except ValueError:
+            fig = px.line(title='Selected model has no '+trodes.lower())
+            fig.update_xaxes(visible=False, showgrid=False)
+            fig.update_yaxes(visible=False, showgrid=False)
+        if trode == "c":
+            fig1 = fig
+    return fig1, fig
 
 
-@app.callback(
-    Output('cbarline_c', 'figure'),
-    Input('select_cbarline_model', 'value')
-    )
-def update_graph_cbarlinec(select_model):
-    trode = "c"
-    partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
-    r = int(max(dff["Npartc"][dff['Model'] == select_model]))
-    c = int(max(dff["Nvolc"][dff['Model'] == select_model]))
-    fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                        x_title='Time (s)', y_title='Particle Average Filling Fraction',
-                        row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                        column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-    type2c = False
-    # this does not work if models with multiple plot types
-    if dff["Config trode type"][dff['Model'] == select_model].iloc[0] in constants.one_var_types:
-        str_cbar_base = pfx + partStr + "cbar"
-    elif dff["Config trode type"][dff['Model'] == select_model].iloc[0] in constants.two_var_types:
-        type2c = True
-        str1_cbar_base = pfx + partStr + "c1bar"
-        str2_cbar_base = pfx + partStr + "c2bar"
-    for rr in range(0, r):
-        for cc in range(0, c):
-            datax = dff['Time (s)'][dff['Model'] == select_model]
-            if type2c is True:
-                sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
-                sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
-                datay = dff[sol1_str][dff['Model'] == select_model]
-                datay2 = dff[sol2_str][dff['Model'] == select_model]
-                fig.add_trace(
-                    trace=go.Scatter(x=datax, y=datay2, line_color='red'),
-                    row=rr+1, col=cc+1)
-            else:
-                sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
-                datay = dff[sol_str][dff['Model'] == select_model]
-            fig.add_trace(
-                trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
-                row=rr+1, col=cc+1)
-    fig.update_yaxes(range=[0,1.01])
-    fig.update_layout(height=((r+1)*150), showlegend=False, title='Cathode')
-    return fig
+def ani_cbar(ms_cbar):
+    for trodes in ["Cathode", "Anode"]:
+        trode = trodes[0].lower()
+        df_cbar_select = df_cbar[(df_cbar.Model == ms_cbar) & (df_cbar.Trode == trode)]
+        if df_cbar_select.empty:
+            cbar = px.line(title='Selected model has no '+trodes.lower())
+        else:
+            cbar = px.scatter(df_cbar_select, x='c', y='r', animation_frame='Time',
+                              animation_group='rc',
+                              color='Cbar',
+                              range_color=[0,1],
+                              color_continuous_scale='Turbo',
+                              size='Relative size'
+                              )
+            cbar.update_layout(title=trodes, transition_duration=100)
+        cbar.update_xaxes(visible=False, showgrid=False)
+        cbar.update_yaxes(visible=False, showgrid=False)
+        if trode == "c":
+            cbar_c = cbar
+    return cbar_c, cbar
 
 
-@app.callback(
-    Output('cbarline_a', 'figure'),
-    Input('select_cbarline_model', 'value')
-    )
-def update_graph_cbarlinea(select_model):
-    try:
-        trode = "a"
-        partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
-        r = int(max(dff["Nparta"][dff['Model'] == select_model]))
-        c = int(max(dff["Nvola"][dff['Model'] == select_model]))
-        fig2 = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
-                             x_title='Time (s)', y_title='Particle Average Filling Fraction',
-                             row_titles=['Particle ' + str(n) for n in range(1, r+1)],
-                             column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-        type2c = False
-        if dff["Config trode type"][dff['Model']
-                                    == select_model].iloc[0] in constants.one_var_types:
-            str_cbar_base = pfx + partStr + "cbar"
-        elif dff["Config trode type"][dff['Model']
-                                      == select_model].iloc[0] in constants.two_var_types:
-            type2c = True
-            str1_cbar_base = pfx + partStr + "c1bar"
-            str2_cbar_base = pfx + partStr + "c2bar"
-        for rr in range(0, r):
-            for cc in range(0, c):
-                datax = dff['Time (s)'][dff['Model'] == select_model]
-                if type2c is True:
-                    sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
-                    sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
-                    datay = dff[sol1_str][dff['Model'] == select_model]
-                    datay2 = dff[sol2_str][dff['Model'] == select_model]
-                    fig2.add_trace(
-                        trace=go.Scatter(x=datax, y=datay2, line_color='red'),
-                        row=rr+1, col=cc+1)
-                else:
-                    sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
-                    datay = dff[sol_str][dff['Model'] == select_model]
-                fig2.add_trace(
-                    trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
-                    row=rr+1, col=cc+1)
-        fig2.update_yaxes(range=[0,1.01])
-        fig2.update_layout(height=((r+1)*150), showlegend=False, title='Anode')
-    except ValueError:
-        fig2 = px.line(title='Selected model has no anode')
-    return fig2
+def ani_bulkp(df):
+    bulkp = px.line(df, x='Position in electrode', y='Potential (nondim)',
+                    animation_frame='Time fraction (%)', color='Model',
+                    line_dash='Trode', log_y=True)
+    bulkp.update_yaxes(range=[-4, 1.1*np.log10(max(df['Potential (nondim)']))])
+    bulkp.update_xaxes(title='Position in electrode (\u00B5m)')
+    return bulkp
 
 
 if __name__ == '__main__':
