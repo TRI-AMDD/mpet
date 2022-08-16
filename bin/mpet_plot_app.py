@@ -430,7 +430,7 @@ app.layout = html.Div([
                    'margin-top': '10px', 'margin-bottom': '10px'}),
         ),),
     dbc.Row(dbc.Col([
-        html.Div("Select models to display in all plots", 
+        html.Div("Select models to display in all plots",
             style={'color': colors['lithium'], 'margin-left': '20px'}),
         dcc.Checklist(
             options=dff['Model'].unique(),
