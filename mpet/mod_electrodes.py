@@ -243,11 +243,7 @@ class Mod2var(dae.daeModel):
             Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
                                           Dfunc_name,
                                           f"mpet.electrode.diffusion.{Dfunc_name}")
-            if self.get_trode_param("type") == "diffn2":
-                pass
-#                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
-#                    c1, c2, self.get_trode_param("D"), Flux1_bc, Flux2_bc, dr, T)
-            elif self.get_trode_param("type") == "CHR2":
+            if self.get_trode_param("type") == "CHR2":
                 noise1, noise2 = noises
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
                     c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
