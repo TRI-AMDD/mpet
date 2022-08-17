@@ -16,7 +16,6 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.interpolate as sintrp
 
-import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
@@ -95,13 +94,6 @@ class Mod2var(dae.daeModel):
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs1 = self.ISfuncs2 = None
-        if self.get_trode_param("logPad"):
-            self.ISfuncs1 = np.array([
-                extern_funcs.LogRatio("LR1", self, dae.unit(), self.c1(k))
-                for k in range(N)])
-            self.ISfuncs2 = np.array([
-                extern_funcs.LogRatio("LR2", self, dae.unit(), self.c2(k))
-                for k in range(N)])
         ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
         # Prepare noise
@@ -337,10 +329,6 @@ class Mod1var(dae.daeModel):
 
         # Prepare the Ideal Solution log ratio terms
         self.ISfuncs = None
-        if self.get_trode_param("logPad"):
-            self.ISfuncs = np.array([
-                extern_funcs.LogRatio("LR", self, dae.unit(), self.c(k))
-                for k in range(N)])
 
         # Prepare noise
         self.noise = None

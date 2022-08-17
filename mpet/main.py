@@ -169,12 +169,11 @@ def main(paramfile, keepArchive=True):
     fo.close()
 
     # External functions are not supported by the Compute Stack approach.
-    # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
+    # Activate the Evaluation Tree approach if noise, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    logPad = config['c', 'logPad']
     segments = config["profileType"] in ["CCsegments","CVsegments"]
-    if (logPad or (segments and config["tramp"] > 0)) \
+    if (segments and config["tramp"] > 0) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
 
