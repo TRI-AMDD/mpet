@@ -2,7 +2,7 @@ import numpy as np
 from mpet.props_am import step_up, step_down
 
 
-def LiC6_2step_ss(self, y, ybar, muR_ref, ISfuncs=None):
+def LiC6_2step_ss(self, y, ybar, muR_ref):
     """
     Fit function to the OCV predicted by the phase separating
     2-variable graphite model (LiC6 function in this class).
