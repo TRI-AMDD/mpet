@@ -25,7 +25,7 @@ def mean_harmonic(a):
 
 
 def weighted_harmonic_mean(a, wt):
-    return((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
+    return ((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
 
 
 def add_gp_to_vec(vec):

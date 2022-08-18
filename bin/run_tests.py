@@ -57,7 +57,7 @@ def main():
 
     run(args.output_dir,args.test_dir, args.tests)
 
-    return(args)
+    return (args)
 
 
 if __name__ == "__main__":

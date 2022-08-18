@@ -20,7 +20,7 @@ def Doyle96_EC_DMC_1_2():
         r4 = 1.3605e-3
         r5 = 1.1724e-4
         k0 = r1 + r2*c - r3*c**2 + r4*c**3 - r5*c**4  # S/cm
-        return(100*k0)
+        return (100*k0)
 
     Dref = D(constants.c_ref, 1)
 
