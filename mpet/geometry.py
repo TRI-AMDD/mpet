@@ -87,7 +87,7 @@ def get_elyte_disc(Nvol, L, poros, BruggExp, k_h):
     dxtmp = np.hstack((out["dxvec"][0], out["dxvec"], out["dxvec"][-1]))
     out["dx"] = dxtmp
     out["dxd1"] = utils.mean_linear(dxtmp)
-    out["dxd2"] = utils.mean_linear(out["dxd1"])  # for thermal finite differences
+    out["dxd2"] = dxtmp[1:-1]  # for thermal finite differences
 
     # The porosity vector
     out["porosvec"] = utils.get_asc_vec(poros, Nvol)
