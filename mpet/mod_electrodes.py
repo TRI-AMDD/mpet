@@ -242,10 +242,6 @@ class Mod2var(dae.daeModel):
                 area_vec = 2*np.pi*edges  # per unit height
             RHS1 = -np.diff(Flux1_vec * area_vec)
             RHS2 = -np.diff(Flux2_vec * area_vec)
-#            kinterlayer = 1e-3
-#            interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
-#            RxnTerm1 = -interLayerRxn
-#            RxnTerm2 = interLayerRxn
             RxnTerm1 = 0
             RxnTerm2 = 0
             RHS1 += RxnTerm1

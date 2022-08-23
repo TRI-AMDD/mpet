@@ -308,29 +308,25 @@ class ModCell(dae.daeModel):
             if 'a' not in config["trodes"]:
                 # Concentration BC from mass flux
                 eqC.Residual = Nm_edges[0]
+
                 # Phi BC from BV at the foil
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
                 cWall = .5*(ctmp[0] + ctmp[1])
                 ecd = config["k0_foil"]*cWall**0.5
-                # -current = ecd*(exp(-eta/2) - exp(eta/2))
                 # note negative current because positive current is
                 # oxidation here
-                # -current = ecd*(-2*sinh(eta/2))
-                # eta = 2*arcsinh(-current/(-2*ecd))
                 BVfunc = -self.current() / ecd
                 eta_eff = 2*np.arcsinh(-BVfunc/2.)
                 eta = eta_eff + self.current()*config["Rfilm_foil"]
-#                # Infinitely fast anode kinetics
-#                eta = 0.
                 # eta = mu_R - mu_O = -mu_O (evaluated at interface)
                 # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
                 # phiWall = -eta + phi_cell [- T*ln(c)]
                 phiWall = -eta + self.phi_cell()
                 if config["elyteModelType"] == "dilute":
                     phiWall -= config["T"]*np.log(cWall)
-                # phiWall = 0.5 * (phitmp[0] + phitmp[1])
                 eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
+
             # We have a porous anode -- no flux of charge or anions through current collector
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
@@ -494,13 +490,10 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         Dp = eps_o_tau_edges * config["Dp"]
         Dm = eps_o_tau_edges * config["Dm"]
-#        Np_edges_int = nup*(-Dp*np.diff(c_lyte)/dxd1
-#                            - Dp*zp*c_edges_int*np.diff(phi_lyte)/dxd1)
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
                             - Dm/T*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
                        - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
-#        i_edges_int = zp*Np_edges_int + zm*Nm_edges_int
     elif config["elyteModelType"] == "SM":
         SMset = config["SMset"]
         elyte_function = utils.import_function(config["SMset_filename"], SMset,
