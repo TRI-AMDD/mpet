@@ -15,4 +15,4 @@ Documentation is available here ([https://mpet.readthedocs.io](https://mpet.read
 
 ## Troubleshooting
 
-Please use the Issues section of the Bitbucket repository (https://bitbucket.org/bazantgroup/mpet/issues) to file issues and/or bug reports with the software.
+Please use the Issues section of of this repository to ask questions or file bug reports with the software.
