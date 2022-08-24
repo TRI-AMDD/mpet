@@ -100,7 +100,6 @@ class ModCell(dae.daeModel):
             self.SVsim = True
         else:
             self.SVsim = False
-        if not self.SVsim:
             # Ghost points (GP) to aid in boundary condition (BC) implemenation
             self.c_lyteGP_L = dae.daeVariable("c_lyteGP_L", conc_t, self, "c_lyte left BC GP")
             self.phi_lyteGP_L = dae.daeVariable(
