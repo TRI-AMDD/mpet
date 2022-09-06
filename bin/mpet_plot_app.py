@@ -172,9 +172,12 @@ for indir in dataFiles:
     pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
     disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
     i_edges = np.zeros((numtimes, len(facesvec)))
-    for tInd in range(numtimes):
-        i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
-            cmat[tInd, :], pmat[tInd, :], disc, config)[1]
+    try:
+        for tInd in range(numtimes):
+            i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
+                cmat[tInd, :], pmat[tInd, :], disc, config)[1]
+    except UnknownParameterError: 
+        print('Missing data to produce elytei/elytedivi plots')
     # elytei
     datax_cd = facesvec
     datay_cd = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
@@ -227,13 +230,15 @@ for indir in dataFiles:
             for vInd in range(Nvol[trode]):
                 sol_str = str_base.format(pInd=pInd, vInd=vInd)
                 sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
-                df[sol_str] = sol_str_data
+                df = pd.concat((df, pd.DataFrame({sol_str: sol_str_data})),
+                               axis=1)
                 # for cbar data
                 if config[trode, "type"] in constants.one_var_types:
                     str_cbar_base = pfx + partStr + "cbar"
                     sol_cbar_str = str_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol_cbar_str_data = utils.get_dict_key(data, sol_cbar_str)
-                    df[sol_cbar_str] = sol_cbar_str_data
+                    df = pd.concat((df, pd.DataFrame({sol_cbar_str: sol_cbar_str_data})),
+                                   axis=1)
                     # for cbar movie
                     df_c = pd.DataFrame({
                         'Model': model,
@@ -336,8 +341,12 @@ for indir in dataFiles:
                                                 cstr: datay.flatten()
                                                 })
                     else:
-                        df_csld[lens_str] = np.repeat([datax], len(datay), axis=0).flatten()
-                        df_csld[cstr] = datay.flatten()
+                        if lens_str not in df_csld.columns.to_numpy():
+                            lens_str_data = np.repeat([datax], len(datay), axis=0).flatten()
+                            df_csld = pd.concat((df_csld, pd.DataFrame({lens_str: lens_str_data})),
+                                                axis=1)
+                        df_csld = pd.concat((df_csld, pd.DataFrame({cstr: datay.flatten()})),
+                                            axis=1)
                 elif config[trode, "type"] in constants.two_var_types:
                     c1str_base = pfx + partStr + "c1"
                     c2str_base = pfx + partStr + "c2"
@@ -375,7 +384,8 @@ for indir in dataFiles:
                                                 c3str: datay3.flatten()
                                                 })
                     else:
-                        df_csld[lens_str] = np.repeat([datax], len(datay1), axis=0).flatten(),
+                        if lens_str not in df_csld.columns.to_numpy():
+                            df_csld[lens_str] = np.repeat([datax], len(datay1), axis=0).flatten(),
                         df_csld[c1str] = datay1.flatten()
                         df_csld[c2str] = datay2.flatten()
                         df_csld[c3str] = datay3.flatten()
@@ -583,7 +593,8 @@ app.layout = html.Div([
         dcc.Loading(children=[dcc.Graph(id='Surface-concentration-cathode'),
                               dcc.Graph(id='Surface-concentration-anode'),],
                     color=colors['lithium'], type="dot", fullscreen=False,),
-    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px',
+              "overflow": "scroll"}))),
     # csld
     dbc.Row(dbc.Col(dbc.Card([
         html.H4(children='All solid concentrations',
@@ -602,7 +613,8 @@ app.layout = html.Div([
             }, tooltip={"placement": "top", "always_visible": True}),
         dcc.Graph(id='csld_c'),
         dcc.Graph(id='csld_a'),
-    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px',
+              "overflow": "scroll"}))),
     # cbarline
     dbc.Row(dbc.Col(dbc.Card([
         html.H4(children='Average concentration in each particle of electrode',
@@ -610,7 +622,8 @@ app.layout = html.Div([
         dcc.Loading(children=[dcc.Graph(id='cbarline_c'),
                               dcc.Graph(id='cbarline_a'),],
                     color=colors['lithium'], type="dot", fullscreen=False,),
-    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px'}))),
+    ], style={'margin-left': '10px', 'margin-right': '10px', 'margin-bottom': '20px',
+              "overflow": "scroll"}))),
 ])
 
 
@@ -770,7 +783,7 @@ def subplt_solid_surf_con(trodes, df):
                     trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                     row=rr+1, col=cc+1)
         fig.update_yaxes(range=[0,1.01])
-        fig.update_layout(height=((r+1)*150), showlegend=False, title=trodes)
+        fig.update_layout(height=((r+1)*150), width=((c+1)*150), showlegend=False, title=trodes)
     except ValueError:
         fig = px.line(title='Selected model has no '+trodes.lower())
         fig.update_xaxes(visible=False, showgrid=False)
@@ -825,7 +838,7 @@ def subplots_t_csld(df, tf):
                             trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                             row=rr+1, col=cc+1)
             fig.update_yaxes(range=[0,1.01])
-            fig.update_layout(height=((r+1)*150), showlegend=False,
+            fig.update_layout(height=((r+1)*150), width=((c+1)*150), showlegend=False,
                               title=trodes+', time = {time} s'.format(
                               time=round(df_select["time (s)"].iloc[0])))
         except ValueError:
@@ -874,7 +887,8 @@ def subplots_cbarlinec(df):
                         trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                         row=rr+1, col=cc+1)
             fig.update_yaxes(range=[0,1.01])
-            fig.update_layout(height=((r+1)*150), showlegend=False, title=trodes)
+            fig.update_layout(height=((r+1)*150), width=((c+1)*150), 
+                              showlegend=False, title=trodes)
         except ValueError:
             fig = px.line(title='Selected model has no '+trodes.lower())
             fig.update_xaxes(visible=False, showgrid=False)
