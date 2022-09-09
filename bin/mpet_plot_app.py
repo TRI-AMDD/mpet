@@ -167,24 +167,23 @@ for indir in dataFiles:
     datay_ce = datay_c * c_ref / 1000.
     # elytep
     datay_pe = datay_p*(k*Tref/e) - Vstd
-    cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
-    pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
-    cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
-    pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
-    disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
     i_edges = np.zeros((numtimes, len(facesvec)))
     datax_cd = facesvec
     datax_d = cellsvec
     # elytei & elytedivi
     try:
+        cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
+        pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
+        cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
+        pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
+        disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
         for tInd in range(numtimes):
             i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
                 cmat[tInd, :], pmat[tInd, :], disc, config)[1]
-        
         datay_cd = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
         datay_d = np.diff(i_edges, axis=1) / disc["dxvec"]
         datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
-    except UnknownParameterError:
+    except (UnknownParameterError, KeyError):
         datay_cd = i_edges
         datay_d = np.zeros((numtimes, len(cellsvec)))
         datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
@@ -202,7 +201,10 @@ for indir in dataFiles:
     if "a" in trodes:
         cvec_a = utils.get_dict_key(data, anode)
         cvec = np.hstack((cvec_a, cvec))
-    cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
+    try:
+        cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
+    except np.AxisError:
+        cavg = np.sum(porosvec*dxvec*cvec, axis=0)/np.sum(porosvec*dxvec)
     # Get all data in dataframes
     df = pd.DataFrame({
         "Model": model,
