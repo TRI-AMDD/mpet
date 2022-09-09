@@ -15,6 +15,7 @@ import mpet.geometry as geom
 from mpet import mod_cell
 from mpet import utils
 from mpet.config import Config, constants
+from mpet.exceptions import UnknownParameterError
 
 
 ###################################################################
@@ -172,19 +173,21 @@ for indir in dataFiles:
     pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
     disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
     i_edges = np.zeros((numtimes, len(facesvec)))
+    datax_cd = facesvec
+    datax_d = cellsvec
+    # elytei & elytedivi
     try:
         for tInd in range(numtimes):
             i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
                 cmat[tInd, :], pmat[tInd, :], disc, config)[1]
-    except UnknownParameterError: 
-        print('Missing data to produce elytei/elytedivi plots')
-    # elytei
-    datax_cd = facesvec
-    datay_cd = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
-    # elytedivi
-    datax_d = cellsvec
-    datay_d = np.diff(i_edges, axis=1) / disc["dxvec"]
-    datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
+        
+        datay_cd = i_edges * (F*constants.c_ref*config["D_ref"]/config["L_ref"])
+        datay_d = np.diff(i_edges, axis=1) / disc["dxvec"]
+        datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
+    except UnknownParameterError:
+        datay_cd = i_edges
+        datay_d = np.zeros((numtimes, len(cellsvec)))
+        datay_d *= (F*constants.c_ref*config["D_ref"]/config["L_ref"]**2)
     # fraction
     t_current = times
     tfrac = (t_current - tmin)/(tmax - tmin) * 100
@@ -744,12 +747,15 @@ def plot_multimodel(df, yaxis, ytitle=None, xaxis='Time (s)'):
 def ani_elytrolyte(df, xname, yname, ani, ytitle):
     max_y = max(df[yname])
     min_y = min(df[yname])
-    fig = px.line(df,
-                  x=xname,
-                  y=yname,
-                  color="Model",
-                  animation_frame=ani,
-                  animation_group=xname)
+    if not (max_y == 0 and min_y == 0):
+        fig = px.line(df,
+                      x=xname,
+                      y=yname,
+                      color="Model",
+                      animation_frame=ani,
+                      animation_group=xname)
+    else:
+        fig = px.line(title='Data not availale for selected model(s)')
     fig.update_yaxes(title=ytitle,
                      range=[0.9*min_y, 1.1*max_y])
     fig.update_xaxes(title=u'Battery Position (\u00B5m)')
