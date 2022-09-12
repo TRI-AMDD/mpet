@@ -666,7 +666,7 @@ class Config:
 
             if 0 < mean_c < 1:
                 # Contact penalty for BV
-                mean_c = mean_c  # to make distribution start at 1 if gamma is 1
+                mean_c = 1 - mean_c  # to make distribution start at 1 if gamma is 1
                 var_c = stddev_c**2
                 mu_c = np.log((mean_c**2) / np.sqrt(var_c + mean_c**2))
                 sigma_c = np.sqrt(np.log(var_c/(mean_c**2) + 1))
@@ -787,9 +787,10 @@ class Config:
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
-                    if self['mean_gamma_c'] != 1.0:
-                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
-                            / (constants.e * F_s_ref)*gamma_cont
+                    self[trode, 'indvPart']['gamma_con'][i, j] = gamma_cont
+                    # if self['mean_gamma_c'] != 1.0:
+                    #     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
+                    #         / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \

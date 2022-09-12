@@ -28,4 +28,4 @@ PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'specified_poros']
 #: parameters that are defined for each particle, and their type
 PARAMS_PARTICLE = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float, 'E_D': float,
-                   'E_A': float}
+                   'E_A': float, 'gamma_con': float}
