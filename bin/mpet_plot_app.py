@@ -223,7 +223,6 @@ for indir in dataFiles:
     })
     for trode in trodes:
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
-        str_base = (pfx + partStr + "c")
         lens = psd_len[trode]
         spacing = 1.0 / Nvol[trode]
         size_fracs = 0.4*np.ones((Nvol[trode], Npart[trode]))
@@ -233,16 +232,16 @@ for indir in dataFiles:
         sizes = (size_fracs*(1-size_frac_min) + size_frac_min) / Nvol[trode]
         for pInd in range(Npart[trode]):
             for vInd in range(Nvol[trode]):
-                sol_str = str_base.format(pInd=pInd, vInd=vInd)
-                sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
-                df = pd.concat((df, pd.DataFrame({sol_str: sol_str_data})),
-                               axis=1)
-                # for cbar data
+                # for c data and cbar data
                 if config[trode, "type"] in constants.one_var_types:
+                    str_base = (pfx + partStr + "c")
+                    sol_str = str_base.format(pInd=pInd, vInd=vInd)
+                    sol_str_data = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
                     str_cbar_base = pfx + partStr + "cbar"
                     sol_cbar_str = str_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol_cbar_str_data = utils.get_dict_key(data, sol_cbar_str)
-                    df = pd.concat((df, pd.DataFrame({sol_cbar_str: sol_cbar_str_data})),
+                    df = pd.concat((df, pd.DataFrame({sol_str: sol_str_data,
+                                                      sol_cbar_str: sol_cbar_str_data})),
                                    axis=1)
                     # for cbar movie
                     df_c = pd.DataFrame({
@@ -257,14 +256,23 @@ for indir in dataFiles:
                         })
                     df_cbar = pd.concat([df_cbar, df_c])
                 elif config[trode, "type"] in constants.two_var_types:
+                    str1_base = (pfx + partStr + "c1")
+                    str2_base = (pfx + partStr + "c2")
+                    sol1_str = str1_base.format(pInd=pInd, vInd=vInd)
+                    sol2_str = str2_base.format(pInd=pInd, vInd=vInd)
+                    sol1_str_data = utils.get_dict_key(data, sol1_str, squeeze=False)[:,-1]
+                    sol2_str_data = utils.get_dict_key(data, sol2_str, squeeze=False)[:,-1]
                     str1_cbar_base = pfx + partStr + "c1bar"
                     str2_cbar_base = pfx + partStr + "c2bar"
                     sol1_cbar_str = str1_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol2_cbar_str = str2_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol1_cbar_str_data = utils.get_dict_key(data, sol1_cbar_str)
                     sol2_cbar_str_data = utils.get_dict_key(data, sol2_cbar_str)
-                    df[sol1_cbar_str] = sol1_cbar_str_data
-                    df[sol2_cbar_str] = sol2_cbar_str_data
+                    ddf = pd.concat((df, pd.DataFrame({sol1_str: sol1_str_data,
+                                                      sol2_str: sol2_str_data,
+                                                      sol1_cbar_str: sol1_cbar_str_data, 
+                                                      sol2_cbar_str: sol2_cbar_str_data})),
+                                    axis=1)
     dff = pd.concat([dff, df], ignore_index=True)
     # build dataframe for plots electrolyte concentration or potential
     # and for csld subplot animation (time, pind, vind, y)
@@ -360,13 +368,13 @@ for indir in dataFiles:
                     c2str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     c3str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay1 = datay2 = datay3 = np.empty([len(timestd), maxlength]) + np.nan
-                    yy1 = utils.get_dict_key(data, c1str[pInd,vInd])
+                    yy1 = utils.get_dict_key(data, c1str)
                     datay1[0:len(timestd), 0:np.shape(yy1)[1]] = yy1
-                    yy2 = utils.get_dict_key(data, c2str[pInd,vInd])
+                    yy2 = utils.get_dict_key(data, c2str)
                     datay2[0:len(timestd), 0:np.shape(yy2)[1]] = yy2
                     datay3 = 0.5*(datay1 + datay2)
                     datax = np.empty(maxlength) + np.nan
-                    numy = len(datay1) if isinstance(yy1, np.ndarray) else 1
+                    numy = np.shape(yy1)[1] if isinstance(yy1, np.ndarray) else 1
                     datax[0:np.shape(yy1)[1]] = np.linspace(0, psd_len[trode][vInd,pInd] * Lfac,
                                                             numy)
                     if trode == trodes[0] and pInd == 0 and vInd == 0:
