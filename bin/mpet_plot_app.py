@@ -268,11 +268,11 @@ for indir in dataFiles:
                     sol2_cbar_str = str2_cbar_base.format(pInd=pInd, vInd=vInd)
                     sol1_cbar_str_data = utils.get_dict_key(data, sol1_cbar_str)
                     sol2_cbar_str_data = utils.get_dict_key(data, sol2_cbar_str)
-                    ddf = pd.concat((df, pd.DataFrame({sol1_str: sol1_str_data,
+                    df = pd.concat((df, pd.DataFrame({sol1_str: sol1_str_data,
                                                       sol2_str: sol2_str_data,
-                                                      sol1_cbar_str: sol1_cbar_str_data, 
+                                                      sol1_cbar_str: sol1_cbar_str_data,
                                                       sol2_cbar_str: sol2_cbar_str_data})),
-                                    axis=1)
+                                   axis=1)
     dff = pd.concat([dff, df], ignore_index=True)
     # build dataframe for plots electrolyte concentration or potential
     # and for csld subplot animation (time, pind, vind, y)
@@ -366,7 +366,7 @@ for indir in dataFiles:
                     c3str_base = pfx + partStr + "cav"
                     c1str = c1str_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     c2str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
-                    c3str = c2str_base.format(trode=trode, pInd=pInd, vInd=vInd)
+                    c3str = c3str_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay1 = datay2 = datay3 = np.empty([len(timestd), maxlength]) + np.nan
                     yy1 = utils.get_dict_key(data, c1str)
                     datay1[0:len(timestd), 0:np.shape(yy1)[1]] = yy1
