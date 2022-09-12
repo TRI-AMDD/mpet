@@ -947,7 +947,7 @@ def subplots_cbarlinec(df):
                             trace=go.Scatter(x=datax, y=datay, line_color='darkslategray'),
                             row=rr+1, col=cc+1)
             fig.update_yaxes(range=[0,1.01])
-            fig.update_layout(height=((r+1)*150), width=((c+1)*150), 
+            fig.update_layout(height=((r+1)*150), width=((c+1)*150),
                               showlegend=False, title=trodes)
         except ValueError:
             fig = px.line(title='Selected model has no '+trodes.lower())
@@ -992,7 +992,6 @@ def ani_cbar(ms_cbar):
                                    size='Relative size'
                                    )
                 cbar2.update_layout(title=trodes, transition_duration=100)
-                
             cbar.update_layout(title=trodes, transition_duration=100)
         cbar.update_xaxes(visible=False, showgrid=False)
         cbar.update_yaxes(visible=False, showgrid=False)
