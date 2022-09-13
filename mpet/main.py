@@ -29,7 +29,6 @@ def run_simulation(config, outdir):
 
     # Use SuperLU direct sparse LA solver
     lasolver = pySuperLU.daeCreateSuperLUSolver()
-#    lasolver = pyTrilinos.daeCreateTrilinosSolver("Amesos_Umfpack", "")
     daesolver.SetLASolver(lasolver)
 
     # Enable reporting of all variables
@@ -58,9 +57,6 @@ def run_simulation(config, outdir):
     simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
     simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
-    # Example logspacing for output times:
-    # simulation.ReportingTimes = list(
-    #     np.logspace(-4, np.log10(simulation.TimeHorizon), ndD_s['tsteps']))
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
@@ -169,12 +165,11 @@ def main(paramfile, keepArchive=True):
     fo.close()
 
     # External functions are not supported by the Compute Stack approach.
-    # Activate the Evaluation Tree approach if noise, logPad, CCsegments,
+    # Activate the Evaluation Tree approach if noise, CCsegments,
     # or CVsegments are used
     cfg = dae.daeGetConfig()
-    logPad = config['c', 'logPad']
     segments = config["profileType"] in ["CCsegments","CVsegments"]
-    if (logPad or (segments and config["tramp"] > 0)) \
+    if (segments and config["tramp"] > 0) \
             and 'daetools.core.equations.evaluationMode' in cfg:
         cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
 

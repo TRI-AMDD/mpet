@@ -25,12 +25,7 @@ def mean_harmonic(a):
 
 
 def weighted_harmonic_mean(a, wt):
-    return((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
-
-
-def get_cell_Ntot(Nvol):
-    """Nvol is a dictionary containing the number of volumes in each simulated battery section."""
-    return np.sum(list(Nvol.values()))
+    return ((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
 
 
 def add_gp_to_vec(vec):

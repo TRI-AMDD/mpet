@@ -16,7 +16,6 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.interpolate as sintrp
 
-import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
@@ -62,9 +61,10 @@ class Mod2var(dae.daeModel):
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
 
         # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   config[trode, "rxnType"],
-                                                   mpet_module="mpet.electrode.reactions")
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -91,17 +91,6 @@ class Mod2var(dae.daeModel):
         N = self.get_trode_param("N")  # number of grid points in particle
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
-
-        # Prepare the Ideal Solution log ratio terms
-        self.ISfuncs1 = self.ISfuncs2 = None
-        if self.get_trode_param("logPad"):
-            self.ISfuncs1 = np.array([
-                extern_funcs.LogRatio("LR1", self, dae.unit(), self.c1(k))
-                for k in range(N)])
-            self.ISfuncs2 = np.array([
-                extern_funcs.LogRatio("LR2", self, dae.unit(), self.c2(k))
-                for k in range(N)])
-        ISfuncs = (self.ISfuncs1, self.ISfuncs2)
 
         # Prepare noise
         self.noise1 = self.noise2 = None
@@ -145,21 +134,21 @@ class Mod2var(dae.daeModel):
         c2[:] = [self.c2(k) for k in range(N)]
         if self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Equations for 1D particles of 1 field varible
-            self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, ISfuncs, noises)
+            self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, noises)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
+    def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, noises):
         T = self.config["T"]
         c1_surf = c1
         c2_surf = c2
         (mu1R_surf, mu2R_surf), (act1R_surf, act2R_surf) = calc_muR(
             (c1_surf, c2_surf), (self.c1bar(), self.c2bar()), self.config,
-            self.trode, self.ind, ISfuncs)
+            self.trode, self.ind)
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
         eta1_eff = eta1 + self.Rxn1()*self.get_trode_param("Rfilm")
@@ -186,7 +175,7 @@ class Mod2var(dae.daeModel):
         eq1.Residual = self.c1.dt(0) - self.get_trode_param("delta_L")*Rxn1[0]
         eq2.Residual = self.c2.dt(0) - self.get_trode_param("delta_L")*Rxn2[0]
 
-    def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, ISfuncs, noises):
+    def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, noises):
         N = self.get_trode_param("N")
         T = self.config["T"]
         # Equations for concentration evolution
@@ -197,7 +186,7 @@ class Mod2var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["diffn2", "CHR2"]:
             (mu1R, mu2R), (act1R, act2R) = calc_muR(
-                (c1, c2), (self.c1bar(), self.c2bar()), self.config, self.trode, self.ind, ISfuncs)
+                (c1, c2), (self.c1bar(), self.c2bar()), self.config, self.trode, self.ind)
             c1_surf = c1[-1]
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
@@ -238,13 +227,11 @@ class Mod2var(dae.daeModel):
             # flux of Li at the surface.
             Flux1_bc = -0.5 * self.Rxn1()
             Flux2_bc = -0.5 * self.Rxn2()
-            Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc"),
-                                    self.get_trode_param("Dfunc_filename")).Dfunc
-            if self.get_trode_param("type") == "diffn2":
-                pass
-#                Flux1_vec, Flux2_vec = calc_Flux_diffn2(
-#                    c1, c2, self.get_trode_param("D"), Flux1_bc, Flux2_bc, dr, T)
-            elif self.get_trode_param("type") == "CHR2":
+            Dfunc_name = self.get_trode_param("Dfunc")
+            Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                          Dfunc_name,
+                                          f"mpet.electrode.diffusion.{Dfunc_name}")
+            if self.get_trode_param("type") == "CHR2":
                 noise1, noise2 = noises
                 Flux1_vec, Flux2_vec = calc_flux_CHR2(
                     c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
@@ -304,9 +291,10 @@ class Mod1var(dae.daeModel):
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
         # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   config[trode, "rxnType"],
-                                                   mpet_module="mpet.electrode.reactions")
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -334,13 +322,6 @@ class Mod1var(dae.daeModel):
         N = self.get_trode_param("N")  # number of grid points in particle
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
-
-        # Prepare the Ideal Solution log ratio terms
-        self.ISfuncs = None
-        if self.get_trode_param("logPad"):
-            self.ISfuncs = np.array([
-                extern_funcs.LogRatio("LR", self, dae.unit(), self.c(k))
-                for k in range(N)])
 
         # Prepare noise
         self.noise = None
@@ -372,19 +353,19 @@ class Mod1var(dae.daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.noise)
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
-            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.ISfuncs, self.noise)
+            self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.noise)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-    def sld_dynamics_0D1var(self, c, muO, act_lyte, ISfuncs, noise):
+    def sld_dynamics_0D1var(self, c, muO, act_lyte, noise):
         T = self.config["T"]
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.config,
-                                       self.trode, self.ind, ISfuncs)
+                                       self.trode, self.ind)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("noise"):
@@ -399,7 +380,7 @@ class Mod1var(dae.daeModel):
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
 
-    def sld_dynamics_1D1var(self, c, muO, act_lyte, ISfuncs, noise):
+    def sld_dynamics_1D1var(self, c, muO, act_lyte, noise):
         N = self.get_trode_param("N")
         T = self.config["T"]
         # Equations for concentration evolution
@@ -411,9 +392,9 @@ class Mod1var(dae.daeModel):
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
             muR_surf, actR_surf = calc_muR(
-                c_surf, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+                c_surf, self.cbar(), self.config, self.trode, self.ind)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
-            muR, actR = calc_muR(c, self.cbar(), self.config, self.trode, self.ind, ISfuncs)
+            muR, actR = calc_muR(c, self.cbar(), self.config, self.trode, self.ind)
             c_surf = c[-1]
             muR_surf = muR[-1]
             if actR is None:
@@ -445,8 +426,10 @@ class Mod1var(dae.daeModel):
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
             Flux_bc = -self.Rxn()
-            Dfunc = props_am.Dfuncs(self.get_trode_param("Dfunc"),
-                                    self.get_trode_param("Dfunc_filename")).Dfunc
+            Dfunc_name = self.get_trode_param("Dfunc")
+            Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                          Dfunc_name,
+                                          f"mpet.electrode.diffusion.{Dfunc_name}")
             if self.get_trode_param("type") == "diffn":
                 Flux_vec = calc_flux_diffn(c, self.get_trode_param("D"), Dfunc,
                                            self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
@@ -552,10 +535,10 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     return mu_O, act_lyte
 
 
-def calc_muR(c, cbar, config, trode, ind, ISfuncs=None):
+def calc_muR(c, cbar, config, trode, ind):
     muRfunc = props_am.muRfuncs(config, trode, ind).muRfunc
     muR_ref = config[trode, "muR_ref"]
-    muR, actR = muRfunc(c, cbar, muR_ref, ISfuncs)
+    muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
 
 

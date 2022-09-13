@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2022-02-14
+### Added
+- Online documentation with updated installation instructions: [https://mpet.readthedocs.io/en/latest/](https://mpet.readthedocs.io/en/latest/)
+- New filenname options for SMSet, muRfunc, Dfunc, and rxnType which allows functions to be loaded from specified files
+
+### Changed
+- Material properties organized into the modules mpet.electrode.diffusion, mpet.electrode.materials, mpet.electrode.reactions, and mpet.electrolyte. New properties can be added by moving files to these directories.
+- Several parameters are now optional: Vset, segments, Dp, Dm, logPad, kappa, B, dgammadc, cwet, lambda
+- Dropped support for Python 3.5
+
+### Fixed
+- Output is now generated for simulations that crash before finishing.
+- less console output from mpet simulations.
+
+
 ## [0.1.7] - 2021-10-01
 ### Added
 - Example configs added for reproducing the results from classic Newman papers.
