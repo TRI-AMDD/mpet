@@ -58,14 +58,14 @@ Analyze output with `mpetplot.py`. Pass the output data directory, then use the 
       - `bulkp_{c,a}` -- macroscopic electrode solid phase potential (movie)
 2.  Alternatively, convert the output to plain text (csv) format using the -t text argument: `mpetplot.py sim_output -t text` (or replace `sim_output` with any subfolder in the `history` folder). Then analyze using whatever tools you prefer.
 
-If you want to save output to a movie (or figure), use the `-s` option with the argument `save` or `saveonly`, e.g.,`mpetplot.py sim_output -pt cbar -s save`. The `save` argument shows the plot or movie and saves the output, whereas the `saveonly` option only does the latter.
+If you want to save output to a movie (or figure), use the `-s` option with the argument `save` or `saveonly`, e.g., `mpetplot.py sim_output -pt cbar -s save`. The `save` argument shows the plot or movie and saves the output, whereas the `saveonly` option only does the latter.
 
 Movie output requires that you have `ffmpeg` or `mencoder` (part of `MPlayer`) installed.
 
 ## Comparison of different models using Dash
-You can compare the result of different models using the dashboard build with [Dash](https://dash.plotly.com). To compare the results of all models saved in subfolders of the folder `sim_output`, run the command:
-`mpet_plot_app.py -d sim_output`. It will try to open the dashbaord in your web browser.
-Running this script requires the following packages to be installed: `dash`, `dash_bootstrap_components`, and `pandas`.
+You can compare the result of different models using the dashboard build with [Dash](https://dash.plotly.com). To create the dashboard, run the `mpet_plot_app.py` script (located in the bin folder) and use the `-d` argument to provide a directory with model outputs to include the dashbaord. Each model output should be located in a subfolder of the provided directory. For example, to compare the results of all models saved in subfolders of the folder `history`, run the command:
+`bin/mpet_plot_app.py -d history`. It will try to open the dashbaord in your web browser, where the different models can be identified based on their subfolder name.
+Running this script requires the following packages to be installed: [dash](https://pypi.org/project/dash/), [dash_bootstrap_components](https://pypi.org/project/dash-bootstrap-components/), and [pandas](https://pypi.org/project/pandas/).
 
 
 
