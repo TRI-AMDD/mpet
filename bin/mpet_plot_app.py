@@ -733,11 +733,15 @@ def callback_multimodel_movies(model_selection):
     )
 def update_graphs_single_models(select_single_model):
     m_select = dff[dff['Model'] == select_single_model]
+    if m_select["Config trode type"].iloc[0] in constants.one_var_types:
+        trode_type = 1
+    elif m_select["Config trode type"].iloc[0] in constants.two_var_types:
+        trode_type = 2
     # plots
-    subplt_solid_surf_con_c = subplt_solid_surf_con("Cathode", m_select)
-    subplt_solid_surf_con_a = subplt_solid_surf_con("Anode", m_select)
-    cbarline_c, cbarline_a = subplots_cbarlinec(m_select)
-    cbar_c, cbar_c2, cbar_a, cbar_a2 = ani_cbar(select_single_model)
+    subplt_solid_surf_con_c = subplt_solid_surf_con("Cathode", m_select, trode_type)
+    subplt_solid_surf_con_a = subplt_solid_surf_con("Anode", m_select, trode_type)
+    cbarline_c, cbarline_a = subplots_cbarlinec(m_select, trode_type)
+    cbar_c, cbar_c2, cbar_a, cbar_a2 = ani_cbar(select_single_model, trode_type)
     return (subplt_solid_surf_con_c, subplt_solid_surf_con_a,
             cbarline_c, cbarline_a, cbar_c, cbar_c2, cbar_a, cbar_a2
             )
@@ -795,13 +799,9 @@ def ani_elytrolyte(df, xname, yname, ani, ytitle):
     return fig
 
 
-def subplt_solid_surf_con(trodes, df):
+def subplt_solid_surf_con(trodes, df, trode_type):
     trode = trodes[0].lower()
     try:
-        if df["Config trode type"].iloc[0] in constants.one_var_types:
-            type2c = False
-        elif df["Config trode type"].iloc[0] in constants.two_var_types:
-            type2c = True
         r = int(max(df["Npart"+trode]))
         c = int(max(df["Nvol"+trode]))
         fig = make_subplots(rows=r, cols=c, shared_xaxes=True, shared_yaxes=True,
@@ -810,7 +810,7 @@ def subplt_solid_surf_con(trodes, df):
                             column_titles=['Volume ' + str(n) for n in range(1, c+1)])
         for rr in range(0, r):
             for cc in range(0, c):
-                if type2c:
+                if trode_type == 2:
                     str1_base = (pfx
                                  + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                                  + sStr + "c1")
@@ -907,7 +907,7 @@ def subplots_t_csld(df, tf):
     return fig1, fig
 
 
-def subplots_cbarlinec(df):
+def subplots_cbarlinec(df, trode_type):
     for trodes in ["Cathode", "Anode"]:
         trode = trodes[0].lower()
         try:
@@ -918,18 +918,12 @@ def subplots_cbarlinec(df):
                                 x_title='Time (s)', y_title='Particle Average Filling Fraction',
                                 row_titles=['Particle ' + str(n) for n in range(1, r+1)],
                                 column_titles=['Volume ' + str(n) for n in range(1, c+1)])
-            # this does not work if models with multiple plot types
-            if (df["Config trode type"].iloc[0] in constants.one_var_types):
-                type2c = False
-                str_cbar_base = pfx + partStr + "cbar"
-            elif (df["Config trode type"].iloc[0] in constants.two_var_types):
-                type2c = True
-                str1_cbar_base = pfx + partStr + "c1bar"
-                str2_cbar_base = pfx + partStr + "c2bar"
             for rr in range(0, r):
                 for cc in range(0, c):
                     datax = df['Time (s)']
-                    if type2c is True:
+                    if trode_type == 2:
+                        str1_cbar_base = pfx + partStr + "c1bar"
+                        str2_cbar_base = pfx + partStr + "c2bar"
                         sol1_str = str1_cbar_base.format(pInd=rr, vInd=cc)
                         sol2_str = str2_cbar_base.format(pInd=rr, vInd=cc)
                         datay = df[sol1_str]
@@ -941,6 +935,7 @@ def subplots_cbarlinec(df):
                             trace=go.Scatter(x=datax, y=datay2, line_color='blue', name='c2bar'),
                             row=rr+1, col=cc+1)
                     else:
+                        str_cbar_base = pfx + partStr + "cbar"
                         sol_str = str_cbar_base.format(pInd=rr, vInd=cc)
                         datay = df[sol_str]
                         fig.add_trace(
@@ -958,40 +953,32 @@ def subplots_cbarlinec(df):
     return fig1, fig
 
 
-def ani_cbar(ms_cbar):
+def ani_cbar(ms_cbar, trode_type):
+    def plot(cbar):
+        plot = px.scatter(df_cbar_select, x='c', y='r', animation_frame='Time',
+                          animation_group='rc',
+                          color=cbar,
+                          range_color=[0,1],
+                          color_continuous_scale='Turbo',
+                          size='Relative size',
+                          height=None,
+                          width=None
+                          )
+        return plot
     for trodes in ["Cathode", "Anode"]:
         trode = trodes[0].lower()
         df_cbar_select = df_cbar[(df_cbar.Model == ms_cbar) & (df_cbar.Trode == trode)]
         if df_cbar_select.empty:
-            cbar = cbar2 = px.line(title='Selected model has no '+trodes.lower())
-            cbar.update_xaxes(visible=False, showgrid=False)
-            cbar.update_yaxes(visible=False, showgrid=False)
+            cbar = px.line(title='Selected model has no '+trodes.lower())
+            cbar2 = px.line()
         else:
-            if df_cbar_select["Config trode type"].iloc[0] == 1:
-                cbar = px.scatter(df_cbar_select, x='c', y='r', animation_frame='Time',
-                                  animation_group='rc',
-                                  color='Cbar',
-                                  range_color=[0,1],
-                                  color_continuous_scale='Turbo',
-                                  size='Relative size'
-                                  )
-                cbar2 = px.scatter()
-            elif df_cbar_select["Config trode type"].iloc[0] == 2:
-                cbar = px.scatter(df_cbar_select, x='c', y='r', animation_frame='Time',
-                                  animation_group='rc',
-                                  color='Cbar1',
-                                  range_color=[0,1],
-                                  color_continuous_scale='Turbo',
-                                  size='Relative size'
-                                  )
-                cbar2 = px.scatter(df_cbar_select, x='c', y='r', animation_frame='Time',
-                                   animation_group='rc',
-                                   color='Cbar2',
-                                   range_color=[0,1],
-                                   color_continuous_scale='Turbo',
-                                   size='Relative size'
-                                   )
-                cbar2.update_layout(title=trodes, transition_duration=100)
+            if trode_type == 1:
+                cbar = plot('Cbar')
+                cbar2 = px.line(title='Selected model has no Cbar2')
+            elif trode_type == 2:
+                cbar = plot('Cbar1')
+                cbar2 = plot('Cbar2')
+                cbar2.update_layout(title=trodes, transition_duration=100, height=None, width=None)
             cbar.update_layout(title=trodes, transition_duration=100)
         cbar.update_xaxes(visible=False, showgrid=False)
         cbar.update_yaxes(visible=False, showgrid=False)
