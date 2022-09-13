@@ -778,6 +778,8 @@ def plot_multimodel(df, yaxis, ytitle=None, xaxis='Time (s)'):
 def ani_elytrolyte(df, xname, yname, ani, ytitle):
     max_y = max(df[yname])
     min_y = min(df[yname])
+    range_min = 0.9*min_y if min_y > 0 else 1.1*min_y
+    range_max = 1.1*max_y if max_y > 0 else 1.1*max_y
     if not (max_y == 0 and min_y == 0):
         fig = px.line(df,
                       x=xname,
@@ -788,7 +790,7 @@ def ani_elytrolyte(df, xname, yname, ani, ytitle):
     else:
         fig = px.line(title='Data not availale for selected model(s)')
     fig.update_yaxes(title=ytitle,
-                     range=[0.9*min_y, 1.1*max_y])
+                     range=[range_min, range_max])
     fig.update_xaxes(title=u'Battery Position (\u00B5m)')
     fig.update_layout(legend=dict(
         yanchor="bottom",
