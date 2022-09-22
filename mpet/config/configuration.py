@@ -503,7 +503,8 @@ class Config:
 
         if self['simInterface']:
             self['Dp_i'] = self['Dp_i'] / self['D_ref']
-            self['Dm_i'] = self['Dm_i'] / self['D_ref']
+            if self['interfaceModelType'] != 'solid':
+                self['Dm_i'] = self['Dm_i'] / self['D_ref']
             self['c0_int'] = self['c0_int'] / constants.c_ref
             self['cmax_i'] = self['cmax_i'] / constants.c_ref
 
@@ -788,9 +789,9 @@ class Config:
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['gamma_con'][i, j] = gamma_cont
-                    # if self['mean_gamma_c'] != 1.0:
-                    #     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
-                    #         / (constants.e * F_s_ref)*gamma_cont
+                    if self['mean_gamma_c'] != 1.0:
+                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
+                            / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
