@@ -340,6 +340,8 @@ def main():
                                                                np.shape(yy)[1])
                         if trode == trodes[0] and pInd == 0 and vInd == 0:
                             df_csld = pd.DataFrame({"Model": model,
+                                                    "sStr": sStr,
+                                                    "pfx": pfx,
                                                     "Config trode type": config[trode, "type"],
                                                     "Npartc": Npart["c"],
                                                     "Nvolc": Nvol["c"],
@@ -383,6 +385,8 @@ def main():
                                                                 numy)
                         if trode == trodes[0] and pInd == 0 and vInd == 0:
                             df_csld = pd.DataFrame({"Model": model,
+                                                    "sStr": sStr,
+                                                    "pfx": pfx,
                                                     "Config trode type": config[trode, "type"],
                                                     "Npartc": Npart["c"],
                                                     "Nvolc": Nvol["c"],
