@@ -511,28 +511,30 @@ class Mod1var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
-            # RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
-            gamma_con = self.get_trode_param('gamma_con')
-            if gamma_con == 1:
-                RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
-            else:
-                N_cont = int((gamma_con)*N)-12
-                RHS = np.zeros(N, dtype=object)
-                position = int(np.random.uniform()*N)
-                if 6+position+N_cont < N-6:
-                    for i in range(0,6):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
-                    for i in range(N-6,N):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
-                    for i in range(position+6,position+N_cont,1):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
-                else:
-                    for i in range(0,6):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
-                    for i in range(position, N):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
-                    for i in range(6,N_cont-(N-position)):
-                        RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+            # For ACR model physically consistent contact loss.
+            # gamma_con = self.get_trode_param('gamma_con')
+            # if gamma_con == 1:
+            #     RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+            # else:
+            #     N_cont = int((gamma_con)*N)-12
+            #     RHS = np.zeros(N, dtype=object)
+            #     position = int(np.random.uniform()*N)
+            #     # random position of contact + 6 points on the sides to facilitate wetting
+            #     if 6+position+N_cont < N-6:
+            #         for i in range(0,6):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            #         for i in range(N-6,N):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            #         for i in range(position+6,position+N_cont,1):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            #     else:
+            #         for i in range(0,6):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            #         for i in range(position, N):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            #         for i in range(6,N_cont-(N-position)):
+            #             RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
 
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
