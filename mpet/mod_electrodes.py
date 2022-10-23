@@ -295,6 +295,20 @@ class Mod1var(dae.daeModel):
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
                                                    rxnType,
                                                    f"mpet.electrode.reactions.{rxnType}")
+        self.calc_drxndeta_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   "d" + rxnType + "deta",
+                                                   f"mpet.electrode.reactions.d{rxnType}deta")
+        self.calc_drxndc_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   "d" + rxnType + "dc",
+                                                   f"mpet.electrode.reactions.d{rxnType}dc")
+        self.calc_drxndcl_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   "d" + rxnType + "dcl",
+                                                   f"mpet.electrode.reactions.d{rxnType}dcl")
+ 
+        self.dRxndc = dae.daeVariable("dRxndc", dae.no_t, self, "Rate of reaction")
+        self.dRxndeta = dae.daeVariable("dRxndeta", dae.no_t, self, "Rate of reaction")
+        self.dRxndcl = dae.daeVariable("dRxndcl", dae.no_t, self, "Rate of reaction")
+        self.dmudc = dae.daeVariable("dmudc", dae.no_t, self, "Rate of reaction")
 
         # Ports
         self.portInLyte = ports.portFromElyte(
@@ -366,6 +380,8 @@ class Mod1var(dae.daeModel):
         c_surf = c
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.config,
                                        self.trode, self.ind)
+        dmuR_surfdc, actR_surf = calc_dmuRdc(c_surf, self.cbar(), self.config,
+                                       self.trode, self.ind) 
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("noise"):
@@ -374,8 +390,29 @@ class Mod1var(dae.daeModel):
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        dRxndc = self.calc_drxndc_rate(
+            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        dRxndeta = self.calc_drxndeta_rate(
+            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        dRxndcl = self.calc_drxndcl_rate(
+            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+ 
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
+        eq = self.CreateEquation("dRxndeta")
+        eq.Residual = self.dRxndeta() - dRxndeta[0]
+        eq = self.CreateEquation("dRxndc")
+        eq.Residual = self.dRxndc() - dRxndc[0]
+        eq = self.CreateEquation("dRxncl")
+        eq.Residual = self.dRxndcl() - dRxndcl[0]
+        eq = self.CreateEquation("dmudc")
+        eq.Residual = self.dmudc() - dmuR_surfdc[0]
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
@@ -537,6 +574,12 @@ def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
 
 def calc_muR(c, cbar, config, trode, ind):
     muRfunc = props_am.muRfuncs(config, trode, ind).muRfunc
+    muR_ref = config[trode, "muR_ref"]
+    muR, actR = muRfunc(c, cbar, muR_ref)
+    return muR, actR
+
+def calc_dmuRdc(c, cbar, config, trode, ind):
+    muRfunc = props_am.muRfuncs(config, trode, ind).dmuRfuncdc
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR

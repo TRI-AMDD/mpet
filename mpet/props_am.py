@@ -48,9 +48,17 @@ class muRfuncs():
         else:
             muRfunc = import_function(filename, muRfunc_name)
 
+        if filename is None:
+            # the function will be loaded from the materials folder
+            dmuRfuncdc = import_function(None, "d" + muRfunc_name + "dc",
+                                      mpet_module=f"mpet.electrode.materials.d{muRfunc_name}dc")
+        else:
+            dmuRfuncdc = import_function(filename, "d" + muRfunc_name + "dc")
+
         # We have to make sure the function knows what 'self' is with
         # the types.MethodType function
         self.muRfunc = types.MethodType(muRfunc, self)
+        self.dmuRfuncdc = types.MethodType(dmuRfuncdc, self)
 
     def get_trode_param(self, item):
         """
