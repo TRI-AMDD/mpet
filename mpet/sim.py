@@ -123,14 +123,14 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte["s"].SetInitialGuess(i, 0)
                     self.m.W_T_c_lyte["s"].SetInitialCondition(0)
-                    self.m.W_T_phi_lyte["s"].SetInitialCondition(0)
+                    self.m.dW_T_phi_lytedt["s"].SetInitialGuess(0)
  
             # Anode and cathode electrolyte initialization
             for tr in config["trodes"]:
                 self.m.W_T_c_s[tr].SetInitialCondition(0)
-                self.m.W_T_phi_s[tr].SetInitialCondition(0)
+                self.m.dW_T_phi_sdt[tr].SetInitialGuess(0)
                 self.m.W_T_c_lyte[tr].SetInitialCondition(0)
-                self.m.W_T_phi_lyte[tr].SetInitialCondition(0)
+                self.m.dW_T_phi_lytedt[tr].SetInitialGuess(0)
                 for i in range(Nvol[tr]):
                     self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte[tr].SetInitialGuess(i, 0)

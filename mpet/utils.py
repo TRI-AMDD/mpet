@@ -172,3 +172,47 @@ def import_function(filename, function, mpet_module=None):
     callable_function = getattr(module, function)
 
     return callable_function
+
+
+def central_diff_bulk(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes) for bulk"""
+    varout = {}
+    for sectn in ["a", "c", "s"]:
+        # If we have information within this battery section
+        if sectn in ["a", "c"]:
+            if sectn in array.keys():
+                # if it is one of the electrode sections
+                out = get_var_vec(array[sectn], Nvol[sectn])
+                out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+                varout[sectn] = (out[2:]-out[:-2])
+            else:
+                varout[sectn] = np.zeros(0)
+        else:
+            # if anode does not exist
+            if sectn in Nvol:
+                varout[sectn] = np.zeros(Nvol[sectn])
+            else:
+                varout[sectn] = np.zeros(0)
+    return varout
+
+
+def central_diff_lyte(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes) for electrolyte"""
+    out = np.zeros(0)
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        if sectn in array.keys():
+            # if it is one of the electrode sections
+            out = np.append(out, get_var_vec(array[sectn], Nvol[sectn]))
+        else:
+            out = np.append(out, np.zeros(0))
+    # now we have stacked everything
+    out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+    output = (out[2:]-out[:-2])/(2*dx)
+    varout = {}
+    varout["a"] = output[:Nvol["a"]]
+    varout["s"] = output[Nvol["a"]:Nvol["a"]+Nvol["s"]]
+    varout["c"] = output[Nvol["a"]+Nvol["s"]:]
+    return varout

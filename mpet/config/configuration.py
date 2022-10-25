@@ -692,7 +692,7 @@ class Config:
                 mu = np.log((mean**2) / np.sqrt(var + mean**2))
                 sigma = np.sqrt(np.log(var / (mean**2) + 1))
                 G = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
-
+            print(self['t_ref'])
             # scale and store
             self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
