@@ -285,6 +285,7 @@ class Mod1var(dae.daeModel):
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.dcbardtG0 = dae.daeVariable("dcbardtG0", dae.no_t, self, "Rate of particle filling")
         if config[trode, "type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
@@ -319,6 +320,7 @@ class Mod1var(dae.daeModel):
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
+        self.G_0 = self.portInLyte.G_0
         self.phi_m = self.portInBulk.phi_m
 
     def get_trode_param(self, item):
@@ -372,6 +374,7 @@ class Mod1var(dae.daeModel):
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.noise)
 
+
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
@@ -383,13 +386,20 @@ class Mod1var(dae.daeModel):
         dmuR_surfdc, actR_surf = calc_dmuRdc(c_surf, self.cbar(), self.config,
                                        self.trode, self.ind) 
         eta = calc_eta(muR_surf, muO)
+        etaG0 = calc_eta(muR_surf, self.G_0())
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+        eta_effG0 = etaG0 + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("noise"):
             eta_eff += noise[0]()
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        RxnG0 = self.calc_rxn_rate(
+            eta_effG0, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+ 
         dRxndc = self.calc_drxndc_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -416,6 +426,8 @@ class Mod1var(dae.daeModel):
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
+        eq = self.CreateEquation("dcsdtG0")
+        eq.Residual = self.dcbardtG0() - self.get_trode_param("delta_L")*RxnG0[0]
 
     def sld_dynamics_1D1var(self, c, muO, act_lyte, noise):
         N = self.get_trode_param("N")

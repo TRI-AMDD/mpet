@@ -69,6 +69,7 @@ class ModCell(dae.daeModel):
         self.dW_T_phi_sdt = {}
         self.dW_T_phi_lytedt = {}
         self.W_T_c_s = {}
+        self.G_0 = {}
         self.W_T_c_lyte = {}
         self.W_M_phi_s = {}
         self.W_M_phi_lyte = {}
@@ -151,7 +152,11 @@ class ModCell(dae.daeModel):
             self.W_M_c_lyte[trode] = dae.daeVariable(
                 "W_M_c_lyte_{trode}".format(trode=trode), conc_t, self,
                 "Concentration change in the sld in electrode {trode}".format(trode=trode))  
- 
+            self.G_0[trode] = dae.daeVariable(
+                "G_0_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of reaction of positives per electrode volume",
+                [self.DmnCell[trode]])  
+
         if config['have_separator']:  # If we have a separator
             trode = 's'
             self.c_lyte["s"] = dae.daeVariable(
@@ -291,13 +296,23 @@ class ModCell(dae.daeModel):
                 eq1.Residual = self.c_s[trode](vInd) - RHS
                 eq = self.CreateEquation(
                     "invdGdeta_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq1 = self.CreateEquation("G_0_{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 RHS = 0
+                RHS1 = 0
+                # added equation to solve for G_0 at each electrode volume
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
                     Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
                     RHS += -Vj * self.particles[trode][vInd,pInd].dRxndeta()
+                    RHS1 += - Vj * self.particles[trode][vInd,pInd].dcbardtG0()
+                  #  RHS1 += -(config["beta"][trode] * (1-config["poros"][trode])
+                  #           * config["P_L"][trode] * Vj
+                  #           * self.particles[trode][vInd,pInd].dcbardt())
+ 
                 eq.Residual = 1/self.invdRxndetabar[trode](vInd) - RHS
+                #eq1.Residual = self.R_Vp[trode](vInd) - RHS
+                eq1.Residual = RHS1
                 eq = self.CreateEquation(
                     "dRxndcl_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq.Residual = self.dRxndcl[trode](vInd)-self.particles[trode][vInd,1].dRxndcl()
@@ -313,6 +328,11 @@ class ModCell(dae.daeModel):
                     "portout_p_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 phi_lyte = self.phi_lyte[trode](vInd)
                 eq.Residual = (phi_lyte - self.portsOutLyte[trode][vInd].phi_lyte())
+                eq = self.CreateEquation(
+                    "portout_G0{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq.Residual = (self.G_0[trode](vInd)
+                               - self.portsOutLyte[trode][vInd].G_0())
+ 
                 for pInd in range(Npart[trode]):
                     eq = self.CreateEquation(
                         "portout_pm_trode{trode}v{vInd}p{pInd}".format(

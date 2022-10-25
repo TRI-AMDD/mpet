@@ -134,6 +134,7 @@ class SimMPET(dae.daeSimulation):
                 for i in range(Nvol[tr]):
                     self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte[tr].SetInitialGuess(i, 0)
+                    self.m.G_0[tr].SetInitialGuess(i, 0)
                     self.m.invdRxndetabar[tr].SetInitialGuess(i, 1e-3)
 
                     # Set electrolyte concentration in each particle
