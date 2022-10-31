@@ -20,21 +20,25 @@ def ensemble_definitions():
 
 
 def create_ensemble(cfg):
-    keys, val = ensemble_definitions()
-    # Create all variations
-    combinations = list(itertools.product(*val))
-    for combination in combinations:
-        params = dict(zip(keys,combination))
-        new_cfg = cfg
-        nicename = []
-        for key, val in params.items():
-            new_cfg[key[0]][key[1]] = val
-            nicename.append(key[1] + "=" + val)
+    with open('ensemble_parallel_configs.txt', "w") as ff:
+        keys, val = ensemble_definitions()
+        # Create all variations
+        combinations = list(itertools.product(*val))
+        for combination in combinations:
+            params = dict(zip(keys,combination))
+            new_cfg = cfg
+            nicename = []
+            for key, val in params.items():
+                new_cfg[key[0]][key[1]] = val
+                nicename.append(key[1] + "=" + val)
 
-        # Write config
-        cfg_dir = os.path.dirname(sys.argv[1])
-        with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
-            new_cfg.write(f)
+            # Write config
+            cfg_dir = os.path.dirname(sys.argv[1])
+            with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
+                new_cfg.write(f)
+                ff.write(str(cfg_dir + "/" + "-".join(nicename) + ".cfg\n"))
+
+
     return
 
 
