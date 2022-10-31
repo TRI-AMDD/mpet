@@ -128,6 +128,7 @@ class SimMPET(dae.daeSimulation):
             # Anode and cathode electrolyte initialization
             for tr in config["trodes"]:
                 self.m.W_T_c_s[tr].SetInitialCondition(0)
+                self.m.W_T_c_sG0[tr].SetInitialCondition(0)
                 self.m.dW_T_phi_sdt[tr].SetInitialGuess(0)
                 self.m.W_T_c_lyte[tr].SetInitialCondition(0)
                 self.m.dW_T_phi_lytedt[tr].SetInitialGuess(0)
@@ -135,7 +136,8 @@ class SimMPET(dae.daeSimulation):
                     self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte[tr].SetInitialGuess(i, 0)
                     self.m.G_0[tr].SetInitialGuess(i, 0)
-                    self.m.invdRxndetabar[tr].SetInitialGuess(i, 1e-3)
+                    self.m.invdRxndetabar[tr].SetInitialGuess(i, 1e-1)
+                    self.m.invdRxndetabarG0[tr].SetInitialGuess(i, 1e-1)
 
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):

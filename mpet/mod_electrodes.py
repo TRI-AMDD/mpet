@@ -308,6 +308,7 @@ class Mod1var(dae.daeModel):
  
         self.dRxndc = dae.daeVariable("dRxndc", dae.no_t, self, "Rate of reaction")
         self.dRxndeta = dae.daeVariable("dRxndeta", dae.no_t, self, "Rate of reaction")
+        self.dRxndetaG0 = dae.daeVariable("dRxndetaG0", dae.no_t, self, "Rate of reaction")
         self.dRxndcl = dae.daeVariable("dRxndcl", dae.no_t, self, "Rate of reaction")
         self.dmudc = dae.daeVariable("dmudc", dae.no_t, self, "Rate of reaction")
 
@@ -408,6 +409,10 @@ class Mod1var(dae.daeModel):
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        dRxndetaG0 = self.calc_drxndeta_rate(
+            eta_effG0, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha")) 
         dRxndcl = self.calc_drxndcl_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -417,6 +422,9 @@ class Mod1var(dae.daeModel):
         eq.Residual = self.Rxn() - Rxn[0]
         eq = self.CreateEquation("dRxndeta")
         eq.Residual = self.dRxndeta() - dRxndeta[0]
+        eq = self.CreateEquation("dRxndetaG0")
+        eq.Residual = self.dRxndetaG0() - dRxndetaG0[0]
+ 
         eq = self.CreateEquation("dRxndc")
         eq.Residual = self.dRxndc() - dRxndc[0]
         eq = self.CreateEquation("dRxncl")
