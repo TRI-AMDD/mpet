@@ -19,9 +19,10 @@ def ensemble_definitions():
     return keys, val
 
 
-def create_ensemble(cfg):
+def create_ensemble(cfg, keys=None, val=None):
     with open('ensemble_parallel_configs.txt', "w") as ff:
-        keys, val = ensemble_definitions()
+        if keys is None and val is None:
+            keys, val = ensemble_definitions()
         # Create all variations
         combinations = list(itertools.product(*val))
         for combination in combinations:
@@ -37,8 +38,6 @@ def create_ensemble(cfg):
             with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
                 new_cfg.write(f)
                 ff.write(str(cfg_dir + "/" + "-".join(nicename) + ".cfg\n"))
-
-
     return
 
 
