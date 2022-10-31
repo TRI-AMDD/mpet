@@ -23,6 +23,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, config, trode, ind=None):
         """config is the full dictionary of
         parameters for the electrode particles, as made for the
@@ -51,7 +52,7 @@ class muRfuncs():
         if filename is None:
             # the function will be loaded from the materials folder
             dmuRfuncdc = import_function(None, "d" + muRfunc_name + "dc",
-                                      mpet_module=f"mpet.electrode.materials.d{muRfunc_name}dc")
+                                         mpet_module=f"mpet.electrode.materials.d{muRfunc_name}dc")
         else:
             dmuRfuncdc = import_function(filename, "d" + muRfunc_name + "dc")
 

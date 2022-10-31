@@ -297,15 +297,15 @@ class Mod1var(dae.daeModel):
                                                    rxnType,
                                                    f"mpet.electrode.reactions.{rxnType}")
         self.calc_drxndeta_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   "d" + rxnType + "deta",
-                                                   f"mpet.electrode.reactions.d{rxnType}deta")
+                                                        "d" + rxnType + "deta",
+                                                        f"mpet.electrode.reactions.d{rxnType}deta")
         self.calc_drxndc_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   "d" + rxnType + "dc",
-                                                   f"mpet.electrode.reactions.d{rxnType}dc")
+                                                      "d" + rxnType + "dc",
+                                                      f"mpet.electrode.reactions.d{rxnType}dc")
         self.calc_drxndcl_rate = utils.import_function(config[trode, "rxnType_filename"],
-                                                   "d" + rxnType + "dcl",
-                                                   f"mpet.electrode.reactions.d{rxnType}dcl")
- 
+                                                       "d" + rxnType + "dcl",
+                                                       f"mpet.electrode.reactions.d{rxnType}dcl")
+
         self.dRxndc = dae.daeVariable("dRxndc", dae.no_t, self, "Rate of reaction")
         self.dRxndeta = dae.daeVariable("dRxndeta", dae.no_t, self, "Rate of reaction")
         self.dRxndetaG0 = dae.daeVariable("dRxndetaG0", dae.no_t, self, "Rate of reaction")
@@ -375,7 +375,6 @@ class Mod1var(dae.daeModel):
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.noise)
 
-
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
@@ -385,7 +384,7 @@ class Mod1var(dae.daeModel):
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.config,
                                        self.trode, self.ind)
         dmuR_surfdc, actR_surf = calc_dmuRdc(c_surf, self.cbar(), self.config,
-                                       self.trode, self.ind) 
+                                             self.trode, self.ind)
         eta = calc_eta(muR_surf, muO)
         etaG0 = calc_eta(muR_surf, self.G_0())
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
@@ -400,7 +399,7 @@ class Mod1var(dae.daeModel):
             eta_effG0, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
- 
+
         dRxndc = self.calc_drxndc_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -412,19 +411,19 @@ class Mod1var(dae.daeModel):
         dRxndetaG0 = self.calc_drxndeta_rate(
             eta_effG0, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha")) 
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         dRxndcl = self.calc_drxndcl_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
- 
+
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
         eq = self.CreateEquation("dRxndeta")
         eq.Residual = self.dRxndeta() - dRxndeta[0]
         eq = self.CreateEquation("dRxndetaG0")
         eq.Residual = self.dRxndetaG0() - dRxndetaG0[0]
- 
+
         eq = self.CreateEquation("dRxndc")
         eq.Residual = self.dRxndc() - dRxndc[0]
         eq = self.CreateEquation("dRxncl")
@@ -597,6 +596,7 @@ def calc_muR(c, cbar, config, trode, ind):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
+
 
 def calc_dmuRdc(c, cbar, config, trode, ind):
     muRfunc = props_am.muRfuncs(config, trode, ind).dmuRfuncdc

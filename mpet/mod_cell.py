@@ -54,8 +54,8 @@ class ModCell(dae.daeModel):
 
         # Variables
         self.c_lyte = {}
-        self.dHdc_lyte = {} 
-        self.dHdc_s = {} 
+        self.dHdc_lyte = {}
+        self.dHdc_s = {}
         self.phi_lyte = {}
         self.dHdphi_lyte = {}
         self.dG0dc_s = {}
@@ -77,7 +77,7 @@ class ModCell(dae.daeModel):
         self.W_M_phi_s = {}
         self.W_M_phi_lyte = {}
         self.W_M_c_s = {}
-        self.W_M_c_lyte = {} 
+        self.W_M_c_lyte = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -107,7 +107,7 @@ class ModCell(dae.daeModel):
             self.dHdc_s[trode] = dae.daeVariable(
                 "dHdc_s_{trode}".format(trode=trode), conc_t, self,
                 "Concentration change in the sld in electrode {trode}".format(trode=trode),
-                [self.DmnCell[trode]])  
+                [self.DmnCell[trode]])
             self.dHdphi_lyte[trode] = dae.daeVariable(
                 "dHdphi_lyte_{trode}".format(trode=trode), elec_pot_t, self,
                 "Electric potential change in elyte in electrode {trode}".format(trode=trode),
@@ -123,53 +123,53 @@ class ModCell(dae.daeModel):
             self.c_s[trode] = dae.daeVariable(
                 "c_s_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
-                [self.DmnCell[trode]]) 
+                [self.DmnCell[trode]])
             self.invdRxndetabar[trode] = dae.daeVariable(
                 "invdRxndetabar_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
-                [self.DmnCell[trode]]) 
+                [self.DmnCell[trode]])
             self.invdRxndetabarG0[trode] = dae.daeVariable(
                 "invdRxndetabarG0_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
-                [self.DmnCell[trode]]) 
+                [self.DmnCell[trode]])
             self.dRxndcl[trode] = dae.daeVariable(
                 "dRxndcl_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
-                [self.DmnCell[trode]])  
+                [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
             self.W_T_c_s[trode] = dae.daeVariable(
                 "W_T_c_s_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode)) 
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_T_c_sG0[trode] = dae.daeVariable(
                 "W_T_c_s_G0_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))   
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.dW_T_phi_sdt[trode] = dae.daeVariable(
                 "dW_T_phi_sdt_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.dW_T_phi_lytedt[trode] = dae.daeVariable(
                 "dW_T_phi_lytedt_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))              
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_T_c_lyte[trode] = dae.daeVariable(
                 "W_T_c_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_c_s[trode] = dae.daeVariable(
                 "W_M_c_s_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_phi_s[trode] = dae.daeVariable(
                 "W_M_phi_s_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_phi_lyte[trode] = dae.daeVariable(
                 "W_M_phi_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))              
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_c_lyte[trode] = dae.daeVariable(
                 "W_M_c_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.G_0[trode] = dae.daeVariable(
                 "G_0_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
-                [self.DmnCell[trode]])  
+                [self.DmnCell[trode]])
 
         if config['have_separator']:  # If we have a separator
             trode = 's'
@@ -191,17 +191,17 @@ class ModCell(dae.daeModel):
                 [self.DmnCell[trode]])
             self.dW_T_phi_lytedt[trode] = dae.daeVariable(
                 "dW_T_phi_lytedt_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))              
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_T_c_lyte[trode] = dae.daeVariable(
                 "W_T_c_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_phi_lyte[trode] = dae.daeVariable(
                 "W_M_phi_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))              
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
             self.W_M_c_lyte[trode] = dae.daeVariable(
                 "W_M_c_lyte_{trode}".format(trode=trode), conc_t, self,
-                "Concentration change in the sld in electrode {trode}".format(trode=trode))  
- 
+                "Concentration change in the sld in electrode {trode}".format(trode=trode))
+
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
         # potential.
@@ -293,7 +293,7 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation(
                     "R_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq1 = self.CreateEquation(
-                    "c_s_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode)) 
+                    "c_s_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
                 RHS = 0
@@ -313,7 +313,7 @@ class ModCell(dae.daeModel):
                 eq1 = self.CreateEquation("G_0_{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq2 = self.CreateEquation(
                     "invdG0deta_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
- 
+
                 RHS = 0
                 RHS1 = 0
                 RHS2 = 0
@@ -328,7 +328,7 @@ class ModCell(dae.daeModel):
                   #  RHS1 += -(config["beta"][trode] * (1-config["poros"][trode])
                   #           * config["P_L"][trode] * Vj
                   #           * self.particles[trode][vInd,pInd].dcbardt())
- 
+
                 eq.Residual = 1/self.invdRxndetabar[trode](vInd) - RHS
                 #eq1.Residual = self.R_Vp[trode](vInd) - RHS
                 eq1.Residual = RHS1
@@ -336,7 +336,7 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation(
                     "dRxndcl_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq.Residual = self.dRxndcl[trode](vInd)-self.particles[trode][vInd,0].dRxndcl()
- 
+
         # Define output port variables
         for trode in trodes:
             for vInd in range(Nvol[trode]):
@@ -352,7 +352,7 @@ class ModCell(dae.daeModel):
                     "portout_G0{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq.Residual = (self.G_0[trode](vInd)
                                - self.portsOutLyte[trode][vInd].G_0())
- 
+
                 for pInd in range(Npart[trode]):
                     eq = self.CreateEquation(
                         "portout_pm_trode{trode}v{vInd}p{pInd}".format(
@@ -507,47 +507,60 @@ class ModCell(dae.daeModel):
                 eq = self.CreateEquation("dHdphi_lyte{vInd}".format(vInd=vInd))
                 eq.Residual = dHdphilvec[vInd] + 1
                 eq = self.CreateEquation("dHdc_lyte{vInd}".format(vInd=vInd))
-                eq.Residual = dHdclvec[vInd] + 1/cvec[vInd]*thermFac(cvec[vInd], config["T"]) - dRxndclvec[vInd]*invdRxndetabarvec[vInd]
-
+                eq.Residual = dHdclvec[vInd] + 1/cvec[vInd] * \
+                    thermFac(cvec[vInd], config["T"]) - dRxndclvec[vInd]*invdRxndetabarvec[vInd]
 
             for trode in trodes:
                 eq_W_T_c_lyte = self.CreateEquation("W_T_c_lyte_trode{trode}".format(trode=trode))
                 eq_W_T_c_lyte.Residual = self.W_T_c_lyte[trode].dt()
-                eq_W_T_phi_lyte = self.CreateEquation("W_T_phi_lyte_trode{trode}".format(trode=trode))
+                eq_W_T_phi_lyte = self.CreateEquation(
+                    "W_T_phi_lyte_trode{trode}".format(trode=trode))
                 eq_W_T_phi_lyte.Residual = self.dW_T_phi_lytedt[trode]()
                 eq_W_T_c_s = self.CreateEquation("W_T_c_s_trode{trode}".format(trode=trode))
                 eq_W_T_c_s.Residual = self.W_T_c_s[trode].dt()
                 eq_W_T_c_sG0 = self.CreateEquation("W_T_c_s_G0_trode{trode}".format(trode=trode))
                 eq_W_T_c_sG0.Residual = self.W_T_c_sG0[trode].dt()
                 eq_W_T_phi_s = self.CreateEquation("W_T_phi_s_trode{trode}".format(trode=trode))
-                eq_W_T_phi_s.Residual = self.dW_T_phi_sdt[trode]() 
+                eq_W_T_phi_s.Residual = self.dW_T_phi_sdt[trode]()
                 eq_W_M_c_lyte = self.CreateEquation("W_M_c_lyte_trode{trode}".format(trode=trode))
                 eq_W_M_c_lyte.Residual = self.W_M_c_lyte[trode]()
-                eq_W_M_phi_lyte = self.CreateEquation("W_M_phi_lyte_trode{trode}".format(trode=trode))
+                eq_W_M_phi_lyte = self.CreateEquation(
+                    "W_M_phi_lyte_trode{trode}".format(trode=trode))
                 eq_W_M_phi_lyte.Residual = self.W_M_phi_lyte[trode]()
                 eq_W_M_c_s = self.CreateEquation("W_M_c_s_trode{trode}".format(trode=trode))
                 eq_W_M_c_s.Residual = self.W_M_c_s[trode]()
                 eq_W_M_phi_s = self.CreateEquation("W_M_phi_s_trode{trode}".format(trode=trode))
-                eq_W_M_phi_s.Residual = self.W_M_phi_s[trode]() 
- 
+                eq_W_M_phi_s.Residual = self.W_M_phi_s[trode]()
+
                 for vInd in range(Nvol[trode]):
                     eq = self.CreateEquation(
                         "dHdcs_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
-                    eq.Residual = self.dHdc_s[trode](vInd) - (self.particles[trode][vInd,0].dRxndeta()*self.particles[trode][vInd,0].dmudc() - self.particles[trode][vInd,0].dRxndc())*invdRxndetabarvec[vInd]
+                    eq.Residual = self.dHdc_s[trode](vInd) - (self.particles[trode][vInd,
+                                                                                    0].dRxndeta()*self.particles[trode][vInd,
+                                                                                                                        0].dmudc() - self.particles[trode][vInd,
+                                                                                                                                                           0].dRxndc())*invdRxndetabarvec[vInd]
                     eq = self.CreateEquation(
                         "dG0dcs_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
-                    eq.Residual = self.dG0dc_s[trode](vInd) - (self.particles[trode][vInd,0].dRxndetaG0()*self.particles[trode][vInd,0].dmudc() - self.particles[trode][vInd,0].dRxndc())*invdRxndetabarG0vec[vInd]
+                    eq.Residual = self.dG0dc_s[trode](vInd) - (self.particles[trode][vInd,
+                                                                                     0].dRxndetaG0()*self.particles[trode][vInd,
+                                                                                                                           0].dmudc() - self.particles[trode][vInd,
+                                                                                                                                                              0].dRxndc())*invdRxndetabarG0vec[vInd]
                     eq = self.CreateEquation(
                         "dHdphiss_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                     eq.Residual = self.dHdphi_s[trode](vInd) - 1
-                    eq_W_T_c_lyte.Residual -= self.c_lyte[trode].dt(vInd)*self.dHdc_lyte[trode](vInd)
+                    eq_W_T_c_lyte.Residual -= self.c_lyte[trode].dt(
+                        vInd)*self.dHdc_lyte[trode](vInd)
             #        eq_W_T_phi_lyte.Residual -= self.phi_lyte[trode].dt(vInd)*self.dHdphi_lyte[trode](vInd)
-                    eq_W_T_c_s.Residual -= self.R_Vp[trode](vInd)/(config["beta"][trode] * (1-config["poros"][trode]) * config["P_L"][trode])*self.dHdc_s[trode](vInd)
+                    eq_W_T_c_s.Residual -= self.R_Vp[trode](vInd)/(config["beta"][trode] * (
+                        1-config["poros"][trode]) * config["P_L"][trode])*self.dHdc_s[trode](vInd)
             #        eq_W_T_phi_s.Residual -= self.phi_bulk[trode].dt(vInd)*self.dHdphi_s[trode](vInd)
                     eq_W_M_c_lyte.Residual -= dclytedx[trode][vInd]*self.dHdc_lyte[trode](vInd)
-                    eq_W_M_phi_lyte.Residual -= dphilytedx[trode][vInd]*self.dHdphi_lyte[trode](vInd)
-                    eq_W_M_c_s.Residual -= dcsdx[trode][vInd]*self.dHdc_s[trode](vInd) # get new var cs bar!
-                    eq_W_T_c_sG0.Residual -= dcsdx[trode][vInd]*self.dG0dc_s[trode](vInd) # get new var cs bar!
+                    eq_W_M_phi_lyte.Residual -= dphilytedx[trode][vInd] * \
+                        self.dHdphi_lyte[trode](vInd)
+                    eq_W_M_c_s.Residual -= dcsdx[trode][vInd] * \
+                        self.dHdc_s[trode](vInd)  # get new var cs bar!
+                    eq_W_T_c_sG0.Residual -= dcsdx[trode][vInd] * \
+                        self.dG0dc_s[trode](vInd)  # get new var cs bar!
                     eq_W_M_phi_s.Residual -= dphisdx[trode][vInd]*self.dHdphi_s[trode](vInd)
             #add in elyte
             trode = 's'
@@ -555,7 +568,7 @@ class ModCell(dae.daeModel):
             eq_W_T_c_lyte = self.CreateEquation("W_T_c_lyte_trode{trode}".format(trode=trode))
             eq_W_T_c_lyte.Residual = self.W_T_c_lyte[trode].dt()
             eq_W_T_phi_lyte = self.CreateEquation("W_T_phi_lyte_trode{trode}".format(trode=trode))
-            eq_W_T_phi_lyte.Residual = self.dW_T_phi_lytedt[trode]() 
+            eq_W_T_phi_lyte.Residual = self.dW_T_phi_lytedt[trode]()
             eq_W_M_c_lyte = self.CreateEquation("W_M_c_lyte_trode{trode}".format(trode=trode))
             eq_W_M_c_lyte.Residual = self.W_M_c_lyte[trode]()
             eq_W_M_phi_lyte = self.CreateEquation("W_M_phi_lyte_trode{trode}".format(trode=trode))
@@ -566,9 +579,6 @@ class ModCell(dae.daeModel):
           #      eq_W_T_phi_lyte.Residual -= self.phi_lyte[trode].dt(vInd)*self.dHdphi_lyte[trode](vInd)
                 eq_W_M_c_lyte.Residual -= dclytedx[trode][vInd]*self.dHdc_lyte[trode](vInd)
                 eq_W_M_phi_lyte.Residual -= dphilytedx[trode][vInd]*self.dHdphi_lyte[trode](vInd)
- 
- 
-
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in

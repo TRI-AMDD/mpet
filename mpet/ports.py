@@ -17,6 +17,7 @@ class portFromElyte(dae.daePort):
             "G_0", elec_pot_t, self,
             "Electric potential in the electrolyte")
 
+
 class portFromBulk(dae.daePort):
     def __init__(self, Name, PortType, Model, Description=""):
         dae.daePort.__init__(self, Name, PortType, Model, Description)

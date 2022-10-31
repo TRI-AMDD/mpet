@@ -14,7 +14,8 @@ def dLiCoO2_LIONSIMBAdc(self, y, ybar, muR_ref):
     r10 = 37.311
     r11 = 73.083
     r12 = 95.96
-    OCV_ref = (2*y*(5*r12*y**8 - 4*r11*y**6 + 3*r10*y**4 - 2*r9*y**2 + r8)*(- r6*y**10 + r5*y**8 - r4*y**6 + r3*y**4 - r2*y**2 + r1))/(- r12*y**10 + r11*y**8 - r10*y**6 + r9*y**4 - r8*y**2 + r7)**2 - (2*y*(5*r6*y**8 - 4*r5*y**6 + 3*r4*y**4 - 2*r3*y**2 + r2))/(- r12*y**10 + r11*y**8 - r10*y**6 + r9*y**4 - r8*y**2 + r7)
+    OCV_ref = (2*y*(5*r12*y**8 - 4*r11*y**6 + 3*r10*y**4 - 2*r9*y**2 + r8)*(- r6*y**10 + r5*y**8 - r4*y**6 + r3*y**4 - r2*y**2 + r1))/(- r12*y**10 + r11*y**8 - \
+               r10*y**6 + r9*y**4 - r8*y**2 + r7)**2 - (2*y*(5*r6*y**8 - 4*r5*y**6 + 3*r4*y**4 - 2*r3*y**2 + r2))/(- r12*y**10 + r11*y**8 - r10*y**6 + r9*y**4 - r8*y**2 + r7)
     muR = self.get_muR_from_OCV(OCV_ref, 0)
     actR = None
     return muR, actR
