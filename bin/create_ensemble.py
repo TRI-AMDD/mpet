@@ -5,31 +5,26 @@ import sys
 import itertools
 import os
 
-# Values that need ensemble
-ensemble = [
-    [("Geometry","L_c"), ["2","43"]],
-    [("Geometry","L_a"), ["3","5","43"]],
-]
 
-# helpers
-keys = [vals[0] for vals in ensemble]
-val = [vals[1] for vals in ensemble]
+def ensemble_definitions():
+    # Values that need ensemble
+    ensemble = [
+        [("Geometry","L_c"), ["2","43"]],
+        [("Geometry","L_a"), ["3","5","43"]],
+    ]
 
-if __name__ == '__main__':
-    # Read in file
-    if len(sys.argv) < 2:
-        print("need the config file [python create_enamble.py <baseconfig>]")
-        exit(1)
-    cfg = configparser.ConfigParser()
-    cfg.optionxform = str
-    cfg.read(sys.argv[1])
+    # helpers
+    keys = [vals[0] for vals in ensemble]
+    val = [vals[1] for vals in ensemble]
+    return keys, val
 
+
+def create_ensemble(cfg):
+    keys, val = ensemble_definitions()
     # Create all variations
     combinations = list(itertools.product(*val))
-
     for combination in combinations:
         params = dict(zip(keys,combination))
-        print(params)
         new_cfg = cfg
         nicename = []
         for key, val in params.items():
@@ -40,5 +35,15 @@ if __name__ == '__main__':
         cfg_dir = os.path.dirname(sys.argv[1])
         with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
             new_cfg.write(f)
-else:
-    print('hoi')
+    return
+
+
+if __name__ == '__main__':
+    # Read in file
+    if len(sys.argv) < 2:
+        print("need the config file [python create_enamble.py <baseconfig>]")
+        exit(1)
+    cfg = configparser.ConfigParser()
+    cfg.optionxform = str
+    cfg.read(sys.argv[1])
+    create_ensemble(cfg)
