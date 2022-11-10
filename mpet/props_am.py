@@ -69,40 +69,32 @@ class muRfuncs():
     # Helper functions
     ######
 
-    def ideal_sln(self, y, ISfuncs=None):
+    def ideal_sln(self, y):
         """ Helper function: Should not be called directly from
         simulation. Call a specific material instead. """
         T = self.T
-        if ISfuncs is not None:
-            # Input must be a vector when using ISfuncs
-            muR = T*np.array([ISfuncs[i]() for i in range(len(y))])
-        else:
-            muR = T*np.log(y/(1-y))
+        muR = T*np.log(y/(1-y))
         return muR
 
-    def reg_sln(self, y, Omga, ISfuncs=None):
+    def reg_sln(self, y, Omga):
         """ Helper function """
-        muR_IS = self.ideal_sln(y, ISfuncs=ISfuncs)
+        muR_IS = self.ideal_sln(y)
         enthalpyTerm = Omga*(1-2*y)
         muR = muR_IS + enthalpyTerm
         return muR
 
-    def graphite_2param_homog(self, y, Omga, Omgb, Omgc, EvdW, ISfuncs=None):
+    def graphite_2param_homog(self, y, Omga, Omgb, Omgc, EvdW):
         """ Helper function """
         y1, y2 = y
-        if ISfuncs is None:
-            ISfuncs1, ISfuncs2 = None, None
-        else:
-            ISfuncs1, ISfuncs2 = ISfuncs
-        muR1 = self.reg_sln(y1, Omga, ISfuncs1)
-        muR2 = self.reg_sln(y2, Omga, ISfuncs2)
+        muR1 = self.reg_sln(y1, Omga)
+        muR2 = self.reg_sln(y2, Omga)
         muR1 += Omgb*y2 + Omgc*y2*(1-y2)*(1-2*y1)
         muR2 += Omgb*y1 + Omgc*y1*(1-y1)*(1-2*y2)
         muR1 += EvdW * (30 * y1**2 * (1-y1)**2)
         muR2 += EvdW * (30 * y2**2 * (1-y2)**2)
         return (muR1, muR2)
 
-    def graphite_1param_homog(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog(self, y, Omga, Omgb):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
@@ -114,7 +106,7 @@ class muRfuncs():
         muR = muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def graphite_1param_homog_2(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog_2(self, y, Omga, Omgb):
         """ Helper function """
         width = 5e-2
         tailScl = 5e-2
@@ -132,7 +124,7 @@ class muRfuncs():
         muR = muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
 
-    def graphite_1param_homog_3(self, y, Omga, Omgb, ISfuncs=None):
+    def graphite_1param_homog_3(self, y, Omga, Omgb):
         """ Helper function with low hysteresis and soft tail """
         width = 5e-2
         tailScl = 5e-2
