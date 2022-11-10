@@ -19,10 +19,13 @@ def ensemble_definitions():
     return keys, val
 
 
-def create_ensemble(cfg, keys=None, val=None):
+def create_ensemble(cff, keys=None, val=None):
     with open('ensemble_parallel_configs.txt', "w") as ff:
         if keys is None and val is None:
             keys, val = ensemble_definitions()
+        cfg = configparser.ConfigParser()
+        cfg.optionxform = str
+        cfg.read(cff)
         # Create all variations
         combinations = list(itertools.product(*val))
         for combination in combinations:
@@ -34,7 +37,7 @@ def create_ensemble(cfg, keys=None, val=None):
                 nicename.append(key[1] + "=" + val)
 
             # Write config
-            cfg_dir = os.path.dirname(sys.argv[1])
+            cfg_dir = os.path.dirname(cff)
             with open(cfg_dir + "/" + "-".join(nicename) + ".cfg", "w") as f:
                 new_cfg.write(f)
                 ff.write(str(cfg_dir + "/" + "-".join(nicename) + ".cfg\n"))
@@ -46,7 +49,4 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("need the config file [python create_enamble.py <baseconfig>]")
         exit(1)
-    cfg = configparser.ConfigParser()
-    cfg.optionxform = str
-    cfg.read(sys.argv[1])
-    create_ensemble(cfg)
+    create_ensemble(sys.argv[1])
