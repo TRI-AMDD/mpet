@@ -489,7 +489,7 @@ class Mod1var(dae.daeModel):
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
-            # For ACR model physically consistent contact loss.
+            # For ACR model localized contact loss.
             # gamma_con = self.get_trode_param('gamma_con')
             # if gamma_con == 1:
             #     RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
