@@ -662,8 +662,8 @@ class Config:
                     raise ValueError('Specified particle size distribution discretization '
                                      'of volumes inequal to the one specified in the config file')
 
-            stddev_c = self['stddev_gamma_c']
-            mean_c = self['mean_gamma_c']
+            stddev_c = self['stand_dev_contact']
+            mean_c = self['fraction_of_contact']
 
             if 0 < mean_c < 1:
                 # Contact penalty for BV
@@ -789,7 +789,7 @@ class Config:
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['gamma_con'][i, j] = gamma_cont
-                    if self['mean_gamma_c'] != 1.0:
+                    if self['fraction_of_contact'] != 1.0:
                         self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                             / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
