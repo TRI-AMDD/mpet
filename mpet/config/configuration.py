@@ -789,7 +789,7 @@ class Config:
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['gamma_con'][i, j] = gamma_cont
-                    if self['fraction_of_contact'] != 1.0:
+                    if self['fraction_of_contact'] != 1.0 and not self['localized_losses']:
                         self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                             / (constants.e * F_s_ref)*gamma_cont
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \

@@ -93,6 +93,8 @@ system = {'Sim Params': {'profileType': lambda x:
                         'stddev_a': Use(float),
                         Optional('fraction_of_contact',default=1.0): Use(float),
                         Optional('stand_dev_contact',default=0): Use(float),
+                        Optional('localized_losses', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
                         'cs0_c': Use(float),
                         'cs0_a': Use(float),
                         Optional('specified_psd_c', default=False):
