@@ -435,12 +435,10 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             c_surf = c
-
+            # surface diffusion in the ACR C3 model
             if self.get_trode_param("type") in ["ACR_Diff"]:
                 dx = 1/np.size(c)
-                # some doubt here, is it better to use size(c), so N+2 slices,  or size(c[1:-1]) ?
                 beta_s = self.get_trode_param("beta_s")
-                # if beta_s is too big c_surf[0] > 1, a better method is needed
                 eqL = self.CreateEquation("leftBC")
                 eqL.Residual = (c_surf[0] - c_surf[1] +
                                 - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
@@ -459,8 +457,9 @@ class Mod1var(dae.daeModel):
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
+        # surface diffusion in the ACR C3 model
         if self.get_trode_param("type") in ["ACR_Diff"]:
-            eta = calc_eta(muR_surf[1:-1], muO)  # using internal values is not so nice
+            eta = calc_eta(muR_surf[1:-1], muO)
         else:
             eta = calc_eta(muR_surf, muO)
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
@@ -489,7 +488,7 @@ class Mod1var(dae.daeModel):
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
-            # For ACR model localized contact loss.
+            # For ACR model localized contact loss. To be implemented in the param_system
             # gamma_con = self.get_trode_param('gamma_con')
             # if gamma_con == 1:
             #     RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
@@ -537,6 +536,7 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         if self.get_trode_param("type") in ["ACR_Diff"]:
+            # surface diffusion in the ACR C3 model
             surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("D"))
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
@@ -546,6 +546,7 @@ class Mod1var(dae.daeModel):
                 eq.Residual = LHS_vec[k] - RHS[k]
 
 
+# surface diffusion in the ACR C3 model
 def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
     dxs = 1./N_2

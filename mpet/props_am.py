@@ -153,32 +153,32 @@ class muRfuncs():
             dxs = 1./N
             curv = np.diff(ytmp, 2)/(dxs**2)
             muR_nh = -kappa*curv + B*(y - ybar)
-        elif (isinstance(y, tuple) and len(y) == 2
-                and isinstance(y[0], np.ndarray)):
-            # stech_Mn = 0.5
-            # stech_Fe = 0.5
-            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
-            N = len(y[0])
+        # elif (isinstance(y, tuple) and len(y) == 2
+        #         and isinstance(y[0], np.ndarray)):
+        #     # stech_Mn = 0.5
+        #     # stech_Fe = 0.5
+        #     # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+        #     N = len(y[0])
 
-            ytmp1 = np.empty(N+2, dtype=object)
-            ytmp1[1:-1] = y[0]
-            ytmp1[0] = ywet
-            ytmp1[-1] = ywet
-            dxs = 1./N
-            curv1 = np.diff(ytmp1, 2)/(dxs**2)
-            muR1_nh = (-kappa*curv1
-                       + B*(y[0] - ybar[0]))
+        #     ytmp1 = np.empty(N+2, dtype=object)
+        #     ytmp1[1:-1] = y[0]
+        #     ytmp1[0] = ywet
+        #     ytmp1[-1] = ywet
+        #     dxs = 1./N
+        #     curv1 = np.diff(ytmp1, 2)/(dxs**2)
+        #     muR1_nh = (-kappa*curv1
+        #                + B*(y[0] - ybar[0]))
 
-            ytmp2 = np.empty(N+2, dtype=object)
-            ytmp2[1:-1] = y[1]
-            ytmp2[0] = ywet
-            ytmp2[-1] = ywet
-            dxs = 1./N
-            curv2 = np.diff(ytmp2, 2)/(dxs**2)
-            muR2_nh = (-kappa*curv2
-                       + B*(y[1] - ybar[1]))
+        #     ytmp2 = np.empty(N+2, dtype=object)
+        #     ytmp2[1:-1] = y[1]
+        #     ytmp2[0] = ywet
+        #     ytmp2[-1] = ywet
+        #     dxs = 1./N
+        #     curv2 = np.diff(ytmp2, 2)/(dxs**2)
+        #     muR2_nh = (-kappa*curv2
+        #                + B*(y[1] - ybar[1]))
 
-            muR_nh = (muR1_nh, muR2_nh)
+        #     muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def non_homog_rect_variational(self, y, ybar, B, kappa):
@@ -193,71 +193,33 @@ class muRfuncs():
             ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
             curv = np.diff(ytmp, 2)/(dxs**2)
             muR_nh = -kappa*curv + B*(y - ybar)
-        elif (isinstance(y, tuple) and len(y) == 2
-                and isinstance(y[0], np.ndarray)):
-            y1 = y[0]
-            y2 = y[1]
-            # stech_Mn = 0.5
-            # stech_Fe = 0.5
-            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
-            N_2 = len(y[0])
+        # elif (isinstance(y, tuple) and len(y) == 2
+        #         and isinstance(y[0], np.ndarray)):
+        #     # to be finished
+        #     y1 = y[0]
+        #     y2 = y[1]
+        #     # stech_Mn = 0.5
+        #     # stech_Fe = 0.5
+        #     # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
+        #     N_2 = len(y[0])
 
-            ytmp1 = np.empty(N_2+2, dtype=object)
-            dxs = 1./N_2
-            ytmp1[1:-1] = y1
-            ytmp1[0] = y1[0] + np.diff(y1)[0]*dxs + 0.5*np.diff(y1,2)[0]*dxs**2
-            ytmp1[-1] = y1[-1] + np.diff(y1)[-1]*dxs + 0.5*np.diff(y1,2)[-1]*dxs**2
-            curv1 = np.diff(ytmp1, 2)/(dxs**2)
-            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
+        #     ytmp1 = np.empty(N_2+2, dtype=object)
+        #     dxs = 1./N_2
+        #     ytmp1[1:-1] = y1
+        #     ytmp1[0] = y1[0] + np.diff(y1)[0]*dxs + 0.5*np.diff(y1,2)[0]*dxs**2
+        #     ytmp1[-1] = y1[-1] + np.diff(y1)[-1]*dxs + 0.5*np.diff(y1,2)[-1]*dxs**2
+        #     curv1 = np.diff(ytmp1, 2)/(dxs**2)
+        #     muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
 
-            ytmp2 = np.empty(N_2+2, dtype=object)
-            dxs = 1./N_2
-            ytmp2[1:-1] = y2
-            ytmp2[0] = y2[0] + np.diff(y2)[0]*dxs + 0.5*np.diff(y2,2)[0]*dxs**2
-            ytmp2[-1] = y2[-1] + np.diff(y2)[-1]*dxs + 0.5*np.diff(y2,2)[-1]*dxs**2
-            curv2 = np.diff(ytmp2, 2)/(dxs**2)
-            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
+        #     ytmp2 = np.empty(N_2+2, dtype=object)
+        #     dxs = 1./N_2
+        #     ytmp2[1:-1] = y2
+        #     ytmp2[0] = y2[0] + np.diff(y2)[0]*dxs + 0.5*np.diff(y2,2)[0]*dxs**2
+        #     ytmp2[-1] = y2[-1] + np.diff(y2)[-1]*dxs + 0.5*np.diff(y2,2)[-1]*dxs**2
+        #     curv2 = np.diff(ytmp2, 2)/(dxs**2)
+        #     muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
 
-            muR_nh = (muR1_nh, muR2_nh)
-        return muR_nh
-
-    def non_homog_rect_variational_0TE(self, y, ybar, B, kappa):
-        # the taylor expansion at the edges is used
-        if isinstance(y, np.ndarray):
-            N_2 = len(y)
-            ytmp = np.empty(N_2+2, dtype=object)
-            dxs = 1./N_2
-            ytmp[1:-1] = y
-            ytmp[0] = y[0]
-            ytmp[-1] = y[-1]
-            curv = np.diff(ytmp, 2)/(dxs**2)
-            muR_nh = -kappa*curv + B*(y - ybar)
-        elif (isinstance(y, tuple) and len(y) == 2
-                and isinstance(y[0], np.ndarray)):
-            y1 = y[0]
-            y2 = y[1]
-            # stech_Mn = 0.5
-            # stech_Fe = 0.5
-            # ybar_avg = stech_Mn*ybar[0]+stech_Fe*ybar[1]
-            N_2 = len(y[0])
-
-            ytmp1 = np.empty(N_2+2, dtype=object)
-            dxs = 1./N_2
-            ytmp1[1:-1] = y1
-            ytmp1[0] = y1[0]
-            ytmp1[-1] = y1[-1]
-            curv1 = np.diff(ytmp1, 2)/(dxs**2)
-            muR1_nh = -kappa*curv1 + B*(y1 - ybar[0])
-
-            ytmp2 = np.empty(N_2+2, dtype=object)
-            dxs = 1./N_2
-            ytmp2[1:-1] = y2
-            ytmp2[0] = y2[0]
-            ytmp2[-1] = y2[-1]
-            curv2 = np.diff(ytmp2, 2)/(dxs**2)
-            muR2_nh = -kappa*curv2 + B*(y2 - ybar[1])
-
-            muR_nh = (muR1_nh, muR2_nh)
+        #     muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
