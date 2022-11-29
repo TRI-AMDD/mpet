@@ -300,12 +300,12 @@ def main():
             cstr_base = pfx + partStr + "c"
             maxlength = max([np.shape(utils.get_dict_key(data, cstr_base.format(
                             trode=t, pInd=p, vInd=v)))[1]
-                for t in trodes for p in range(Npart[trode]) for v in range(Nvol[trode])])
+                for t in trodes for p in range(Npart[t]) for v in range(Nvol[t])])
         else:
             partStr = "partTrode{trode}vol{vInd}part{pInd}" + sStr
             maxlength = max([np.shape(utils.get_dict_key(data, (pfx + partStr + "c1").format(
                             trode=t, pInd=p, vInd=v)))[1]
-                for t in trodes for p in range(Npart[trode]) for v in range(Nvol[trode])])
+                for t in trodes for p in range(Npart[t]) for v in range(Nvol[t])])
         for trode in trodes:
             bulkp = pfx + 'phi_bulk_{trode}'.format(trode=trode)
             dataybulkp = utils.get_dict_key(data, bulkp).flatten()
