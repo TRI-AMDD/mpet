@@ -604,8 +604,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         elyte_function = utils.import_function(config["SMset_filename"], SMset,
                                                mpet_module=f"mpet.electrolyte.{SMset}")
         D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
+        # sigma_fs and thermFac not used bc the solid system is considered linear
         a_slyte = config["a_slyte"]
-        tp0 = 0.99999
         c_edges_int_norm = c_edges_int / config["cmax"]
 
         # Get diffusivity at cell edges using weighted harmonic mean
