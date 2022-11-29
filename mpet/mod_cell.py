@@ -300,10 +300,6 @@ class ModCell(dae.daeModel):
                 dvg_curr_dens = np.diff(-poros_walls*config["sigma_s"][trode]
                                         * np.diff(phi_tmp)/dx)/dx
 
-                # dvg_curr_dens = np.diff(-poros_walls*(config["sigma_s"][trode]*(1-0.15)
-                #                         + config["sigma_s"][trode]
-                #                         * 0.15*2.71828**(-np.diff(phi_tmp)))
-                #                         * np.diff(phi_tmp)/dx)/dx
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
@@ -609,10 +605,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         c_edges_int_norm = c_edges_int / config["cmax"]
 
         # Get diffusivity at cell edges using weighted harmonic mean
-        # D_edges = utils.weighted_harmonic_mean(eps_o_tau * D_fs(c_lyte), wt)
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
-        # sp, n = ndD["sp"], ndD["n_refTrode"]
-        # D_fs is specified in solid_elyte_func in props_elyte.py
         Dp = eps_o_tau_edges * config["Dp"]
         Dm = (zp * Dp - zp * Dp * tp0) / (tp0 * zm)
         Dp0 = Dp / (1-c_edges_int_norm)  # should be c0/cmax

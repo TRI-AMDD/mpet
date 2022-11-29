@@ -140,7 +140,7 @@ class Mod2var(dae.daeModel):
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
         if self.get_trode_param("type") in ["diffn2", "CHR2", "ACR2"]:
-            # Equations for 1D particles of 2 field varibles
+            # Equations for 1D particles of 2 field variables
             self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
             # Equations for 0D particles of 2 field variables
@@ -487,7 +487,7 @@ class Mod1var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
-            # For ACR model localized contact loss. To be implemented in the param_system
+            # For ACR model localized contact loss.
             if self.config['localized_losses']:
                 gamma_con = self.get_trode_param('gamma_con')
                 if gamma_con == 1:
