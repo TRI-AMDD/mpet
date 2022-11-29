@@ -43,7 +43,7 @@ def run_simulation(config, outdir):
             for port in pModel.Ports:
                 for var in port.Variables:
                     var.ReportingOn = False
-        if config["simInterface"]:
+        if config[f"simInterface_{trode}"]:
             for interfaces in simulation.m.interfaces[trode]:
                 for iModel in interfaces:
                     for port in iModel.Ports:

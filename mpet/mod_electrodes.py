@@ -78,7 +78,7 @@ class Mod2var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
-        if self.config["simInterface"]:
+        if self.config[f"simInterface_{trode}"]:
             self.portOutParticle = ports.portFromParticle(
                 "portOutParticle", dae.eOutletPort, self,
                 "Outlet port from particle")
@@ -116,7 +116,7 @@ class Mod2var(dae.daeModel):
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(
             self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-            self.config)
+            self.config, self.trode)
 
         # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")
@@ -149,7 +149,7 @@ class Mod2var(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-        if self.config["simInterface"]:
+        if self.config[f"simInterface_{self.trode}"]:
             # Output dcbardt to interface region
             eq = self.CreateEquation("particle_to_interface_dcbardt")
             eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
@@ -337,7 +337,7 @@ class Mod1var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
-        if config["simInterface"]:
+        if config[f"simInterface_{trode}"]:
             self.portOutParticle = ports.portFromParticle(
                 "portOutParticle", dae.eOutletPort, self,
                 "Outlet port from particle")
@@ -370,7 +370,7 @@ class Mod1var(dae.daeModel):
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-                                   self.config)
+                                   self.config, self.trode)
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -400,7 +400,7 @@ class Mod1var(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
-        if self.config["simInterface"]:
+        if self.config[f"simInterface_{self.trode}"]:
             # Output dcbardt to interface region
             eq = self.CreateEquation("particle_to_interface_dcbardt")
             eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
@@ -629,10 +629,10 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
     return Flux1_vec, Flux2_vec
 
 
-def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config):
+def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config, trode):
     elyteModelType = config["elyteModelType"]
 
-    if config["simInterface"]:
+    if config[f"simInterface_{trode}"]:
         elyteModelType = config["interfaceModelType"]
 
     if elyteModelType == "SM":

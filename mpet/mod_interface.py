@@ -97,8 +97,8 @@ class InterfaceRegion(dae.daeModel):
 
         Nm_edges, i_edges = get_interface_internal_fluxes(ctmp, phitmp, disc, config)
 
-        # The reaction rate per volume (Rvp) is normailized to the total length of cathode.
-        dlc = config["L"]['c']/config["Nvol"]['c']
+        # The reaction rate per volume (Rvp) is normalized to the total length of the electrode.
+        dlc = config["L"][self.trode]/config["Nvol"][self.trode]
         disc["dxvec"][:] = 1
 
         dvgNm = np.diff(Nm_edges) / disc["dxvec"]

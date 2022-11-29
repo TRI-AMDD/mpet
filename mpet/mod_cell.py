@@ -83,7 +83,7 @@ class ModCell(dae.daeModel):
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
                 [self.DmnCell[trode]])
-            if self.config['simInterface']:
+            if self.config[f'simInterface_{trode}']:
                 self.R_Vi[trode] = dae.daeVariable(
                     "R_Vi_{trode}".format(trode=trode), dae.no_t, self,
                     "Rate of reaction of positives per electrode volume with interface region",
@@ -160,7 +160,7 @@ class ModCell(dae.daeModel):
                             trode=trode, vInd=vInd, pInd=pInd),
                         Parent=self)
 
-                    if config["simInterface"]:
+                    if config[f"simInterface_{trode}"]:
                         # instantiate interfaces between particle and electrolyte per particle
                         self.interfaces[trode][vInd,pInd] = InterfaceRegion(
                             Name="interfaceTrode{trode}vol{vInd}part{pInd}".format(
@@ -232,7 +232,7 @@ class ModCell(dae.daeModel):
                 # particle in the volume.
                 RHS = 0
                 # interface region has separate reaction rate
-                if config["simInterface"]:
+                if config[f"simInterface_{trode}"]:
                     eq_i = self.CreateEquation(
                         "R_Vi_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                     RHS_i = 0
@@ -243,13 +243,13 @@ class ModCell(dae.daeModel):
                     RHS += -(config["beta"][trode] * (1-config["poros"][trode])
                              * config["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt())
-                    if config["simInterface"]:
+                    if config[f"simInterface_{trode}"]:
                         # Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
                         i0 = self.portsInInterface[trode][vInd,pInd].i0()
                         # TODO: what is the reaction rate?
                         RHS_i += -i0
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
-                if config["simInterface"]:
+                if config[f"simInterface_{trode}"]:
                     eq_i.Residual = self.R_Vi[trode](vInd) - RHS_i
 
         # Define output port variables
@@ -310,7 +310,7 @@ class ModCell(dae.daeModel):
                     "phi_ac_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 if simBulkCond:
                     # select reaction rate with interface region or particle
-                    if config["simInterface"]:
+                    if config[f"simInterface_{trode}"]:
                         R_V = self.R_Vi
                     else:
                         R_V = self.R_Vp
@@ -368,7 +368,7 @@ class ModCell(dae.daeModel):
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
-            if config["simInterface"]:
+            if config[f"simInterface_{trode}"]:
                 Rvvec = utils.get_asc_vec(self.R_Vi, Nvol)
             else:
                 Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)

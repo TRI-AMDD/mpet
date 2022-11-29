@@ -52,7 +52,7 @@ def tobool(value):
 
 
 #: Defaults for config sections that are optional
-DEFAULT_SECTIONS = {'Interface': {'simInterface': False}}
+DEFAULT_SECTIONS = {'Interface': {'simInterface_a': False, 'simInterface_c': False}}
 
 
 #: System parameters, per section
@@ -140,7 +140,8 @@ system = {'Sim Params': {'profileType': lambda x:
                           Optional('Dm', default=None): Use(float),
                           Optional('cmax'): Use(float),
                           Optional('a_slyte'): Use(float)},
-          'Interface': {Optional('simInterface',default=False): Use(tobool),
+          'Interface': {Optional('simInterface_a',default=False): Use(tobool),
+                        Optional('simInterface_c',default=False): Use(tobool),
                         Optional('Nvol_i'): And(Use(int), lambda x: x > 0),
                         Optional('L_i'): Use(float),
                         Optional('BruggExp_i'): Use(float),

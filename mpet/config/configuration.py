@@ -501,7 +501,7 @@ class Config:
         if self['elyteModelType'] == 'solid':
             self['cmax'] = self['cmax'] / constants.c_ref
 
-        if self['simInterface']:
+        if self['simInterface_a'] or self['simInterface_c']:
             self['Dp_i'] = self['Dp_i'] / self['D_ref']
             if self['interfaceModelType'] != 'solid':
                 self['Dm_i'] = self['Dm_i'] / self['D_ref']
@@ -535,7 +535,7 @@ class Config:
             self['L']['s'] /= self['L_ref']
 
         # scaling related to interface region (if present)
-        if self['simInterface']:
+        if self['simInterface_a'] or self['simInterface_c']:
             self['L_i'] /= self['L_ref']
 
     def _scale_macroscopic_parameters(self, Vref):

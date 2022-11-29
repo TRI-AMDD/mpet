@@ -55,7 +55,7 @@ class SimMPET(dae.daeSimulation):
                 for j in range(config["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(config["psd_num"][tr][i,j]))
-                    if config["simInterface"]:
+                    if config[f"simInterface_{tr}"]:
                         self.m.interfaces[tr][i, j].Dmn.CreateArray(
                             int(config["Nvol_i"]))
 
@@ -139,7 +139,7 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
                         # Set concentration and potential in interface region
-                        if config["simInterface"]:
+                        if config[f"simInterface_{tr}"]:
                             for k in range(config["Nvol_i"]):
                                 self.m.interfaces[tr][i,j].c.SetInitialCondition(k,
                                                                                  config["c0_int"])
