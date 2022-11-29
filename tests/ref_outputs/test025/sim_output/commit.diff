@@ -1,0 +1,60 @@
+diff --git a/configs/params_LFP.cfg b/configs/params_LFP.cfg
+index 1dc1a98..f763c88 100644
+--- a/configs/params_LFP.cfg
++++ b/configs/params_LFP.cfg
+@@ -16,14 +16,14 @@ Omega_a = 1.8560e-20
+ kappa = 5.0148e-10
+ B = 0.1916e9
+ rho_s = 1.3793e28
+-D = 5.3e-19
++D = 1e-18
+ Dfunc = lattice
+-dgammadc = 0e-30
++dgammadc = 1e-29
+ cwet = 0.98
+ 
+ [Reactions]
+ rxnType = BV
+-k0 = 1.6e-1
++k0 = 0.6e-1
+ E_A = 13000
+ alpha = 0.5
+ # Fraggedakis et al. 2020, lambda = 8.3kBT
+diff --git a/configs/params_system.cfg b/configs/params_system.cfg
+index f763a6e..e307f18 100644
+--- a/configs/params_system.cfg
++++ b/configs/params_system.cfg
+@@ -62,7 +62,7 @@ seed = 0
+ # printing internal variable concentrations) files. hdf5 files
+ # are better for cycling, as they store less information and there is less
+ # opening/rewriting of files. Default is mat
+-dataReporter = hdf5
++dataReporter = mat
+ # Series resistance, [Ohm m^2]
+ Rser = 0.
+ # Cathode, anode, and separator numer disc. in x direction (volumes in electrodes)
+@@ -209,13 +209,13 @@ Dm = 2.94e-10
+ # Simulate interface region?
+ # Options: true, false (Default: false)
+ simInterface_c = false
+-simInterface_a = false
++simInterface_a = true
+ c0_int = 40000
+ cmax_i = 80000
+ # for numerical dicretization
+ Nvol_i = 4
+ # interface length
+-L_i = 20e-9
++L_i = 20e-8
+ BruggExp_i = -0.5
+ poros_i = 1.0
+ # Options: dilute, SM
+@@ -234,5 +234,5 @@ interfaceModelType = solid
+ #   solid_elyte: uses the lattice gas model for solid electrolytes.
+ interfaceSMset = solid_elyte
+ # diff coefficinets of the interface, can also be liquid
+-Dp_i = 5.5e-17
++Dp_i = 5.5e-18
+ Dm_i = 2.94e-19
+\ No newline at end of file
+
