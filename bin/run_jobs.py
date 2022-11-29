@@ -54,7 +54,7 @@ def run_mpet(client, output_folder, mpet_configs):
 
     # function to run MPET in directory given as input to run_mpet
     def run_mpet_instance(*args, **kwargs):
-        print(f"Running in {output_folder} with {args=}, {kwargs=}")
+        print(f"Running in {output_folder} with args={args}, kwargs={kwargs}")
         os.chdir(output_folder)
         try:
             main.main(*args, **kwargs)
