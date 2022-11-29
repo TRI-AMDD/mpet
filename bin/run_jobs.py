@@ -59,7 +59,7 @@ def run_mpet(client, output_folder, mpet_configs):
         try:
             main.main(*args, **kwargs)
         except Exception as e:
-            print(f'{MPET crashed with error: {e}')
+            print(f'MPET crashed with error: {e}')
 
     futures = client.map(run_mpet_instance, files, keepFullRun=True)
     print('Waiting for MPET to finish')
