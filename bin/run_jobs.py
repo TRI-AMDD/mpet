@@ -54,13 +54,17 @@ def run_mpet(client, output_folder, mpet_configs):
 
     # function to run MPET in directory given as input to run_mpet
     def run_mpet_instance(*args, **kwargs):
-        print(f"RUNNING IN {output_folder}")
+        print(f"Running in {output_folder} with {args=}, {kwargs=}")
         os.chdir(output_folder)
-        main.main(*args, **kwargs)
+        try:
+            main.main(*args, **kwargs)
+        except Exception as e:
+            print(f'{MPET crashed with error: {e}')
 
     futures = client.map(run_mpet_instance, files, keepFullRun=True)
     print('Waiting for MPET to finish')
     client.gather(futures)
+    client.close()
     print('Done')
     return
 
