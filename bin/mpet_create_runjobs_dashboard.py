@@ -2,6 +2,7 @@ from create_ensemble import create_ensemble
 from run_jobs import create_slurm_cluster, create_pbs_cluster, create_local_cluster, run_mpet
 # import mpet_plot_app
 import os
+import subprocess
 import shutil
 from dask.distributed import Client
 
@@ -91,3 +92,4 @@ if __name__ == '__main__':
     # Read in config file
     create_ensemble(cff, keys, val)
     call_run_cluster()
+    subprocess.call(["python", "./bin/mpet_plot_app.py", "-d", "./Dashboard_input/history"])
