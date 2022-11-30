@@ -23,6 +23,216 @@ import mpet.utils as utils
 from mpet.daeVariableTypes import mole_frac_t
 
 
+class Mod2D(dae.daeModel):
+    def __init__(self, config, trode, vInd, pInd,
+                 Name, Parent=None, Description=""):
+        super().__init__(Name, Parent, Description)
+
+        self.config = config
+        self.trode = trode
+        self.ind = (vInd, pInd)
+
+        # Domain 
+        self.Dmn = dae.daeDomain("discretizationDomainX", self, dae.unit(),
+                                 "discretization domain in x direction")
+        self.Dmny = dae.daeDomain("discretizationDomainY", self, dae.unit(),
+                                    "discretization domain in y direction")
+
+        # Variables
+        self.cy = {}
+        self.cybar = {}
+        self.cx = dae.daeVariable(
+            "cx", mole_frac_t, self,
+            "Concentration in x direction of active particle", [self.Dmn])
+
+        Nx = 50
+        for k in range(Nx):
+            self.cy[k] = dae.daeVariable(
+                    "cy_{k}".format(k=k), mole_frac_t, self,
+                    "Concentration in y direction of element {k}".format(k=k),
+                    [self.Dmny])
+        for k in range(Nx):
+            self.cybar[k] = dae.daeVariable(
+                    "cybar_{k}".format(k=k), mole_frac_t, self,
+                    "Average concentration in y of element {k}".format(k=k))
+        
+        self.cbar = dae.daeVariable(
+            "cbar", mole_frac_t, self,
+            "Average concentration in active particle")
+        # self.cxbar = dae.daeVariable(
+        #     "cxbar", mole_frac_t, self,
+        #     "Average concentration in x of active particle")
+        
+        
+        self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
+
+        # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
+
+        # Ports
+        self.portInLyte = ports.portFromElyte(
+            "portInLyte", dae.eInletPort, self, "Inlet port from electrolyte")
+        self.portInBulk = ports.portFromBulk(
+            "portInBulk", dae.eInletPort, self,
+            "Inlet port from e- conducting phase")
+        self.phi_lyte = self.portInLyte.phi_lyte
+        self.c_lyte = self.portInLyte.c_lyte
+        self.phi_m = self.portInBulk.phi_m
+
+    def get_trode_param(self, item):
+        """
+        Shorthand to retrieve electrode-specific value
+        """
+        value = self.config[self.trode, item]
+        # check if it is a particle-specific parameter
+        if item in self.config.params_per_particle:
+            value = value[self.ind]
+        return value
+
+    def DeclareEquations(self):
+        dae.daeModel.DeclareEquations(self)
+        # Nx = self.get_trode_param("N")  # number of grid points in particle
+        Nx = 50
+        Ny = 10
+        T = self.config["T"]  # nondimensional temperature
+        # r_vec, volfrac_vec_x = geo.get_unit_solid_discr(self.get_trode_param('shape'), Nx)
+        # r_vec, volfrac_vec_y = geo.get_unit_solid_discr(self.get_trode_param('shape'), Ny)
+
+        self.noise = None
+
+        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+                                   "SM")
+
+        # Define average filling fractions in particle
+        # eqx = self.CreateEquation("cxbar")
+        # for i in range(Nx):
+        #     eqy = self.CreateEquation("cybar_{i}".format(i=i))
+        #     eqy.Residual = self.cx(i)
+        #     for j in range(Ny):
+        #         eqy.Residual -= self.cy[i](j)/Ny
+        
+        
+        for i in range(Nx):
+            eq = self.CreateEquation("cx_{i}".format(i=i))
+            eq.Residual = self.cx(i) 
+            for j in range(Ny):
+                eq.Residual -= self.cy[i](j)/Ny
+
+        eq = self.CreateEquation("cbar")
+        eq.Residual = self.cbar()
+        for k in range(Nx):
+            eq.Residual -= self.cx(k)/Nx
+
+        # Define average rate of filling of particle
+        eq = self.CreateEquation("dcbardt")
+        eq.Residual = self.dcbardt()
+        for k in range(Nx):
+            eq.Residual -= self.cx.dt(k)/Nx
+        
+        # cx = np.empty(Nx, dtype=object)
+        # cx[:] = [self.cx(k) for k in range(Nx)]
+        c_mat = np.empty((Ny, Nx), dtype=object)
+        for k in range(Nx):
+            for j in range(Ny):
+                c_mat[j, k] = self.cy[k](j)
+
+        self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+
+        for eq in self.Equations:
+            eq.CheckUnitsConsistency = False
+
+    def sld_dynamics_2D1var(self, c_mat, muO, act_lyte, noise):
+        Ny = np.size(c_mat, 0)
+        Nx = np.size(c_mat, 1)
+        T = self.config["T"]
+        Dfunc_name = self.get_trode_param("Dfunc")
+        Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                        Dfunc_name,
+                                        f"mpet.electrode.diffusion.{Dfunc_name}")
+        # Equations for concentration evolution
+        # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
+
+        Mmat = get_Mmat("C3", Nx)
+        dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), Ny)
+
+        
+        # muR, actR = calc_muR(c_mat[:,0], self.cbar(), self.config, self.trode, self.ind)
+        # muR_mat = np.empty((Nx,Ny), dtype=object)
+        # actR_mat = np.empty((Nx,Ny), dtype=object)
+        # muR_mat, actR_mat = calc_muR(c_mat, self.cbar(), 
+        #                                             self.config, self.trode, self.ind)
+        # for k in range(Nx):
+        #     muR_mat[k,:], actR_mat[k,:] = calc_muR(c_mat[k,:], self.cx(k), 
+        #                                             self.config, self.trode, self.ind)
+
+        # print(muR_mat[1,:])
+
+        c_surf = c_mat[-1,:]
+        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), 
+                                        self.config, self.trode, self.ind)
+
+        eta = calc_eta(muR_surf, muO)
+        eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
+                                for i in range(Nx)])
+        Rxn = self.calc_rxn_rate(
+            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+
+        for i in range(Nx):
+            eq = self.CreateEquation("Rxn_{i}".format(i=i))
+            eq.Residual = self.Rxn(i) - Rxn[i]
+
+        RHSx = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(Nx)])
+        dcdt_vec_x = np.empty(Nx, dtype=object)
+        dcdt_vec_x[0:Nx] = [self.cx.dt(k) for k in range(Nx)]
+        Mmatx = get_Mmat("C3", Nx)
+        LHS_vec_x = MX(Mmatx, dcdt_vec_x)
+            
+        for k in range(Nx):
+            eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
+            eq.Residual = LHS_vec_x[k] - RHSx[k]
+
+        # Flux_mat = np.empty((Nx,Ny), dtype=object)
+        RHS_mat = np.empty((Ny,Nx), dtype=object)
+        area_vec = 1
+        LHS_mat = np.empty((Ny,Nx), dtype=object)
+        Mmaty = get_Mmat("C3", Ny)
+        # print(c_mat[1,:])
+        for k in range(Nx):
+            Flux_bc = -self.Rxn(k)
+            # muR_vec = muR_mat[k,:]
+            # c_v = c_mat[:,k]
+            # c_vec = utils.get_var_vec(c_mat[:,k],Ny)
+            muR_vec, actR_vec = calc_muR(c_mat[:,k], self.cx(k), 
+                                                    self.config, self.trode, self.ind)
+
+            # Flux_mat[k,:] = calc_flux_CHR(c_mat[k,:], muR_vec, self.get_trode_param("D"), Dfunc,
+            #                              self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+            Flux_vec = calc_flux_C3ver(c_mat[k,:], muR_vec, self.get_trode_param("D"), Dfunc,
+                                         self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+            # c_vec = utils.get_var_vec(c_mat[:,k],Ny)
+
+
+            # RHS_mat = -np.diff(Flux_vec * area_vec)
+            RHS_vec = -np.diff(Flux_vec * area_vec)
+
+            dcdt_vec_y = np.empty(Ny, dtype=object)
+            dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
+
+            LHS_vec_y = MX(Mmaty, dcdt_vec_y) 
+            for j in range(Ny): 
+                eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
+                eq.Residual = LHS_vec_y[j] - RHS_vec[j]
+            LHS_mat[:,k] = LHS_vec_y   
+
+        
+
+
 class Mod2var(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
                  Name, Parent=None, Description=""):
@@ -502,6 +712,19 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
             np.diff(mu + noise(dae.Time().Value))/dr
     return Flux_vec
 
+def calc_flux_C3ver(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
+    N = len(c)
+    Flux_vec = np.empty(N+1, dtype=object)
+    Flux_vec[0] = 0  # Symmetry at r=0
+    Flux_vec[-1] = Flux_bc
+    c_edges = utils.mean_linear(c)
+    if noise is None:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+    else:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu + noise(dae.Time().Value))/dr
+    return Flux_vec
+
 
 def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, T, noise1, noise2):
     N = len(c1)
@@ -546,6 +769,7 @@ def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):
         raise Exception("MX function designed for csr mult")
     n = objvec.shape[0]
+    print(n)
     if isinstance(objvec[0], dae.pyCore.adouble):
         out = np.empty(n, dtype=object)
     else:

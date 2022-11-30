@@ -634,7 +634,7 @@ class Config:
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
             solidDisc = self[trode, 'discretization']
-            if solidType in ['ACR']:
+            if solidType in ['ACR', 'ACR2D']:
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:

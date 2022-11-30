@@ -137,7 +137,9 @@ class ModCell(dae.daeModel):
                         dae.eOutletPort, self,
                         "Bulk electrode port to particles")
                     solidType = config[trode, "type"]
-                    if solidType in constants.two_var_types:
+                    if solidType == "ACR2D":
+                        pMod = mod_electrodes.Mod2D
+                    elif solidType in constants.two_var_types:
                         pMod = mod_electrodes.Mod2var
                     elif solidType in constants.one_var_types:
                         pMod = mod_electrodes.Mod1var
