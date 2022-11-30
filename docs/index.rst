@@ -18,7 +18,10 @@ Welcome to MPET's documentation!
    :caption: Tutorials:
 
    run_sim
+   cluster
    analysis
+   dashboard
+   ensemble
 
 .. toctree::
    :maxdepth: 1
