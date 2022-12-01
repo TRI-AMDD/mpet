@@ -32,7 +32,7 @@ class Mod2D(dae.daeModel):
         self.trode = trode
         self.ind = (vInd, pInd)
 
-        # Domain 
+        # Domain
         self.Dmn = dae.daeDomain("discretizationDomainX", self, dae.unit(),
                                  "discretization domain in x direction")
         self.Dmny = dae.daeDomain("discretizationDomainY", self, dae.unit(),
@@ -111,9 +111,7 @@ class Mod2D(dae.daeModel):
         eq.Residual = self.dcbardt()
         for k in range(Nx):
             eq.Residual -= self.cx.dt(k)/Nx
-        
-        # cx = np.empty(Nx, dtype=object)
-        # cx[:] = [self.cx(k) for k in range(Nx)]
+
         c_mat = np.empty((Ny, Nx), dtype=object)
         for k in range(Nx):
             c_mat[:,k] = [self.cy[k](j) for j in range(Ny)]
@@ -161,8 +159,8 @@ class Mod2D(dae.daeModel):
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
-            LHS_vec_y = MX(Mmaty, dcdt_vec_y) 
-            for j in range(Ny): 
+            LHS_vec_y = MX(Mmaty, dcdt_vec_y)
+            for j in range(Ny):
                 eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
                 eq.Residual = LHS_vec_y[j] - RHS_vec[j]
 
