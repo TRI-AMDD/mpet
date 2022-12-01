@@ -36,7 +36,7 @@ class Mod2D(dae.daeModel):
         self.Dmn = dae.daeDomain("discretizationDomainX", self, dae.unit(),
                                  "discretization domain in x direction")
         self.Dmny = dae.daeDomain("discretizationDomainY", self, dae.unit(),
-                                    "discretization domain in y direction")
+                                  "discretization domain in y direction")
 
         # Variables
         self.cx = dae.daeVariable(
@@ -46,15 +46,14 @@ class Mod2D(dae.daeModel):
         Nx = self.get_trode_param("N")
         self.cy = {}
         for k in range(Nx):
-            self.cy[k] = dae.daeVariable(
-                    "cy{k}".format(k=k), mole_frac_t, self,
-                    "Concentration in y direction of element {k}".format(k=k),
-                    [self.Dmny])
-        
+            self.cy[k] = dae.daeVariable("cy{k}".format(k=k), mole_frac_t, self,
+                                         "Concentration in y direction of element {k}".format(k=k),
+                                         [self.Dmny])
+
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
-            "Average concentration in active particle")        
-        
+            "Average concentration in active particle")
+
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
         self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
@@ -94,10 +93,10 @@ class Mod2D(dae.daeModel):
 
         mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
                                    "SM")
-        
+
         for k in range(Nx):
             eq = self.CreateEquation("avgs_cy_cx{k}".format(k=k))
-            eq.Residual = self.cx(k) 
+            eq.Residual = self.cx(k)
             for j in range(Ny):
                 eq.Residual -= self.cy[k](j)/Ny
 
@@ -127,18 +126,18 @@ class Mod2D(dae.daeModel):
         T = self.config["T"]
         Dfunc_name = self.get_trode_param("Dfunc")
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
-                                        Dfunc_name,
-                                        f"mpet.electrode.diffusion.{Dfunc_name}")
+                                      Dfunc_name,
+                                      f"mpet.electrode.diffusion.{Dfunc_name}")
 
         dr, edges = geo.get_dr_edges("C3", Ny)
 
         c_surf = c_mat[-1,:]
-        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), 
-                                        self.config, self.trode, self.ind)
+        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(),
+                                       self.config, self.trode, self.ind)
 
         eta = calc_eta(muR_surf, muO)
         eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
-                                for i in range(Nx)])
+                           for i in range(Nx)])
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -152,10 +151,10 @@ class Mod2D(dae.daeModel):
         Mmaty = get_Mmat("C3", Ny)
         for k in range(Nx):
             Flux_bc = -self.Rxn(k)
-            muR_vec, actR_vec = calc_muR(c_mat[:,k], self.cbar(), 
-                                                    self.config, self.trode, self.ind)
+            muR_vec, actR_vec = calc_muR(c_mat[:,k], self.cbar(),
+                                         self.config, self.trode, self.ind)
             Flux_vec = calc_flux_C3ver(c_mat[:,k], muR_vec, self.get_trode_param("D"), Dfunc,
-                                         self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+                                       self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
@@ -163,6 +162,7 @@ class Mod2D(dae.daeModel):
             for j in range(Ny):
                 eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
                 eq.Residual = LHS_vec_y[j] - RHS_vec[j]
+
 
 class Mod2var(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
@@ -642,6 +642,7 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
         Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
             np.diff(mu + noise(dae.Time().Value))/dr
     return Flux_vec
+
 
 def calc_flux_C3ver(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
