@@ -55,7 +55,7 @@ class SimMPET(dae.daeSimulation):
                 for j in range(config["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(config["psd_num"][tr][i,j]))
-                    if self.config[tr, "type"] in 'ACR2D':
+                    if self.config[tr, "type"] == 'ACR2D':
                         self.m.particles[tr][i, j].Dmny.CreateArray(
                             int(config["psd_num_ver"][tr][i,j]))
 

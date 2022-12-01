@@ -692,7 +692,7 @@ class Config:
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
             # store values to config 2d
-            if self[trode,'type'] in 'ACR2D':
+            if self[trode,'type'] == 'ACR2D':
                 self['psd_num_ver'][trode] = psd_num_ver
                 self['psd_len_ver'][trode] = psd_len_ver
 
@@ -748,7 +748,7 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
-                    if self[trode,'type'] in 'ACR2D':
+                    if self[trode,'type'] == 'ACR2D':
                         self[trode, 'indvPart']['N_ver'][i,j] = self['psd_num_ver'][trode][i,j]
                     if self[trode, 'kappa'] is not None:
                         self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
@@ -756,7 +756,7 @@ class Config:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
-                    if self[trode,'type'] in 'ACR2D':
+                    if self[trode,'type'] == 'ACR2D':
                         pthick =  self['psd_len_ver'][trode][i,j]
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / pthick**2
                     else:
