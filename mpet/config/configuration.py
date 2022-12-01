@@ -607,6 +607,7 @@ class Config:
         self['psd_vol_FracVol'] = {}
         # if self[trode,'type'] in 'ACR2D':
         self['psd_num_ver'] = {}
+        self['psd_len_ver'] = {}
 
         for trode in self['trodes']:
             solidType = self[trode, 'type']
@@ -652,6 +653,7 @@ class Config:
                 psd_num = np.ceil(raw/ solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
                 psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int)
+                psd_len_ver = solidDisc_ver * psd_num_ver
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
@@ -692,6 +694,7 @@ class Config:
             # store values to config 2d
             if self[trode,'type'] in 'ACR2D':
                 self['psd_num_ver'][trode] = psd_num_ver
+                self['psd_len_ver'][trode] = psd_len_ver
 
     def _G(self):
         """
@@ -753,7 +756,11 @@ class Config:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
-                    self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    if self[trode,'type'] in 'ACR2D':
+                        pthick =  self['psd_len_ver'][trode][i,j]
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / pthick**2
+                    else:
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
