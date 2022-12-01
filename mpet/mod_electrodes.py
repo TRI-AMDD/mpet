@@ -39,8 +39,8 @@ class Mod2D(dae.daeModel):
                                   "discretization domain in y direction")
 
         # Variables
-        self.cx = dae.daeVariable(
-            "cx", mole_frac_t, self,
+        self.c = dae.daeVariable(
+            "c", mole_frac_t, self,
             "Concentration in x direction of active particle", [self.Dmn])
 
         Nx = self.get_trode_param("N")
@@ -96,20 +96,20 @@ class Mod2D(dae.daeModel):
 
         for k in range(Nx):
             eq = self.CreateEquation("avgs_cy_cx{k}".format(k=k))
-            eq.Residual = self.cx(k)
+            eq.Residual = self.c(k)
             for j in range(Ny):
                 eq.Residual -= self.cy[k](j)/Ny
 
         eq = self.CreateEquation("cbar")
         eq.Residual = self.cbar()
         for k in range(Nx):
-            eq.Residual -= self.cx(k)/Nx
+            eq.Residual -= self.c(k)/Nx
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(Nx):
-            eq.Residual -= self.cx.dt(k)/Nx
+            eq.Residual -= self.c.dt(k)/Nx
 
         c_mat = np.empty((Ny, Nx), dtype=object)
         for k in range(Nx):
@@ -143,11 +143,11 @@ class Mod2D(dae.daeModel):
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
 
-        for i in range(Nx):
-            eq = self.CreateEquation("Rxn_{i}".format(i=i))
-            eq.Residual = self.Rxn(i) - Rxn[i]
+        for k in range(Nx):
+            eq = self.CreateEquation("Rxn_{k}".format(k=k))
+            eq.Residual = self.Rxn(k) - Rxn[k]
 
-        area_vec = 1
+        area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
         for k in range(Nx):
             Flux_bc = -self.Rxn(k)

@@ -621,7 +621,7 @@ class Config:
                 if self[trode,'type'] == 'ACR2D':
                     np.random.seed(self.D_s['seed'])
                     mean_t = self[trode,'thickness']
-                    stddev_t = mean_t*0.1
+                    stddev_t = mean_t*0
                     var_t = stddev_t**2
                     mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
                     sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
