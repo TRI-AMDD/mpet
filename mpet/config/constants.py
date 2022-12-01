@@ -26,6 +26,6 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp']
 #: parameters that are defined for each particle, and their type
-PARAMS_PARTICLE = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
+PARAMS_PARTICLE = {'N': int, 'N_ver':int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float, 'E_D': float,
                    'E_A': float}

@@ -605,6 +605,8 @@ class Config:
         self['psd_area'] = {}
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
+        # if self[trode,'type'] in 'ACR2D':
+        self['psd_num_ver'] = {}
 
         for trode in self['trodes']:
             solidType = self[trode, 'type']

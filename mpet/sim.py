@@ -89,9 +89,10 @@ class SimMPET(dae.daeSimulation):
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             if solidType == "ACR2D":
+                                N_ver_ij = config["psd_num_ver"][tr][i,j]
                                 for k in range(Nij):
                                     part.cx.SetInitialCondition(k, cs0)
-                                    for j in range(10):
+                                    for j in range(N_ver_ij):
                                         part.cy[k].SetInitialCondition(j, cs0)
                             else:
                                 for k in range(Nij):

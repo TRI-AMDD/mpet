@@ -96,7 +96,7 @@ class Mod2D(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         # Nx = self.get_trode_param("N")  # number of grid points in particle
         Nx = self.get_trode_param("N")
-        Ny = 10
+        Ny = self.get_trode_param("N_ver")
         T = self.config["T"]  # nondimensional temperature
         # r_vec, volfrac_vec_x = geo.get_unit_solid_discr(self.get_trode_param('shape'), Nx)
         # r_vec, volfrac_vec_y = geo.get_unit_solid_discr(self.get_trode_param('shape'), Ny)
