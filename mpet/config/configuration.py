@@ -650,7 +650,7 @@ class Config:
                 psd_len = solidDisc * psd_num
             elif solidType in ['ACR2D']:
                 solidDisc_ver = self[trode, 'discretization_ver']
-                psd_num = np.ceil(raw/ solidDisc).astype(int)
+                psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
                 psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int)
                 psd_len_ver = solidDisc_ver * psd_num_ver
@@ -757,10 +757,12 @@ class Config:
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
                     if self[trode,'type'] == 'ACR2D':
-                        pthick =  self['psd_len_ver'][trode][i,j]
-                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / pthick**2
+                        pthick = self['psd_len_ver'][trode][i,j]
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / pthick**2
                     else:
-                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
