@@ -615,6 +615,14 @@ class Config:
             if not np.all(self['specified_psd'][trode]):
                 # If PSD is not specified, make a length-sampled particle size distribution
                 # Log-normally distributed
+                if self[trode,'type'] == 'ACR2D':
+                    np.random.seed(self.D_s['seed'])
+                    mean_t = self[trode,'thickness']
+                    stddev_t = mean_t*0.1
+                    var_t = stddev_t**2
+                    mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
+                    sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
+                    raw_t = np.random.lognormal(mu_t, sigma_t, size=(Nvol, Npart))
                 mean = self['mean'][trode]
                 stddev = self['stddev'][trode]
                 if np.allclose(stddev, 0., atol=1e-12):
@@ -634,9 +642,14 @@ class Config:
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
             solidDisc = self[trode, 'discretization']
-            if solidType in ['ACR', 'ACR2D']:
+            if solidType in ['ACR']:
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
+            elif solidType in ['ACR2D']:
+                solidDisc_ver = self[trode, 'discretization_ver']
+                psd_num = np.ceil(raw/ solidDisc).astype(int)
+                psd_len = solidDisc * psd_num
+                psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int)
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
@@ -674,6 +687,9 @@ class Config:
             self['psd_area'][trode] = psd_area
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
+            # store values to config 2d
+            if self[trode,'type'] in 'ACR2D':
+                self['psd_num_ver'][trode] = psd_num_ver
 
     def _G(self):
         """
@@ -727,6 +743,8 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
+                    if self[trode,'type'] in 'ACR2D':
+                        self[trode, 'indvPart']['N_ver'][i,j] = self['psd_num_ver'][trode][i,j]
                     if self[trode, 'kappa'] is not None:
                         self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
                     if self[trode, 'dgammadc'] is not None:

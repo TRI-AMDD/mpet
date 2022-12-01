@@ -183,15 +183,15 @@ class Mod2D(dae.daeModel):
             eq = self.CreateEquation("Rxn_{i}".format(i=i))
             eq.Residual = self.Rxn(i) - Rxn[i]
 
-        # RHSx = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(Nx)])
-        # dcdt_vec_x = np.empty(Nx, dtype=object)
-        # dcdt_vec_x[0:Nx] = [self.cx.dt(k) for k in range(Nx)]
-        # Mmatx = get_Mmat("C3", Nx)
-        # LHS_vec_x = MX(Mmatx, dcdt_vec_x)
+        RHSx = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(Nx)])
+        dcdt_vec_x = np.empty(Nx, dtype=object)
+        dcdt_vec_x[0:Nx] = [self.cx.dt(k) for k in range(Nx)]
+        Mmatx = get_Mmat("C3", Nx)
+        LHS_vec_x = MX(Mmatx, dcdt_vec_x)
             
-        # for k in range(Nx):
-        #     eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-        #     eq.Residual = LHS_vec_x[k] - RHSx[k]
+        for k in range(Nx):
+            eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
+            eq.Residual = LHS_vec_x[k] - RHSx[k]
 
         # Flux_mat = np.empty((Nx,Ny), dtype=object)
         # RHS_mat = np.empty((Ny,Nx), dtype=object)
@@ -202,8 +202,6 @@ class Mod2D(dae.daeModel):
         for k in range(Nx):
             # print(k, '   ---  \n')
             Flux_bc = -self.Rxn(k)
-            # eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            # eq.Residual = LHS_vec_x[k] - self.get_trode_param("delta_L")*self.Rxn(k)
             # muR_vec = muR_mat[k,:]
             # c_v = c_mat[:,k]
             # c_vec = utils.get_var_vec(c_mat[:,k],Ny)
