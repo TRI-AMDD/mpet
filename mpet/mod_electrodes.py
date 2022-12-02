@@ -95,7 +95,7 @@ class Mod2D(dae.daeModel):
                                    "SM")
 
         for k in range(Nx):
-            eq = self.CreateEquation("avgs_cy_cx{k}".format(k=k))
+            eq = self.CreateEquation("avgscy_isc{k}".format(k=k))
             eq.Residual = self.c(k)
             for j in range(Ny):
                 eq.Residual -= self.cy[k](j)/Ny
@@ -109,13 +109,16 @@ class Mod2D(dae.daeModel):
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(Nx):
-            eq.Residual -= self.c.dt(k)/Nx
+            for l in range(Ny):
+                eq.Residual -= (self.cy[k].dt(l)/Ny)/Nx
+            # eq.Residual -= self.c.dt(k)/Nx
 
         c_mat = np.empty((Ny, Nx), dtype=object)
         for k in range(Nx):
             c_mat[:,k] = [self.cy[k](j) for j in range(Ny)]
 
-        self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+        # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+        self.sld_dynamics_2Dfull(c_mat, mu_O, act_lyte, self.noise)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -128,33 +131,82 @@ class Mod2D(dae.daeModel):
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
                                       Dfunc_name,
                                       f"mpet.electrode.diffusion.{Dfunc_name}")
-
         dr, edges = geo.get_dr_edges("C3", Ny)
-
-        c_surf = c_mat[-1,:]
-        muR_surf, actR_surf = calc_muR(c_surf, self.cbar(),
-                                       self.config, self.trode, self.ind)
-
-        eta = calc_eta(muR_surf, muO)
-        eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
-                           for i in range(Nx)])
-        Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
-
-        for k in range(Nx):
-            eq = self.CreateEquation("Rxn_{k}".format(k=k))
-            eq.Residual = self.Rxn(k) - Rxn[k]
-
         area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
         for k in range(Nx):
-            Flux_bc = -self.Rxn(k)
-            muR_vec, actR_vec = calc_muR(c_mat[:,k], self.cbar(),
+            c_vec = c_mat[:,k]
+            muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
                                          self.config, self.trode, self.ind)
-            Flux_vec = calc_flux_C3ver(c_mat[:,k], muR_vec, self.get_trode_param("D"), Dfunc,
+            c_surf = c_mat[-1,k]
+            muR_surf = muR_vec[-1]
+            actR_surf = actR_vec[-1]
+            eta = calc_eta(muR_surf, muO)
+
+            eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
+
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+
+            eq = self.CreateEquation("Rxn_{k}".format(k=k))
+            eq.Residual = self.Rxn(k) - Rxn
+
+            Flux_bc = -self.Rxn(k)
+
+            Flux_vec = calc_flux_C3ver(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                        self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+
+            RHS_vec = -np.diff(Flux_vec * area_vec)
+            dcdt_vec_y = np.empty(Ny, dtype=object)
+            dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
+            LHS_vec_y = MX(Mmaty, dcdt_vec_y)
+            for j in range(Ny):
+                eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
+                eq.Residual = LHS_vec_y[j] - RHS_vec[j]
+
+
+    def sld_dynamics_2Dfull(self, c_mat, muO, act_lyte, noise):
+        Ny = np.size(c_mat, 0)
+        Nx = np.size(c_mat, 1)
+        T = self.config["T"]
+        Dfunc_name = self.get_trode_param("Dfunc")
+        Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                      Dfunc_name,
+                                      f"mpet.electrode.diffusion.{Dfunc_name}")
+        dr, edges = geo.get_dr_edges("C3", Ny)
+        area_vec = 1.
+        Mmaty = get_Mmat("C3", Ny)
+        print('call calc_muR2D')
+        muR_mat , actR_mat = calc_muR2D(c_mat, self.cbar(),
+                                        self.config, self.trode, self.ind)
+        for k in range(Nx):
+            c_vec = c_mat[:,k]
+            muR_vec = muR_mat[:,k]
+            actR_vec = actR_mat[:,k]
+            # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
+            #                              self.config, self.trode, self.ind)
+            c_surf = c_mat[-1,k]
+            muR_surf = muR_vec[-1]
+            actR_surf = actR_vec[-1]
+            eta = calc_eta(muR_surf, muO)
+
+            eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
+
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+
+            eq = self.CreateEquation("Rxn_{k}".format(k=k))
+            eq.Residual = self.Rxn(k) - Rxn
+
+            Flux_bc = -self.Rxn(k)
+
+            Flux_vec = calc_flux_C3ver(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+                                       self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
@@ -696,6 +748,11 @@ def calc_muR(c, cbar, config, trode, ind):
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
 
+def calc_muR2D(c_mat, cbar, config, trode, ind):
+    muRfunc = props_am.muRfuncs(config, trode, ind).muRfunc
+    muR_ref = config[trode, "muR_ref"]
+    muR_mat, actR_mat = muRfunc(c_mat, cbar, muR_ref)
+    return muR_mat, actR_mat
 
 def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):
