@@ -133,7 +133,7 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            'discretization': Use(float),
                            'shape': lambda x:
                                check_allowed_values(x, ["C3", "sphere", "cylinder", "homog_sdn"]),
-                            Optional('discretization_ver', default = None):Use(float),
+                            Optional('discretization_ver', default=None):Use(float),
                             Optional('thickness'): Use(float)},
              'Material': {Optional('muRfunc_filename', default=None): str,
                           'muRfunc': str,
