@@ -229,7 +229,6 @@ class DerivedValues:
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
         cs0bar = self.config['cs0'][trode]
         cs0 = np.array([cs0bar])
-
         solidType = self.config[trode, 'type']
         if solidType in constants.two_var_types:
             muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), 0.)[0][0]

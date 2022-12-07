@@ -178,19 +178,25 @@ class Mod2D(dae.daeModel):
         # C3 shape has constant area along the depth
         area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
-        muR_mat, actR_mat = calc_muR2D(c_mat, self.cbar(),
-                                       self.config, self.trode, self.ind)
+        print('cmat shape ', np.shape(c_mat))
+        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
+                                     self.config, self.trode, self.ind)
+        print('muR_mat size', np.shape(muR_mat))
         for k in range(Nx):
             c_vec = c_mat[:,k]
             muR_vec = muR_mat[:,k]
+            print('c_vec size ', np.shape(c_vec))
+            print('muR_vec size ', np.shape(muR_vec))
+            # print(muR_vec)
             actR_vec = actR_mat[:,k]
-            # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
-            #                              self.config, self.trode, self.ind)
+
             c_surf = c_vec[-1]
             muR_surf = muR_vec[-1]
+            print('muR surf size ' , np.shape(muR_surf))
+            print('c_surf surf size ' , np.shape(c_surf))
+            # print(muR_surf)
             actR_surf = actR_vec[-1]
             eta = calc_eta(muR_surf, muO)
-
             eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
 
             Rxn = self.calc_rxn_rate(
@@ -746,39 +752,6 @@ def calc_muR(c, cbar, config, trode, ind):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
-
-
-def calc_muR2D(c_mat, cbar, config, trode, ind):
-    eokT = 38.92714646
-    T = 1.
-    muR_ref = config[trode, "muR_ref"]
-    B = config[trode,'B']
-    Omega = config[trode,'Omega_a']
-    kappa = config[trode,'kappa']
-    muRtheta = -eokT*3.422
-    Ny = np.size(c_mat, 0)
-    dys = 1./Ny
-    Nx = np.size(c_mat, 1)
-    dxs = 1./Nx
-    muR_mat = np.empty((Ny,Nx), dtype=object)
-    actR_mat = np.empty((Ny,Nx), dtype=object)
-    for i in range(Ny-2):
-        for j in range(Nx-2):
-            y = c_mat[i,j]
-            muRhomog = T*np.log(y/(1-y)) + Omega*(1-2*y)
-            muR_mat[i,j] = muRhomog
-            curvx = (c_mat[i,j] - c_mat[i,j+1]) - (c_mat[i,j+1] - c_mat[i,j+2])
-            curvy = (c_mat[i,j] - c_mat[i+1,j]) - (c_mat[i+1,j] - c_mat[i+2,j])
-            curv_en = -kappa*curvx/(dxs**2) - kappa*curvy/(dys**2)
-            muR_mat[i,j] += curv_en
-            muR_mat[i,j] += B*(y - cbar)
-            actR_mat[i,j] = np.exp(muR_mat[i,j]/T)
-            muR_mat[i,j] += muRtheta + muR_ref
-    actR_mat[-2,-2] = actR_mat[-3,-3]
-    actR_mat[-1,-1] = actR_mat[-3,-3]
-    actR_mat[-2,-1] = actR_mat[-3,-3]
-    actR_mat[-1,-2] = actR_mat[-3,-3]
-    return muR_mat, actR_mat
 
 
 def MX(mat, objvec):
