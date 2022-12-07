@@ -178,24 +178,22 @@ class Mod2D(dae.daeModel):
         # C3 shape has constant area along the depth
         area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
-        print('cmat shape ', np.shape(c_mat))
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
-        print('muR_mat size', np.shape(muR_mat))
         for k in range(Nx):
             c_vec = c_mat[:,k]
+            c_vec = np.reshape(c_vec, (Ny,1))
             muR_vec = muR_mat[:,k]
-            print('c_vec size ', np.shape(c_vec))
-            print('muR_vec size ', np.shape(muR_vec))
+            muR_vec = np.reshape(muR_vec, (Ny,1))
             # print(muR_vec)
             actR_vec = actR_mat[:,k]
+            actR_vec = np.reshape(actR_vec, (Ny,1))
 
-            c_surf = c_vec[-1]
-            muR_surf = muR_vec[-1]
-            print('muR surf size ' , np.shape(muR_surf))
-            print('c_surf surf size ' , np.shape(c_surf))
+            c_surf = c_vec[-1,:]
+            muR_surf = muR_vec[-1,:]
+            print(muR_surf)
             # print(muR_surf)
-            actR_surf = actR_vec[-1]
+            actR_surf = actR_vec[-1,:]
             eta = calc_eta(muR_surf, muO)
             eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
 
