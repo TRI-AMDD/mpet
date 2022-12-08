@@ -113,9 +113,9 @@ class Mod2D(dae.daeModel):
                 eq.Residual -= (self.cy[k].dt(h)/Ny)/Nx
             # eq.Residual -= self.c.dt(k)/Nx
 
-        c_mat = np.empty((Ny, Nx), dtype=object)
+        c_mat = np.empty((Nx, Ny), dtype=object)
         for k in range(Nx):
-            c_mat[:,k] = [self.cy[k](j) for j in range(Ny)]
+            c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
         # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
         self.sld_dynamics_2Dfull(c_mat, mu_O, act_lyte, self.noise)
@@ -124,8 +124,8 @@ class Mod2D(dae.daeModel):
             eq.CheckUnitsConsistency = False
 
     def sld_dynamics_2D1var(self, c_mat, muO, act_lyte, noise):
-        Ny = np.size(c_mat, 0)
-        Nx = np.size(c_mat, 1)
+        Ny = np.size(c_mat, 1)
+        Nx = np.size(c_mat, 0)
         T = self.config["T"]
         Dfunc_name = self.get_trode_param("Dfunc")
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
@@ -135,10 +135,10 @@ class Mod2D(dae.daeModel):
         area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
         for k in range(Nx):
-            c_vec = c_mat[:,k]
+            c_vec = c_mat[k,:]
             muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
                                          self.config, self.trode, self.ind)
-            c_surf = c_mat[-1,k]
+            c_surf = c_mat[k,-1]
             muR_surf = muR_vec[-1]
             actR_surf = actR_vec[-1]
             eta = calc_eta(muR_surf, muO)
@@ -167,8 +167,8 @@ class Mod2D(dae.daeModel):
                 eq.Residual = LHS_vec_y[j] - RHS_vec[j]
 
     def sld_dynamics_2Dfull(self, c_mat, muO, act_lyte, noise):
-        Ny = np.size(c_mat, 0)
-        Nx = np.size(c_mat, 1)
+        Ny = np.size(c_mat, 1)
+        Nx = np.size(c_mat, 0)
         T = self.config["T"]
         Dfunc_name = self.get_trode_param("Dfunc")
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
@@ -178,22 +178,24 @@ class Mod2D(dae.daeModel):
         # C3 shape has constant area along the depth
         area_vec = 1.
         Mmaty = get_Mmat("C3", Ny)
+        # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
         for k in range(Nx):
-            c_vec = c_mat[:,k]
-            c_vec = np.reshape(c_vec, (Ny,1))
-            muR_vec = muR_mat[:,k]
-            muR_vec = np.reshape(muR_vec, (Ny,1))
+            c_vec = c_mat[k,:]
+            # print(c_vec)
+            # c_vec = np.reshape(c_vec, (Ny,1))
+            muR_vec = muR_mat[k,:]
+            # muR_vec = np.reshape(muR_vec, (Ny,1))
             # print(muR_vec)
-            actR_vec = actR_mat[:,k]
-            actR_vec = np.reshape(actR_vec, (Ny,1))
+            actR_vec = actR_mat[k,:]
+            # actR_vec = np.reshape(actR_vec, (Ny,1))
 
-            c_surf = c_vec[-1,:]
-            muR_surf = muR_vec[-1,:]
-            print(muR_surf)
+            c_surf = c_vec[-1]
+            # print(c_surf)
+            muR_surf = muR_vec[-1]
             # print(muR_surf)
-            actR_surf = actR_vec[-1,:]
+            actR_surf = actR_vec[-1]
             eta = calc_eta(muR_surf, muO)
             eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
 

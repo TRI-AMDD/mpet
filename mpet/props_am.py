@@ -149,7 +149,6 @@ class muRfuncs():
         ytmp[1:-1] = y
         ytmp[0] = ywet
         ytmp[-1] = ywet
-        print(ytmp)
         dxs = 1./N
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
