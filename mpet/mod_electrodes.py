@@ -47,20 +47,19 @@ class Mod2D(dae.daeModel):
         self.cy = {}
         for k in range(Nx):
             self.cy[k] = dae.daeVariable("cy{k}".format(k=k), mole_frac_t, self,
-                                         "Concentration in y direction of element {k}".format(k=k),
+                                         "Concentration in y direction of element in row {k}".format(k=k),
                                          [self.Dmny])
         # check unit of measures
         self.uy = {}
         for k in range(Nx):
             self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  self,
-                                         "Displacement in y direction of element {k}".format(k=k),
+                                         "Displacement in y direction of element in row {k}".format(k=k),
                                          [self.Dmny])
         self.ux = {}
-        Ny = np.size(self.Dmny)
-        for k in range(Ny):
+        for k in range(Nx):
             self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,  self,
-                                         "Displacement in x direction of element {k}".format(k=k),
-                                         [self.Dmn])
+                                         "Displacement in x direction of element in row {k}".format(k=k),
+                                         [self.Dmny])
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
@@ -125,18 +124,17 @@ class Mod2D(dae.daeModel):
                 eq.Residual -= (self.cy[k].dt(h)/Ny)/Nx
             # eq.Residual -= self.c.dt(k)/Nx
 
-
         c_mat = np.empty((Nx, Ny), dtype=object)
         for k in range(Nx):
             c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
-        # to check !!
         u_y_mat = np.empty((Nx, Ny), dtype=object)
         for k in range(Nx):
             u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
+
         u_x_mat = np.empty((Nx, Ny), dtype=object)
-        for k in range(Ny):
-            u_x_mat[:,k] = [self.ux[k](j) for j in range(Nx)]
+        for k in range(Nx):
+            u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny)]
 
         # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
         self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
@@ -202,8 +200,10 @@ class Mod2D(dae.daeModel):
         # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
-        # muR_mat, actR_mat = calc_muR_mech(c_mat, u_x_mat, u_y_mat, self.cbar(),
-        #                              self.config, self.trode, self.ind)
+        muR_el = calc_muR_el(c_mat, u_x_mat, u_y_mat,
+                             self.config, self.trode, self.ind)
+
+        muR_mat += muR_el
         for k in range(Nx):
             c_vec = c_mat[k,:]
             # print(c_vec)
@@ -775,6 +775,97 @@ def calc_muR(c, cbar, config, trode, ind):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
+
+def mech_tensors():
+    # FePo4 elastic constants (GPa)
+    c11 = 175.9
+    c22 = 153.6
+    c33 = 135.0
+    c44 = 38.8
+    c55 = 47.5
+    c66 = 55.6
+    c13 = 54.0
+    c12 = 29.6
+    c23 = 19.6
+
+    Cij = np.zeros((6,6))
+    Cij[0,0] = c11
+    Cij[1,1] = c22
+    Cij[2,2] = c33
+    Cij[3,3] = c44
+    Cij[4,4] = c55
+    Cij[5,5] = c66
+    Cij[1,0] = c12
+    Cij[0,1] = c12
+    Cij[2,0] = c13
+    Cij[0,2] = c13
+    Cij[1,2] = c23
+    Cij[2,1] = c23
+    # strain
+    e01 = 0.0517
+    e02 = 0.0359
+    e03 = -0.0186
+    e0 = np.array([e01, e02, e03, 0, 0, 0])
+
+    return Cij, e0
+
+def calc_muR_el(c_mat, u_x, u_y, config, trode, ind):
+    Ny = np.size(c_mat, 1)
+    Nx = np.size(c_mat, 0)
+    dys = 1./Ny
+    dxs = 1./Nx
+    max_conc = config[trode, "rho_s"]
+    muR_el = np.zeros((Nx,Ny), dtype=object)
+    Cij, e0 = mech_tensors()
+
+    e1_mat = np.zeros((Nx,Ny), dtype=object)
+    e2_mat = np.zeros((Nx,Ny), dtype=object)
+    duxdy = np.zeros((Nx,Ny), dtype=object)
+    duydx = np.zeros((Nx,Ny), dtype=object)
+
+    # check boundaries !!
+    for j in range(Ny):
+        e1_mat[:,j] = np.diff(u_x[:,j])/dxs
+        duydx[:,j] = np.diff(u_y[:,j])/dxs
+    for i in range(Nx):
+        e2_mat[i,:] = np.diff(u_y[i,:])/dys
+        duxdy[i,:] = np.diff(u_x[i,:])/dys
+    e12_mat = 0.5*(duxdy+duydx)
+
+    e_vec_of_ij = np.zeros(6, dtype=object)
+    sigma_vec_of_ij = np.zeros(6, dtype=object)
+    
+    sigma_11_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_22_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_33_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_12_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_13_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_23_mat = np.zeros((Nx,Ny), dtype=object)
+    div_sigm_1_mat = np.zeros((Nx,Ny), dtype=object)
+    div_sigm_2_mat = np.zeros((Nx,Ny), dtype=object)
+    div_sigm_3_mat = np.zeros((Nx,Ny), dtype=object)
+    for i in range(Nx):
+        for j in range(Ny):
+            e_vec_of_ij = np.array([e1_mat[i,j]- e0[0]*c_mat[i,j],
+                                    e2_mat[i,j]- e0[1]*c_mat[i,j],
+                                    0,
+                                    e12_mat[i,j],
+                                    0,
+                                    0])
+            sigma_vec_of_ij = np.dot((Cij,e_vec_of_ij))
+            sigma_11_mat[i,j] = sigma_vec_of_ij[0]
+            sigma_22_mat[i,j] = sigma_vec_of_ij[1]
+            sigma_33_mat[i,j] = sigma_vec_of_ij[2]
+            sigma_12_mat[i,j] = sigma_vec_of_ij[3]
+            sigma_13_mat[i,j] = sigma_vec_of_ij[4]
+            sigma_23_mat[i,j] = sigma_vec_of_ij[5]
+            muR_el[i,j] = np.dot((sigma_vec_of_ij,e0))/max_conc
+    for j in range(Ny):
+        dsigma1dx = np.diff(sigma_11_mat[:,j])/dxs
+        dsgima12dx = np.diff(sigma_12_mat[:,j])/dxs
+        
+
+    return muR_el, div_stress_mat
 
 
 def MX(mat, objvec):

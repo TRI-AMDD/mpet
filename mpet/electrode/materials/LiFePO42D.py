@@ -8,38 +8,6 @@ def LiFePO42D(self, c_mat, ybar, muR_ref):
     kappay = kappax*10
     # beta_s = self.get_trode_param("beta_s")
     # for allowing muR_ref to be calculated
-    # FePo4 elastic constants (GPa)
-    c11 = 175.9
-    c22 = 153.6
-    c33 = 135.0
-    c44 = 38.8
-    c55 = 47.5
-    c66 = 55.6
-    c13 = 54.0
-    c12 = 29.6
-    c23 = 19.6
-
-    Cij = np.zeros((6,6))
-    Cij[0,0] = c11
-    Cij[1,1] = c22
-    Cij[2,2] = c33
-    Cij[3,3] = c44
-    Cij[4,4] = c55
-    Cij[5,5] = c66
-    Cij[1,0] = c12
-    Cij[0,1] = c12
-    Cij[2,0] = c13
-    Cij[0,2] = c13
-    Cij[1,2] = c23
-    Cij[2,1] = c23
-    # strain
-    e1 = 0.0517
-    e2 = 0.0359
-    e3 = -0.0186
-    ej = np.array([e1, e2, e3, 0, 0, 0])
-    sigma_i = np.dot(Cij,ej)
-    print(sigma_i)
-
     if np.size(c_mat) == 1:
         y = c_mat
         muRhomog = self.reg_sln(y, self.get_trode_param("Omega_a"))
