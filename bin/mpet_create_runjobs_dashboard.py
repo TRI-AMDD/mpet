@@ -55,7 +55,7 @@ keys = [vals[0] for vals in ensemble]
 val = [vals[1] for vals in ensemble]
 
 
-def call_run_cluster():
+def call_run_cluster(output_folder):
     # split cluster settings from the rest
     args = ClusterSettings()
     main_settings = MainSettings()
@@ -79,11 +79,6 @@ def call_run_cluster():
                       maximum_jobs=main_settings['max_jobs'])
     client = Client(cluster)
 
-    # Store output in folder this script was called from
-    output_folder = os.path.join(os.getcwd(), 'Dashboard_input')
-    if os.path.exists(output_folder):
-        shutil.rmtree(output_folder)
-    os.mkdir(output_folder)
     run_mpet(client, output_folder, os.path.abspath(main_settings.mpet_configs))
     return
 
@@ -91,5 +86,16 @@ def call_run_cluster():
 if __name__ == '__main__':
     # Read in config file
     create_ensemble(cff, keys, val)
-    call_run_cluster()
-    subprocess.call(["python", "./bin/mpet_plot_app.py", "-d", "./Dashboard_input/history"])
+
+    # Define output folder
+    # Store output in folder this script was called from
+    output_folder = './runjobs_dashboard'
+    # remove sim output if it already exists to only keep newest output
+    if os.path.exists(os.path.join(output_folder, 'sim_output')):
+        shutil.rmtree(os.path.join(output_folder, 'sim_output'))
+    # create output folder if it does not exist yet
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+    call_run_cluster(output_folder)
+    subprocess.call(["python", "./bin/mpet_plot_app.py", "-d", 
+                     str(os.path.join(output_folder, 'sim_output'))])
