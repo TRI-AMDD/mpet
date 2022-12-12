@@ -97,5 +97,5 @@ if __name__ == '__main__':
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
     call_run_cluster(output_folder)
-    subprocess.call(["python", "./bin/mpet_plot_app.py", "-d", 
+    subprocess.call(["python", "./bin/mpet_plot_app.py", "-d",
                      str(os.path.join(output_folder, 'sim_output'))])
