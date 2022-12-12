@@ -206,8 +206,8 @@ class Mod2D(dae.daeModel):
         muR_mat += muR_el
         actR_mat = np.exp(muR_mat)
         
-        for i in range(Nx):
-            for j in range(Ny):
+        for i in range(Nx-1):
+            for j in range(Ny-1):
                 eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
                 eq1.Residual = div_stress_mat[i,j,0]
                 eq2 = self.CreateEquation("divsigma2_{i}_{j}_equal0".format(i=i, j=j))
@@ -873,35 +873,44 @@ def calc_muR_el(c_mat, u_x, u_y, config, trode, ind):
             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
             muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/max_conc
 
-    # now that ew found the chem pot 
+    # now that ew found the chem pot
     # it is time to create the div(sigma) so that out of the function
     # can be posed = 0
     dsigma1dx_mat = np.zeros((Nx-1,Ny), dtype=object)
     dsigma2dy_mat = np.zeros((Nx,Ny-1), dtype=object)
     dsigma12dx_mat = np.zeros((Nx-1,Ny), dtype=object)
     dsigma12dy_mat = np.zeros((Nx,Ny-1), dtype=object)
-    div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+    # div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+    div_stress_mat = np.zeros((Nx-1,Ny-1,2), dtype=object)
     # check boundaries !
-    for i in range(Nx):
-        dsigma2dy_mat[i,:] = np.diff(sigma_mat[i,:,1])/dys
-        dsigma12dy_mat[i,:] = np.diff(sigma_mat[i,:,2])/dys
-    for j in range(Ny):
-        dsigma1dx_mat[:,j] = np.diff(sigma_mat[:,j,0])/dxs
-        dsigma12dx_mat[:,j] = np.diff(sigma_mat[:,j,2])/dxs
-    for i in range(int(Nx/2)):
+    dsigma2dy_mat = np.diff(sigma_mat[:,:,1], axis = 1)/dys
+    dsigma12dy_mat = np.diff(sigma_mat[:,:,2], axis = 1)/dys
+    dsigma1dx_mat = np.diff(sigma_mat[:,:,0], axis = 0)/dxs
+    dsigma12dx_mat = np.diff(sigma_mat[:,:,2], axis = 0)/dxs
+    for i in range(Nx-1):
         for j in range(Ny-1):
-            div_stress_mat[i,j+1,:] = np.array([
+            div_stress_mat[i,j,:] = np.array([
                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
-                dsigma2dy_mat[i,j] + dsigma1dx_mat[i,j]
+                dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
             ]
             )
-    for i in range((int(Nx/2)+1),Nx,1):
-        for j in range(Ny-1):
-            div_stress_mat[i,j+1,:] = np.array([
-                dsigma1dx_mat[i-1,j] + dsigma12dy_mat[i-1,j],
-                dsigma2dy_mat[i-1,j] + dsigma1dx_mat[i-1,j]
-            ]
-            )
+
+    # it does not like div(sigma) = np.zeros
+    # for i in range(int(Nx/2)):
+    #     for j in range(Ny-1):
+    #         div_stress_mat[i,j+1,:] = np.array([
+    #             dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+    #             dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+    #         ]
+    #         )
+
+    # for i in range((int(Nx/2)+1),Nx,1):
+    #     for j in range(Ny-1):
+    #         div_stress_mat[i,j+1,:] = np.array([
+    #             dsigma1dx_mat[i-1,j] + dsigma12dy_mat[i-1,j],
+    #             dsigma2dy_mat[i-1,j] + dsigma12dx_mat[i-1,j]
+    #         ]
+    #         )
     print(div_stress_mat)
     return muR_el, div_stress_mat
 
