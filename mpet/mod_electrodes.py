@@ -49,6 +49,18 @@ class Mod2D(dae.daeModel):
             self.cy[k] = dae.daeVariable("cy{k}".format(k=k), mole_frac_t, self,
                                          "Concentration in y direction of element {k}".format(k=k),
                                          [self.Dmny])
+        # check unit of measures
+        self.uy = {}
+        for k in range(Nx):
+            self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  self,
+                                         "Displacement in y direction of element {k}".format(k=k),
+                                         [self.Dmny])
+        self.ux = {}
+        Ny = np.size(self.Dmny)
+        for k in range(Ny):
+            self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,  self,
+                                         "Displacement in x direction of element {k}".format(k=k),
+                                         [self.Dmn])
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
@@ -113,12 +125,21 @@ class Mod2D(dae.daeModel):
                 eq.Residual -= (self.cy[k].dt(h)/Ny)/Nx
             # eq.Residual -= self.c.dt(k)/Nx
 
+
         c_mat = np.empty((Nx, Ny), dtype=object)
         for k in range(Nx):
             c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
+        # to check !!
+        u_y_mat = np.empty((Nx, Ny), dtype=object)
+        for k in range(Nx):
+            u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
+        u_x_mat = np.empty((Nx, Ny), dtype=object)
+        for k in range(Ny):
+            u_x_mat[:,k] = [self.ux[k](j) for j in range(Nx)]
+
         # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
-        self.sld_dynamics_2Dfull(c_mat, mu_O, act_lyte, self.noise)
+        self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -166,7 +187,7 @@ class Mod2D(dae.daeModel):
                 eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
                 eq.Residual = LHS_vec_y[j] - RHS_vec[j]
 
-    def sld_dynamics_2Dfull(self, c_mat, muO, act_lyte, noise):
+    def sld_dynamics_2Dfull(self, c_mat, u_x_mat, u_y_mat, muO, act_lyte, noise):
         Ny = np.size(c_mat, 1)
         Nx = np.size(c_mat, 0)
         T = self.config["T"]
@@ -181,6 +202,8 @@ class Mod2D(dae.daeModel):
         # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
+        # muR_mat, actR_mat = calc_muR_mech(c_mat, u_x_mat, u_y_mat, self.cbar(),
+        #                              self.config, self.trode, self.ind)
         for k in range(Nx):
             c_vec = c_mat[k,:]
             # print(c_vec)
