@@ -94,8 +94,8 @@ class SimMPET(dae.daeSimulation):
                                     part.c.SetInitialGuess(k, cs0)
                                     for j in range(N_ver_ij):
                                         part.cy[k].SetInitialCondition(j, cs0)
-                                        part.ux[k].SetInitialCondition(j, 0)
-                                        part.uy[k].SetInitialCondition(j, 0)
+                                        part.ux[k].SetInitialGuess(j, 0)
+                                        part.uy[k].SetInitialGuess(j, 0)
                             else:
                                 for k in range(Nij):
                                     part.c.SetInitialCondition(k, cs0)
