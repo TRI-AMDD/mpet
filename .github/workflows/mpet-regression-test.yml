@@ -15,18 +15,10 @@ jobs:
         shell: bash -l {0}
     steps:
 
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 1
         path: mpet
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-        path: base-mpet
-        ref: ${{ github.base_ref }}
 
     - uses: conda-incubator/setup-miniconda@v2
       with:
