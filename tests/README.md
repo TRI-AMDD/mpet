@@ -44,8 +44,8 @@ it is both tested as absolute and relative tolerance.
  - test003: LFP CHR sphere
  - test004: LFP CHR sphere with noise
  - test005: LFP homog
- - test006: LFP homog with logPad, Vmin
- - test007: LFP homog with logPad, Vmax
+ - test006: LFP homog with Vmin
+ - test007: LFP homog with Vmax
  - test008: LFP homog_sdn
  - test009: Graphite-2param homog
  - test010: Graphite-2param CHR cylinder
