@@ -1,4 +1,4 @@
-def LiCoO2_LIONSIMBA(self, y, ybar, T, muR_ref, ISfuncs=None):
+def LiCoO2_LIONSIMBA(self, y, ybar, T, muR_ref):
     """ Torchio et al, 2016. """
     Tref = 298
     r1 = 4.656

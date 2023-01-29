@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def NCA_ss1(self, y, ybar, T, muR_ref, ISfuncs=None):
+def NCA_ss1(self, y, ybar, T, muR_ref):
     """
     This function was obtained from Dan Cogswell's fit of Samsung
     data.
