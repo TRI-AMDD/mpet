@@ -67,13 +67,9 @@ class SimMPET(dae.daeSimulation):
         if not config["prevDir"] or config["prevDir"] == "false":
             # Solids
             for tr in config["trodes"]:
-                cs0_ic = config['cs0'][tr]
+                cs0 = config['cs0'][tr]
                 # Guess initial filling fractions
-                self.m.ffrac[tr].SetInitialGuess(cs0_ic)
-                epsrnd = 0.01
-                rndavg = epsrnd*(np.random.rand(Nvol[tr],Npart[tr]) - 0.5)
-                rndavg -= np.mean(rndavg)
-                cs0_mat = cs0_ic*np.ones((Nvol[tr],Npart[tr]), dtype=object) + rndavg
+                self.m.ffrac[tr].SetInitialGuess(cs0)
                 for i in range(Nvol[tr]):
                     # Guess initial volumetric reaction rates
                     self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
@@ -86,7 +82,6 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
-                        cs0 = cs0_mat[i,j]
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
@@ -102,7 +97,7 @@ class SimMPET(dae.daeSimulation):
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
                             part.cbar.SetInitialGuess(cs0)
-                            epsrnd = 0.001
+                            epsrnd = 0.0001
                             rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
                             rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
                             rnd1 -= np.mean(rnd1)
