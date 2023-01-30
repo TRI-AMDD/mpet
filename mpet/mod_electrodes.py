@@ -304,10 +304,6 @@ class Mod1var(dae.daeModel):
                                  "Concentration in active particle",
                                  [self.Dmn])
 
-        self.eta = dae.daeVariable("eta", dae.no_t, self,
-                                   "Overpotential",
-                                   [self.Dmn])
-
         # Creation of the ghost points to assit BC
 
         if self.get_trode_param("type") in ["ACR_Diff"]:
@@ -368,10 +364,7 @@ class Mod1var(dae.daeModel):
             numnoise = self.get_trode_param("numnoise")
             noise_prefac = self.get_trode_param("noise_prefac")
             tvec = np.linspace(0., 1.05*self.config["tend"], numnoise)
-            if self.get_trode_param("type") in ["ACR_Diff"]:
-                noise_data = noise_prefac*np.random.randn(numnoise, N+2)
-            else:
-                noise_data = noise_prefac*np.random.randn(numnoise, N)
+            noise_data = noise_prefac*np.random.randn(numnoise, N)
             self.noise = sintrp.interp1d(tvec, noise_data, axis=0,
                                          bounds_error=False, fill_value=0.)
 
@@ -442,26 +435,20 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             c_surf = c
+            # surface diffusion in the ACR C3 model
             if self.get_trode_param("type") in ["ACR_Diff"]:
-                # dx = 1/np.size(c)
-                # beta_s = self.get_trode_param("beta_s")
+                dx = 1/np.size(c)
+                beta_s = self.get_trode_param("beta_s")
                 eqL = self.CreateEquation("leftBC")
-                # eqL.Residual = (c_surf[0] - c_surf[1] +
-                #                 - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
-                eqL.Residual = c_surf[0] - 0.98
+                eqL.Residual = (c_surf[0] - c_surf[1] +
+                                - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
                 eqR = self.CreateEquation("rightBC")
-                # eqR.Residual = (c_surf[-1] - c_surf[-2] +
-                #                 - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008))
-                eqR.Residual = c_surf[-1] - 0.98
+                eqR.Residual = (c_surf[-1] - c_surf[-2] +
+                                - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008))
 
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.config, self.trode, self.ind)
-            if noise is None:
-                muR_surf = muR_surf
-            else:
-                muR_surf = muR_surf + noise(dae.Time().Value)
-                actR_surf = np.exp(muR_surf/T)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             muR, actR = calc_muR(c, self.cbar(), self.config, self.trode, self.ind)
             c_surf = c[-1]
@@ -478,7 +465,6 @@ class Mod1var(dae.daeModel):
         if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
                                 for i in range(N)])
-            
         else:
             eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("type") in ["ACR_Diff"]:
@@ -495,8 +481,6 @@ class Mod1var(dae.daeModel):
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
                 eq.Residual = self.Rxn(i) - Rxn[i]
-                eq = self.CreateEquation("eta")
-                eq.Residual = self.eta(i) - eta[i]
         else:
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
