@@ -723,7 +723,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             # generated with colormap.org
             cmap_location = os.path.dirname(os.path.abspath(__file__)) + r'\colormaps_custom.npz'
             cmaps = np.load(cmap_location)
-            cmap_data = cmaps[smooth_type]
+            cmap_data = cmaps['GnYlRd_1']
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         size_frac_min = 0.10
@@ -776,6 +776,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 bottom_left = center - size / 2
                 rects[vInd,pInd] = plt.Rectangle(
                     bottom_left, size, size, color=color)
+                # rects[vInd,pInd] = plt.Circle(
+                #     center, radius=size/4, color=color)
             # Create a group of rectange "patches" from the rects array
             collection[indx] = mcollect.PatchCollection(rects.reshape(-1))
             # Put them on the axes

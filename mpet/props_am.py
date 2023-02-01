@@ -161,6 +161,19 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
+    def non_homog_rect_variational(self, y, ybar, B, kappa):
+        """ Helper function """
+        # the taylor expansion at the edges is used
+        N = len(y)
+        ytmp = np.empty(N+2, dtype=object)
+        dxs = 1./N
+        ytmp[1:-1] = y
+        ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
+        ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
+        curv = np.diff(ytmp, 2)/(dxs**2)
+        muR_nh = -kappa*curv + B*(y - ybar)
+        return muR_nh
+
     def general_non_homog(self, y, ybar):
         """ Helper function """
         ptype = self.get_trode_param("type")
@@ -180,9 +193,13 @@ class muRfuncs():
             B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
-                    cwet = self.get_trode_param("cwet")
-                    muR_nh = self.non_homog_rect_fixed_csurf(
-                        y, ybar, B, kappa, cwet)
+                    if self.get_trode_param("surface_diffusion"):
+                        muR_nh = self.non_homog_rect_variational(
+                            y, ybar, B, kappa)
+                    else:
+                        cwet = self.get_trode_param("cwet")
+                        muR_nh = self.non_homog_rect_fixed_csurf(
+                            y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
