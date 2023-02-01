@@ -699,7 +699,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         # Set up colors.
         # Define if you want smooth or discrete color changes
         # Option: "smooth" or "discrete"
-        color_changes = "discrete"
+        color_changes = "smooth"
 #        color_changes = "smooth"
         # Discrete color changes:
         if color_changes == "discrete":
@@ -721,8 +721,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         # Smooth colormap changes:
         if color_changes == "smooth":
             # generated with colormap.org
-            cmaps = np.load("colormaps_custom.npz")
-            cmap_data = cmaps["GnYlRd_3"]
+            cmap_location = os.path.dirname(os.path.abspath(__file__)) + r'\colormaps_custom.npz'
+            cmaps = np.load(cmap_location)
+            cmap_data = cmaps[smooth_type]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         size_frac_min = 0.10
