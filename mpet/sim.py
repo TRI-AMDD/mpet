@@ -87,9 +87,9 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
-                            if self.config[tr,"surface_diffusion"]:
-                                part.c_left_GP.SetInitialGuess(cs0+0.005)
-                                part.c_right_GP.SetInitialGuess(cs0+0.005)
+                            # if self.config[tr,"surface_diffusion"]:
+                            #     part.c_left_GP.SetInitialGuess(cs0+0.005)
+                            #     part.c_right_GP.SetInitialGuess(cs0+0.005)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
                         elif solidType in constants.two_var_types:

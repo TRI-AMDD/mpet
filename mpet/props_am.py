@@ -193,13 +193,13 @@ class muRfuncs():
             B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
-                    if self.get_trode_param("surface_diffusion"):
-                        muR_nh = self.non_homog_rect_variational(
-                            y, ybar, B, kappa)
-                    else:
-                        cwet = self.get_trode_param("cwet")
-                        muR_nh = self.non_homog_rect_fixed_csurf(
-                            y, ybar, B, kappa, cwet)
+                    # if self.get_trode_param("surface_diffusion"):
+                    #     muR_nh = self.non_homog_rect_variational(
+                    #         y, ybar, B, kappa)
+                    # else:
+                    cwet = self.get_trode_param("cwet")
+                    muR_nh = self.non_homog_rect_fixed_csurf(
+                        y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
