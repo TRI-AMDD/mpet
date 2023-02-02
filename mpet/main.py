@@ -94,6 +94,9 @@ def main(paramfile, keepArchive=True):
 
     # Directories we'll store output in.
     outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    config_file = os.path.basename(paramfile)
+    config_base = os.path.splitext(config_file)[0]
+    outdir_name = "_".join((time.strftime("%Y%m%d_%H%M%S", time.localtime()), config_base))
     outdir_path = os.path.join(os.getcwd(), "history")
     outdir = os.path.join(outdir_path, outdir_name)
     # Make sure there's a place to store the output
