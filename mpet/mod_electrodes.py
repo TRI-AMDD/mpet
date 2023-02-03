@@ -316,15 +316,6 @@ class Mod1var(dae.daeModel):
         self.c = dae.daeVariable("c", mole_frac_t, self,
                                  "Concentration in active particle",
                                  [self.Dmn])
-
-        # Creation of the ghost points to assit BC
-
-        # if self.get_trode_param("surface_diffusion"):
-        #     self.c_left_GP = dae.daeVariable("c_left", mole_frac_t, self,
-        #                                      "Concentration on the left side of the particle")
-        #     self.c_right_GP = dae.daeVariable("c_right", mole_frac_t, self,
-        #                                       "Concentration on the right side of the particle")
-
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
@@ -449,22 +440,13 @@ class Mod1var(dae.daeModel):
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
-            # if self.get_trode_param("surface_diffusion"):
-            #     dx = 1/np.size(c)
-            #     # some doubt here, is it better to use size(c), so N+2 slices,  or size(c[1:-1]) ?
-            #     beta_s = self.get_trode_param("beta_s")
-            #     # if beta_s is too big c_surf[0] > 1, a better method is needed
-            #     eqL = self.CreateEquation("leftBC")
-            #     # eqL.Residual = (c_surf[0] - c_surf[1] +
-            #     #                 - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
-            #     eqL.Residual = c_surf[0] - 0.98
-            #     eqR = self.CreateEquation("rightBC")
-            #     # eqR.Residual = (c_surf[-1] - c_surf[-2] +
-            #     #                 - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008))
-            #     eqR.Residual = c_surf[-1] - 0.98
-
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
+            if noise is None:
+                muR_surf = muR_surf
+            else:
+                muR_surf = muR_surf + noise(dae.Time().Value)
+                actR_surf = np.exp(muR_surf/self.T_lyte())
 
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             muR, actR = calc_muR(c, self.cbar(), self.T_lyte(),
@@ -475,24 +457,14 @@ class Mod1var(dae.daeModel):
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
-        muR_surf_eta = np.empty(N, dtype=object)
-        # if self.get_trode_param("surface_diffusion"):
-        #     muR_surf_eta = utils.mean_linear(utils.mean_linear(muR_surf))
-        # else:
-        muR_surf_eta = muR_surf
-        eta = calc_eta(muR_surf_eta, muO)
+        eta = calc_eta(muR_surf, muO)
         if self.get_trode_param("type") in ["ACR"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
                                 for i in range(N)])
         else:
             eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
-        c_surf_rxn = np.empty(N, dtype=object)
-        # if self.get_trode_param("surface_diffusion"):
-        #     c_surf_rxn = utils.mean_linear(utils.mean_linear(c_surf))
-        # else:
-        c_surf_rxn = c_surf
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf_rxn, self.c_lyte(), self.get_trode_param("k0"),
+            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         if self.get_trode_param("type") in ["ACR"]:
@@ -546,13 +518,6 @@ class Mod1var(dae.daeModel):
         else:
             return eta, c_surf
 
-
-# def calc_surf_diff(c_surf, muR_surf, D):
-#     N_2 = np.size(c_surf)
-#     dxs = 1./N_2
-#     c_surf_short = utils.mean_linear(c_surf)
-#     surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf)))/(dxs**2)
-#     return surf_diff
 
 def calc_surf_diff(c_surf, muR_surf, D):
     N_2 = np.size(c_surf)
