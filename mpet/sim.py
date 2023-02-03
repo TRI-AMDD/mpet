@@ -64,9 +64,13 @@ class SimMPET(dae.daeSimulation):
         if not config["prevDir"] or config["prevDir"] == "false":
             # Solids
             for tr in config["trodes"]:
-                cs0 = config['cs0'][tr]
+                cs0_ic = config['cs0'][tr]
                 # Guess initial filling fractions
-                self.m.ffrac[tr].SetInitialGuess(cs0)
+                self.m.ffrac[tr].SetInitialGuess(cs0_ic)
+                epsrnd = 0
+                rndavg = epsrnd*(np.random.rand(Nvol[tr],Npart[tr]) - 0.5)
+                rndavg -= np.mean(rndavg)
+                cs0_mat = cs0_ic*np.ones((Nvol[tr],Npart[tr]), dtype=object) + rndavg
                 for i in range(Nvol[tr]):
                     # Guess initial volumetric reaction rates
                     self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
@@ -81,15 +85,13 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
                         part = self.m.particles[tr][i,j]
+                        cs0 = cs0_mat[i,j]
                         # Guess initial value for the average solid
                         # concentrations and set initial value for
                         # solid concentrations
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
-                            # if self.config[tr,"surface_diffusion"]:
-                            #     part.c_left_GP.SetInitialGuess(cs0+0.005)
-                            #     part.c_right_GP.SetInitialGuess(cs0+0.005)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
                         elif solidType in constants.two_var_types:
