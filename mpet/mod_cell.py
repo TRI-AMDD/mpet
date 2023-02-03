@@ -209,7 +209,7 @@ class ModCell(dae.daeModel):
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
-        # Define dimensionless R_Vp for each electrode volume
+        # Define dimensionless Q_Vp for each electrode volume
         for trode in trodes:
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
@@ -576,8 +576,8 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
                             + (1./(num*zm)*(1-tp0(c_edges_int, T_edges_int))*i_edges_int))
     q_edges_int = -k_h*np.diff(T_lyte)/dxd1
     # replace boundary conditions since they are ghost points with convective BCs
-    q_edges_int[0] = config["h_h"]*(1 - T_lyte[1])
-    q_edges_int[-1] = config["h_h"]*(T_lyte[-2] - 1)
+    q_edges_int[0] = config["h_h"]*(config["T"] - T_lyte[1])
+    q_edges_int[-1] = config["h_h"]*(T_lyte[-2] - config["T"])
     return Nm_edges_int, i_edges_int, q_edges_int
 
 
