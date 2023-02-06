@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def NMC_811Chen2020(self, y, ybar, T, muR_ref):
+def NMC811_Chen2020(self, y, ybar, T, muR_ref):
     """
     This function was obtained from Chen et al. 2020.
     """
