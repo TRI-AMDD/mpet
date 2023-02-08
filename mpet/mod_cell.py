@@ -118,6 +118,10 @@ class ModCell(dae.daeModel):
             self.c_lyteGP_L = dae.daeVariable("c_lyteGP_L", conc_t, self, "c_lyte left BC GP")
             self.phi_lyteGP_L = dae.daeVariable(
                 "phi_lyteGP_L", elec_pot_t, self, "phi_lyte left BC GP")
+            self.T_lyteGP_L = dae.daeVariable(
+                "T_lyteGP_L", temp_t, self, "T_lyte left BC GP")
+            self.T_lyteGP_R = dae.daeVariable(
+                "T_lyteGP_R", temp_t, self, "T_lyte left BC GP")
         self.phi_applied = dae.daeVariable(
             "phi_applied", elec_pot_t, self,
             "Overall battery voltage (at anode current collector)")
@@ -338,7 +342,7 @@ class ModCell(dae.daeModel):
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
             # temperature uses a constant boundary condition
-            Ttmp = np.hstack((config["T"], Tvec, config["T"]))
+            Ttmp = np.hstack((self.T_lyteGP_L(), Tvec, self.T_lyteGP_R()))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
 
             Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc,
@@ -376,6 +380,12 @@ class ModCell(dae.daeModel):
             else:
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
+
+            # boundary equation for temperature variables. per volume
+            eqTL = self.CreateEquation("GhostPointT_L")
+            eqTR = self.CreateEquation("GhostPointT_R")
+            eqTL.Residual = Ttmp[0] - config["T"]
+            eqTR.Residual = Ttmp[-1] - config["T"]
 
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
@@ -551,8 +561,9 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
         Dm = eps_o_tau_edges * config["Dm"]
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
                             - Dm/T_edges_int*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
-        i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1) - (nup*zp
-                       ** 2*Dp + num*zm**2*Dm)/T_edges_int*c_edges_int*np.diff(phi_lyte)/dxd1)
+        i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
+                       - (nup*zp**2*Dp + num*zm**2*Dm)/T_edges_int
+                       * c_edges_int*np.diff(phi_lyte)/dxd1)
     elif config["elyteModelType"] == "SM":
         SMset = config["SMset"]
         elyte_function = utils.import_function(config["SMset_filename"], SMset,

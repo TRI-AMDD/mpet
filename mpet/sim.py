@@ -123,6 +123,8 @@ class SimMPET(dae.daeSimulation):
             if not self.m.SVsim:
                 self.m.c_lyteGP_L.SetInitialGuess(config["c0"])
                 self.m.phi_lyteGP_L.SetInitialGuess(0)
+                self.m.T_lyteGP_L.SetInitialGuess(config["T"])
+                self.m.T_lyteGP_R.SetInitialGuess(config["T"])
 
             # Separator electrolyte initialization
             if config["have_separator"]:
