@@ -467,6 +467,12 @@ class Mod1var(dae.daeModel):
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        if self.get_trode_param("surface_diffusion"):
+            Rxn[int(N/3):int(2*N/3)] = self.calc_rxn_rate(
+                eta_eff[int(N/3):int(2*N/3)], c_surf[int(N/3):int(2*N/3)], self.c_lyte(),
+                1.2*self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         if self.get_trode_param("type") in ["ACR"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
@@ -504,7 +510,9 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         if self.get_trode_param("surface_diffusion"):
-            surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("D"))
+            surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("cwet"),
+                                           self.get_trode_param("D"), self.T_lyte(),
+                                           self.get_trode_param("E_D"))
             for k in range(N):
                 eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
                 eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
@@ -519,19 +527,20 @@ class Mod1var(dae.daeModel):
             return eta, c_surf
 
 
-def calc_surf_diff(c_surf, muR_surf, D):
-    N_2 = np.size(c_surf)
-    dxs = 1./N_2
-    muR_surf_long = np.empty(N_2+2, dtype=object)
+def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D):
+    N = np.size(c_surf)
+    dxs = 1./N
+    muR_surf_long = np.empty(N+2, dtype=object)
     muR_surf_long[1:-1] = muR_surf
     muR_surf_long[0] = muR_surf[0]
     muR_surf_long[-1] = muR_surf[-1]
-    c_surf_long = np.empty(N_2+2, dtype=object)
+    c_surf_long = np.empty(N+2, dtype=object)
     c_surf_long[1:-1] = c_surf
-    c_surf_long[0] = 0.98
-    c_surf_long[-1] = 0.98
+    c_surf_long[0] = cwet
+    c_surf_long[-1] = cwet
     c_surf_short = utils.mean_linear(c_surf_long)
-    surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
+    D_eff = D/T*np.exp(-E_D/T + E_D/1)
+    surf_diff = D_eff*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
     return surf_diff
 
 
