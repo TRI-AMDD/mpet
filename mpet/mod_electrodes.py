@@ -467,12 +467,6 @@ class Mod1var(dae.daeModel):
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
             self.get_trode_param("lambda"), self.get_trode_param("alpha"))
-        if self.get_trode_param("surface_diffusion"):
-            Rxn[int(N/3):int(2*N/3)] = self.calc_rxn_rate(
-                eta_eff[int(N/3):int(2*N/3)], c_surf[int(N/3):int(2*N/3)], self.c_lyte(),
-                1.2*self.get_trode_param("k0"),
-                self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
-                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         if self.get_trode_param("type") in ["ACR"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
