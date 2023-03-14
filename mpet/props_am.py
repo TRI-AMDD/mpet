@@ -143,22 +143,77 @@ class muRfuncs():
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
-        N = len(y)
-        ytmp = np.empty(N+2, dtype=object)
-        ytmp[1:-1] = y
-        ytmp[0] = ywet
-        ytmp[-1] = ywet
-        dxs = 1./N
-        curv = np.diff(ytmp, 2)/(dxs**2)
-        muR_nh = -kappa*curv + B*(y - ybar)
+        if isinstance(y, np.ndarray):
+            N = len(y)
+            ytmp = np.empty(N+2, dtype=object)
+            ytmp[1:-1] = y
+            ytmp[0] = ywet
+            ytmp[-1] = ywet
+            dxs = 1./N
+            curv = np.diff(ytmp, 2)/(dxs**2)
+            muR_nh = -kappa*curv + B*(y - ybar)
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            stoich_1 = self.get_trode_param("stoich_1")
+            stoich_2 = 1 - stoich_1
+            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
+            y_avg = stoich_1*y[0]+stoich_2*y[1]
+            N = len(y[0])
+            kappa1 = kappa[0]
+            kappa2 = kappa[1]
+            B1 = B[0]
+            B2 = B[1]
+            B_avg = stoich_1*B1 + stoich_2*B2
+            ytmp1 = np.empty(N+2, dtype=object)
+            ytmp1[1:-1] = y[0]
+            ytmp1[0] = ywet
+            ytmp1[-1] = ywet
+            dxs = 1./N
+            curv1 = np.diff(ytmp1, 2)/(dxs**2)
+            muR1_nh = -stoich_1*kappa1*curv1 + B_avg*(y_avg - ybar_avg)
+            ytmp2 = np.empty(N+2, dtype=object)
+            ytmp2[1:-1] = y[1]
+            ytmp2[0] = ywet
+            ytmp2[-1] = ywet
+            curv2 = np.diff(ytmp2, 2)/(dxs**2)
+            muR2_nh = -stoich_2*kappa2*curv2 + B_avg*(y_avg - ybar_avg)
+
+            muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
-        dr = r_vec[1] - r_vec[0]
-        Rs = 1.
-        curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
-        muR_nh = B*(y - ybar) - kappa*curv
+        mod1var, mod2var = False, False
+        if isinstance(y, np.ndarray):
+            mod1var = True
+        elif (isinstance(y, tuple) and len(y) == 2
+                and isinstance(y[0], np.ndarray)):
+            mod2var = True
+        if mod1var:
+            dr = r_vec[1] - r_vec[0]
+            Rs = 1.
+            curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
+            muR_nh = B*(y - ybar) - kappa*curv
+        elif mod2var:
+            stoich_1 = self.get_trode_param("stoich_1")
+            stoich_2 = 1 -stoich_1
+            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
+            y1 = y[0]
+            y2 = y[1]
+            kappa1 = kappa[0]
+            kappa2 = kappa[1]
+            B1 = B[0]
+            B2 = B[1]
+            B_avg = stoich_1*B1 + stoich_2*B2
+            dr = r_vec[1] - r_vec[0]
+            Rs = 1.
+            # wetting needs to be fixed
+            y_avg = stoich_1*y1+stoich_2*y2
+            curv1 = geo.calc_curv(y1, dr, r_vec, Rs, beta_s, shape)
+            muR1_nh = B_avg*(y_avg - ybar_avg) - stoich_1*kappa1*curv1
+            curv2 = geo.calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
+            muR2_nh = B_avg*(y_avg - ybar_avg) - stoich_2*kappa2*curv2
+            muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
     def general_non_homog(self, y, ybar):

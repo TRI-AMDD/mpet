@@ -664,7 +664,7 @@ class Config:
             # For particles with internal profiles, convert psd to
             # integers -- number of steps
             solidDisc = self[trode, 'discretization']
-            if solidType in ['ACR']:
+            if solidType in ['ACR', 'ACR2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
@@ -793,8 +793,8 @@ class Config:
         for trode in self['trodes']:
             solidShape = self[trode, 'shape']
             solidType = self[trode, 'type']
-            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
-                raise Exception("ACR and homog_sdn req. C3 shape")
+            if solidType in ["ACR", "ACR2", "homog_sdn"] and solidShape != "C3":
+                raise Exception("ACR, ACR2 and homog_sdn req. C3 shape")
             if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder"]):
                 raise NotImplementedError("CHR and diffn req. sphere or cylinder")
 

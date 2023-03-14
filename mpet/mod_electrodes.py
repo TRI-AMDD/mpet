@@ -123,14 +123,15 @@ class Mod2var(dae.daeModel):
         for k in range(N):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
-        eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - .5*(self.c1bar() + self.c2bar())
+        stoich_1 = self.get_trode_param("stoich_1")
+        stoich_2 = 1-stoich_1
+        eq.Residual = self.cbar() - (stoich_1*self.c1bar() + stoich_2*self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= (stoich_1*self.c1.dt(k) + stoich_2*self.c2.dt(k)) * volfrac_vec[k]
 
         # Define average rate of filling of particle for cbar1
         eq = self.CreateEquation("dcbar1dt")
@@ -206,6 +207,8 @@ class Mod2var(dae.daeModel):
 
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, noises):
         N = self.get_trode_param("N")
+        stoich_1 = self.get_trode_param("stoich_1")
+        stoich_2 = 1-stoich_1
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(self.get_trode_param('shape'), N)
@@ -251,11 +254,14 @@ class Mod2var(dae.daeModel):
             eq2.Residual = self.Rxn2() - Rxn2
 
         # Get solid particle fluxes (if any) and RHS
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
+        if self.get_trode_param("type") in ["ACR2"]:
+            RHS1 = stoich_1*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
+            RHS2 = stoich_2*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+        elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
-            Flux1_bc = -0.5 * self.Rxn1()
-            Flux2_bc = -0.5 * self.Rxn2()
+            Flux1_bc = -stoich_1 * self.Rxn1()
+            Flux2_bc = -stoich_2 * self.Rxn2()
             Dfunc_name = self.get_trode_param("Dfunc")
             Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
                                           Dfunc_name,
