@@ -123,9 +123,14 @@ class Mod2var(dae.daeModel):
         for k in range(N):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
-        stoich_1 = self.get_trode_param("stoich_1")
-        stoich_2 = 1-stoich_1
-        eq.Residual = self.cbar() - (stoich_1*self.c1bar() + stoich_2*self.c2bar())
+        eq_cbar = self.CreateEquation("cbar")
+        if self.get_trode_param("stoich_1") is not None:
+            stoich_1 = self.get_trode_param("stoich_1")
+            stoich_2 = 1-stoich_1
+        else:
+            stoich_1 = 0.5
+            stoich_2 = 0.5
+        eq_cbar.Residual = self.cbar() - (stoich_1*self.c1bar() + stoich_2*self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
@@ -149,25 +154,25 @@ class Mod2var(dae.daeModel):
         c2 = np.empty(N, dtype=object)
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
-            # Equations for 1D particles of 1 field varible
+        if self.get_trode_param("type") in ["diffn2", "CHR2", "ACR2"]:
+            # Equations for 1D particles of 2 field varible
             eta1, eta2, c_surf1, c_surf2 = self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte,
                                                                     noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
-            # Equations for 0D particles of 1 field variables
+            # Equations for 0D particles of 2 field variables
             eta1, eta2, c_surf1, c_surf2 = self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte,
                                                                     noises)
 
         # Define average rate of heat generation
         eq = self.CreateEquation("q_rxn_bar")
         if self.config["entropy_heat_gen"]:
-            eq.Residual = self.q_rxn_bar() - 0.5 * self.dcbar1dt() * \
+            eq.Residual = self.q_rxn_bar() - stoich_1 * self.dcbar1dt() * \
                 (eta1 - self.T_lyte()*(np.log(c_surf1/(1-c_surf1))-1/self.c_lyte())) \
-                - 0.5 * self.dcbar2dt() * (eta2 - self.T_lyte()
-                                           * (np.log(c_surf2/(1-c_surf2))-1/self.c_lyte()))
+                - stoich_2 * self.dcbar2dt() * (eta2 - self.T_lyte()
+                                                * (np.log(c_surf2/(1-c_surf2))-1/self.c_lyte()))
         else:
-            eq.Residual = self.q_rxn_bar() - 0.5 * self.dcbar1dt() * eta1 \
-                - 0.5 * self.dcbar2dt() * eta2
+            eq.Residual = self.q_rxn_bar() - stoich_1 * self.dcbar1dt() * eta1 \
+                - stoich_2 * self.dcbar2dt() * eta2
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -207,8 +212,12 @@ class Mod2var(dae.daeModel):
 
     def sld_dynamics_1D2var(self, c1, c2, muO, act_lyte, noises):
         N = self.get_trode_param("N")
-        stoich_1 = self.get_trode_param("stoich_1")
-        stoich_2 = 1-stoich_1
+        if self.get_trode_param("stoich_1") is not None:
+            stoich_1 = self.get_trode_param("stoich_1")
+            stoich_2 = 1-stoich_1
+        else:
+            stoich_1 = 0.5
+            stoich_2 = 0.5
         # Equations for concentration evolution
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(self.get_trode_param('shape'), N)
@@ -223,6 +232,14 @@ class Mod2var(dae.daeModel):
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
             mu2R_surf, act2R_surf = mu2R[-1], act2R[-1]
+        elif self.get_trode_param("type") in ["ACR2"]:
+            (mu1R, mu2R), (act1R, act2R) = calc_muR((c1, c2), (self.c1bar(), self.c2bar()),
+                                                    self.T_lyte(), self.config, self.trode,
+                                                    self.ind)
+            mu1R_surf, act1R_surf = mu1R, act1R
+            mu2R_surf, act2R_surf = mu2R, act2R
+            c1_surf = c1
+            c2_surf = c2
         eta1 = calc_eta(mu1R_surf, muO)
         eta2 = calc_eta(mu2R_surf, muO)
         if self.get_trode_param("type") in ["ACR2"]:
@@ -255,8 +272,10 @@ class Mod2var(dae.daeModel):
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR2"]:
-            RHS1 = stoich_1*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
-            RHS2 = stoich_2*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+            RHS1 = stoich_1*np.array([self.get_trode_param("delta_L")
+                                      * self.Rxn1(i) for i in range(N)])
+            RHS2 = stoich_2*np.array([self.get_trode_param("delta_L")
+                                      * self.Rxn2(i) for i in range(N)])
         elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
@@ -299,7 +318,7 @@ class Mod2var(dae.daeModel):
             eq1.Residual = LHS1_vec[k] - RHS1[k]
             eq2.Residual = LHS2_vec[k] - RHS2[k]
 
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR","ACR2"]:
             return eta1[-1], eta2[-1], c1_surf[-1], c2_surf[-1]
         else:
             return eta1, eta2, c1_surf, c2_surf

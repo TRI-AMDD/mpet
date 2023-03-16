@@ -196,7 +196,7 @@ class muRfuncs():
             muR_nh = B*(y - ybar) - kappa*curv
         elif mod2var:
             stoich_1 = self.get_trode_param("stoich_1")
-            stoich_2 = 1 -stoich_1
+            stoich_2 = 1 - stoich_1
             ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
             y1 = y[0]
             y2 = y[1]
@@ -239,7 +239,16 @@ class muRfuncs():
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
-                    raise NotImplementedError("no 2param C3 model known")
+                    # only type using this is ACR2
+                    kappa1 = self.get_trode_param("kappa1")
+                    kappa2 = self.get_trode_param("kappa2")
+                    kappa = (kappa1,kappa2)
+                    B1 = self.get_trode_param("B1")
+                    B2 = self.get_trode_param("B2")
+                    B = (B1,B2)
+                    cwet = self.get_trode_param("cwet")
+                    muR_nh = self.non_homog_rect_fixed_csurf(
+                        y, ybar, B, kappa, cwet)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
