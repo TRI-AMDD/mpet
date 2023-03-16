@@ -500,6 +500,10 @@ class Config:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             if self[trode, 'B'] is not None:
                 self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            if self[trode, 'Bx'] is not None:
+                self[trode,'Bx'] = self[trode, 'Bx'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            if self[trode, 'By'] is not None:
+                self[trode,'By'] = self[trode, 'By'] / (kT * constants.N_A * self[trode, 'cs_ref'])
             for param in ['Omega_a', 'Omega_b', 'Omega_c', 'EvdW']:
                 value = self[trode, param]
                 if value is not None:
@@ -752,6 +756,10 @@ class Config:
                         self[trode, 'indvPart']['N_ver'][i,j] = self['psd_num_ver'][trode][i,j]
                     if self[trode, 'kappa'] is not None:
                         self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
+                    if self[trode, 'kappa_x'] is not None:
+                        self[trode,'indvPart']['kappa_x'][i, j] = self[trode,'kappa_x'] / kappa_ref
+                    if self[trode, 'kappa_y'] is not None:
+                        self[trode,'indvPart']['kappa_y'][i, j] = self[trode,'kappa_y'] / kappa_ref
                     if self[trode, 'dgammadc'] is not None:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \

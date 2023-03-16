@@ -46,20 +46,25 @@ class Mod2D(dae.daeModel):
         Nx = self.get_trode_param("N")
         self.cy = {}
         for k in range(Nx):
-            self.cy[k] = dae.daeVariable("cy{k}".format(k=k), mole_frac_t, self,
-                                         "Concentration in y direction of element in row {k}".format(k=k),
+            self.cy[k] = dae.daeVariable("cy{k}".format(k=k),
+                                         mole_frac_t, self,
+                                         "Conc in ver direction of element in row {k}".format(k=k),
                                          [self.Dmny])
-        # check unit of measures
-        self.uy = {}
-        for k in range(Nx):
-            self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  self,
-                                         "Displacement in y direction of element in row {k}".format(k=k),
-                                         [self.Dmny])
-        self.ux = {}
-        for k in range(Nx):
-            self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,  self,
-                                         "Displacement in x direction of element in row {k}".format(k=k),
-                                         [self.Dmny])
+        # # check unit of measures
+        # self.uy = {}
+        # for k in range(Nx):
+        #     self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  
+        #                                   self,
+        #                                  "Displacement in y direction of element in row {k}".
+        # format(k=k),
+        #                                  [self.Dmny])
+        # self.ux = {}
+        # for k in range(Nx):
+        #     self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t, 
+        #                            self,
+        #                                  "Displacement in x direction of element in row {k}".
+        # format(k=k),
+        #                                  [self.Dmny])
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
@@ -128,16 +133,17 @@ class Mod2D(dae.daeModel):
         for k in range(Nx):
             c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
-        u_y_mat = np.empty((Nx, Ny), dtype=object)
-        for k in range(Nx):
-            u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
+        # u_y_mat = np.empty((Nx, Ny), dtype=object)
+        # for k in range(Nx):
+        #     u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
 
-        u_x_mat = np.empty((Nx, Ny), dtype=object)
-        for k in range(Nx):
-            u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny)]
+        # u_x_mat = np.empty((Nx, Ny), dtype=object)
+        # for k in range(Nx):
+        #     u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny)]
 
         # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
-        self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
+        # self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
+        self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -152,11 +158,15 @@ class Mod2D(dae.daeModel):
                                       f"mpet.electrode.diffusion.{Dfunc_name}")
         dr, edges = geo.get_dr_edges("C3", Ny)
         area_vec = 1.
-        Mmaty = get_Mmat("C3", Ny)
+        Mmaty = get_Mmat(self.get_trode_param('shape'), Ny)
+        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
+                                     self.config, self.trode, self.ind)
         for k in range(Nx):
             c_vec = c_mat[k,:]
-            muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
-                                         self.config, self.trode, self.ind)
+            muR_vec = muR_mat[k,:]
+            actR_vec = actR_mat[k,:]
+            # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
+            #                              self.config, self.trode, self.ind)
             c_surf = c_mat[k,-1]
             muR_surf = muR_vec[-1]
             actR_surf = actR_vec[-1]
@@ -174,8 +184,8 @@ class Mod2D(dae.daeModel):
 
             Flux_bc = -self.Rxn(k)
 
-            Flux_vec = calc_flux_C3ver(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
-                                       self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+            Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+                                     self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
 
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
@@ -200,18 +210,18 @@ class Mod2D(dae.daeModel):
         # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
-        muR_el, div_stress_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
-                             self.config, self.trode, self.ind)
+        # muR_el, div_stress_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
+        #                      self.config, self.trode, self.ind)
 
-        muR_mat += muR_el
+        # muR_mat += muR_el
         actR_mat = np.exp(muR_mat)
         
-        for i in range(Nx):
-            for j in range(Ny):
-                eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
-                eq1.Residual = div_stress_mat[i,j,0]
-                eq2 = self.CreateEquation("divsigma2_{i}_{j}_equal0".format(i=i, j=j))
-                eq2.Residual = div_stress_mat[i,j,1]
+        # for i in range(Nx):
+        #     for j in range(Ny):
+        #         eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
+        #         eq1.Residual = div_stress_mat[i,j,0]
+        #         eq2 = self.CreateEquation("divsigma2_{i}_{j}_equal0".format(i=i, j=j))
+        #         eq2.Residual = div_stress_mat[i,j,1]
 
         for k in range(Nx):
             c_vec = c_mat[k,:]
@@ -243,7 +253,7 @@ class Mod2D(dae.daeModel):
 
             Flux_vec = calc_flux_C3ver(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                        self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
-
+            area_vec = 1.*edges
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
@@ -617,7 +627,6 @@ class Mod1var(dae.daeModel):
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(self.get_trode_param('shape'), N)
         dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), N)
-
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
@@ -785,133 +794,133 @@ def calc_muR(c, cbar, config, trode, ind):
     muR, actR = muRfunc(c, cbar, muR_ref)
     return muR, actR
 
-def mech_tensors():
-    # FePo4 elastic constants (GPa)
-    c11 = 175.9
-    c22 = 153.6
-    c33 = 135.0
-    c44 = 38.8
-    c55 = 47.5
-    c66 = 55.6
-    c13 = 54.0
-    c12 = 29.6
-    c23 = 19.6
+# def mech_tensors():
+#     # FePo4 elastic constants (GPa)
+#     c11 = 175.9
+#     c22 = 153.6
+#     c33 = 135.0
+#     c44 = 38.8
+#     c55 = 47.5
+#     c66 = 55.6
+#     c13 = 54.0
+#     c12 = 29.6
+#     c23 = 19.6
 
-    Cij = np.zeros((6,6))
-    Cij[0,0] = c11
-    Cij[1,1] = c22
-    Cij[2,2] = c33
-    Cij[3,3] = c44
-    Cij[4,4] = c55
-    Cij[5,5] = c66
-    Cij[1,0] = c12
-    Cij[0,1] = c12
-    Cij[2,0] = c13
-    Cij[0,2] = c13
-    Cij[1,2] = c23
-    Cij[2,1] = c23
-    # strain
-    e01 = 0.0517
-    e02 = 0.0359
-    e03 = -0.0186
-    e0 = np.array([e01, e02, e03, 0, 0, 0])
+#     Cij = np.zeros((6,6))
+#     Cij[0,0] = c11
+#     Cij[1,1] = c22
+#     Cij[2,2] = c33
+#     Cij[3,3] = c44
+#     Cij[4,4] = c55
+#     Cij[5,5] = c66
+#     Cij[1,0] = c12
+#     Cij[0,1] = c12
+#     Cij[2,0] = c13
+#     Cij[0,2] = c13
+#     Cij[1,2] = c23
+#     Cij[2,1] = c23
+#     # strain
+#     e01 = 0.0517
+#     e02 = 0.0359
+#     e03 = -0.0186
+#     e0 = np.array([e01, e02, e03, 0, 0, 0])
 
-    return Cij, e0
+#     return Cij, e0
 
-def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
-    Ny = np.size(c_mat, 1)
-    Nx = np.size(c_mat, 0)
-    dys = 1./Ny
-    dxs = 1./Nx
-    max_conc = conf[trode, "rho_s"]
-    T_ref = 298
-    k = 1.381e-23
-    N_A = 6.022e23
-    kT = k * T_ref
-    norm_stress = kT * N_A * max_conc
-    muR_el = np.zeros((Nx+1,Ny+1), dtype=object)
-    Cij, e0 = mech_tensors()
+# def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
+#     Ny = np.size(c_mat, 1)
+#     Nx = np.size(c_mat, 0)
+#     dys = 1./Ny
+#     dxs = 1./Nx
+#     max_conc = conf[trode, "rho_s"]
+#     T_ref = 298
+#     k = 1.381e-23
+#     N_A = 6.022e23
+#     kT = k * T_ref
+#     norm_stress = kT * N_A * max_conc
+#     muR_el = np.zeros((Nx+1,Ny+1), dtype=object)
+#     Cij, e0 = mech_tensors()
 
-    ywet = 0.98*np.ones(Ny+2, dtype=object)
-    c_mat_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
-    c_mat_tmp[1:-1,1:-1] = c_mat
-    # first and last row is 0.98
-    c_mat_tmp[-1,:] = ywet
-    c_mat_tmp[0,:] = ywet
-    c_mat_tmp[1:-1,0] = c_mat[:,0]
-    c_mat_tmp[1:-1,-1] = c_mat[:,-1]
+#     ywet = 0.98*np.ones(Ny+2, dtype=object)
+#     c_mat_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     c_mat_tmp[1:-1,1:-1] = c_mat
+#     # first and last row is 0.98
+#     c_mat_tmp[-1,:] = ywet
+#     c_mat_tmp[0,:] = ywet
+#     c_mat_tmp[1:-1,0] = c_mat[:,0]
+#     c_mat_tmp[1:-1,-1] = c_mat[:,-1]
 
-    # the middle of the particle does not move along x
-    N_hal_x = int(Nx/2)
-    u_x_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
-    u_y_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
-    u_x_tmp[2:,2:] = u_x
-    u_x_tmp[2:,0] = u_x[:,0]
-    u_x_tmp[2:,1] = u_x[:,0]
-    # u_x_tmp[N_hal_x+2:,1:] = u_x[N_hal_x+1:,:]
-    u_y_tmp[2:,2:] = u_y
-    u_y_tmp[0,2:] = u_y[0,:]
-    u_y_tmp[1,2:] = u_y[0,:]
-    # u_y_tmp[N_hal_x+2:,1:] = u_y[N_hal_x+1,:]    
+#     # the middle of the particle does not move along x
+#     N_hal_x = int(Nx/2)
+#     u_x_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     u_y_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     u_x_tmp[2:,2:] = u_x
+#     u_x_tmp[2:,0] = u_x[:,0]
+#     u_x_tmp[2:,1] = u_x[:,0]
+#     # u_x_tmp[N_hal_x+2:,1:] = u_x[N_hal_x+1:,:]
+#     u_y_tmp[2:,2:] = u_y
+#     u_y_tmp[0,2:] = u_y[0,:]
+#     u_y_tmp[1,2:] = u_y[0,:]
+#     # u_y_tmp[N_hal_x+2:,1:] = u_y[N_hal_x+1,:]    
 
-    e1 = np.zeros((Nx+1,Ny+1), dtype=object)
-    e2 = np.zeros((Nx+1,Ny+1), dtype=object)
-    duxdy = np.zeros((Nx+1,Ny+1), dtype=object)
-    duydx = np.zeros((Nx+1,Ny+1), dtype=object)
+#     e1 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     e2 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     duxdy = np.zeros((Nx+1,Ny+1), dtype=object)
+#     duydx = np.zeros((Nx+1,Ny+1), dtype=object)
 
-    e1 = np.diff(u_x_tmp, axis = 1)/dxs
-    e2 = np.diff(u_y_tmp, axis = 0)/dys
-    # diff shape
-    duydx = np.diff(u_y_tmp, axis = 1)/dxs
-    duxdy = np.diff(u_x_tmp, axis = 0)/dys
+#     e1 = np.diff(u_x_tmp, axis = 1)/dxs
+#     e2 = np.diff(u_y_tmp, axis = 0)/dys
+#     # diff shape
+#     duydx = np.diff(u_y_tmp, axis = 1)/dxs
+#     duxdy = np.diff(u_x_tmp, axis = 0)/dys
 
-    # for j in range(Ny+1):
-    #     e1[:,j] = np.diff(u_x_tmp[:,j])/dxs
-    #     duydx[:,j] = np.diff(u_y_tmp[:,j])/dxs
-    # for i in range(Nx+1):
-    #     e2[i,:] = np.diff(u_y_tmp[i,:])/dys
-    #     duxdy[i,:] = np.diff(u_x_tmp[i,:])/dys
-    e12 = np.zeros((Nx+1,Ny+1), dtype=object)
-    for j in range(Ny+1):
-        e12[:,j] = 0.5*utils.mean_linear(duydx[:,j])
-    for i in range(Nx+1):
-        e12[i,:] += 0.5*utils.mean_linear(duxdy[i,:])
+#     # for j in range(Ny+1):
+#     #     e1[:,j] = np.diff(u_x_tmp[:,j])/dxs
+#     #     duydx[:,j] = np.diff(u_y_tmp[:,j])/dxs
+#     # for i in range(Nx+1):
+#     #     e2[i,:] = np.diff(u_y_tmp[i,:])/dys
+#     #     duxdy[i,:] = np.diff(u_x_tmp[i,:])/dys
+#     e12 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     for j in range(Ny+1):
+#         e12[:,j] = 0.5*utils.mean_linear(duydx[:,j])
+#     for i in range(Nx+1):
+#         e12[i,:] += 0.5*utils.mean_linear(duxdy[i,:])
 
-    e_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
-    sigma_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
+#     e_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
+#     sigma_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
 
-    for i in range(Nx+1):
-        for j in range(Ny+1):
-            e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat_tmp[i,j],
-                                    e2[i,j]- e0[1]*c_mat_tmp[i,j],
-                                    0,
-                                    e12[i,j],
-                                    0,
-                                    0])
-            sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
-            muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/norm_stress
-    muR_el = muR_el[1:,1:]
-    # now that ew found the chem pot
-    # it is time to create the div(sigma) so that out of the function
-    # can be posed = 0
-    dsigma1dx_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma2dy_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma12dx_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma12dy_mat = np.zeros((Nx,Ny), dtype=object)
-    # div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
-    div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
-    # check boundaries !
-    dsigma2dy_mat = np.diff(sigma_mat[:,:,1], axis = 1)/dys
-    dsigma12dy_mat = np.diff(sigma_mat[:,:,2], axis = 1)/dys
-    dsigma1dx_mat = np.diff(sigma_mat[:,:,0], axis = 0)/dxs
-    dsigma12dx_mat = np.diff(sigma_mat[:,:,2], axis = 0)/dxs
-    for i in range(Nx):
-        for j in range(Ny):
-            div_stress_mat[i,j,:] = np.array([
-                dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
-                dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
-            ]
-            )
+#     for i in range(Nx+1):
+#         for j in range(Ny+1):
+#             e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat_tmp[i,j],
+#                                     e2[i,j]- e0[1]*c_mat_tmp[i,j],
+#                                     0,
+#                                     e12[i,j],
+#                                     0,
+#                                     0])
+#             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
+#             muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/norm_stress
+#     muR_el = muR_el[1:,1:]
+#     # now that ew found the chem pot
+#     # it is time to create the div(sigma) so that out of the function
+#     # can be posed = 0
+#     dsigma1dx_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma2dy_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma12dx_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma12dy_mat = np.zeros((Nx,Ny), dtype=object)
+#     # div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+#     div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+#     # check boundaries !
+#     dsigma2dy_mat = np.diff(sigma_mat[:,:,1], axis = 1)/dys
+#     dsigma12dy_mat = np.diff(sigma_mat[:,:,2], axis = 1)/dys
+#     dsigma1dx_mat = np.diff(sigma_mat[:,:,0], axis = 0)/dxs
+#     dsigma12dx_mat = np.diff(sigma_mat[:,:,2], axis = 0)/dxs
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             div_stress_mat[i,j,:] = np.array([
+#                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+#                 dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+#             ]
+#             )
 
     # it does not like div(sigma) = np.zeros
     # for i in range(int(Nx/2)):
@@ -930,7 +939,7 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     #         ]
     #         )
     # print(div_stress_mat)
-    return muR_el, div_stress_mat
+    # return muR_el, div_stress_mat
 
 
 def MX(mat, objvec):
