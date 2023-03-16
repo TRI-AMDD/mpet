@@ -174,13 +174,27 @@ class DerivedValues:
     def csmax(self, trode):
         """Maximum concentration for given electrode
         """
-        return self.config[trode, 'rho_s'] / constants.N_A
+        if self.config[trode, 'rho_s_1'] is not None:
+            prefac_1 = self.config[trode,"stoich_1"]
+            prefac_2 = 1-prefac_1
+            rho_s = (prefac_1*self.config[trode, 'rho_s_1']
+                     + prefac_2*self.config[trode, 'rho_s_2'])
+        else:
+            rho_s = self.config[trode, 'rho_s']
+        return rho_s / constants.N_A
 
     def cap(self, trode):
         """Theoretical capacity of given electrode
         """
+        if self.config[trode, 'rho_s_1'] is not None:
+            prefac_1 = self.config[trode,"stoich_1"]
+            prefac_2 = 1-prefac_1
+            rho_s = (prefac_1*self.config[trode, 'rho_s_1']
+                     + prefac_2*self.config[trode, 'rho_s_2'])
+        else:
+            rho_s = self.config[trode, 'rho_s']
         return constants.e * self.config['L'][trode] * (1 - self.config['poros'][trode]) \
-            * self.config['P_L'][trode] * self.config[trode, 'rho_s']
+            * self.config['P_L'][trode] * rho_s
 
     def numsegments(self):
         """Number of segments in voltage/current profile
@@ -229,11 +243,18 @@ class DerivedValues:
     def cs_ref(self, trode):
         """Reference concentration
         """
-        if self.config[trode, 'type'] in constants.one_var_types:
-            prefac = 1
-        elif self.config[trode, 'type'] in constants.two_var_types:
-            prefac = .5
-        return prefac * self.config[trode, 'csmax']
+        # if self.config[trode, 'type'] in constants.one_var_types:
+        #     prefac = 1
+        # elif self.config[trode, 'type'] in constants.two_var_types:
+        #     if self.config[trode,"stoich_1"] is not None:
+        #         prefac_1 = self.config[trode,"stoich_1"]
+        #         prefac_2 = 1-prefac_1
+        #         cs_ref = (prefac_1*self.config[trode, 'csmax'] 
+        #                   + prefac_2*self.config[trode, 'csmax'])
+        #     else:
+        prefac = 0.5
+        cs_ref = prefac * self.config[trode, 'csmax']
+        return cs_ref
 
     def muR_ref(self, trode):
         """Reference chemical potential of given electrode
