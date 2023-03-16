@@ -243,16 +243,12 @@ class DerivedValues:
     def cs_ref(self, trode):
         """Reference concentration
         """
-        # if self.config[trode, 'type'] in constants.one_var_types:
-        #     prefac = 1
-        # elif self.config[trode, 'type'] in constants.two_var_types:
-        #     if self.config[trode,"stoich_1"] is not None:
-        #         prefac_1 = self.config[trode,"stoich_1"]
-        #         prefac_2 = 1-prefac_1
-        #         cs_ref = (prefac_1*self.config[trode, 'csmax'] 
-        #                   + prefac_2*self.config[trode, 'csmax'])
-        #     else:
-        prefac = 0.5
+        if self.config[trode, 'type'] in constants.one_var_types:
+            prefac = 1
+        elif self.config[trode, 'type'] in constants.two_var_types:
+            # for the case of different stoichiom 
+            # direclty csmax is used
+            prefac = 0.5
         cs_ref = prefac * self.config[trode, 'csmax']
         return cs_ref
 

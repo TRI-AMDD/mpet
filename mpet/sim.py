@@ -99,7 +99,7 @@ class SimMPET(dae.daeSimulation):
                             rnd1 -= np.mean(rnd1)
                             rnd2 -= np.mean(rnd2)
                             for k in range(Nij):
-                                if self.config[tr,'type'] == 'ACR2' :
+                                if self.config[tr,'type'] == 'ACR2':
                                     stoich1 = self.config[tr,'stoich_1']
                                     if cs0 < stoich1:
                                         part.c1.SetInitialCondition(k, cs0/stoich1+rnd1[k])
