@@ -768,11 +768,16 @@ class Config:
                         pthick = self['psd_len_ver'][trode][i,j]
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
                             * self['t_ref'] / pthick**2
+                        self[trode,'indvPart']['D_surf'][i, j] = self[trode,'D_surf'] \
+                            * self['t_ref'] / plen**2
                     else:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
                             * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
+                    if self[trode, 'E_D_surf'] is not None:
+                        self[trode, 'indvPart']['E_D_surf'][i, j] = self[trode, 'E_D_surf'] \
+                            / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \

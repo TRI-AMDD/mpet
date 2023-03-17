@@ -161,13 +161,19 @@ class Mod2D(dae.daeModel):
         Mmaty = get_Mmat(self.get_trode_param('shape'), Ny)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
+
+        if self.get_trode_param("surface_diffusion"):
+            surf_diff_vec = calc_surf_diff(c_mat[:,-1], muR_mat[:,-1],
+                                           self.get_trode_param("cwet"),
+                                           self.get_trode_param("D_surf"), self.config["T"],
+                                           self.get_trode_param("E_D_surf"))
         for k in range(Nx):
             c_vec = c_mat[k,:]
             muR_vec = muR_mat[k,:]
             actR_vec = actR_mat[k,:]
             # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
             #                              self.config, self.trode, self.ind)
-            c_surf = c_mat[k,-1]
+            c_surf = c_vec[-1]
             muR_surf = muR_vec[-1]
             actR_surf = actR_vec[-1]
             eta = calc_eta(muR_surf, muO)
@@ -182,7 +188,10 @@ class Mod2D(dae.daeModel):
             eq = self.CreateEquation("Rxn_{k}".format(k=k))
             eq.Residual = self.Rxn(k) - Rxn
 
-            Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
+            if self.get_trode_param("surface_diffusion"):
+                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L") + surf_diff_vec[k]
+            else:
+                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
             Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                      self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
@@ -714,6 +723,23 @@ def get_Mmat(shape, N):
     return Mmat
 
 
+def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D_surf):
+    N = np.size(c_surf)
+    dxs = 1./N
+    muR_surf_long = np.empty(N+2, dtype=object)
+    muR_surf_long[1:-1] = muR_surf
+    muR_surf_long[0] = muR_surf[0]
+    muR_surf_long[-1] = muR_surf[-1]
+    c_surf_long = np.empty(N+2, dtype=object)
+    c_surf_long[1:-1] = c_surf
+    c_surf_long[0] = cwet
+    c_surf_long[-1] = cwet
+    c_surf_short = utils.mean_linear(c_surf_long)
+    D_eff = D/T*np.exp(-E_D_surf/T + E_D_surf/1)
+    surf_diff = D_eff*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
+    return surf_diff
+
+
 def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
@@ -861,7 +887,7 @@ def calc_muR(c, cbar, config, trode, ind):
 #     u_y_tmp[2:,2:] = u_y
 #     u_y_tmp[0,2:] = u_y[0,:]
 #     u_y_tmp[1,2:] = u_y[0,:]
-#     # u_y_tmp[N_hal_x+2:,1:] = u_y[N_hal_x+1,:]    
+#     # u_y_tmp[N_hal_x+2:,1:] = u_y[N_hal_x+1,:]
 
 #     e1 = np.zeros((Nx+1,Ny+1), dtype=object)
 #     e2 = np.zeros((Nx+1,Ny+1), dtype=object)
