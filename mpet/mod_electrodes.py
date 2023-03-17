@@ -182,7 +182,7 @@ class Mod2D(dae.daeModel):
             eq = self.CreateEquation("Rxn_{k}".format(k=k))
             eq.Residual = self.Rxn(k) - Rxn
 
-            Flux_bc = -self.Rxn(k)
+            Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
             Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                      self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
