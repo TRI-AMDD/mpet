@@ -704,9 +704,9 @@ def calc_eta(muR, muO):
 
 def get_Mmat(shape, N):
     r_vec, volfrac_vec = geo.get_unit_solid_discr(shape, N)
-    if shape == "C3":
+    if shape == "ACR":
         Mmat = sprs.eye(N, N, format="csr")
-    elif shape in ["sphere", "cylinder"]:
+    elif shape in ["sphere", "cylinder","C3"]:
         Rs = 1.
         # For discretization background, see Zeng & Bazant 2013
         # Mass matrix is common for each shape, diffn or CHR
@@ -714,6 +714,8 @@ def get_Mmat(shape, N):
             Vp = 4./3. * np.pi * Rs**3
         elif shape == "cylinder":
             Vp = np.pi * Rs**2  # per unit height
+        elif shape == "C3":
+            Vp = Rs
         vol_vec = Vp * volfrac_vec
         M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                         shape=(N, N), format="csr")
@@ -728,8 +730,8 @@ def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D_surf):
     dxs = 1./N
     muR_surf_long = np.empty(N+2, dtype=object)
     muR_surf_long[1:-1] = muR_surf
-    muR_surf_long[0] = muR_surf[0]
-    muR_surf_long[-1] = muR_surf[-1]
+    muR_surf_long[0] = muR_surf[0] - (np.diff(muR_surf)[0]/dxs)*dxs + (np.diff(muR_surf,2)[0]/dxs**2)*dxs**2
+    muR_surf_long[-1] = muR_surf[-1] + (np.diff(muR_surf)[-1]/dxs)*dxs + (np.diff(muR_surf,2)[-1]/dxs**2)*dxs**2
     c_surf_long = np.empty(N+2, dtype=object)
     c_surf_long[1:-1] = c_surf
     c_surf_long[0] = cwet
