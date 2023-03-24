@@ -498,6 +498,8 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
+            elif self.get_trode_param("shape") == "C3":
+                area_vec = np.ones(np.shape(edges))
             RHS = -np.diff(Flux_vec * area_vec)
 
         dcdt_vec = np.empty(N, dtype=object)
@@ -521,20 +523,23 @@ class Mod1var(dae.daeModel):
             return eta, c_surf
 
 
-def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D):
+def calc_surf_diff(self,c_surf, muR_surf, cwet, D, T, E_D):
     N = np.size(c_surf)
-    dxs = 1./N
+    dxs = 1./N  # check
     muR_surf_long = np.empty(N+2, dtype=object)
     muR_surf_long[1:-1] = muR_surf
-    muR_surf_long[0] = muR_surf[0]
-    muR_surf_long[-1] = muR_surf[-1]
+    muR_surf_long[0] = calc_muR(
+        cwet, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
+    muR_surf_long[-1] = calc_muR(
+        cwet, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
     c_surf_long = np.empty(N+2, dtype=object)
     c_surf_long[1:-1] = c_surf
     c_surf_long[0] = cwet
     c_surf_long[-1] = cwet
-    c_surf_short = utils.mean_linear(c_surf_long)
+    c_edges = utils.mean_linear(c_surf_long)
     D_eff = D/T*np.exp(-E_D/T + E_D/1)
-    surf_diff = D_eff*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
+    surf_flux = D_eff*c_edges*(1-c_edges)*np.diff(muR_surf_long)/(dxs)
+    surf_diff = (np.diff(surf_flux))/(dxs)
     return surf_diff
 
 
@@ -554,6 +559,10 @@ def get_Mmat(shape, N):
             Vp = 4./3. * np.pi * Rs**3
         elif shape == "cylinder":
             Vp = np.pi * Rs**2  # per unit height
+        elif shape == "C3":
+            L = 1.
+            h = 1.
+            Vp = L**2 * h
         vol_vec = Vp * volfrac_vec
         M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                         shape=(N, N), format="csr")
