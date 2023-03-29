@@ -813,23 +813,6 @@ def get_Mmat(shape, N):
     return Mmat
 
 
-def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D_surf):
-    N = np.size(c_surf)
-    dxs = 1./N
-    muR_surf_long = np.empty(N+2, dtype=object)
-    muR_surf_long[1:-1] = muR_surf
-    muR_surf_long[0] = muR_surf[0] - (np.diff(muR_surf)[0]/dxs)*dxs + (np.diff(muR_surf,2)[0]/dxs**2)*dxs**2
-    muR_surf_long[-1] = muR_surf[-1] + (np.diff(muR_surf)[-1]/dxs)*dxs + (np.diff(muR_surf,2)[-1]/dxs**2)*dxs**2
-    c_surf_long = np.empty(N+2, dtype=object)
-    c_surf_long[1:-1] = c_surf
-    c_surf_long[0] = cwet
-    c_surf_long[-1] = cwet
-    c_surf_short = utils.mean_linear(c_surf_long)
-    D_eff = D/T*np.exp(-E_D_surf/T + E_D_surf/1)
-    surf_diff = D_eff*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
-    return surf_diff
-
-
 def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
