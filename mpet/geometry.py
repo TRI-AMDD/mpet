@@ -9,7 +9,9 @@ def get_unit_solid_discr(Shape, N):
         r_vec = None
         volfrac_vec = np.ones(1)
     elif Shape == "C3":
-        r_vec = None
+        # r_vec = None
+        Rs = 1.  # (non-dimensionalized by itself)
+        r_vec = np.linspace(0, Rs, N)
         # For 1D particle, the vol fracs are simply related to the
         # length discretization
         volfrac_vec = (1./N) * np.ones(N)  # scaled to 1D particle volume

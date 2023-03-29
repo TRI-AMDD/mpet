@@ -23,6 +23,255 @@ import mpet.utils as utils
 from mpet.daeVariableTypes import mole_frac_t
 
 
+class Mod2D(dae.daeModel):
+    def __init__(self, config, trode, vInd, pInd,
+                 Name, Parent=None, Description=""):
+        super().__init__(Name, Parent, Description)
+
+        self.config = config
+        self.trode = trode
+        self.ind = (vInd, pInd)
+
+        # Domain
+        self.Dmn = dae.daeDomain("discretizationDomainX", self, dae.unit(),
+                                 "discretization domain in x direction")
+        self.Dmny = dae.daeDomain("discretizationDomainY", self, dae.unit(),
+                                  "discretization domain in y direction")
+
+        # Variables
+        self.c = dae.daeVariable(
+            "c", mole_frac_t, self,
+            "Concentration in x direction of active particle", [self.Dmn])
+
+        Nx = self.get_trode_param("N")
+        self.cy = {}
+        for k in range(Nx):
+            self.cy[k] = dae.daeVariable("cy{k}".format(k=k),
+                                         mole_frac_t, self,
+                                         "Conc in ver direction of element in row {k}".format(k=k),
+                                         [self.Dmny])
+        # # check unit of measures
+        # self.uy = {}
+        # for k in range(Nx):
+        #     self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  
+        #                                   self,
+        #                                  "Displacement in y direction of element in row {k}".
+        # format(k=k),
+        #                                  [self.Dmny])
+        # self.ux = {}
+        # for k in range(Nx):
+        #     self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t, 
+        #                            self,
+        #                                  "Displacement in x direction of element in row {k}".
+        # format(k=k),
+        #                                  [self.Dmny])
+
+        self.cbar = dae.daeVariable(
+            "cbar", mole_frac_t, self,
+            "Average concentration in active particle")
+
+        self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
+        self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
+
+        # Get reaction rate function
+        rxnType = config[trode, "rxnType"]
+        self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
+                                                   rxnType,
+                                                   f"mpet.electrode.reactions.{rxnType}")
+
+        # Ports
+        self.portInLyte = ports.portFromElyte(
+            "portInLyte", dae.eInletPort, self, "Inlet port from electrolyte")
+        self.portInBulk = ports.portFromBulk(
+            "portInBulk", dae.eInletPort, self,
+            "Inlet port from e- conducting phase")
+        self.phi_lyte = self.portInLyte.phi_lyte
+        self.c_lyte = self.portInLyte.c_lyte
+        self.phi_m = self.portInBulk.phi_m
+
+    def get_trode_param(self, item):
+        """
+        Shorthand to retrieve electrode-specific value
+        """
+        value = self.config[self.trode, item]
+        # check if it is a particle-specific parameter
+        if item in self.config.params_per_particle:
+            value = value[self.ind]
+        return value
+
+    def DeclareEquations(self):
+        dae.daeModel.DeclareEquations(self)
+        Nx = self.get_trode_param("N")
+        Ny = self.get_trode_param("N_ver")
+        T = self.config["T"]  # nondimensional temperature
+
+        self.noise = None
+
+        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+                                   "SM")
+
+        for k in range(Nx):
+            eq = self.CreateEquation("avgscy_isc{k}".format(k=k))
+            eq.Residual = self.c(k)
+            for j in range(Ny):
+                eq.Residual -= self.cy[k](j)/Ny
+
+        eq = self.CreateEquation("cbar")
+        eq.Residual = self.cbar()
+        for k in range(Nx):
+            eq.Residual -= self.c(k)/Nx
+
+        # Define average rate of filling of particle
+        eq = self.CreateEquation("dcbardt")
+        eq.Residual = self.dcbardt()
+        for k in range(Nx):
+            for h in range(Ny):
+                eq.Residual -= (self.cy[k].dt(h)/Ny)/Nx
+            # eq.Residual -= self.c.dt(k)/Nx
+
+        c_mat = np.empty((Nx, Ny), dtype=object)
+        for k in range(Nx):
+            c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
+
+        # u_y_mat = np.empty((Nx, Ny), dtype=object)
+        # for k in range(Nx):
+        #     u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
+
+        # u_x_mat = np.empty((Nx, Ny), dtype=object)
+        # for k in range(Nx):
+        #     u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny)]
+
+        # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+        # self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
+        self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+
+        for eq in self.Equations:
+            eq.CheckUnitsConsistency = False
+
+    def sld_dynamics_2D1var(self, c_mat, muO, act_lyte, noise):
+        Ny = np.size(c_mat, 1)
+        Nx = np.size(c_mat, 0)
+        T = self.config["T"]
+        Dfunc_name = self.get_trode_param("Dfunc")
+        Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                      Dfunc_name,
+                                      f"mpet.electrode.diffusion.{Dfunc_name}")
+        dr, edges = geo.get_dr_edges("C3", Ny)
+        area_vec = 1.
+        Mmaty = get_Mmat(self.get_trode_param('shape'), Ny)
+        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
+                                     self.config, self.trode, self.ind)
+
+        if self.get_trode_param("surface_diffusion"):
+            surf_diff_vec = calc_surf_diff(c_mat[:,-1], muR_mat[:,-1],
+                                           self.get_trode_param("cwet"),
+                                           self.get_trode_param("D_surf"), self.config["T"],
+                                           self.get_trode_param("E_D_surf"))
+        for k in range(Nx):
+            c_vec = c_mat[k,:]
+            muR_vec = muR_mat[k,:]
+            actR_vec = actR_mat[k,:]
+            # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
+            #                              self.config, self.trode, self.ind)
+            c_surf = c_vec[-1]
+            muR_surf = muR_vec[-1]
+            actR_surf = actR_vec[-1]
+            eta = calc_eta(muR_surf, muO)
+
+            eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
+
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+
+            eq = self.CreateEquation("Rxn_{k}".format(k=k))
+            eq.Residual = self.Rxn(k) - Rxn
+
+            if self.get_trode_param("surface_diffusion"):
+                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L") + surf_diff_vec[k]
+            else:
+                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
+
+            Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+                                     self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+
+            RHS_vec = -np.diff(Flux_vec * area_vec)
+            dcdt_vec_y = np.empty(Ny, dtype=object)
+            dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
+            LHS_vec_y = MX(Mmaty, dcdt_vec_y)
+            for j in range(Ny):
+                eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
+                eq.Residual = LHS_vec_y[j] - RHS_vec[j]
+
+    def sld_dynamics_2Dfull(self, c_mat, u_x_mat, u_y_mat, muO, act_lyte, noise):
+        Ny = np.size(c_mat, 1)
+        Nx = np.size(c_mat, 0)
+        T = self.config["T"]
+        Dfunc_name = self.get_trode_param("Dfunc")
+        Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
+                                      Dfunc_name,
+                                      f"mpet.electrode.diffusion.{Dfunc_name}")
+        dr, edges = geo.get_dr_edges("C3", Ny)
+        # C3 shape has constant area along the depth
+        area_vec = 1.
+        Mmaty = get_Mmat("C3", Ny)
+        # print(c_mat)
+        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
+                                     self.config, self.trode, self.ind)
+        # muR_el, div_stress_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
+        #                      self.config, self.trode, self.ind)
+
+        # muR_mat += muR_el
+        actR_mat = np.exp(muR_mat)
+        
+        # for i in range(Nx):
+        #     for j in range(Ny):
+        #         eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
+        #         eq1.Residual = div_stress_mat[i,j,0]
+        #         eq2 = self.CreateEquation("divsigma2_{i}_{j}_equal0".format(i=i, j=j))
+        #         eq2.Residual = div_stress_mat[i,j,1]
+
+        for k in range(Nx):
+            c_vec = c_mat[k,:]
+            # print(c_vec)
+            # c_vec = np.reshape(c_vec, (Ny,1))
+            muR_vec = muR_mat[k,:]
+            # muR_vec = np.reshape(muR_vec, (Ny,1))
+            # print(muR_vec)
+            actR_vec = actR_mat[k,:]
+            # actR_vec = np.reshape(actR_vec, (Ny,1))
+
+            c_surf = c_vec[-1]
+            # print(c_surf)
+            muR_surf = muR_vec[-1]
+            # print(muR_surf)
+            actR_surf = actR_vec[-1]
+            eta = calc_eta(muR_surf, muO)
+            eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
+
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+
+            eq = self.CreateEquation("Rxn_{k}".format(k=k))
+            eq.Residual = self.Rxn(k) - Rxn
+
+            Flux_bc = -self.Rxn(k)
+
+            Flux_vec = calc_flux_C3ver(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+                                       self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
+            area_vec = 1.*edges
+            RHS_vec = -np.diff(Flux_vec * area_vec)
+            dcdt_vec_y = np.empty(Ny, dtype=object)
+            dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
+            LHS_vec_y = MX(Mmaty, dcdt_vec_y)
+            for j in range(Ny):
+                eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
+                eq.Residual = LHS_vec_y[j] - RHS_vec[j]
+
+
 class Mod2var(dae.daeModel):
     def __init__(self, config, trode, vInd, pInd,
                  Name, Parent=None, Description=""):
@@ -431,7 +680,6 @@ class Mod1var(dae.daeModel):
         # Mass matrix, M, where M*dcdt = RHS, where c and RHS are vectors
         Mmat = get_Mmat(self.get_trode_param('shape'), N)
         dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), N)
-
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
             c_surf = c
@@ -508,9 +756,9 @@ def calc_eta(muR, muO):
 
 def get_Mmat(shape, N):
     r_vec, volfrac_vec = geo.get_unit_solid_discr(shape, N)
-    if shape == "C3":
+    if shape == "ACR":
         Mmat = sprs.eye(N, N, format="csr")
-    elif shape in ["sphere", "cylinder"]:
+    elif shape in ["sphere", "cylinder","C3"]:
         Rs = 1.
         # For discretization background, see Zeng & Bazant 2013
         # Mass matrix is common for each shape, diffn or CHR
@@ -518,6 +766,8 @@ def get_Mmat(shape, N):
             Vp = 4./3. * np.pi * Rs**3
         elif shape == "cylinder":
             Vp = np.pi * Rs**2  # per unit height
+        elif shape == "C3":
+            Vp = Rs
         vol_vec = Vp * volfrac_vec
         M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                         shape=(N, N), format="csr")
@@ -525,6 +775,23 @@ def get_Mmat(shape, N):
         M2 = sprs.diags(vol_vec, 0, format="csr")
         Mmat = M1*M2
     return Mmat
+
+
+def calc_surf_diff(c_surf, muR_surf, cwet, D, T, E_D_surf):
+    N = np.size(c_surf)
+    dxs = 1./N
+    muR_surf_long = np.empty(N+2, dtype=object)
+    muR_surf_long[1:-1] = muR_surf
+    muR_surf_long[0] = muR_surf[0] - (np.diff(muR_surf)[0]/dxs)*dxs + (np.diff(muR_surf,2)[0]/dxs**2)*dxs**2
+    muR_surf_long[-1] = muR_surf[-1] + (np.diff(muR_surf)[-1]/dxs)*dxs + (np.diff(muR_surf,2)[-1]/dxs**2)*dxs**2
+    c_surf_long = np.empty(N+2, dtype=object)
+    c_surf_long[1:-1] = c_surf
+    c_surf_long[0] = cwet
+    c_surf_long[-1] = cwet
+    c_surf_short = utils.mean_linear(c_surf_long)
+    D_eff = D/T*np.exp(-E_D_surf/T + E_D_surf/1)
+    surf_diff = D_eff*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf_long)))/(dxs**2)
+    return surf_diff
 
 
 def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
@@ -542,6 +809,20 @@ def calc_flux_diffn(c, D, Dfunc, E_D, Flux_bc, dr, T, noise):
 
 
 def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
+    N = len(c)
+    Flux_vec = np.empty(N+1, dtype=object)
+    Flux_vec[0] = 0  # Symmetry at r=0
+    Flux_vec[-1] = Flux_bc
+    c_edges = utils.mean_linear(c)
+    if noise is None:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+    else:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu + noise(dae.Time().Value))/dr
+    return Flux_vec
+
+
+def calc_flux_C3ver(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
@@ -592,6 +873,153 @@ def calc_muR(c, cbar, T, config, trode, ind):
     muR_ref = config[trode, "muR_ref"]
     muR, actR = muRfunc(c, cbar, T, muR_ref)
     return muR, actR
+
+# def mech_tensors():
+#     # FePo4 elastic constants (GPa)
+#     c11 = 175.9
+#     c22 = 153.6
+#     c33 = 135.0
+#     c44 = 38.8
+#     c55 = 47.5
+#     c66 = 55.6
+#     c13 = 54.0
+#     c12 = 29.6
+#     c23 = 19.6
+
+#     Cij = np.zeros((6,6))
+#     Cij[0,0] = c11
+#     Cij[1,1] = c22
+#     Cij[2,2] = c33
+#     Cij[3,3] = c44
+#     Cij[4,4] = c55
+#     Cij[5,5] = c66
+#     Cij[1,0] = c12
+#     Cij[0,1] = c12
+#     Cij[2,0] = c13
+#     Cij[0,2] = c13
+#     Cij[1,2] = c23
+#     Cij[2,1] = c23
+#     # strain
+#     e01 = 0.0517
+#     e02 = 0.0359
+#     e03 = -0.0186
+#     e0 = np.array([e01, e02, e03, 0, 0, 0])
+
+#     return Cij, e0
+
+# def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
+#     Ny = np.size(c_mat, 1)
+#     Nx = np.size(c_mat, 0)
+#     dys = 1./Ny
+#     dxs = 1./Nx
+#     max_conc = conf[trode, "rho_s"]
+#     T_ref = 298
+#     k = 1.381e-23
+#     N_A = 6.022e23
+#     kT = k * T_ref
+#     norm_stress = kT * N_A * max_conc
+#     muR_el = np.zeros((Nx+1,Ny+1), dtype=object)
+#     Cij, e0 = mech_tensors()
+
+#     ywet = 0.98*np.ones(Ny+2, dtype=object)
+#     c_mat_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     c_mat_tmp[1:-1,1:-1] = c_mat
+#     # first and last row is 0.98
+#     c_mat_tmp[-1,:] = ywet
+#     c_mat_tmp[0,:] = ywet
+#     c_mat_tmp[1:-1,0] = c_mat[:,0]
+#     c_mat_tmp[1:-1,-1] = c_mat[:,-1]
+
+#     # the middle of the particle does not move along x
+#     N_hal_x = int(Nx/2)
+#     u_x_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     u_y_tmp = np.zeros((Nx+2,Ny+2), dtype=object)
+#     u_x_tmp[2:,2:] = u_x
+#     u_x_tmp[2:,0] = u_x[:,0]
+#     u_x_tmp[2:,1] = u_x[:,0]
+#     # u_x_tmp[N_hal_x+2:,1:] = u_x[N_hal_x+1:,:]
+#     u_y_tmp[2:,2:] = u_y
+#     u_y_tmp[0,2:] = u_y[0,:]
+#     u_y_tmp[1,2:] = u_y[0,:]
+#     # u_y_tmp[N_hal_x+2:,1:] = u_y[N_hal_x+1,:]
+
+#     e1 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     e2 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     duxdy = np.zeros((Nx+1,Ny+1), dtype=object)
+#     duydx = np.zeros((Nx+1,Ny+1), dtype=object)
+
+#     e1 = np.diff(u_x_tmp, axis = 1)/dxs
+#     e2 = np.diff(u_y_tmp, axis = 0)/dys
+#     # diff shape
+#     duydx = np.diff(u_y_tmp, axis = 1)/dxs
+#     duxdy = np.diff(u_x_tmp, axis = 0)/dys
+
+#     # for j in range(Ny+1):
+#     #     e1[:,j] = np.diff(u_x_tmp[:,j])/dxs
+#     #     duydx[:,j] = np.diff(u_y_tmp[:,j])/dxs
+#     # for i in range(Nx+1):
+#     #     e2[i,:] = np.diff(u_y_tmp[i,:])/dys
+#     #     duxdy[i,:] = np.diff(u_x_tmp[i,:])/dys
+#     e12 = np.zeros((Nx+1,Ny+1), dtype=object)
+#     for j in range(Ny+1):
+#         e12[:,j] = 0.5*utils.mean_linear(duydx[:,j])
+#     for i in range(Nx+1):
+#         e12[i,:] += 0.5*utils.mean_linear(duxdy[i,:])
+
+#     e_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
+#     sigma_mat = np.zeros((Nx+1,Ny+1,6), dtype=object)
+
+#     for i in range(Nx+1):
+#         for j in range(Ny+1):
+#             e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat_tmp[i,j],
+#                                     e2[i,j]- e0[1]*c_mat_tmp[i,j],
+#                                     0,
+#                                     e12[i,j],
+#                                     0,
+#                                     0])
+#             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
+#             muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/norm_stress
+#     muR_el = muR_el[1:,1:]
+#     # now that ew found the chem pot
+#     # it is time to create the div(sigma) so that out of the function
+#     # can be posed = 0
+#     dsigma1dx_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma2dy_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma12dx_mat = np.zeros((Nx,Ny), dtype=object)
+#     dsigma12dy_mat = np.zeros((Nx,Ny), dtype=object)
+#     # div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+#     div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+#     # check boundaries !
+#     dsigma2dy_mat = np.diff(sigma_mat[:,:,1], axis = 1)/dys
+#     dsigma12dy_mat = np.diff(sigma_mat[:,:,2], axis = 1)/dys
+#     dsigma1dx_mat = np.diff(sigma_mat[:,:,0], axis = 0)/dxs
+#     dsigma12dx_mat = np.diff(sigma_mat[:,:,2], axis = 0)/dxs
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             div_stress_mat[i,j,:] = np.array([
+#                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+#                 dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+#             ]
+#             )
+
+    # it does not like div(sigma) = np.zeros
+    # for i in range(int(Nx/2)):
+    #     for j in range(Ny-1):
+    #         div_stress_mat[i,j+1,:] = np.array([
+    #             dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+    #             dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+    #         ]
+    #         )
+
+    # for i in range((int(Nx/2)+1),Nx,1):
+    #     for j in range(Ny-1):
+    #         div_stress_mat[i,j+1,:] = np.array([
+    #             dsigma1dx_mat[i-1,j] + dsigma12dy_mat[i-1,j],
+    #             dsigma2dy_mat[i-1,j] + dsigma12dx_mat[i-1,j]
+    #         ]
+    #         )
+    # print(div_stress_mat)
+    # return muR_el, div_stress_mat
 
 
 def MX(mat, objvec):

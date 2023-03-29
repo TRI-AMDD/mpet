@@ -55,6 +55,9 @@ class SimMPET(dae.daeSimulation):
                 for j in range(config["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(config["psd_num"][tr][i,j]))
+                    if self.config[tr, "type"] == 'ACR2D':
+                        self.m.particles[tr][i, j].Dmny.CreateArray(
+                            int(config["psd_num_ver"][tr][i,j]))
 
     def SetUpVariables(self):
         config = self.config
@@ -87,8 +90,17 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
-                            for k in range(Nij):
-                                part.c.SetInitialCondition(k, cs0)
+                            if solidType == "ACR2D":
+                                N_ver_ij = config["psd_num_ver"][tr][i,j]
+                                for k in range(Nij):
+                                    part.c.SetInitialGuess(k, cs0)
+                                    for j in range(N_ver_ij):
+                                        part.cy[k].SetInitialCondition(j, cs0)
+                                        # part.ux[k].SetInitialGuess(j, 0)
+                                        # part.uy[k].SetInitialGuess(j, 0)
+                            else:
+                                for k in range(Nij):
+                                    part.c.SetInitialCondition(k, cs0)
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
