@@ -1,9 +1,8 @@
 import numpy as np
 
 
-def LiC6_LIONSIMBA(self, y, ybar, muR_ref):
+def LiC6_LIONSIMBA(self, y, ybar, T, muR_ref):
     """ Torchio et al, 2016. """
-    T = self.T
     Tref = 298
     r1 = 0.7222
     r2 = 0.1387

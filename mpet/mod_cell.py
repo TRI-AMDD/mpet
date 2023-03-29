@@ -18,7 +18,7 @@ import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.utils as utils
 from mpet.config import constants
-from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
+from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t, temp_t
 
 # Dictionary of end conditions
 endConditions = {
@@ -58,7 +58,9 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        self.Q_Vp = {}
         self.ffrac = {}
+        self.T_lyte = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
             self.c_lyte[trode] = dae.daeVariable(
@@ -81,9 +83,17 @@ class ModCell(dae.daeModel):
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
                 [self.DmnCell[trode]])
+            self.Q_Vp[trode] = dae.daeVariable(
+                "Q_Vp_{trode}".format(trode=trode), dae.no_t, self,
+                "Rate of heat generation of positives per electrode volume",
+                [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
+            self.T_lyte[trode] = dae.daeVariable(
+                "T_lyte_{trode}".format(trode=trode), temp_t, self,
+                "Temperature in the elyte in electrode {trode}".format(trode=trode),
+                [self.DmnCell[trode]])
         if config['have_separator']:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
                 "c_lyte_s", conc_t, self,
@@ -92,6 +102,10 @@ class ModCell(dae.daeModel):
             self.phi_lyte["s"] = dae.daeVariable(
                 "phi_lyte_s", elec_pot_t, self,
                 "Electrostatic potential in electrolyte in separator",
+                [self.DmnCell["s"]])
+            self.T_lyte["s"] = dae.daeVariable(
+                "T_lyte_s", temp_t, self,
+                "Temperature in electrolyte in separator",
                 [self.DmnCell["s"]])
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
@@ -104,6 +118,10 @@ class ModCell(dae.daeModel):
             self.c_lyteGP_L = dae.daeVariable("c_lyteGP_L", conc_t, self, "c_lyte left BC GP")
             self.phi_lyteGP_L = dae.daeVariable(
                 "phi_lyteGP_L", elec_pot_t, self, "phi_lyte left BC GP")
+            self.T_lyteGP_L = dae.daeVariable(
+                "T_lyteGP_L", temp_t, self, "T_lyte left BC GP")
+            self.T_lyteGP_R = dae.daeVariable(
+                "T_lyteGP_R", temp_t, self, "T_lyte left BC GP")
         self.phi_applied = dae.daeVariable(
             "phi_applied", elec_pot_t, self,
             "Overall battery voltage (at anode current collector)")
@@ -197,6 +215,23 @@ class ModCell(dae.daeModel):
                              * self.particles[trode][vInd,pInd].dcbardt())
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
 
+        # Define dimensionless R_Vp for each electrode volume
+        for trode in trodes:
+            for vInd in range(Nvol[trode]):
+                eq = self.CreateEquation(
+                    "Q_Vp_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                # Start with no reaction, then add reactions for each
+                # particle in the volume.
+                RHS = 0
+                # sum over particle volumes in given electrode volume
+                for pInd in range(Npart[trode]):
+                    # The volume of this particular particle
+                    Vj = config["psd_vol_FracVol"][trode][vInd,pInd]
+                    RHS += -(config["beta"][trode] * (1-config["poros"][trode])
+                             * config["P_L"][trode] * Vj
+                             * self.particles[trode][vInd,pInd].q_rxn_bar())
+                eq.Residual = self.Q_Vp[trode](vInd) - RHS
+
         # Define output port variables
         for trode in trodes:
             for vInd in range(Nvol[trode]):
@@ -204,6 +239,10 @@ class ModCell(dae.daeModel):
                     "portout_c_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 eq.Residual = (self.c_lyte[trode](vInd)
                                - self.portsOutLyte[trode][vInd].c_lyte())
+                eq = self.CreateEquation(
+                    "portout_T_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                eq.Residual = (self.T_lyte[trode](vInd)
+                               - self.portsOutLyte[trode][vInd].T_lyte())
                 eq = self.CreateEquation(
                     "portout_p_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 phi_lyte = self.phi_lyte[trode](vInd)
@@ -288,18 +327,28 @@ class ModCell(dae.daeModel):
             eq.Residual = self.c_lyte["c"].dt(0) - 0
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
+            eq = self.CreateEquation("T_lyte")
+            eq.Residual = self.T_lyte["c"].dt(0) - 0
         else:
-            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
+            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"],
+                                       config["k_h"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
+            Tvec = utils.get_asc_vec(self.T_lyte, Nvol)
+            dTdtvec = utils.get_asc_vec(self.T_lyte, Nvol, dt=True)
             Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)
+            Qvvec = utils.get_asc_vec(self.Q_Vp, Nvol)
+            rhocp_vec = utils.get_thermal_vec(Nvol, config)
             # Apply concentration and potential boundary conditions
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
+            # temperature uses a constant boundary condition
+            Ttmp = np.hstack((self.T_lyteGP_L(), Tvec, self.T_lyteGP_R()))
             phitmp = np.hstack((self.phi_lyteGP_L(), phivec, phivec[-1]))
 
-            Nm_edges, i_edges = get_lyte_internal_fluxes(ctmp, phitmp, disc, config)
+            Nm_edges, i_edges, q_edges = get_lyte_internal_fluxes(ctmp, phitmp, Ttmp, disc,
+                                                                  config, Nvol)
 
             # If we don't have a porous anode:
             # 1) the total current flowing into the electrolyte is set
@@ -314,6 +363,7 @@ class ModCell(dae.daeModel):
                 # We assume BV kinetics with alpha = 0.5,
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
                 cWall = .5*(ctmp[0] + ctmp[1])
+                TWall = .5*(Ttmp[0] + Ttmp[1])
                 ecd = config["k0_foil"]*cWall**0.5
                 # note negative current because positive current is
                 # oxidation here
@@ -325,7 +375,7 @@ class ModCell(dae.daeModel):
                 # phiWall = -eta + phi_cell [- T*ln(c)]
                 phiWall = -eta + self.phi_cell()
                 if config["elyteModelType"] == "dilute":
-                    phiWall -= config["T"]*np.log(cWall)
+                    phiWall -= TWall*np.log(cWall)
                 eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
 
             # We have a porous anode -- no flux of charge or anions through current collector
@@ -333,8 +383,16 @@ class ModCell(dae.daeModel):
                 eqC.Residual = ctmp[0] - ctmp[1]
                 eqP.Residual = phitmp[0] - phitmp[1]
 
+            # boundary equation for temperature variables. per volume
+            eqTL = self.CreateEquation("GhostPointT_L")
+            eqTR = self.CreateEquation("GhostPointT_R")
+            eqTL.Residual = Ttmp[0] - config["T"]
+            eqTR.Residual = Ttmp[-1] - config["T"]
+
             dvgNm = np.diff(Nm_edges)/disc["dxvec"]
             dvgi = np.diff(i_edges)/disc["dxvec"]
+            dvgq = np.diff(q_edges)/disc["dxvec"]
+            q_ohm = get_ohmic_heat(ctmp, Ttmp, self.phi_lyte, self.phi_bulk, disc, config, Nvol)
             for vInd in range(Nlyte):
                 # Mass Conservation (done with the anion, although "c" is neutral salt conc)
                 eq = self.CreateEquation("lyte_mass_cons_vol{vInd}".format(vInd=vInd))
@@ -342,6 +400,17 @@ class ModCell(dae.daeModel):
                 # Charge Conservation
                 eq = self.CreateEquation("lyte_charge_cons_vol{vInd}".format(vInd=vInd))
                 eq.Residual = -dvgi[vInd] + config["zp"]*Rvvec[vInd]
+                # Energy Conservation
+                if config['nonisothermal']:
+                    # if heat generation is turned on. per volume.
+                    eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
+                    eq.Residual = rhocp_vec[vInd] * dTdtvec[vInd] - \
+                        q_ohm[vInd] - Qvvec[vInd] + dvgq[vInd]
+                else:
+                    # if heat generation is turned off
+                    eq = self.CreateEquation("lyte_energy_cons_vol{vInd}".format(vInd=vInd))
+                    eq.Residual = dTdtvec[vInd] - 0
+                # add heat generation from reaction later
 
         # Define the total current. This must be done at the capacity
         # limiting electrode because currents are specified in
@@ -475,26 +544,28 @@ class ModCell(dae.daeModel):
                               setVariableValues=[(self.endCondition, 2)])
 
 
-def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
+def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
     zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
     nu = nup + num
-    T = config["T"]
     dxd1 = disc["dxd1"]
     eps_o_tau = disc["eps_o_tau"]
 
     # Get concentration at cell edges using weighted mean
     wt = utils.pad_vec(disc["dxvec"])
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
+    T_edges_int = utils.weighted_linear_mean(T_lyte, wt)
 
+    k_h = utils.weighted_linear_mean(disc["khvec"], wt)
     if config["elyteModelType"] == "dilute":
         # Get porosity at cell edges using weighted harmonic mean
         eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
         Dp = eps_o_tau_edges * config["Dp"]
         Dm = eps_o_tau_edges * config["Dm"]
         Nm_edges_int = num*(-Dm*np.diff(c_lyte)/dxd1
-                            - Dm/T*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
+                            - Dm/T_edges_int*zm*c_edges_int*np.diff(phi_lyte)/dxd1)
         i_edges_int = (-((nup*zp*Dp + num*zm*Dm)*np.diff(c_lyte)/dxd1)
-                       - (nup*zp**2*Dp + num*zm**2*Dm)/T*c_edges_int*np.diff(phi_lyte)/dxd1)
+                       - (nup*zp**2*Dp + num*zm**2*Dm)/T_edges_int
+                       * c_edges_int*np.diff(phi_lyte)/dxd1)
     elif config["elyteModelType"] == "SM":
         SMset = config["SMset"]
         elyte_function = utils.import_function(config["SMset_filename"], SMset,
@@ -502,18 +573,64 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
         D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
 
         # Get diffusivity and conductivity at cell edges using weighted harmonic mean
-        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T), wt)
-        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T), wt)
+        D_edges = utils.weighted_harmonic_mean(eps_o_tau*D_fs(c_lyte, T_lyte), wt)
+        sigma_edges = utils.weighted_harmonic_mean(eps_o_tau*sigma_fs(c_lyte, T_lyte), wt)
 
         sp, n = config["sp"], config["n"]
         # there is an error in the MPET paper, temperature dependence should be
         # in sigma and not outside of sigma
         i_edges_int = -sigma_edges * (
             np.diff(phi_lyte)/dxd1
-            + nu*T*(sp/(n*nup)+tp0(c_edges_int, T)/(zp*nup))
-            * thermFac(c_edges_int, T)
+            + nu*T_edges_int*(sp/(n*nup)+tp0(c_edges_int, T_edges_int)/(zp*nup))
+            * thermFac(c_edges_int, T_edges_int)
             * np.diff(np.log(c_lyte))/dxd1
             )
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
-                            + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
-    return Nm_edges_int, i_edges_int
+                            + (1./(num*zm)*(1-tp0(c_edges_int, T_edges_int))*i_edges_int))
+    q_edges_int = -k_h*np.diff(T_lyte)/dxd1
+    # replace boundary conditions since they are ghost points with convective BCs
+    q_edges_int[0] = config["h_h"]*(1 - T_lyte[1])
+    q_edges_int[-1] = config["h_h"]*(T_lyte[-2] - 1)
+    return Nm_edges_int, i_edges_int, q_edges_int
+
+
+def get_ohmic_heat(c_lyte, T_lyte, phi_lyte, phi_bulk, disc, config, Nvol):
+    eps_o_tau = disc["eps_o_tau"]
+    min_eps_o_tau = disc["min_eps_o_tau"]
+    dx = disc["dxd2"]
+
+    wt = utils.pad_vec(disc["dxvec"])
+    sigma_s = utils.get_asc_vec(config["sigma_s"], Nvol)
+    c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
+    dphilytedx = utils.central_diff_lyte(phi_lyte, Nvol, dx)
+    dphibulkdx = utils.central_diff_bulk(phi_bulk, Nvol, dx)
+    c_mid = c_lyte[1:-1]
+    T_mid = T_lyte[1:-1]
+
+    # initialize sigma
+    q_ohmic = 0
+
+    if config["elyteModelType"] == "dilute":
+        zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
+
+        # Get porosity at cell edges using weighted harmonic mean
+        Dp = eps_o_tau[1:-1] * config["Dp"]
+        Dm = eps_o_tau[1:-1] * config["Dm"]
+        sigma_l = ((nup*zp*Dp + num*zm*Dm)*np.diff(c_edges_int)/dx) - \
+            (nup*zp ** 2*Dp + num*zm**2*Dm)/T_mid*c_mid
+    elif config["elyteModelType"] == "SM":
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        sigma_fs, thermFac, tp0 = elyte_function()[1:-1]
+        # Get diffusivity and conductivity at cell edges using weighted harmonic mean
+        sigma_l = eps_o_tau[1:-1]*sigma_fs(c_mid, T_mid)
+        q_ohmic = q_ohmic + 2*sigma_l*(1-tp0(c_mid, T_mid))*T_mid \
+            * np.diff(np.log(c_edges_int))/dx*dphilytedx
+    # this is going to be dra
+    sigma_s = min_eps_o_tau[1:-1] * sigma_s
+
+    q_ohmic = q_ohmic + sigma_s*dphibulkdx**2 + \
+        sigma_l*dphilytedx**2
+    # do we have to extrapolate these
+    return q_ohmic

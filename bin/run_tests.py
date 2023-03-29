@@ -23,8 +23,7 @@ def run(test_outputs, testDir, tests=None):
         # Generate a list of tests from the directories in ref_outputs
         ref_outputs = osp.join(dirDict["suite"],"ref_outputs")
         _, directories, _ = next(walk(osp.join(ref_outputs)))
-        tests = directories
-        tests.sort()
+        tests = sorted(directories)
 
         runInfoAnalyt = {
             "testAnalytCylDifn": (defs.testAnalytCylDifn, defs.analytCylDifn),

@@ -73,6 +73,8 @@ class SimMPET(dae.daeSimulation):
                 for i in range(Nvol[tr]):
                     # Guess initial volumetric reaction rates
                     self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
+                    # set initial temperature condition
+                    self.m.T_lyte[tr].SetInitialCondition(i, config["T"])
                     # Guess initial value for the potential of the
                     # electrodes
                     if tr == "a":  # anode
@@ -128,22 +130,27 @@ class SimMPET(dae.daeSimulation):
             if not self.m.SVsim:
                 self.m.c_lyteGP_L.SetInitialGuess(config["c0"])
                 self.m.phi_lyteGP_L.SetInitialGuess(0)
+                self.m.T_lyteGP_L.SetInitialGuess(config["T"])
+                self.m.T_lyteGP_R.SetInitialGuess(config["T"])
 
             # Separator electrolyte initialization
             if config["have_separator"]:
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
+                    self.m.T_lyte["s"].SetInitialCondition(i, config['T'])
                     self.m.phi_lyte["s"].SetInitialGuess(i, 0)
 
             # Anode and cathode electrolyte initialization
             for tr in config["trodes"]:
                 for i in range(Nvol[tr]):
                     self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
+                    self.m.T_lyte[tr].SetInitialCondition(i, config['T'])
                     self.m.phi_lyte[tr].SetInitialGuess(i, 0)
 
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
+                        self.m.particles[tr][i,j].T_lyte.SetInitialGuess(config["T"])
 
         else:
             dPrev = self.dataPrev
@@ -165,6 +172,7 @@ class SimMPET(dae.daeSimulation):
 
                         # Set the inlet port variables for each particle
                         part.c_lyte.SetInitialGuess(data["c_lyte_" + tr][-1,i])
+                        part.T_lyte.SetInitialGuess(data["T_lyte_" + tr][-1,i])
                         part.phi_lyte.SetInitialGuess(data["phi_lyte_" + tr][-1,i])
                         part.phi_m.SetInitialGuess(data["phi_bulk_" + tr][-1,i])
 
@@ -190,12 +198,16 @@ class SimMPET(dae.daeSimulation):
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(
                         i, data["c_lyte_s"][-1,i])
+                    self.m.T_lyte["s"].SetInitialCondition(
+                        i, data["T_lyte_s"][-1,i])
                     self.m.phi_lyte["s"].SetInitialGuess(
                         i, data["phi_lyte_s"][-1,i])
             for tr in config["trodes"]:
                 for i in range(Nvol[tr]):
                     self.m.c_lyte[tr].SetInitialCondition(
                         i, data["c_lyte_" + tr][-1,i])
+                    self.m.T_lyte[tr].SetInitialCondition(
+                        i, data["T_lyte_" + tr][-1,i])
                     self.m.phi_lyte[tr].SetInitialGuess(
                         i, data["phi_lyte_" + tr][-1,i])
 
