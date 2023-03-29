@@ -521,6 +521,10 @@ class Config:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             if self[trode, 'B'] is not None:
                 self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            if self[trode, 'Bx'] is not None:
+                self[trode,'Bx'] = self[trode, 'Bx'] / (kT * constants.N_A * self[trode, 'cs_ref'])
+            if self[trode, 'By'] is not None:
+                self[trode,'By'] = self[trode, 'By'] / (kT * constants.N_A * self[trode, 'cs_ref'])
             for param in ['Omega_a', 'Omega_b', 'Omega_c', 'EvdW']:
                 value = self[trode, param]
                 if value is not None:
@@ -635,6 +639,9 @@ class Config:
         self['psd_area'] = {}
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
+        # if self[trode,'type'] in 'ACR2D':
+        self['psd_num_ver'] = {}
+        self['psd_len_ver'] = {}
 
         for trode in self['trodes']:
             solidType = self[trode, 'type']
@@ -645,6 +652,14 @@ class Config:
             if not np.all(self['specified_psd'][trode]):
                 # If PSD is not specified, make a length-sampled particle size distribution
                 # Log-normally distributed
+                if self[trode,'type'] == 'ACR2D':
+                    np.random.seed(self.D_s['seed'])
+                    mean_t = self[trode,'thickness']
+                    stddev_t = mean_t*0
+                    var_t = stddev_t**2
+                    mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
+                    sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
+                    raw_t = np.random.lognormal(mu_t, sigma_t, size=(Nvol, Npart))
                 mean = self['mean'][trode]
                 stddev = self['stddev'][trode]
                 if np.allclose(stddev, 0., atol=1e-12):
@@ -667,6 +682,12 @@ class Config:
             if solidType in ['ACR']:
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
+            elif solidType in ['ACR2D']:
+                solidDisc_ver = self[trode, 'discretization_ver']
+                psd_num = np.ceil(raw / solidDisc).astype(int)
+                psd_len = solidDisc * psd_num
+                psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int)
+                psd_len_ver = solidDisc_ver * psd_num_ver
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
@@ -707,6 +728,10 @@ class Config:
             self['psd_area'][trode] = psd_area
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
+            # store values to config 2d
+            if self[trode,'type'] == 'ACR2D':
+                self['psd_num_ver'][trode] = psd_num_ver
+                self['psd_len_ver'][trode] = psd_len_ver
 
     def _G(self):
         """
@@ -760,15 +785,34 @@ class Config:
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
                     gamma_S_ref = kappa_ref / plen  # J/m^2
                     # non-dimensional quantities
+                    if self[trode,'type'] == 'ACR2D':
+                        self[trode, 'indvPart']['N_ver'][i,j] = self['psd_num_ver'][trode][i,j]
                     if self[trode, 'kappa'] is not None:
                         self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
+                    if self[trode, 'kappa_x'] is not None:
+                        self[trode,'indvPart']['kappa_x'][i, j] = self[trode,'kappa_x'] / kappa_ref
+                    if self[trode, 'kappa_y'] is not None:
+                        pthick = self['psd_len_ver'][trode][i,j]
+                        self[trode,'indvPart']['kappa_y'][i, j] = self[trode,'kappa_y'] \
+                            / (kappa_ref * (pthick**2/plen**2))
                     if self[trode, 'dgammadc'] is not None:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
-                    self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    if self[trode,'type'] == 'ACR2D':
+                        pthick = self['psd_len_ver'][trode][i,j]
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / pthick**2
+                        self[trode,'indvPart']['D_surf'][i, j] = self[trode,'D_surf'] \
+                            * self['t_ref'] / plen**2
+                    else:
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
+                    if self[trode, 'E_D_surf'] is not None:
+                        self[trode, 'indvPart']['E_D_surf'][i, j] = self[trode, 'E_D_surf'] \
+                            / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \

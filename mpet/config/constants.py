@@ -13,7 +13,7 @@ F = e * N_A
 #: General particle classification (1 var)
 two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
 #: General particle classification (2 var)
-one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn"]
+one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn", "ACR2D"]
 #: Reference concentration, mol/m^3 = 1M
 c_ref = 1000.
 #: Reaction rate epsilon for values close to zero
@@ -26,6 +26,7 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h', 'cp', 'rhom']
 #: parameters that are defined for each particle, and their type
-PARAMS_PARTICLE = {'N': int, 'kappa': float, 'beta_s': float, 'D': float, 'k0': float,
+PARAMS_PARTICLE = {'N': int, 'N_ver':int, 'kappa': float, 'kappa_x': float, 'kappa_y': float,
+                   'beta_s': float, 'D': float,'D_surf': float, 'k0': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float, 'E_D': float,
-                   'E_A': float}
+                   'E_D_surf': float, 'E_A': float}
