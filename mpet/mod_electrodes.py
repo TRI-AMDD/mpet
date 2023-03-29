@@ -498,7 +498,7 @@ class Mod1var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            elif self.get_trode_param("shape") == "C3":
+            elif self.get_trode_param("shape") == "plate":
                 area_vec = np.ones(np.shape(edges))
             RHS = -np.diff(Flux_vec * area_vec)
 
@@ -506,9 +506,7 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         if self.get_trode_param("surface_diffusion"):
-            surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("cwet"),
-                                           self.get_trode_param("D"), self.T_lyte(),
-                                           self.get_trode_param("E_D"))
+            surf_diff_vec = self.calc_surf_diff(c_surf, muR_surf)
             for k in range(N):
                 eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
                 eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
@@ -522,27 +520,22 @@ class Mod1var(dae.daeModel):
         else:
             return eta, c_surf
 
+    def calc_surf_diff(self,c_surf, muR_surf):
+        # the surface diffusion keeps the volume centered method of the ACR
+        N = np.size(c_surf)
+        dxs = 1./N
+        D_eff = (self.get_trode_param("D")/(self.T_lyte())
+                 * np.exp(-self.get_trode_param("E_D")/(self.T_lyte())
+                          + self.get_trode_param("E_D")/1))
+        c_edges = utils.mean_linear(c_surf)
+        surf_flux = np.empty(N+1, dtype=object)
+        surf_flux[1:-1] = -D_eff*c_edges*(1-c_edges)*np.diff(muR_surf)/(dxs)
+        surf_flux[0] = 0.
+        surf_flux[-1] = 0.
+        surf_diff = -(np.diff(surf_flux))/(dxs)
+        return surf_diff
 
-def calc_surf_diff(self,c_surf, muR_surf, cwet, D, T, E_D):
-    N = np.size(c_surf)
-    dxs = 1./N  # check
-    muR_surf_long = np.empty(N+2, dtype=object)
-    muR_surf_long[1:-1] = muR_surf
-    muR_surf_long[0] = calc_muR(
-        cwet, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
-    muR_surf_long[-1] = calc_muR(
-        cwet, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
-    c_surf_long = np.empty(N+2, dtype=object)
-    c_surf_long[1:-1] = c_surf
-    c_surf_long[0] = cwet
-    c_surf_long[-1] = cwet
-    c_edges = utils.mean_linear(c_surf_long)
-    D_eff = D/T*np.exp(-E_D/T + E_D/1)
-    surf_flux = D_eff*c_edges*(1-c_edges)*np.diff(muR_surf_long)/(dxs)
-    surf_diff = (np.diff(surf_flux))/(dxs)
-    return surf_diff
-
-
+   
 def calc_eta(muR, muO):
     return muR - muO
 
@@ -551,7 +544,7 @@ def get_Mmat(shape, N):
     r_vec, volfrac_vec = geo.get_unit_solid_discr(shape, N)
     if shape == "C3":
         Mmat = sprs.eye(N, N, format="csr")
-    elif shape in ["sphere", "cylinder"]:
+    elif shape in ["sphere", "cylinder", 'plate']:
         Rs = 1.
         # For discretization background, see Zeng & Bazant 2013
         # Mass matrix is common for each shape, diffn or CHR
@@ -559,7 +552,7 @@ def get_Mmat(shape, N):
             Vp = 4./3. * np.pi * Rs**3
         elif shape == "cylinder":
             Vp = np.pi * Rs**2  # per unit height
-        elif shape == "C3":
+        elif shape == "plate":
             L = 1.
             h = 1.
             Vp = L**2 * h

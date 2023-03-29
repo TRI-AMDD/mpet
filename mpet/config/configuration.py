@@ -690,6 +690,9 @@ class Config:
             elif solidShape == 'cylinder':
                 psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
+            elif solidShape == 'plate':
+                psd_area = 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
+                psd_vol = psd_len * self[trode, 'thickness']**2
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
 
@@ -795,8 +798,9 @@ class Config:
             solidType = self[trode, 'type']
             if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
                 raise Exception("ACR and homog_sdn req. C3 shape")
-            if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder"]):
-                raise NotImplementedError("CHR and diffn req. sphere or cylinder")
+            if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder",
+                                                                     "plate"]):
+                raise NotImplementedError("CHR and diffn req. sphere, cylinder or plate shape")
 
     @staticmethod
     def size2regsln(size):

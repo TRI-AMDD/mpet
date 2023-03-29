@@ -161,15 +161,15 @@ class muRfuncs():
         muR_nh = B*(y - ybar) - kappa*curv
         return muR_nh
 
-    def non_homog_rect_variational(self, y, ybar, B, kappa):
+    def non_homog_rect_natural(self, y, ybar, B, kappa, beta_s):
         """ Helper function """
         # the taylor expansion at the edges is used
         N = len(y)
         ytmp = np.empty(N+2, dtype=object)
         dxs = 1./N
         ytmp[1:-1] = y
-        ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
-        ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
+        ytmp[0] = y[0] + dxs*beta_s*(y[0]*(1-y[0]))*6
+        ytmp[-1] = y[-1] + dxs*beta_s*(y[-1]*(1-y[-1]))*6
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
@@ -191,18 +191,18 @@ class muRfuncs():
             shape = self.get_trode_param("shape")
             kappa = self.get_trode_param("kappa")
             B = self.get_trode_param("B")
-            if shape == "C3":
+            if shape in ["C3"]:
                 if mod1var:
-                    # if self.get_trode_param("surface_diffusion"):
-                    #     muR_nh = self.non_homog_rect_variational(
-                    #         y, ybar, B, kappa)
-                    # else:
                     cwet = self.get_trode_param("cwet")
-                    muR_nh = self.non_homog_rect_fixed_csurf(
-                        y, ybar, B, kappa, cwet)
+                    if self.get_trode_param("surface_diffusion"):
+                        beta_s = self.get_trode_param("beta_s")
+                        muR_nh = self.non_homog_rect_natural(y, ybar, B, kappa, beta_s)
+                    else:
+                        muR_nh = self.non_homog_rect_fixed_csurf(
+                            y, ybar, B, kappa, cwet)
                 elif mod2var:
                     raise NotImplementedError("no 2param C3 model known")
-            elif shape in ["cylinder", "sphere"]:
+            elif shape in ["cylinder", "sphere", "plate"]:
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:

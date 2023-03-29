@@ -32,7 +32,7 @@ def get_unit_solid_discr(Shape, N):
         vol_vec[-1] = np.pi * h * (Rs * dr - dr**2 / 4.)
         Vp = np.pi * Rs**2 * h
         volfrac_vec = vol_vec / Vp
-    elif Shape == "C3_a":
+    elif Shape == "plate":
         L = 1.
         h = 1.
         dx = h / (N - 1)
@@ -76,13 +76,13 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
         curv[N-1] = (
             (1./Rs)*beta_s
             + (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
-    elif particleShape == "C3":
+    elif particleShape == "plate":
         dx = dr
         curv[0] = (2*c[1] - 2*c[0]) / dx**2
         curv[1:N-1] = np.diff(c,2)/dx**2
         curv[N-1] = (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dx**2
     else:
-        raise NotImplementedError("calc_curv_c only for sphere and cylinder")
+        raise NotImplementedError("calc_curv_c only for sphere, cylinder or plate")
     return curv
 
 
