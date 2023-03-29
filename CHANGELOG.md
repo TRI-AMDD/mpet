@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2023-01-27
+### Added
+- Regression tests for Python 3.10 and 3.11.
+- Additional badges added to README.
+
+### Fixed
+- Code clean up and maintenance updates.
+
+
 ## [0.1.8] - 2022-02-14
 ### Added
 - Online documentation with updated installation instructions: [https://mpet.readthedocs.io/en/latest/](https://mpet.readthedocs.io/en/latest/)
