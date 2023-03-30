@@ -17,7 +17,7 @@ endConditions = {
     2:"Vmin reached"}
 
 
-class ModCell(dae.daeModel):
+class ModBattery(dae.daeModel):
     def __init__(self, config, Name, Parent=None, Description=""):
         dae.daeModel.__init__(self, Name, Parent, Description)
 
@@ -45,7 +45,7 @@ class ModCell(dae.daeModel):
             "I_layer", dae.no_t, self,
             "Current passing through each layer",
             [self.DmnBatt])
-        
+
         self.phi_applied = dae.daeVariable(
             "phi_applied", elec_pot_t, self,
             "Overall battery voltage")
@@ -56,7 +56,7 @@ class ModCell(dae.daeModel):
             "current", dae.no_t, self, "Total current of the cell")
         self.endCondition = dae.daeVariable(
             "endCondition", dae.no_t, self, "A nonzero value halts the simulation")
-      
+
         # ports
         self.portsOutT = {}
         self.layers = {}
@@ -68,10 +68,10 @@ class ModCell(dae.daeModel):
             self.layers[lInd] = cMod(config, lInd,
                                      Name="layer{lInd}".format(lInd=lInd),
                                      Parent=self)
-            
+
             self.ConnectPorts(self.portsCap,
                               self.layers[lInd].portInCap)
-            
+
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
 
@@ -79,4 +79,5 @@ class ModCell(dae.daeModel):
         config = self.config
         Nlayers = config["Nlayers"]
         dl = 1/Nlayers
+        # sum of all I_layers = I 
 

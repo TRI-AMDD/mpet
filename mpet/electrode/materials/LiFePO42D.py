@@ -32,7 +32,7 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         y_oriz_avg = np.average(c_mat, axis=0)
         # regular solution
         muR_mat = T*np.log(c_mat/(1-c_mat)) + self.get_trode_param("Omega_a")*(1-2*c_mat)
-        # non-homogeneous 
+        # non-homogeneous
         muR_mat += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy
         muR_mat += self.get_trode_param("Bx")*np.subtract(c_mat,y_oriz_avg)
         for i in np.arange(Nx):

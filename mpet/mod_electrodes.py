@@ -53,14 +53,14 @@ class Mod2D(dae.daeModel):
         # # check unit of measures
         # self.uy = {}
         # for k in range(Nx):
-        #     self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,  
+        #     self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,
         #                                   self,
         #                                  "Displacement in y direction of element in row {k}".
         # format(k=k),
         #                                  [self.Dmny])
         # self.ux = {}
         # for k in range(Nx):
-        #     self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t, 
+        #     self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,
         #                            self,
         #                                  "Displacement in x direction of element in row {k}".
         # format(k=k),
@@ -183,7 +183,7 @@ class Mod2D(dae.daeModel):
                                            self.get_trode_param("D_surf"),
                                            self.get_trode_param("E_D_surf"),
                                            self.T_lyte())
-            
+
         eta = calc_eta(muR_mat[:,-1], muO)
         for k in range(Nx):
             c_vec = c_mat[k,:]
@@ -218,7 +218,7 @@ class Mod2D(dae.daeModel):
                 area_vec = np.ones(np.shape(edges))
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            
+
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
@@ -249,7 +249,7 @@ class Mod2D(dae.daeModel):
 
         # muR_mat += muR_el
         actR_mat = np.exp(muR_mat)
-        
+
         # for i in range(Nx):
         #     for j in range(Ny):
         #         eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))

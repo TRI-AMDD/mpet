@@ -715,7 +715,7 @@ class Config:
                 if solidType in ['CHR', 'CHR2']:
                     psd_area = 1.2263 * 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
                     psd_vol = 1.2263 * psd_len * self[trode, 'thickness']**2
-                elif solidType == ['ACR2D']:
+                elif solidType in ['ACR2D']:
                     psd_area = 2 * 1.2263 * psd_len**2
                     psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
             else:
