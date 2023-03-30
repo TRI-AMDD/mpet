@@ -72,7 +72,8 @@ class Mod2D(dae.daeModel):
 
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
         self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
-
+        self.q_rxn_bar = dae.daeVariable(
+            "q_rxn_bar", dae.no_t, self, "Rate of heat generation in particle")
         # Get reaction rate function
         rxnType = config[trode, "rxnType"]
         self.calc_rxn_rate = utils.import_function(config[trode, "rxnType_filename"],
@@ -86,6 +87,7 @@ class Mod2D(dae.daeModel):
             "portInBulk", dae.eInletPort, self,
             "Inlet port from e- conducting phase")
         self.phi_lyte = self.portInLyte.phi_lyte
+        self.T_lyte = self.portInLyte.T_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
@@ -103,12 +105,19 @@ class Mod2D(dae.daeModel):
         dae.daeModel.DeclareEquations(self)
         Nx = self.get_trode_param("N")
         Ny = self.get_trode_param("N_ver")
-        T = self.config["T"]  # nondimensional temperature
 
+        # Prepare noise
         self.noise = None
+        if self.get_trode_param("noise"):
+            numnoise = self.get_trode_param("numnoise")
+            noise_prefac = self.get_trode_param("noise_prefac")
+            tvec = np.linspace(0., 1.05*self.config["tend"], numnoise)
+            noise_data = noise_prefac*np.random.randn(numnoise, Ny)
+            self.noise = sintrp.interp1d(tvec, noise_data, axis=0,
+                                         bounds_error=False, fill_value=0.)
 
-        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-                                   "SM")
+        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), self.T_lyte(),
+                                   self.config["elyteModelType"])
 
         for k in range(Nx):
             eq = self.CreateEquation("avgscy_isc{k}".format(k=k))
@@ -143,7 +152,15 @@ class Mod2D(dae.daeModel):
 
         # self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
         # self.sld_dynamics_2Dfull(c_mat, u_x_mat, u_y_mat, mu_O, act_lyte, self.noise)
-        self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+        eta, c_surf = self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
+
+        eq = self.CreateEquation("q_rxn_bar")
+        if self.config["entropy_heat_gen"]:
+            eq.Residual = self.q_rxn_bar() - self.dcbardt() * \
+                (eta - self.T_lyte()*(np.log(c_surf[int(Nx/2)]/(1
+                 - c_surf[int(Nx/2)]))-1/self.c_lyte()))
+        else:
+            eq.Residual = self.q_rxn_bar() - self.dcbardt() * eta[int(Nx/2)]
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
@@ -151,22 +168,23 @@ class Mod2D(dae.daeModel):
     def sld_dynamics_2D1var(self, c_mat, muO, act_lyte, noise):
         Ny = np.size(c_mat, 1)
         Nx = np.size(c_mat, 0)
-        T = self.config["T"]
         Dfunc_name = self.get_trode_param("Dfunc")
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
                                       Dfunc_name,
                                       f"mpet.electrode.diffusion.{Dfunc_name}")
-        dr, edges = geo.get_dr_edges("C3", Ny)
+        dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), Ny)
         area_vec = 1.
         Mmaty = get_Mmat(self.get_trode_param('shape'), Ny)
-        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
+        muR_mat, actR_mat = calc_muR(c_mat, self.cbar(), self.T_lyte(),
                                      self.config, self.trode, self.ind)
 
         if self.get_trode_param("surface_diffusion"):
             surf_diff_vec = calc_surf_diff(c_mat[:,-1], muR_mat[:,-1],
-                                           self.get_trode_param("cwet"),
-                                           self.get_trode_param("D_surf"), self.config["T"],
-                                           self.get_trode_param("E_D_surf"))
+                                           self.get_trode_param("D_surf"),
+                                           self.get_trode_param("E_D_surf"),
+                                           self.T_lyte())
+            
+        eta = calc_eta(muR_mat[:,-1], muO)
         for k in range(Nx):
             c_vec = c_mat[k,:]
             muR_vec = muR_mat[k,:]
@@ -174,28 +192,33 @@ class Mod2D(dae.daeModel):
             # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
             #                              self.config, self.trode, self.ind)
             c_surf = c_vec[-1]
-            muR_surf = muR_vec[-1]
+            # muR_surf = muR_vec[-1]
             actR_surf = actR_vec[-1]
-            eta = calc_eta(muR_surf, muO)
+            # eta = calc_eta(muR_surf, muO)
 
-            eta_eff = eta + self.Rxn(k)*self.get_trode_param("Rfilm")
+            eta_eff = eta[k] + self.Rxn(k)*self.get_trode_param("Rfilm")
 
             Rxn = self.calc_rxn_rate(
                 eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
-                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
                 self.get_trode_param("lambda"), self.get_trode_param("alpha"))
 
             eq = self.CreateEquation("Rxn_{k}".format(k=k))
             eq.Residual = self.Rxn(k) - Rxn
 
             if self.get_trode_param("surface_diffusion"):
-                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L") + surf_diff_vec[k]
+                Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L") - surf_diff_vec[k]
             else:
                 Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
             Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
-                                     self.get_trode_param("E_D"), Flux_bc, dr, T, noise)
-
+                                     self.get_trode_param("E_D"), Flux_bc, dr,
+                                     self.T_lyte(), noise)
+            if self.get_trode_param("shape") == "plate":
+                area_vec = np.ones(np.shape(edges))
+            elif self.get_trode_param("shape") == "cylinder":
+                area_vec = 2*np.pi*edges  # per unit height
+            
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
             dcdt_vec_y[0:Ny] = [self.cy[k].dt(j) for j in range(Ny)]
@@ -204,7 +227,9 @@ class Mod2D(dae.daeModel):
                 eq = self.CreateEquation("dcydt_{k}_{j}".format(k=k, j=j))
                 eq.Residual = LHS_vec_y[j] - RHS_vec[j]
 
-    def sld_dynamics_2Dfull(self, c_mat, u_x_mat, u_y_mat, muO, act_lyte, noise):
+        return eta, c_mat[:,-1]
+
+    def sld_dynamics_2Dmechanical(self, c_mat, u_x_mat, u_y_mat, muO, act_lyte, noise):
         Ny = np.size(c_mat, 1)
         Nx = np.size(c_mat, 0)
         T = self.config["T"]
@@ -212,10 +237,10 @@ class Mod2D(dae.daeModel):
         Dfunc = utils.import_function(self.get_trode_param("Dfunc_filename"),
                                       Dfunc_name,
                                       f"mpet.electrode.diffusion.{Dfunc_name}")
-        dr, edges = geo.get_dr_edges("C3", Ny)
+        dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), Ny)
         # C3 shape has constant area along the depth
         area_vec = 1.
-        Mmaty = get_Mmat("C3", Ny)
+        Mmaty = get_Mmat(self.get_trode_param('shape'), Ny)
         # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(),
                                      self.config, self.trode, self.ind)
@@ -637,10 +662,6 @@ class Mod1var(dae.daeModel):
 
         c = np.empty(N, dtype=object)
         c_surf = np.empty(N, dtype=object)
-        # if self.get_trode_param("surface_diffusion"):
-        #     ctmp = utils.get_var_vec(self.c,N)
-        #     c = np.hstack((self.c_left_GP(),ctmp,self.c_right_GP()))
-        # else:
         c[:] = [self.c(k) for k in range(N)]
         if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
@@ -754,7 +775,10 @@ class Mod1var(dae.daeModel):
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
         if self.get_trode_param("surface_diffusion"):
-            surf_diff_vec = self.calc_surf_diff(c_surf, muR_surf)
+            surf_diff_vec = calc_surf_diff(c_surf, muR_surf,
+                                           self.get_trode_param("D_surf"),
+                                           self.get_trode_param("E_D_surf"),
+                                           self.T_lyte())
             for k in range(N):
                 eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
                 eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
@@ -768,29 +792,29 @@ class Mod1var(dae.daeModel):
         else:
             return eta, c_surf
 
-    def calc_surf_diff(self,c_surf, muR_surf):
-        # the surface diffusion keeps the volume centered method of the ACR
-        N = np.size(c_surf)
-        dxs = 1./N
-        D_eff = (self.get_trode_param("D")/(self.T_lyte())
-                 * np.exp(-self.get_trode_param("E_D")/(self.T_lyte())
-                          + self.get_trode_param("E_D")/1))
-        c_edges = utils.mean_linear(c_surf)
-        surf_flux = np.empty(N+1, dtype=object)
-        surf_flux[1:-1] = -D_eff*c_edges*(1-c_edges)*np.diff(muR_surf)/(dxs)
-        surf_flux[0] = 0.
-        surf_flux[-1] = 0.
-        surf_diff = -(np.diff(surf_flux))/(dxs)
-        return surf_diff
 
-   
+def calc_surf_diff(c_surf, muR_surf, D_surf, E_D_surf, T):
+    # the surface diffusion keeps the volume centered method of the ACR
+    N = np.size(c_surf)
+    dxs = 1./N
+    D_eff = (D_surf/(T) * np.exp(-E_D_surf/(T)
+             + E_D_surf/1))
+    c_edges = utils.mean_linear(c_surf)
+    surf_flux = np.empty(N+1, dtype=object)
+    surf_flux[1:-1] = -D_eff*c_edges*(1-c_edges)*np.diff(muR_surf)/(dxs)
+    surf_flux[0] = 0.
+    surf_flux[-1] = 0.
+    surf_diff = -(np.diff(surf_flux))/(dxs)
+    return surf_diff
+
+
 def calc_eta(muR, muO):
     return muR - muO
 
 
 def get_Mmat(shape, N):
     r_vec, volfrac_vec = geo.get_unit_solid_discr(shape, N)
-    if shape == "ACR":
+    if shape == "C3":
         Mmat = sprs.eye(N, N, format="csr")
     elif shape in ["sphere", "cylinder", 'plate']:
         Rs = 1.

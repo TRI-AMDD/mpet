@@ -712,8 +712,12 @@ class Config:
                 psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
             elif solidShape == 'plate':
-                psd_area = 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
-                psd_vol = psd_len * self[trode, 'thickness']**2
+                if solidType in ['CHR', 'CHR2']:
+                    psd_area = 1.2263 * 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
+                    psd_vol = 1.2263 * psd_len * self[trode, 'thickness']**2
+                elif solidType == ['ACR2D']:
+                    psd_area = 2 * 1.2263 * psd_len**2
+                    psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
 
@@ -807,6 +811,9 @@ class Config:
                             * self['t_ref'] / plen**2
                     else:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / plen**2
+                    if self[trode,'surface_diffusion'] is not None:
+                        self[trode,'indvPart']['D_surf'][i, j] = self[trode,'D_surf'] \
                             * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
