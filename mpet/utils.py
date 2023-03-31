@@ -28,6 +28,11 @@ def weighted_harmonic_mean(a, wt):
     return ((wt[1:]+wt[:-1])/(wt[1:]/a[1:]+wt[:-1]/a[:-1]))
 
 
+def get_cell_Ntot(Nvol):
+    """Nvol is a dictionary containing the number of volumes in each simulated battery section."""
+    return np.sum(list(Nvol.values()))
+
+
 def add_gp_to_vec(vec):
     """Add ghost points to the beginning and end of a vector for applying boundary conditions."""
     out = np.empty(len(vec) + 2, dtype=object)
@@ -78,6 +83,66 @@ def get_asc_vec(var, Nvol, dt=False):
                 varout[sectn] = np.zeros(Nvol[sectn])
             except KeyError:
                 varout[sectn] = np.zeros(0)
+    out = np.hstack((varout["a"], varout["s"], varout["c"]))
+    return out
+
+
+def central_diff_bulk(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes) for bulk"""
+    varout = {}
+    for sectn in ["a", "c", "s"]:
+        # If we have information within this battery section
+        if sectn in ["a", "c"]:
+            if sectn in array.keys():
+                # if it is one of the electrode sections
+                out = get_var_vec(array[sectn], Nvol[sectn])
+                out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+                varout[sectn] = (out[2:]-out[:-2])
+            else:
+                varout[sectn] = np.zeros(0)
+        else:
+            # if anode does not exist
+            if sectn in Nvol:
+                varout[sectn] = np.zeros(Nvol[sectn])
+            else:
+                varout[sectn] = np.zeros(0)
+    # sum solid + elyte poroisty
+    output = np.hstack((varout["a"], varout["s"], varout["c"]))/(2*dx)
+    return output
+
+
+def central_diff_lyte(array, Nvol, dx):
+    """Gets central diff for derivatives for use in thermal derivatives (which are split between
+    the individual electrodes) for electrolyte"""
+    out = np.zeros(0)
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        if sectn in array.keys():
+            # if it is one of the electrode sections
+            out = np.append(out, get_var_vec(array[sectn], Nvol[sectn]))
+        else:
+            out = np.append(out, np.zeros(0))
+    # now we have stacked everything
+    out = np.hstack((2*out[0]-out[1], out, 2*out[-1]-out[-2]))
+    output = (out[2:]-out[:-2])/(2*dx)
+    return output
+
+
+def get_thermal_vec(Nvol, config):
+    """Get a numpy array for a variable spanning the anode, separator, and cathode."""
+    varout = {}
+    for sectn in ["a", "s", "c"]:
+        # If we have information within this battery section
+        if sectn in Nvol:
+            # If it's an array of dae variable objects
+            out = config['rhom'][sectn] * config['cp'][sectn]
+            varout[sectn] = get_const_vec(out, Nvol[sectn])
+        else:
+            # if anode does not exist
+            varout[sectn] = np.zeros(0)
+
+    # sum solid + elyte poroisty
     out = np.hstack((varout["a"], varout["s"], varout["c"]))
     return out
 

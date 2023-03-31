@@ -148,6 +148,12 @@ class DerivedValues:
         """
         return 3600. / self.config['t_ref']
 
+    def rho_ref(self):
+        """Reference mass density used for energy balances
+        """
+        m_ref = 1000  # reference is 1000 kg
+        return m_ref
+
     def sigma_s_ref(self):
         """Reference conductivity
         """
@@ -197,6 +203,12 @@ class DerivedValues:
                                              mpet_module=f"mpet.electrolyte.{SMset}")
             return elyte_function()[-1]
 
+    def k_h_ref(self):
+        """Reference heat transfer coefficient
+        """
+        return constants.c_ref * constants.k * constants.N_A * \
+            self.config['L_ref']**2 / (self.config['t_ref'])
+
     def z(self):
         """Electrode capacity ratio
         """
@@ -232,9 +244,9 @@ class DerivedValues:
 
         solidType = self.config[trode, 'type']
         if solidType in constants.two_var_types:
-            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), 0.)[0][0]
+            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), self.config['T'], 0.)[0][0]
         elif solidType in constants.one_var_types:
-            muR_ref = -muRfunc(cs0, cs0bar, 0.)[0]
+            muR_ref = -muRfunc(cs0, cs0bar, self.config['T'], 0.)[0]
         else:
             raise ValueError(f'Unknown solid type: {solidType}')
         return muR_ref

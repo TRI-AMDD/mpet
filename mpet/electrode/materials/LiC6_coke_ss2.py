@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def LiC6_coke_ss2(self, y, ybar, muR_ref):
+def LiC6_coke_ss2(self, y, ybar, T, muR_ref):
     """ Fuller, Doyle, Newman, 1994 """
     c1 = -0.132056
     c2 = 1.40854

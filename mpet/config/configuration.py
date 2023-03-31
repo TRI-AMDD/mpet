@@ -111,9 +111,14 @@ class Config:
         self.D_s = ParameterSet(None, 'system', self.path)
         # set which electrodes there are based on which dict files exist
         trodes = ['c']
+        # set up types of materials (cathode, anode electrolyte) for thermal parameters
+        materials = ['c', 'l']
         if os.path.isfile(os.path.join(self.path, 'input_dict_anode.p')):
             trodes.append('a')
+            materials.append('a')
         self['trodes'] = trodes
+        self['materials'] = materials
+
         # create empty electrode parametersets
         self.D_c = ParameterSet(None, 'electrode', self.path)
         if 'a' in self['trodes']:
@@ -137,9 +142,13 @@ class Config:
         self.D_s = ParameterSet(paramfile, 'system', self.path)
         # the anode and separator are optional: only if there are volumes to simulate
         trodes = ['c']
+        # set up types of materials (cathode, anode electrolyte) for thermal parameters
+        materials = ['c', 'l']
         if self.D_s['Nvol_a'] > 0:
             trodes.append('a')
+            materials.append('a')
         self['trodes'] = trodes
+        self['materials'] = materials
         # to check for separator, directly access underlying dict of system config;
         # self['Nvol']['s'] would not work because that requires have_separator to
         # be defined already
@@ -471,6 +480,7 @@ class Config:
         # non-dimensional scalings
         self['T'] = self['T'] / constants.T_ref
         self['Rser'] = self['Rser'] / self['Rser_ref']
+        self['h_h'] = self['h_h'] * self['L_ref'] / self['k_h_ref']
         if self['Dp'] is not None:
             self['Dp'] = self['Dp'] / self['D_ref']
         if self['Dm'] is not None:
@@ -496,6 +506,17 @@ class Config:
             self['L'][trode] = self['L'][trode] / self['L_ref']
             self['beta'][trode] = self[trode, 'csmax'] / constants.c_ref
             self['sigma_s'][trode] = self['sigma_s'][trode] / self['sigma_s_ref']
+            self['k_h'][trode] = self['k_h'][trode] / self['k_h_ref']
+            self['cp'][trode] = self['cp'][trode] / \
+                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+            self['rhom'][trode] = self['rhom'][trode] / self['rho_ref']
+            if self['nonisothermal']:
+                if self['rhom'][trode] == 0 or self['cp'][trode] == 0 or self['k_h'][trode] == 0:
+                    raise Exception(
+                        "Please provide all nonisothermal parameters for the "
+                        + trode
+                        + " electrode and ensure they are nonzero")
+
             if self[trode, 'lambda'] is not None:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
             if self[trode, 'B'] is not None:
@@ -508,6 +529,15 @@ class Config:
         # scalings on separator
         if self['have_separator']:
             self['L']['s'] /= self['L_ref']
+            self['k_h']['s'] = self['k_h']['s'] / self['k_h_ref']
+            self['cp']['s'] = self['cp']['s'] / \
+                (self['k_h_ref'] * self['t_ref'] / (self['rho_ref']*self['L_ref']**2))
+            self['rhom']['s'] = self['rhom']['s'] / self['rho_ref']
+            if self['nonisothermal']:
+                if self['rhom']['s'] == 0 or self['cp']['s'] == 0 or self['k_h']['s'] == 0:
+                    raise Exception(
+                        "Please provide all nonisothermal parameters for the "
+                        + " separator and ensure they are nonzero")
 
     def _scale_macroscopic_parameters(self, Vref):
         """

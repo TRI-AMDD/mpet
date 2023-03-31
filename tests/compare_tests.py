@@ -53,10 +53,10 @@ def test_compare(Dirs, tol):
             varDataNew = newData[varKey][...]
             varDataRef = refData[varKey][...]
             diffMat = np.abs(varDataNew - varDataRef)
-        except ValueError:
-            assert False, "Fail from ValueError"
-        except KeyError:
-            assert False, "Fail from KeyError"
+        except ValueError as exception:
+            assert False, "Fail from ValueError: %s" % exception
+        except KeyError as exception:
+            assert False, "Fail from KeyError: %s" % exception
 
         # #Check absolute and relative error against tol
         assert np.mean(diffMat) < tol or \

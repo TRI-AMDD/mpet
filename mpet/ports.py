@@ -10,6 +10,9 @@ class portFromElyte(dae.daePort):
         self.c_lyte = dae.daeVariable(
             "c_lyte", mole_frac_t, self,
             "Concentration in the electrolyte")
+        self.T_lyte = dae.daeVariable(
+            "T_lyte", mole_frac_t, self,
+            "Temperature in the electrolyte")
         self.phi_lyte = dae.daeVariable(
             "phi_lyte", elec_pot_t, self,
             "Electric potential in the electrolyte")

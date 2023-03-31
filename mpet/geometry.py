@@ -71,14 +71,16 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
     return curv
 
 
-def get_elyte_disc(Nvol, L, poros, BruggExp):
+def get_elyte_disc(Nvol, L, poros, BruggExp, k_h):
     out = {}
     # Width of each cell
     out["dxvec"] = utils.get_dxvec(L, Nvol)
 
     # Distance between cell centers
     dxtmp = np.hstack((out["dxvec"][0], out["dxvec"], out["dxvec"][-1]))
+    out["dx"] = dxtmp
     out["dxd1"] = utils.mean_linear(dxtmp)
+    out["dxd2"] = dxtmp[1:-1]  # for thermal finite differences
 
     # The porosity vector
     out["porosvec"] = utils.get_asc_vec(poros, Nvol)
@@ -87,7 +89,12 @@ def get_elyte_disc(Nvol, L, poros, BruggExp):
     # Vector of Bruggeman exponents
     Brugg_pad = utils.pad_vec(utils.get_asc_vec(BruggExp, Nvol))
 
+    # The porosity vector
+    khvec = utils.get_asc_vec(k_h, Nvol)
+    out["khvec"] = utils.pad_vec(khvec)
+
     # Vector of posority/tortuosity (assuming Bruggeman)
     out["eps_o_tau"] = porosvec_pad/porosvec_pad**(Brugg_pad)
+    out["min_eps_o_tau"] = (1-porosvec_pad)**(1-Brugg_pad)
 
     return out
