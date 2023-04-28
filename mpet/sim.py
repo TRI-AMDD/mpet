@@ -46,7 +46,7 @@ class SimMPET(dae.daeSimulation):
     def SetUpParametersAndDomains(self):
         # Domains
         config = self.config
-        if config["have_separator"]:
+        if config["Nvol"]["s"]:
             self.m.DmnCell["s"].CreateArray(config["Nvol"]["s"])
         for tr in config["trodes"]:
             self.m.DmnCell[tr].CreateArray(config["Nvol"][tr])
@@ -118,7 +118,7 @@ class SimMPET(dae.daeSimulation):
                 self.m.phi_lyteGP_L.SetInitialGuess(0)
 
             # Separator electrolyte initialization
-            if config["have_separator"]:
+            if config["Nvol"]["s"]:
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte["s"].SetInitialGuess(i, 0)
@@ -174,7 +174,7 @@ class SimMPET(dae.daeSimulation):
                                     k, data[partStr + "c1"][-1,k])
                                 part.c2.SetInitialCondition(
                                     k, data[partStr + "c2"][-1,k])
-            if config["have_separator"]:
+            if config["Nvol"]["s"]:
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(
                         i, data["c_lyte_s"][-1,i])

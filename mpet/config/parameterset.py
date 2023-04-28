@@ -87,7 +87,7 @@ class ParameterSet:
             d = {}
             # some parameters are also defined for the separator
             trodes = self['trodes'][:]  # make a copy here to avoid adding values to the original
-            if item in PARAMS_SEPARATOR and self['have_separator']:
+            if item in PARAMS_SEPARATOR:
                 trodes.append('s')
             for trode in trodes:
                 # get the value for this electrode/separator and store it

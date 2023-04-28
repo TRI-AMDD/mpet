@@ -39,7 +39,7 @@ class ModCell(dae.daeModel):
         # Domains where variables are distributed
         self.DmnCell = {}  # domains over full cell dimensions
         self.DmnPart = {}  # domains over particles in each cell volume
-        if config['have_separator']:  # If we have a separator
+        if config['Nvol']['s']:  # If we have a separator
             self.DmnCell["s"] = dae.daeDomain(
                 "DmnCell_s", self, dae.unit(),
                 "Simulated volumes in the separator")
@@ -84,7 +84,7 @@ class ModCell(dae.daeModel):
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
-        if config['have_separator']:  # If we have a separator
+        if config['Nvol']['s']:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
                 "c_lyte_s", conc_t, self,
                 "Concentration in the electrolyte in the separator",
@@ -96,7 +96,7 @@ class ModCell(dae.daeModel):
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
         # potential.
-        if ('a' not in config['trodes']) and (not config['have_separator']) and Nvol["c"] == 1:
+        if ('a' not in config['trodes']) and (not config['Nvol']['s']) and Nvol["c"] == 1:
             self.SVsim = True
         else:
             self.SVsim = False
