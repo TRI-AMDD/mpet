@@ -128,7 +128,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
             currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
             print("current:", currset_dim, "A/m^2")
-        else:  # CV
+        elif profileType == "CV":  # CV
             Vref = config['c', 'phiRef']
             if 'a' in config["trodes"]:
                 Vref -= config['a', 'phiRef']
