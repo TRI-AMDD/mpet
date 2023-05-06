@@ -382,10 +382,17 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             ylbl = 'Potential of electrolyte [V]'
             datay = datay_p*(k*Tref/e) - Vstd
         elif plot_type in ["elytei", "elyteif", "elytedivi", "elytedivif"]:
-            cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
-            pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
-            cmat = np.hstack((cGP_L.reshape((-1,1)), datay_c, datay_c[:,-1].reshape((-1,1))))
-            pmat = np.hstack((pGP_L.reshape((-1,1)), datay_p, datay_p[:,-1].reshape((-1,1))))
+            cmat = np.hstack((datay_c, datay_c[:,-1].reshape((-1,1))))
+            pmat = np.hstack((datay_p, datay_p[:,-1].reshape((-1,1))))
+
+            # Handle ghost points
+            if "c_lyteGP_L" in data.keys():
+                cGP_L = utils.get_dict_key(data, "c_lyteGP_L")
+                cmat = np.hstack((cGP_L.reshape((-1,1)), cmat))
+            if "phi_lyteGP_L" in data.keys():
+                pGP_L = utils.get_dict_key(data, "phi_lyteGP_L")
+                pmat = np.hstack((pGP_L.reshape((-1,1)), pmat))
+
             disc = geom.get_elyte_disc(
                 Nvol, config["L"], config["poros"], config["BruggExp"])
             i_edges = np.zeros((numtimes, len(facesvec)))
