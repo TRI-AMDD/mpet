@@ -794,11 +794,13 @@ class Config:
                     if self[trode, 'kappa'] is not None:
                         self[trode, 'indvPart']['kappa'][i, j] = self[trode, 'kappa'] / kappa_ref
                     if self[trode, 'kappa_x'] is not None:
-                        self[trode,'indvPart']['kappa_x'][i, j] = self[trode,'kappa_x'] / kappa_ref
+                        if self[trode, 'type'] == 'ACR2D':
+                            self[trode,'indvPart']['kappa_x'][i, j] = self[trode,'kappa_x'] / kappa_ref
                     if self[trode, 'kappa_y'] is not None:
-                        pthick = self['psd_len_ver'][trode][i,j]
-                        self[trode,'indvPart']['kappa_y'][i, j] = self[trode,'kappa_y'] \
-                            / (kappa_ref * (pthick**2/plen**2))
+                        if self[trode, 'type'] == 'ACR2D':
+                            pthick = self['psd_len_ver'][trode][i,j]
+                            self[trode,'indvPart']['kappa_y'][i, j] = self[trode,'kappa_y'] \
+                                / (kappa_ref * (pthick**2/plen**2))
                     if self[trode, 'dgammadc'] is not None:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
