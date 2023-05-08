@@ -198,7 +198,8 @@ class Mod2D(dae.daeModel):
 
             eta_eff = eta[k] + self.Rxn(k)*self.get_trode_param("Rfilm")
 
-            Rxn = self.calc_rxn_rate(
+            # flux from top and bottom, 0.5 is for compensate the normalization in 'delta_L'
+            Rxn = 0.5*self.calc_rxn_rate(
                 eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
                 self.get_trode_param("E_A"), self.T_lyte(), actR_surf, act_lyte,
                 self.get_trode_param("lambda"), self.get_trode_param("alpha"))
@@ -211,7 +212,7 @@ class Mod2D(dae.daeModel):
             else:
                 Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
-            Flux_vec = calc_flux_CHR(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+            Flux_vec = calc_flux_CHR_2D(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                      self.get_trode_param("E_D"), Flux_bc, dr,
                                      self.T_lyte(), noise)
             if self.get_trode_param("shape") == "plate":
@@ -804,7 +805,7 @@ def calc_surf_diff(c_surf, muR_surf, D_surf, E_D_surf, T):
     surf_flux[1:-1] = -D_eff*c_edges*(1-c_edges)*np.diff(muR_surf)/(dxs)
     surf_flux[0] = 0.
     surf_flux[-1] = 0.
-    surf_diff = -(np.diff(surf_flux))/(dxs)
+    surf_diff = -np.diff(surf_flux)/dxs
     return surf_diff
 
 
@@ -855,6 +856,19 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0  # Symmetry at r=0
+    Flux_vec[-1] = Flux_bc
+    c_edges = utils.mean_linear(c)
+    if noise is None:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+    else:
+        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu + noise(dae.Time().Value))/dr
+    return Flux_vec
+
+def calc_flux_CHR_2D(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
+    N = len(c)
+    Flux_vec = np.empty(N+1, dtype=object)
+    Flux_vec[0] = -Flux_bc
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
     if noise is None:
