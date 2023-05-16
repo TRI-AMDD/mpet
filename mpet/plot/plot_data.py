@@ -243,9 +243,12 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     if plot_type[:-2] in ["surf"]:
         if dataReporter == "hdf5Fast":
             # hdf5Fast does not print internal particle concentrations
-            raise Exception("hdf5Fast dataReporter does not print internal particle "
-                            "concentrations, rerun simulation with another data reporter")
+            raise NotImplementedError(
+                "hdf5Fast dataReporter does not print internal particle "
+                "concentrations, rerun simulation with another data reporter")
         trode = plot_type[-1]
+        if trode not in trodes:
+            raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
         str_base = (pfx
                     + "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode)
                     + sStr + "c")
@@ -269,6 +272,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot SoC profile
     if plot_type[:-2] in ["soc"]:
         trode = plot_type[-1]
+        if trode not in trodes:
+            raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
+
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_{trode}'.format(trode=trode))
         if data_only:
             return times*td, ffvec
@@ -454,6 +460,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot solid particle-average concentrations
     elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
         trode = plot_type[-1]
+        if trode not in trodes:
+            raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
+
         fig, ax = plt.subplots(Npart[trode], Nvol[trode], squeeze=False, sharey=True,
                                figsize=figsize)
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
@@ -519,14 +528,18 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     elif plot_type[:-2] in ["csld"]:
         if dataReporter == "hdf5Fast":
             # hdf5Fast does not print internal particle concentrations
-            raise Exception("hdf5Fast dataReporter does not print internal particle "
-                            "concentrations, rerun simulation with another data reporter")
+            raise NotImplementedError(
+                "hdf5Fast dataReporter does not print internal particle "
+                "concentrations, rerun simulation with another data reporter")
 
         timettl = False  # Plot the current simulation time as title
         # Plot title in seconds
         ttlscl, ttlunit = 1, "s"
         t0ind = 0
         trode = plot_type[-1]
+        if trode not in trodes:
+            raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
+
         if plot_type[0] == "c":
             plt_cavg = True
         else:
@@ -737,6 +750,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             horizontalalignment="center")
         collection = np.empty(len(trvec), dtype=object)
         for indx, trode in enumerate(trvec):
+            if trode not in trodes:
+                raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
+
             ax = axs[0,indx]
             # Get particle sizes (and max size) (length-based)
             lens = psd_len[trode]
@@ -812,6 +828,9 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     # Plot cathode potential
     elif plot_type[0:5] in ["bulkp"]:
         trode = plot_type[-1]
+        if trode not in trodes:
+            raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
+
         fplot = (True if plot_type[-3] == "f" else False)
         t0ind = (0 if not fplot else -1)
         fig, ax = plt.subplots(figsize=figsize)

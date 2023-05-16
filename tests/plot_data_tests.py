@@ -12,7 +12,9 @@ def test_plot(Dirs, plot):
     refDir, testDir = Dirs
     try:
         plot_data.show_data(osp.join(testDir, "sim_output"), plot, False, False, False)
-        plt.close()
-        assert True
+    except NotImplementedError:
+        pass
     except Exception:
         assert False
+    plt.close()
+    assert True
