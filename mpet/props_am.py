@@ -168,8 +168,8 @@ class muRfuncs():
         ytmp = np.empty(N+2, dtype=object)
         dxs = 1./N
         ytmp[1:-1] = y
-        ytmp[0] = y[0] + dxs*beta_s*(y[0]*(1-y[0]))*6
-        ytmp[-1] = y[-1] + dxs*beta_s*(y[-1]*(1-y[-1]))*6
+        ytmp[0] = y[0] + dxs*6*beta_s*(y[0]*(1-y[0]))
+        ytmp[-1] = y[-1] + dxs*6*beta_s*(y[-1]*(1-y[-1]))
         curv = np.diff(ytmp, 2)/(dxs**2)
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
@@ -194,7 +194,7 @@ class muRfuncs():
             if shape in ["C3"]:
                 if mod1var:
                     cwet = self.get_trode_param("cwet")
-                    if self.get_trode_param("surface_diffusion"):
+                    if self.get_trode_param("natural_bc"):
                         beta_s = self.get_trode_param("beta_s")
                         muR_nh = self.non_homog_rect_natural(y, ybar, B, kappa, beta_s)
                     else:
