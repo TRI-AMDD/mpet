@@ -618,6 +618,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     cstr[pInd,vInd] = cstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     cbarstr[pInd,vInd] = cbarstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay = utils.get_dict_key(data, cstr[pInd,vInd])[t0ind]
+
+                    # Handle homogeous particle models
+                    if isinstance(datay, np.float64):
+                        datay = [datay, datay]
+
                     numy = len(datay)
                     datax = np.linspace(0, lens[pInd,vInd] * Lfac, numy)
                     line, = ax[pInd,vInd].plot(datax, datay)
