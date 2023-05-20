@@ -246,6 +246,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             raise NotImplementedError(
                 "hdf5Fast dataReporter does not print internal particle "
                 "concentrations, rerun simulation with another data reporter")
+
+        if config[trode, "type"] in constants.two_var_types:
+            raise NotImplementedError(f"Plot type {plot_type} not implemented for 2-param models.")
+
         trode = plot_type[-1]
         if trode not in trodes:
             raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
