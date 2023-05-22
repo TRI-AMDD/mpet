@@ -22,9 +22,9 @@ def Colclasure20():
         D_21 = -33.43827
         T_g0 = -24.83763
         T_g1 = 64.07366
-        return(10**(D_00 + D_01 / (T - (T_g0 + T_g1 * Ce))
-                    + (D_10 + D_11 / (T - (T_g0 + T_g1 * Ce)))*Ce
-                    + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
+        return (10**(D_00 + D_01 / (T - (T_g0 + T_g1 * Ce))
+                     + (D_10 + D_11 / (T - (T_g0 + T_g1 * Ce)))*Ce
+                     + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
 
     def therm_fac(c, T):
         T = T*constants.T_ref  # T has units in this model
