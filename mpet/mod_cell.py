@@ -315,7 +315,8 @@ class ModCell(dae.daeModel):
                 ecd = config["k0_foil"]*cWall**0.5
                 # note negative current because positive current is
                 # oxidation here
-                eta = self.phi_cell() - self.current()*config["Rfilm_foil"] - .5*(phitmp[0] + phitmp[1])
+                eta = self.phi_cell() - self.current()*config["Rfilm_foil"] \
+                    - .5*(phitmp[0] + phitmp[1])
                 if config["elyteModelType"] == "dilute":
                     eta -= config["T"]*np.log(cWall)
                 eqP.Residual = self.current() - ecd*2*np.sinh(eta/2)
