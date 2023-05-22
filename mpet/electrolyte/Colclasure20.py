@@ -1,9 +1,8 @@
-from mpet.config import constants
 import numpy as np
+from mpet.config import constants
 
 
 def Colclasure20():
-
     def tp0(Ce, T):
         T = T*constants.T_ref  # T has units in this model
         Acoeff_Trfn = -0.0000002876102*T**2 + 0.0002077407*T - 0.03881203
@@ -24,8 +23,8 @@ def Colclasure20():
         T_g0 = -24.83763
         T_g1 = 64.07366
         return (10**(D_00 + D_01 / (T - (T_g0 + T_g1 * Ce))
-                + (D_10 + D_11 / (T - (T_g0 + T_g1 * Ce)))*Ce
-                + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
+                     + (D_10 + D_11 / (T - (T_g0 + T_g1 * Ce)))*Ce
+                     + (D_20 + D_21 / (T - (T_g0 + T_g1 * Ce)))*Ce**2)*0.0001)
 
     def therm_fac(c, T):
         T = T*constants.T_ref  # T has units in this model
@@ -42,7 +41,7 @@ def Colclasure20():
             T**3 - 0.001532707*T**2 + 0.3090003*T - 23.35671
 
         return (Ce * (Acoeff_Kappa + Bcoeff_Kappa * Ce
-                + Ccoeff_Kappa * Ce**2 + Dcoeff_Kappa * Ce**3))
+                      + Ccoeff_Kappa * Ce**2 + Dcoeff_Kappa * Ce**3))
 
     Dref = D(constants.c_ref/1000, 1)
 

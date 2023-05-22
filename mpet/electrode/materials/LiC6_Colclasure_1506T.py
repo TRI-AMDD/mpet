@@ -3,9 +3,9 @@ import numpy as np
 
 def LiC6_Colclasure_1506T(self, y, ybar, muR_ref, ISfuncs=None):
     """Taken from Colclasure 2020, but only for lithiating. The range of\
-        confidence is 0.01 to 0.97 for voltages of ~0.6V and \
-        0.0435V. Don’t calculate U2 for intercalation fractions below 0.8, \
-        it will cause numeric issues just use U1."""
+    confidence is 0.01 to 0.97 for voltages of ~0.6V and \
+    0.0435V. Don’t calculate U2 for intercalation fractions below 0.8, \
+    it will cause numeric issues just use U1."""
     x = y
     U1 = \
         - 1.059423355572770E-02*np.tanh((x - 1.453708425609560E-02) / 9.089868397988610E-05) \

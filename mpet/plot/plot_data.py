@@ -70,7 +70,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
     dxvec = np.array(Nvol["c"] * [dxc])
     porosvec = np.array(Nvol["c"] * [config["poros"]["c"]])
     cellsvec = dxc*np.arange(Nvol["c"]) + dxc/2.
-    if config["have_separator"]:
+    if config["Nvol"]["s"]:
         dxs = config["L"]["s"]/Nvol["s"]
         dxvec_s = np.array(Nvol["s"] * [dxs])
         dxvec = np.hstack((dxvec_s, dxvec))
@@ -114,7 +114,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
 #            print "Actual psd_stddev [nm]:", np.std(psd_len[l])
         print("Cell structure:")
         print(("porous anode | " if "a" in config["trodes"] else "flat anode | ")
-              + ("sep | " if config["have_separator"] else "") + "porous cathode")
+              + ("sep | " if config["Nvol"]["s"] else "") + "porous cathode")
         if "a" in config["trodes"]:
             print("capacity ratio cathode:anode, 'z':", config["z"])
         for trode in trodes:
@@ -137,7 +137,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
               np.array(config['stddev']["c"])*Lfac)
         print("ndim B_c:", config["c", "B"])
-        if config["have_separator"]:
+        if config["Nvol"]["s"]:
             print("Nvol_s:", Nvol["s"])
         print("Nvol_c:", Nvol["c"])
         if 'a' in config["trodes"]:
@@ -332,7 +332,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes,
         datay_p = utils.get_dict_key(data, p_cath, squeeze=False)
         L_c = config['L']["c"] * config['L_ref'] * Lfac
         Ltot = L_c
-        if config["have_separator"]:
+        if config["Nvol"]["s"]:
             datay_s_c = utils.get_dict_key(data, c_sep, squeeze=False)
             datay_s_p = utils.get_dict_key(data, p_sep, squeeze=False)
             datay_c = np.hstack((datay_s_c, datay_c))
