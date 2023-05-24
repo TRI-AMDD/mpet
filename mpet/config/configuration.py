@@ -140,10 +140,6 @@ class Config:
         if self.D_s['Nvol_a'] > 0:
             trodes.append('a')
         self['trodes'] = trodes
-        # to check for separator, directly access underlying dict of system config;
-        # self['Nvol']['s'] would not work because that requires have_separator to
-        # be defined already
-        self['have_separator'] = self.D_s['Nvol_s'] > 0
 
         # load electrode parameter file(s)
         self.paramfiles = {}
@@ -506,7 +502,7 @@ class Config:
                     self[trode, param] = value / kT
 
         # scalings on separator
-        if self['have_separator']:
+        if self['Nvol']['s']:
             self['L']['s'] /= self['L_ref']
 
     def _scale_macroscopic_parameters(self, Vref):
@@ -761,7 +757,7 @@ class Config:
             # For homogeneous particles (only one 'volume' per particle)
             elif solidType in ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']:
                 # Each particle is only one volume
-                psd_num = np.ones(raw.shape, dtype=np.int)
+                psd_num = np.ones(raw.shape, dtype=int)
                 # The lengths are given by the original length distr.
                 psd_len = raw
             else:

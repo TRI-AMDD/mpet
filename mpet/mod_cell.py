@@ -41,7 +41,7 @@ class ModCell(dae.daeModel):
         # Domains where variables are distributed
         self.DmnCell = {}  # domains over full cell dimensions
         self.DmnPart = {}  # domains over particles in each cell volume
-        if config['have_separator']:  # If we have a separator
+        if config['Nvol']['s']:  # If we have a separator
             self.DmnCell["s"] = dae.daeDomain(
                 "DmnCell_s", self, dae.unit(),
                 "Simulated volumes in the separator")
@@ -86,7 +86,7 @@ class ModCell(dae.daeModel):
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
-        if config['have_separator']:  # If we have a separator
+        if config['Nvol']['s']:  # If we have a separator
             self.c_lyte["s"] = dae.daeVariable(
                 "c_lyte_s", conc_t, self,
                 "Concentration in the electrolyte in the separator",
@@ -98,7 +98,7 @@ class ModCell(dae.daeModel):
         # Note if we're doing a single electrode volume simulation
         # It will be in a perfect bath of electrolyte at the applied
         # potential.
-        if ('a' not in config['trodes']) and (not config['have_separator']) and Nvol["c"] == 1:
+        if ('a' not in config['trodes']) and (not config['Nvol']['s']) and Nvol["c"] == 1:
             self.SVsim = True
         else:
             self.SVsim = False
@@ -322,16 +322,11 @@ class ModCell(dae.daeModel):
                 ecd = config["k0_foil"]*cWall**0.5
                 # note negative current because positive current is
                 # oxidation here
-                BVfunc = -self.current() / ecd
-                eta_eff = 2*np.arcsinh(-BVfunc/2.)
-                eta = eta_eff + self.current()*config["Rfilm_foil"]
-                # eta = mu_R - mu_O = -mu_O (evaluated at interface)
-                # mu_O = [T*ln(c) +] phiWall - phi_cell = -eta
-                # phiWall = -eta + phi_cell [- T*ln(c)]
-                phiWall = -eta + self.phi_cell()
+                eta = self.phi_cell() - self.current()*config["Rfilm_foil"] \
+                    - .5*(phitmp[0] + phitmp[1])
                 if config["elyteModelType"] == "dilute":
-                    phiWall -= config["T"]*np.log(cWall)
-                eqP.Residual = phiWall - .5*(phitmp[0] + phitmp[1])
+                    eta -= config["T"]*np.log(cWall)
+                eqP.Residual = self.current() - ecd*2*np.sinh(eta/2)
 
             # We have a porous anode -- no flux of charge or anions through current collector
             else:
