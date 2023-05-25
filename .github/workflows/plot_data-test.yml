@@ -1,0 +1,66 @@
+name: MPET plot_data test
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test:
+    
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+        path: mpet
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+        channels: conda-forge,defaults
+        activate-environment: mpet-env
+
+    - name: Install daetools via mamba
+      run: |
+        mamba install daetools
+
+    - name: Install additional dependencies using mpet's setup.py
+      run: |
+        cd mpet
+        pip install .[test]
+
+    - name: Set up test for modified branch
+      run: |
+        cd mpet/bin
+        rm -rf workdir
+        mkdir workdir
+        cd workdir
+
+        cp ../run_tests.py .
+        ln -s ../../mpet .
+        ln -s ../../tests .
+
+    - name: run tests for modified branch
+      run: |
+        cd mpet/bin/workdir
+        python run_tests.py --test_dir=tests --output_dir=modified > /dev/null
+
+    - name: Checks test results
+      run: |
+        cd mpet/bin/workdir
+        coverage run --source=mpet -m pytest --baseDir=tests/ref_outputs --modDir=modified tests/plot_data_tests.py
+
+    - name: upload Coveralls
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+          cd mpet/bin/workdir
+          coveralls --service=github || : #Dont fret if if fails
