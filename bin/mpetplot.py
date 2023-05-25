@@ -36,6 +36,13 @@ plotTypes = OrderedDict([
     ('cbar_a','average anode solid concentrations (movie)'),
     ('bulkp_c','macroscopic cathode solid phase potential(movie)'),
     ('bulkp_a','macroscopic anode solid phase potential (movie)'),
+    ('cycle_capacity', 'capacity of discharge cycle vs cycle number (only for battery cycling)'),
+    ('cycle_cap_frac', 'capacity fraction of discharge cycle/original discharge cycle vs cycle '
+     'number (only for battery cycling)'),
+    ('cycle_efficiency', 'cycle efficiency vs cycle number (only for battery cycling)'),
+    ('cycle_Q_V', 'plots V-Q plots of battery cycling from first to last cycle'),
+    ('cycle_dQ_dV', 'plots V-dQdV plots of battery cycling from first to last cycle'),
+
     ('text','convert the output to plain text (csv)')
 ])
 

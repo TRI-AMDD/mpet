@@ -14,6 +14,7 @@ import numpy as np
 
 import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
+import mpet.mod_CCCVCPcycle as mod_CCCVCPcycle
 import mpet.mod_electrodes as mod_electrodes
 import mpet.ports as ports
 import mpet.utils as utils
@@ -23,7 +24,8 @@ from mpet.daeVariableTypes import mole_frac_t, elec_pot_t, conc_t
 # Dictionary of end conditions
 endConditions = {
     1:"Vmax reached",
-    2:"Vmin reached"}
+    2:"Vmin reached",
+    3:"End condition for CCCVCPcycle reached"}
 
 
 class ModCell(dae.daeModel):
@@ -152,6 +154,11 @@ class ModCell(dae.daeModel):
                                       self.particles[trode][vInd,pInd].portInLyte)
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
+
+        # if cycling, set current port to cycling module
+        if self.profileType == "CCCVCPcycle":
+            pCycle = mod_CCCVCPcycle.CCCVCPcycle
+            self.cycle = pCycle(config, Name="CCCVCPcycle", Parent=self)
 
     def DeclareEquations(self):
         dae.daeModel.DeclareEquations(self)
@@ -456,7 +463,7 @@ class ModCell(dae.daeModel):
             eq.CheckUnitsConsistency = False
 
         # Ending conditions for the simulation
-        if self.profileType in ["CC", "CCsegments"]:
+        if self.profileType in ["CC", "CCsegments", "CV", "CVsegments", "CCCVCPcycle"]:
             # Vmax reached
             self.ON_CONDITION((self.phi_applied() <= config["phimin"])
                               & (self.endCondition() < 1),
@@ -466,6 +473,12 @@ class ModCell(dae.daeModel):
             self.ON_CONDITION((self.phi_applied() >= config["phimax"])
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
+
+            if self.profileType == "CCCVCPcycle":
+                # we need to set the end condition outside for some reason
+                self.ON_CONDITION((self.cycle.cycle_number() >= config["totalCycle"]+1)
+                                  & (self.endCondition() < 1),
+                                  setVariableValues=[(self.endCondition, 3)])
 
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):

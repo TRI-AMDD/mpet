@@ -5,6 +5,8 @@ import matplotlib.animation as manim
 import matplotlib.collections as mcollect
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.integrate as integrate
+from scipy.interpolate import interp1d
 
 import mpet.geometry as geom
 import mpet.mod_cell as mod_cell
@@ -47,6 +49,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     trodes = config["trodes"]
     # Pick out some useful calculated values
     limtrode = config["limtrode"]
+    tot_cycle = config["totalCycle"]
     k = constants.k                      # Boltzmann constant, J/(K Li)
     Tref = constants.T_ref               # Temp, K
     e = constants.e                      # Charge of proton, C
@@ -125,7 +128,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
             currset_dim = config['currset'] * theoretical_1C_current * config['curr_ref']
             print("current:", currset_dim, "A/m^2")
-        else:  # CV
+        elif profileType == "CV":  # CV
             Vref = config['c', 'phiRef']
             if 'a' in config["trodes"]:
                 Vref -= config['a', 'phiRef']
@@ -810,6 +813,196 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             tfrac = (t_current - tmin)/(tmax - tmin) * 100
             ttl.set_text(ttl_fmt.format(perc=tfrac))
             return line1, ttl
+
+    # plot cycling plots
+    if plot_type[0:5] == "cycle":
+        current = utils.get_dict_key(data, pfx + 'current') / td  # gives us C-rates in /s
+        # the capacity we calculate is the apparent capacity from experimental measurement,
+        # not the real capacity of the electrode
+        charge_discharge = utils.get_dict_key(data, pfx + "CCCVCPcycle_charge_discharge")
+        ind_start_disch, ind_end_disch, ind_start_ch, ind_end_ch = \
+            utils.get_negative_sign_change_arrays(charge_discharge)
+        # get segments that indicate 1s for the charge/discharge segments, one for each
+        # charge/discharge in the y axis
+        cycle_numbers = np.arange(1, tot_cycle + 1)  # get cycle numbers on x axis
+        # first figure out the number of cycles
+        # find mass of limiting electrode
+        # get the currents (are multiplied by 0 if it is not the segment we want)
+        currents = cap * current  # A/m^2
+        voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
+        # Q(t) array for the ith cycle for discharge_cap_func[i]
+        discharge_cap_func = np.zeros((tot_cycle, 400))
+        charge_cap_func = np.zeros((tot_cycle, 400))
+        # V(t) array for the ith cycle for discharge_volt[i]
+        discharge_volt = np.zeros((tot_cycle, 400))
+        charge_volt = np.zeros((tot_cycle, 400))
+        # total discharge capacity
+        discharge_capacities = np.zeros(tot_cycle)
+        charge_capacities = np.zeros(tot_cycle)
+        discharge_total_cap = np.zeros((tot_cycle, len(times)))
+        charge_total_cap = np.zeros((tot_cycle, len(times)))
+        # only save discharge_cap_func and discharge_volt up to those values
+        for j in range(tot_cycle):
+            print("hi", ind_start_disch[j], ind_end_disch[j])
+            discharge_cap_temp = integrate.cumtrapz(
+                currents[ind_start_disch[j]:ind_end_disch[j]],
+                times[ind_start_disch[j]:ind_end_disch[j]]*td, initial=0)/3600
+            # get the total one padded with zeros so we can sum
+            discharge_total_cap[j,:] = np.append(np.zeros(ind_start_disch[j]),
+                                                 np.append(discharge_cap_temp, np.zeros(
+                                                     len(currents)-ind_end_disch[j])))
+            # integrate Q = int(I)dt, units in A hr/m^2
+            # Ahr. pad w zero because the first number is always 0
+            dis_volt_temp = voltage[ind_start_disch[j]:ind_end_disch[j]]
+            # only fill the interpolated values
+            discharge_volt[j,:] = np.linspace(dis_volt_temp[0], dis_volt_temp[-1], 400)
+            f = interp1d(dis_volt_temp, discharge_cap_temp, fill_value='extrapolate')
+            discharge_cap_func[j,:] = f(np.linspace(dis_volt_temp[0], dis_volt_temp[-1], 400))
+            discharge_capacities[j] = discharge_cap_func[j,-1] * 1000  # mAh/m^2
+
+        for j in range(tot_cycle):
+            charge_cap_temp = integrate.cumtrapz(
+                currents[ind_start_ch[j]:ind_end_ch[j]],
+                times[ind_start_ch[j]:ind_end_ch[j]]*td, initial=0)/3600
+            # get the total one padded with zeros so we can sum
+            charge_total_cap[j,:] = np.append(np.zeros(ind_start_ch[j]),
+                                              np.append(charge_cap_temp, np.zeros(
+                                                  len(currents)-ind_end_ch[j])))
+            # integrate Q = int(I)dt, units in A hr/m^2
+            # Ahr. pad w zero because the first number is always 0
+            ch_volt_temp = voltage[ind_start_ch[j]:ind_end_ch[j]]
+            # only fill the interpolated values
+            charge_volt[j,:] = np.linspace(ch_volt_temp[0], ch_volt_temp[-1], 400)
+            f = interp1d(ch_volt_temp, charge_cap_temp, fill_value='extrapolate')
+            charge_cap_func[j,:] = f(np.linspace(ch_volt_temp[0], ch_volt_temp[-1], 400))
+            charge_capacities[j] = charge_cap_func[j,-1] * 1000  # mAh/m^2
+
+        # units will be in Ahr/m^2*m^2 = Ah
+        # discharge_voltages and Q store each of the V, Q data. cycle i is stored in row i for
+        # both of these arrays
+        gravimetric_caps_disch = -discharge_capacities/(config["P_L"][limtrode] * (
+            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref']))  # mAh/m^3
+        gravimetric_caps_ch = charge_capacities/(config["P_L"][limtrode] * (
+            1-config["poros"][limtrode]) * (config["L"][limtrode]*config['L_ref']))  # mAh/m^3
+        # discharge_capacities = np.trapz(discharge_currents, times*td) *1000/3600
+        # #mAh/m^2 since int over time
+        # get the total capacites that we output in the data file with padded zeros
+        discharge_total_capacities = np.sum(discharge_total_cap, axis=0)
+        charge_total_capacities = np.sum(charge_total_cap, axis=0)
+
+        # for QV or dQdV plots:
+        # plot all cycles if less than six cycles, otherwise use equal spacing and plot six
+        plot_indexes = 0
+        if tot_cycle > 7:
+            plot_indexes = (np.arange(0, 7)*(tot_cycle-1)/6).astype(int)
+        else:
+            plot_indexes = np.arange(0, tot_cycle)
+
+        if plot_type == "cycle_capacity":  # plots discharge capacity
+            if len(gravimetric_caps_disch) != len(cycle_numbers):
+                # if we weren't able to complete the simulation, we only plot up to the
+                # cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(gravimetric_caps_disch)]
+            if data_only:
+                return cycle_numbers, gravimetric_caps_ch, gravimetric_caps_disch
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, np.round(gravimetric_caps_ch, decimals=2), 'o', label='Charge')
+            ax.plot(
+                cycle_numbers,
+                np.round(
+                    gravimetric_caps_disch,
+                    decimals=2),
+                'o',
+                label='Discharge')
+            ax.legend()
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel(r"Capacity [mAh/$m^3$]")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_capacity.png", bbox_inches="tight")
+            return fig, ax
+        elif plot_type == "cycle_efficiency":
+            # do we need to change this q because molweight changed? should be okay because Nm
+            # still same efficiency = discharge_cap/charge_cap
+            efficiencies = np.abs(np.divide(discharge_capacities, charge_capacities))
+            if len(efficiencies) != len(cycle_numbers):
+                # if we weren't able to complete the simulation, we only plot up to the
+                # cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(efficiencies)]
+            if data_only:
+                return cycle_numbers, efficiencies
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, efficiencies, 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("Cycle Efficiency")
+            ax.set_ylim(0, 1.1)
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_efficiency.png", bbox_inches="tight")
+            return fig, ax
+        elif plot_type == "cycle_cap_frac":
+            discharge_cap_fracs = discharge_capacities/discharge_capacities[0]
+            if len(discharge_cap_fracs) != len(cycle_numbers):
+                # if we weren't able to complete the simulation, we only plot up to the
+                # cycle we were able to calculate
+                cycle_numbers = cycle_numbers[:len(discharge_cap_fracs)]
+            if data_only:
+                return cycle_numbers, discharge_cap_fracs
+            # normalize by the first discharge capacity
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(cycle_numbers, np.round(discharge_cap_fracs, decimals=2), 'o')
+            ax.set_xlabel("Cycle Number")
+            ax.set_ylabel("State of Health")
+            ax.set_ylim(0, 1.1)
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_cycle_cap_frac.png", bbox_inches="tight")
+            return fig, ax
+        elif plot_type == "cycle_Q_V":
+
+            if data_only:
+                return discharge_volt, discharge_cap_func
+
+            fig, ax = plt.subplots(figsize=figsize)
+            for i in plot_indexes:
+                ax.plot(discharge_cap_func[i,:], discharge_volt[i,:])
+            ax.legend(plot_indexes+1)
+            ax.set_xlabel(r'Capacity (A hr/m$^2$)')
+            ax.set_ylabel("Voltage (V)")
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_Q_V.png", bbox_inches="tight")
+            return fig, ax
+
+        elif plot_type == "cycle_dQ_dV":
+            # nondimensionalize dQ and dV by initial discharge cap
+            max_cap = discharge_capacities[0]/1000  # in Ahr/m^2
+            # calculates dQdV along each curve
+            dQ_dV = np.divide(np.diff(discharge_cap_func/max_cap, axis=1),
+                              np.diff(discharge_volt, axis=1))
+            volt = (discharge_volt[:,1:]+discharge_volt[:,:-1])/2
+
+            if data_only:
+                return volt, dQ_dV
+
+            fig, ax = plt.subplots(figsize=figsize)
+            for i in plot_indexes:
+                ax.plot(discharge_volt[i,:], dQ_dV[i,:])
+            ax.legend(plot_indexes+1)
+            ax.set_xlabel("Voltage (V)")
+            ax.set_ylabel('d%Q/dV (%/V))')
+            ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            if save_flag:
+                fig.savefig("mpet_dQ_dV.png", bbox_inches="tight")
+            return fig, ax
+
+        elif plot_type == "cycle_data":
+            discharge_energies = discharge_total_capacities*voltage
+            charge_energies = charge_total_capacities*voltage
+            if data_only:
+                return discharge_total_capacities, charge_total_capacities, discharge_energies, \
+                    charge_energies
+            return
 
     else:
         raise Exception("Unexpected plot type argument. See README.md.")
