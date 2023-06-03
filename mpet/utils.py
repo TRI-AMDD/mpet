@@ -200,3 +200,28 @@ def import_function(filename, function, mpet_module=None):
     callable_function = getattr(module, function)
 
     return callable_function
+
+
+def pulse_segments(self):
+    time = 0
+    pulseStart = []
+    pulseEnd = []
+    for k in range(len(self.config["segments"])):
+        # add all the segment times
+        # if we are doing a voltage pulse or if the pulseime si equal to a certail value
+        if self.config["segments"][k][6] == 1:
+            pulseStart.append(time)
+            # do a multiple so we can get some relaxation time too
+            pulseEnd.append(time + self.config["segments"][k][4])
+        time = time + self.config["segments"][k][4] # add the time
+    return pulseStart, pulseEnd
+
+
+def next_pulse(pulseStart, pulseEnd, oldTime, nextTime):
+    pulseStart = np.array(pulseStart)
+    pulseEnd = np.array(pulseEnd)
+    inds_start = np.logical_and(pulseStart < nextTime, pulseStart > oldTime)
+    inds_end = np.logical_and(pulseEnd < nextTime, pulseEnd > oldTime)
+    nextPulseStart = pulseStart[inds_start]
+    nextPulseEnd = pulseEnd[inds_end]
+    return nextPulseStart, nextPulseEnd

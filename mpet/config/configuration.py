@@ -602,7 +602,7 @@ class Config:
                                          self["segments"][i][6]))
                     # elif just incrementing step
                     elif self["segments"][i][5] == 0:
-                        segments.append((0, None, None, None, None, 0, 0))
+                        segments.append((0, None, None, None, 0, 0, 0))
 
             else:
                 # just a simple cycler
@@ -657,7 +657,7 @@ class Config:
                                          crate_cut, time_cut, self["segments"][i][5]))
                     # elif just incrementing step
                     elif self["segments"][i][5] == 0:
-                        segments.append((0, None, None, None, None, 0))
+                        segments.append((0, None, None, None, 0, 0))
 
         # Current or voltage segments profiles
         segments_tvec = np.zeros(2 * self['numsegments'] + 1)
@@ -742,6 +742,8 @@ class Config:
                     mu = np.log((mean**2) / np.sqrt(var + mean**2))
                     sigma = np.sqrt(np.log(var/(mean**2) + 1))
                     raw = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+                    print(trode, raw)
+                    np.savetxt(trode + '_psd.txt', raw)
             else:
                 # use user-defined PSD
                 raw = self['specified_psd'][trode]
@@ -830,7 +832,6 @@ class Config:
 
             # reference scales per trode
             cs_ref_part = constants.N_A * self[trode, 'cs_ref']  # part/m^3
-
             # calculate the values for each particle in each volume
             for i in range(Nvol):
                 for j in range(Npart):
@@ -838,8 +839,11 @@ class Config:
                     self[trode, 'indvPart']['N'][i, j] = self['psd_num'][trode][i,j]
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
+                    # store PSD area for plating, SEI
+                    self[trode, 'indvPart']['psd_area'][i, j] = parea
                     pvol = self['psd_vol'][trode][i,j]
                     # Define a few reference scales
+                    print(plen, "plen value", self['t_ref'], "t_ref")
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
                     i_s_ref = constants.e * F_s_ref  # A/m^2
                     kappa_ref = constants.k * constants.T_ref * cs_ref_part * plen**2  # J/m
@@ -854,12 +858,18 @@ class Config:
                     self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
+                    print("trode", trode, "k0", self[trode, 'k0'], "ref", constants.e * cs_ref_part / self['t_ref'])
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                         / (constants.e * F_s_ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
                         / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    self[trode, 'indvPart']['R_f_0'][i, j] = self[trode, 'R_f_0'] \
+                        / (constants.k * constants.T_ref / (constants.e * i_s_ref))
+                    F_s_ref = 1e-7 * cs_ref_part / self['t_ref']  # part/(m^2 s)
+                    i_s_ref = constants.e * F_s_ref  # A/m^2 
+                    print("R0bar", (constants.k * constants.T_ref / (constants.e * i_s_ref)))
                     self[trode, 'indvPart']['delta_L'][i, j] = (parea * plen) / pvol
                     # If we're using the model that varies Omg_a with particle size,
                     # overwrite its value for each particle
@@ -868,6 +878,16 @@ class Config:
                     else:
                         # just use global value
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
+
+                    # store the lithium plating parameters
+                    self[trode, 'indvPart']['k0_c_tilde'][i, j] = self[trode, 'k0_c_tilde'] \
+                        / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['k0_R_f'][i, j] = self[trode, 'k0_R_f'] \
+                        / (constants.e * F_s_ref)
+                    self[trode, 'indvPart']['k0_c_lyte'][i, j] = self[trode, 'k0_c_lyte'] \
+                        / constants.c_ref
+                    self[trode, 'indvPart']['beta_deg'][i, j] = self[trode, 'beta_deg'] \
+                        / (constants.e * F_s_ref)
 
         # store which items are defined per particle, so in the future they are retrieved
         # per particle instead of from the values per electrode

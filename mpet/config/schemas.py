@@ -21,7 +21,7 @@ def parse_segments(key):
     assert isinstance(segments, list), "segments must be a list"
     assert len(segments) > 0, "There must be at least one segment"
     for item in segments:
-        assert (len(item) == 6) or (len(item) == 2), \
+        assert (len(item) == 6) or (len(item) == 7) or (len(item) == 2), \
             "Each segment must be a tuple of (setpoint, time)"
     return segments
 
@@ -160,7 +160,15 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            Optional('E_A', default=0.): Use(float),
                            'alpha': Use(float),
                            Optional('lambda', default=None): Use(float),
-                           'Rfilm': Use(float)}}
+                           'Rfilm': Use(float)},
+             'Degradation': {Optional('degradation', default=False): Use(tobool),
+                             Optional('muRdeg', default='simple_degradation'): str,
+                             Optional('c_tilde_0', default='1'): Use(float),
+                             Optional('R_f_0', default='0'): Use(float),
+                             Optional('k0_c_tilde', default=1e-4): Use(float),
+                             Optional('k0_R_f', default=1e-4): Use(float),
+                             Optional('k0_c_lyte', default=1e-4): Use(float),
+                             Optional('beta_deg', default=1): Use(float)}}
 
 
 # convert the dictionaries to actual schemas

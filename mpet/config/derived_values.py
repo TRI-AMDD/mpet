@@ -141,6 +141,7 @@ class DerivedValues:
     def t_ref(self):
         """Reference time scale
         """
+        print('tref', self.config['L_ref']**2 / self.config['D_ref'])
         return self.config['L_ref']**2 / self.config['D_ref']
 
     def curr_ref(self):

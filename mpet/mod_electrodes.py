@@ -16,6 +16,7 @@ import numpy as np
 import scipy.sparse as sprs
 import scipy.interpolate as sintrp
 
+import mpet.mod_degradation as mod_degradation
 import mpet.geometry as geo
 import mpet.ports as ports
 import mpet.props_am as props_am
@@ -76,6 +77,25 @@ class Mod2var(dae.daeModel):
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
+        #  Create ports with degradation model
+        #  export c_lyte, phi_lyte, phi_m into degradation models
+        self.portsOutPart = ports.portFromPart("portFromPart", dae.eOutletPort,
+                                               self, "Electrolyte port to particles")
+
+        if config[trode, "degradation"]:
+            # set the different models
+            if config[trode, "muRdeg"] == "simple_degradation":
+                pdegradationMod = mod_degradation.simple_degradation
+            else:
+                raise NotImplementedError("unknown degradation model")
+        else:
+            # sets degradation to 0
+            pdeggradationMod = mod_degradation.no_degradation
+
+        self.particles_degradation = pdegradationMod(
+            config, trode, vInd, pInd, Name="degradation", Parent=self)
+        self.ConnectPorts(self.portsOutPart, self.particles_degradation.portInPart)
+
     def get_trode_param(self, item):
         """
         Shorthand to retrieve electrode-specific value
@@ -91,6 +111,14 @@ class Mod2var(dae.daeModel):
         N = self.get_trode_param("N")  # number of grid points in particle
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
+
+        # Define port variables to degradation
+        eq = self.CreateEquation("portPartout_phi_lyte")
+        eq.Residual = self.phi_lyte() - self.portsOutPart.phi_lyte()
+        eq = self.CreateEquation("portPartout_phi_m")
+        eq.Residual = self.phi_m() - self.portsOutPart.phi_m()
+        eq = self.CreateEquation("portPartout_c_lyte")
+        eq.Residual = self.c_lyte() - self.portsOutPart.c_lyte()
 
         # Prepare noise
         self.noise1 = self.noise2 = None
@@ -287,6 +315,8 @@ class Mod1var(dae.daeModel):
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
         if config[trode, "type"] not in ["ACR"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
+            self.Rxn_og = dae.daeVariable("Rxn_og", dae.no_t, self, "Rate of reaction")
+            self.eta = dae.daeVariable("eta", dae.no_t, self, "eta")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
 
@@ -307,6 +337,25 @@ class Mod1var(dae.daeModel):
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
 
+        #  Create ports with degradation model
+        #  export c_lyte, phi_lyte, phi_m into degradation models
+        self.portsOutPart = ports.portFromPart("portFromPart", dae.eOutletPort,
+                                               self, "Electrolyte port to particles")
+
+        if config[trode, "degradation"]:
+            # set the different models
+            if config[trode, "muRdeg"] == "simple_degradation":
+                pdegradationMod = mod_degradation.simple_degradation
+            else:
+                raise NotImplementedError("unknown degradation model")
+        else:
+            # sets degradation to 0
+            pdegradationMod = mod_degradation.no_degradation
+
+        self.particles_degradation = pdegradationMod(
+            config, trode, vInd, pInd, Name="degradation", Parent=self)
+        self.ConnectPorts(self.portsOutPart, self.particles_degradation.portInPart)
+
     def get_trode_param(self, item):
         """
         Shorthand to retrieve electrode-specific value
@@ -323,6 +372,14 @@ class Mod1var(dae.daeModel):
         T = self.config["T"]  # nondimensional temperature
         r_vec, volfrac_vec = geo.get_unit_solid_discr(self.get_trode_param('shape'), N)
 
+        # Define port variables to degradation
+        eq = self.CreateEquation("portPartout_phi_lyte")
+        eq.Residual = self.phi_lyte() - self.portsOutPart.phi_lyte()
+        eq = self.CreateEquation("portPartout_phi_m")
+        eq.Residual = self.phi_m() - self.portsOutPart.phi_m()
+        eq = self.CreateEquation("portPartout_c_lyte")
+        eq.Residual = self.c_lyte() - self.portsOutPart.c_lyte()
+
         # Prepare noise
         self.noise = None
         if self.get_trode_param("noise"):
@@ -334,7 +391,7 @@ class Mod1var(dae.daeModel):
                                          bounds_error=False, fill_value=0.)
 
         # Figure out mu_O, mu of the oxidized state
-        mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
+        mu_O, act_lyte, mu_O_og = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
                                    self.config["elyteModelType"])
 
         # Define average filling fraction in particle
@@ -353,7 +410,7 @@ class Mod1var(dae.daeModel):
         c[:] = [self.c(k) for k in range(N)]
         if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
-            self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.noise)
+            self.sld_dynamics_1D1var(c, mu_O, mu_O_og, act_lyte, self.noise)
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
             # Equations for 0D particles of 1 field variables
             self.sld_dynamics_0D1var(c, mu_O, act_lyte, self.noise)
@@ -367,20 +424,28 @@ class Mod1var(dae.daeModel):
         muR_surf, actR_surf = calc_muR(c_surf, self.cbar(), self.config,
                                        self.trode, self.ind)
         eta = calc_eta(muR_surf, muO)
-        eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+        eta_eff = eta + self.Rxn()*(self.get_trode_param("Rfilm") + self.particles_degradation.R_f())
         if self.get_trode_param("noise"):
             eta_eff += noise[0]()
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+            eta_eff,
+            self.particles_degradation.c_tilde(),
+            c_surf,
+            self.c_lyte(),
+            self.get_trode_param("k0"),
+            self.get_trode_param("E_A"),
+            T,
+            actR_surf,
+            act_lyte,
+            self.get_trode_param("lambda"),
+            self.get_trode_param("alpha"))
         eq = self.CreateEquation("Rxn")
         eq.Residual = self.Rxn() - Rxn[0]
 
         eq = self.CreateEquation("dcsdt")
         eq.Residual = self.c.dt(0) - self.get_trode_param("delta_L")*self.Rxn()
 
-    def sld_dynamics_1D1var(self, c, muO, act_lyte, noise):
+    def sld_dynamics_1D1var(self, c, muO, muOog, act_lyte, noise):
         N = self.get_trode_param("N")
         T = self.config["T"]
         # Equations for concentration evolution
@@ -402,15 +467,39 @@ class Mod1var(dae.daeModel):
             else:
                 actR_surf = actR[-1]
         eta = calc_eta(muR_surf, muO)
+        eta_OG = calc_eta(muR_surf, muOog) + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("type") in ["ACR"]:
-            eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
-                                for i in range(N)])
+            eta_eff = np.array([eta[i]
+                                + self.Rxn(i)
+                                * (self.get_trode_param("Rfilm") +
+                                   self.particles_degradation.R_f()) for i in range(N)])
         else:
-            eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+            eta_eff = eta + self.Rxn()*(self.get_trode_param("Rfilm") + self.particles_degradation.R_f())
+        eq = self.CreateEquation("eta")
+        eq.Residual = self.eta() - (eta_eff)
         Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+            eta_eff,
+            self.particles_degradation.c_tilde(),
+            c_surf,
+            self.c_lyte(),
+            self.get_trode_param("k0"),
+            self.get_trode_param("E_A"),
+            T,
+            actR_surf,
+            act_lyte,
+            self.get_trode_param("lambda"),
+            self.get_trode_param("alpha"))
+        Rxn_og = self.calc_rxn_rate(
+            eta_OG, 1,
+            c_surf, 1,
+            self.get_trode_param("k0"),
+            self.get_trode_param("E_A"),
+            T,
+            actR_surf,
+            1,
+            self.get_trode_param("lambda"),
+            self.get_trode_param("alpha"))
+ 
         if self.get_trode_param("type") in ["ACR"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
@@ -418,6 +507,8 @@ class Mod1var(dae.daeModel):
         else:
             eq = self.CreateEquation("Rxn")
             eq.Residual = self.Rxn() - Rxn
+            eq = self.CreateEquation("Rxn_og")
+            eq.Residual = self.Rxn_og() - Rxn_og
 
         # Get solid particle fluxes (if any) and RHS
         if self.get_trode_param("type") in ["ACR"]:
@@ -526,13 +617,19 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
 
 def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     if elyteModelType == "SM":
+        act_lyte= np.exp((601*np.log(c_lyte**(1/2)))/310 - (24*c_lyte**(1/2))/31 + (100164*c_lyte**(3/2))/96875 - 0.2598)
+        # this is only valid for valeon bernardi
+        #act_lyte = c_lyte
+        mu_lyte_og = phi_lyte
         mu_lyte = phi_lyte
-        act_lyte = c_lyte
+       # mu_lyte = phi_lyte + T*log_act_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
+        mu_lyte_og = phi_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
     mu_O = mu_lyte - phi_sld
-    return mu_O, act_lyte
+    mu_O_og = mu_lyte_og - phi_sld
+    return mu_O, act_lyte, mu_O_og
 
 
 def calc_muR(c, cbar, config, trode, ind):

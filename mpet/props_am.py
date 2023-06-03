@@ -23,6 +23,7 @@ class muRfuncs():
         muR -- chemical potential
         actR -- activity (if applicable, else None)
     """
+
     def __init__(self, config, trode, ind=None):
         """config is the full dictionary of
         parameters for the electrode particles, as made for the
@@ -47,6 +48,18 @@ class muRfuncs():
                                       mpet_module=f"mpet.electrode.materials.{muRfunc_name}")
         else:
             muRfunc = import_function(filename, muRfunc_name)
+
+        # If the user provided a filename with muRfuncs, try to load
+        # the function from there, otherwise load it from this class
+        muRfunc_name = "NMC532_c_tilde"
+        muR_func_c_tilde = import_function(None, muRfunc_name,
+                                           mpet_module=f"mpet.electrode.materials.{muRfunc_name}")
+        self.muR_func_c_tilde = types.MethodType(muR_func_c_tilde, self)
+
+        muRfunc_name = "NMC532_R_f"
+        muR_func_R_f = import_function(None, muRfunc_name,
+                                       mpet_module=f"mpet.electrode.materials.{muRfunc_name}")
+        self.muR_func_R_f = types.MethodType(muR_func_R_f, self)
 
         # We have to make sure the function knows what 'self' is with
         # the types.MethodType function

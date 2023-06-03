@@ -87,6 +87,9 @@ class SimMPET(dae.daeSimulation):
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
+                            part.particles_degradation.R_f.SetInitialCondition(config[tr, "R_f_0"][0,0])
+                            part.particles_degradation.c_tilde.SetInitialCondition(
+                                config[tr, "c_tilde_0"])
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -174,6 +177,10 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
+
+                            part.particles_degradation.c_tilde.SetInitialCondition(1)
+                            part.particles_degradation.R_f.SetInitialCondition(0)
+
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))
@@ -254,7 +261,60 @@ class SimMPET(dae.daeSimulation):
         terminates when the specified condition is satisfied.
         """
         tScale = self.tScale
+
+        # get pulse data
+        pulseStart, pulseEnd = utils.pulse_segments(self)
+
+        time = 0
+
+        #save data every N steps
+        N = 10
+
         for nextTime in self.ReportingTimes:
+
+            nextPulseStart, nextPulseEnd = utils.next_pulse(pulseStart, pulseEnd, time, nextTime)
+
+            if len(nextPulseStart) > len(nextPulseEnd):
+                # if we don't end in an array, then we should add something to nextPulseEnd
+                nextPulseEnd = np.append(nextPulseEnd, nextTime)
+            elif len(nextPulseStart) < len(nextPulseEnd):
+                # then we should start at a certain time
+                nextPulseStart = np.append(nextPulseStart, self.CurrentTime)
+            
+            for j in range(len(nextPulseStart)):
+                # Print logging information
+                progressStr = "{0} {1}".format(self.Log.PercentageDone,self.Log.ETA)
+                message = "Integrating from {t0:.2f} to {t1:.2f} s ...".format(
+                    t0=self.CurrentTime*tScale, t1=nextPulseStart[j]*tScale)
+                sys.stdout.write(f"\r{progressStr[:-1]} {message}")
+                sys.stdout.flush()
+    
+                # Integrate the equations
+                self.Reinitialize()
+                #time = self.IntegrateUntilTime(nextPulseStart[j], dae.eStopAtModelDiscontinuity, True)
+                time = self.IntegrateUntilTime(nextPulseStart[j], dae.eDoNotStopAtDiscontinuity, True)
+                self.ReportData(self.CurrentTime)
+                self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
+
+                # get the pulse data
+
+                N_counter = 0
+
+                for j in range(len(nextPulseStart)):
+                    while time < nextPulseEnd[j]:
+                        self.Reinitialize()
+                        time = self.IntegrateForOneStep(dae.eStopAtModelDiscontinuity, True)
+                        if not np.mod(N_counter, N):
+                            progressStr = "{0} {1}".format(self.Log.PercentageDone,self.Log.ETA)
+                            message = "Integrating one step to {t0:.2f} s ...".format(
+                                t0=self.CurrentTime*tScale)
+                            sys.stdout.write(f"\r{progressStr[:-1]} {message}")
+                            sys.stdout.flush()
+
+                            self.ReportData(self.CurrentTime)
+                            self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
+
+                        N_counter += 1
 
             # Print logging information
             progressStr = "{0} {1}".format(self.Log.PercentageDone,self.Log.ETA)
@@ -264,12 +324,16 @@ class SimMPET(dae.daeSimulation):
             sys.stdout.flush()
 
             # Integrate the equations
-            self.IntegrateUntilTime(nextTime, dae.eStopAtModelDiscontinuity, True)
+            self.Reinitialize()
+            time = self.IntegrateUntilTime(nextTime, dae.eDoNotStopAtDiscontinuity, True)
             self.ReportData(self.CurrentTime)
             self.Log.SetProgress(int(100. * self.CurrentTime/self.TimeHorizon))
+
 
             # Break when an end condition has been met
             if self.m.endCondition.npyValues:
                 description = mod_cell.endConditions[int(self.m.endCondition.npyValues)]
                 sys.stdout.write("\nEnding condition: " + description)
                 break
+
+

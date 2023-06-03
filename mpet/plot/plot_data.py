@@ -49,7 +49,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
     trodes = config["trodes"]
     # Pick out some useful calculated values
     limtrode = config["limtrode"]
-    tot_cycle = config["totalCycle"]
+  #  tot_cycle = config["totalCycle"]
+    tot_cycle = 1
     k = constants.k                      # Boltzmann constant, J/(K Li)
     Tref = constants.T_ref               # Temp, K
     e = constants.e                      # Charge of proton, C
@@ -139,6 +140,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         print("Specified psd_stddev, c [{unit}]:".format(unit=Lunit),
               np.array(config['stddev']["c"])*Lfac)
         print("ndim B_c:", config["c", "B"])
+        theoretical_1C_current = config[config['limtrode'], 'cap'] / 3600.
+        print("refcurr", (theoretical_1C_current * config['curr_ref']))
         if config["have_separator"]:
             print("Nvol_s:", Nvol["s"])
         print("Nvol_c:", Nvol["c"])
@@ -190,6 +193,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # Plot voltage profile
     if plot_type in ["v", "vt"]:
+        print(Vstd)
         voltage = (Vstd
                    - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))
         ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
