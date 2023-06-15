@@ -88,7 +88,7 @@ def get_dxvec(L, Nvol):
         dxa = Nvol["a"] * [L["a"]/Nvol["a"]]
     else:
         dxa = []
-    if "s" in Nvol:
+    if Nvol["s"]:
         dxs = Nvol["s"] * [L["s"]/Nvol["s"]]
     else:
         dxs = []

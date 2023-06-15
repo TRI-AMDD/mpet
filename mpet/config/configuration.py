@@ -140,10 +140,6 @@ class Config:
         if self.D_s['Nvol_a'] > 0:
             trodes.append('a')
         self['trodes'] = trodes
-        # to check for separator, directly access underlying dict of system config;
-        # self['Nvol']['s'] would not work because that requires have_separator to
-        # be defined already
-        self['have_separator'] = self.D_s['Nvol_s'] > 0
 
         # load electrode parameter file(s)
         self.paramfiles = {}
@@ -506,7 +502,7 @@ class Config:
                     self[trode, param] = value / kT
 
         # scalings on separator
-        if self['have_separator']:
+        if self['Nvol']['s']:
             self['L']['s'] /= self['L_ref']
 
     def _scale_macroscopic_parameters(self, Vref):
