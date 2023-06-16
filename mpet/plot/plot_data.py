@@ -303,7 +303,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
 
-    if plot_type == "power":
+    elif plot_type == "power":
         current = utils.get_dict_key(data, pfx + 'current') * (3600/td) * (cap/3600)  # in A/m^2
         voltage = (Vstd - (k*Tref/e)*utils.get_dict_key(data, pfx + 'phi_applied'))  # in V
         power = np.multiply(current, voltage)
@@ -815,7 +815,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return line1, ttl
 
     # plot cycling plots
-    if plot_type[0:5] == "cycle":
+    elif plot_type[0:5] == "cycle":
         current = utils.get_dict_key(data, pfx + 'current') / td  # gives us C-rates in /s
         # the capacity we calculate is the apparent capacity from experimental measurement,
         # not the real capacity of the electrode
