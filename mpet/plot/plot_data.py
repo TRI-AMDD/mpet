@@ -39,19 +39,6 @@ plotTypes = {
     'text': 'convert the output to plain text (csv)'
 }
 
-"""Set list of matplotlib rc parameters to make more readable plots."""
-# axtickfsize = 18
-# labelfsize = 20
-# mpl.rcParams['xtick.labelsize'] = axtickfsize
-# mpl.rcParams['ytick.labelsize'] = axtickfsize
-# mpl.rcParams['axes.labelsize'] = labelfsize
-# mpl.rcParams['font.size'] = labelfsize - 2
-# mpl.rcParams['legend.fontsize'] = labelfsize - 2
-# mpl.rcParams['lines.linewidth'] = 3
-# mpl.rcParams['lines.markersize'] = 10
-# mpl.rcParams['lines.markeredgewidth'] = 0.1
-# mpl.rcParams['text.usetex'] = True
-
 
 def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
@@ -291,33 +278,6 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         ax.set_ylabel("Filling Fraciton [dimless]")
         if save_flag:
             fig.savefig("mpet_soc.pdf", bbox_inches="tight")
-        return fig, ax
-
-    # Check to make sure mass is conserved in elyte
-    if plot_type == "elytecons":
-        fig, ax = plt.subplots(figsize=figsize)
-        eps = 1e-2
-        ymin = 1-eps
-        ymax = 1+eps
-#        ax.set_ylim((ymin, ymax))
-        ax.set_ylabel('Avg. Concentration of electrolyte [nondim]')
-        sep = pfx + 'c_lyte_s'
-        anode = pfx + 'c_lyte_a'
-        cath = pfx + 'c_lyte_c'
-        ax.set_xlabel('Time [s]')
-        cvec = utils.get_dict_key(data, cath)
-        if Nvol["s"]:
-            cvec_s = utils.get_dict_key(data, sep)
-            cvec = np.hstack((cvec_s, cvec))
-        if "a" in trodes:
-            cvec_a = utils.get_dict_key(data, anode)
-            cvec = np.hstack((cvec_a, cvec))
-        cavg = np.sum(porosvec*dxvec*cvec, axis=1)/np.sum(porosvec*dxvec)
-        if data_only:
-            plt.close(fig)
-            return times*td, cavg
-        np.set_printoptions(precision=8)
-        ax.plot(times*td, cavg)
         return fig, ax
 
     # Plot current profile
@@ -721,34 +681,21 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                             np.squeeze(utils.get_dict_key(data, dataStr))[tInd])
         if data_only:
             return dataCbar
-        # Set up colors.
-        # Define if you want smooth or discrete color changes
-        # Option: "smooth" or "discrete"
-        color_changes = "discrete"
-#        color_changes = "smooth"
-        # Discrete color changes:
-        if color_changes == "discrete":
-            # Make a discrete colormap that goes from green to yellow
-            # to red instantaneously
-            cdict = {
-                "red": [(0.0, 0.0, 0.0),
-                        (to_yellow, 0.0, 1.0),
-                        (1.0, 1.0, 1.0)],
-                "green": [(0.0, 0.502, 0.502),
-                          (to_yellow, 0.502, 1.0),
-                          (to_red, 1.0, 0.0),
-                          (1.0, 0.0, 0.0)],
-                "blue": [(0.0, 0.0, 0.0),
-                         (1.0, 0.0, 0.0)]
-                }
-            cmap = mpl.colors.LinearSegmentedColormap(
-                "discrete", cdict)
-        # Smooth colormap changes:
-        if color_changes == "smooth":
-            # generated with colormap.org
-            cmaps = np.load("colormaps_custom.npz")
-            cmap_data = cmaps["GnYlRd_3"]
-            cmap = mpl.colors.ListedColormap(cmap_data/255.)
+
+        # Make a discrete colormap that goes from green to yellow
+        # to red instantaneously
+        cdict = {
+            "red": [(0.0, 0.0, 0.0),
+                    (to_yellow, 0.0, 1.0),
+                    (1.0, 1.0, 1.0)],
+            "green": [(0.0, 0.502, 0.502),
+                      (to_yellow, 0.502, 1.0),
+                      (to_red, 1.0, 0.0),
+                      (1.0, 0.0, 0.0)],
+            "blue": [(0.0, 0.0, 0.0),
+                     (1.0, 0.0, 0.0)]
+            }
+        cmap = mpl.colors.LinearSegmentedColormap("discrete", cdict)
 
         size_frac_min = 0.10
         fig, axs = plt.subplots(1, len(trvec), squeeze=False, figsize=figsize)
