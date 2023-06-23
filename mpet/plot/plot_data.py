@@ -23,6 +23,8 @@ plotTypes = {
     'elytepf': 'electroloyte potential final snapshot',
     'elytei': 'electrolyte current density (movie)',
     'elyteif': 'electrolyte current density final snapshot',
+    'elytedivi': 'Divergence of electrolyte current density (movie)',
+    'elytedivif': 'Divergence of electrolyte current density final snapshot',
     'surf_c': 'cathode surface concentrations',
     'surf_a': 'anode surface concentrations',
     'soc_c': 'cathode state of charge',
