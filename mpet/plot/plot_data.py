@@ -424,7 +424,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return line1, ttl
 
     # Plot solid particle-average concentrations
-    elif plot_type[:-2] in ["cbarLine", "dcbardtLine"]:
+    elif plot_type[:-2] in ["cbarLine"]:
         trode = plot_type[-1]
         if trode not in trodes:
             raise NotImplementedError(f"Electrode '{trode}' is required for {plot_type}!")
@@ -434,18 +434,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         partStr = "partTrode{trode}vol{{vInd}}part{{pInd}}".format(trode=trode) + sStr
         type2c = False
         if config[trode, "type"] in constants.one_var_types:
-            if plot_type[:-2] in ["cbarLine"]:
-                str_base = pfx + partStr + "cbar"
-            elif plot_type[:-2] in ["dcbardtLine"]:
-                str_base = pfx + partStr + "dcbardt"
+            str_base = pfx + partStr + "cbar"
         elif config[trode, "type"] in constants.two_var_types:
             type2c = True
-            if plot_type[:-2] in ["cbarLine"]:
-                str1_base = pfx + partStr + "c1bar"
-                str2_base = pfx + partStr + "c2bar"
-            elif plot_type[:-2] in ["dcbardtLine"]:
-                str1_base = pfx + partStr + "dc1bardt"
-                str2_base = pfx + partStr + "dc2bardt"
+            str1_base = pfx + partStr + "c1bar"
+            str2_base = pfx + partStr + "c2bar"
         ylim = (0, 1.01)
         datax = times*td
         if data_only:
