@@ -43,12 +43,6 @@ def run_simulation(config, outdir):
             for port in pModel.Ports:
                 for var in port.Variables:
                     var.ReportingOn = False
-        if config[f"simInterface_{trode}"]:
-            for interfaces in simulation.m.interfaces[trode]:
-                for iModel in interfaces:
-                    for port in iModel.Ports:
-                        for var in port.Variables:
-                            var.ReportingOn = False
 
     # Turn off reporting of cell ports
     for port in simulation.m.Ports:
