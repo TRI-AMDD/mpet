@@ -124,3 +124,6 @@ if __name__ == '__main__':
     run_mpet(client, output_folder, os.path.abspath(main_settings['mpet_configs']))
 
     client.shutdown()
+    client.close()
+    cluster.close()
+    cluster.shutdown()
