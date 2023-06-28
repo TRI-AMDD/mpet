@@ -34,13 +34,15 @@ def run_params_mpet(config_file, material_file, system_properties, material_prop
     cfg_sys.optionxform = str
     cfg_sys.read(config_file)
     combinations_system = list(itertools.product(*val_system))
+    num_sys = len(combinations_system)
 
     keys_mat, val_mat = ensemble_definitions(material_properties)
     cfg_mat = configparser.ConfigParser()
     cfg_mat.optionxform = str
     cfg_mat.read(material_file)
     combinations_material = list(itertools.product(*val_mat))
-
+    num_mat = len(combinations_material)
+    ind = 0
     for comb_mat in combinations_material:
         param_mat = dict(zip(keys_mat, comb_mat))
         new_mat = cfg_mat
@@ -51,6 +53,7 @@ def run_params_mpet(config_file, material_file, system_properties, material_prop
             nicename_mat.append(key[1] + "=" + val)
         with open(material_file, "w") as f:
             new_mat.write(f)
+
         for combin_sys in combinations_system:
             params_sys = dict(zip(keys_system, combin_sys))
             new_sys = cfg_sys
@@ -83,61 +86,74 @@ def run_params_mpet(config_file, material_file, system_properties, material_prop
             os.rename(last_folder, os.path.join(cwd, output_folder, new_folder_name))
             os.chdir(cwd)
             os.chdir(r".\configs")
+            ind += 1
+            print("Simulation " + str(ind) + " of " + str(num_mat*num_sys) + " completed")
 
-# NMC study
+
 # system_properties = [
-#         [("Conductivity", "sigma_s_c"), ["0.06","0.05", "0.04"]],
-#         [("Sim Params","Crate"), ["-0.206"]],
-#         [("Electrodes", "Rfilm_foil"), ["0"]],
-#         [("Electrodes", "k0_foil"), ["4","3","2"]],
+#         # [("Conductivity","G_mean_c"), ["0.5e-10"]],
+#         # [("Conductivity","sigma_s_c"), ["1"]],
+#         # [("Electrodes", "k0_foil"), ["20"]],
+#         # [("Sim Params","Crate"), ["-5","-3"]],
+#         # [("Particles","mean_c"), ["20e-9","50e-9","100e-9","300e-9"]],
+#         # [("Particles","stddev_c"), ["35e-9"]],
+#         # [("Geometry","BruggExp_c"), ["-1.85"]],
+#         [("Sim Params","segments"), [
+#                                     #  "[(-0.2,135), (0,60), (-3,10)]",
+#                                      "[(-1,27), (0,60), (-3,10)]",
+#                                     #  "[(-3,9), (0,60), (-3,10)]",
+#                                     #  "[(-5,5.4), (0,60), (-3,10)]", 
+#                                      ]],
 #                 ]
-
+ 
 # material_properties = [
-#     [("Reactions", 'k0'), ["25","20","15"]],
+#         # [("Reactions", 'k0'), ["30"]],
+#         # [("Material", 'dgammadc'), ["0e-29"]],
+#         # [("Material", 'kappa'), ["2.5148e-10"]],
+#         # [("Material", 'D'), ["3.49e-15"]],
+#         # [("Material", 'muRfunc'), ["LiFePO4_meta"]],
+#         # [("Material", 'noise'), ["false"]],
+#         # [("Material", 'noise_prefac'), ["1e-3"]],
+#         # [("Material", 'size_dep_D'), ["true"]],
+#         [("Material", 'B'), ["0.001e9"]],
 #                 ]
-
-# output_folder = "NMC_thick_conv_8032522"
-# config_file = 'params_system_NMC_Mark.cfg'
-# material_file = 'params_NMC_Chen2020.cfg'
-
-# LFP study
-# diffusion more or less 1e-15
-# k0 between 40 and 70
-# sigma_c at least 0.05, small influence
-# system_properties = [
-#         [("Sim Params","segments"), ["[(-1,60)]","[(-3,20)]"]],
-#         [("Conductivity","sigma_s_c"), ["0.1","0.075", "0.05"]],
-#                 ]
-
-# material_properties = [
-#     [("Reactions", 'k0'), ["40", "50", "70"]],
-#     [("Material", 'D'), ["2e-15","0.5e-15", "1e-15", "3e-15"]],
-#                 ]
-
-# output_folder = "LFP_test_more_precise"
-# config_file = 'params_system_LFP_test.cfg'
-# material_file = 'params_LFP_CHR.cfg'
-# k0_foil is  14
-# k0 is 50
-# sigma_s_c = 0.1
-# polarization curve
-
+ 
+# output_folder = "LFP_memory_best3C_1C"
+# config_file = 'params_system_LFP_memory.cfg'
+# material_file = 'params_LFP_CHR_memory.cfg'
 
 system_properties = [
-        # [("Conductivity","sigma_s_c"), ["0.1"]],
-        [("Electrodes", "k0_foil"), ["15"]],
-        [("Sim Params","segments"), ["[(-1,60)]"]],
+        [("Conductivity","G_mean_c"), ["10e-12"]],
+        # [("Conductivity","G_stddev_c", ["2e-13"]],
+        # [("Conductivity","sigma_s_c"), ["2"]],
+        # [("Electrodes", "k0_foil"), ["20"]],
+        # [("Sim Params","Crate"), ["-3"]],
+        # [("Particles","mean_c"), ["40e-9"]],
+        # [("Particles","stddev_c"), ["50e-9"]],
+        [("Geometry","BruggExp_c"), ["-2.5"]],
+        [("Sim Params","segments"), [
+                                     "[(-5,5.4),(0,60),(-3,10)]", 
+                                    #  "[(-3,9),(0,60),(-3,10)]",
+                                    #  "[(-0.2,135),(0,60),(-3,10)]",
+                                     ]],
                 ]
-
+ 
 material_properties = [
-        # [("Reactions", 'k0'), ["25"]],
-        # [("Material", 'kappa'), ["20.0148e-10", "5.0148e-10"]],
-        [("Material", 'D'), ["5e-14"]],
+        [("Reactions", 'k0'), ["5"]], 
+        # [("Material", 'dgammadc'), ["0e-29"]],
+        # [("Material", 'kappa'), ["5e-10"]],
+        [("Material", 'D_surf'), ["1e-18"]],
+        # [("Material", 'muRfunc'), ["LiFePO4_meta"]],
+        # [("Material", 'noise'), ["false"]],
+        # [("Material", 'noise_prefac'), ["1e-3"]],
+        # [("Material", 'size_dep_D'), ["true"]], 
+        [("Material", 'B'), ["0.01e9"]],
+        [("Particles", 'thickness'), ["50e-9"]],
                 ]
-
-output_folder = "LFP_memory10"
-config_file = 'params_system_LFP.cfg'
-material_file = 'params_LFP_CHR.cfg'
+ 
+output_folder = "LFP_ACR_noisek09_mem15"
+config_file = 'params_system_LFP_Galuppini.cfg'
+material_file = 'params_LFP_Galuppini.cfg'
 
 
 
