@@ -55,7 +55,8 @@ def run_simulation(config, outdir):
     # Set the time horizon and the reporting interval
     simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
-    simulation.ReportingTimes = config["times"]
+    simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
+
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
