@@ -38,7 +38,7 @@ class ParameterSet:
         if not os.path.isfile(fname):
             raise Exception(f'Missing config file: {fname}')
         # create config parser
-        parser = configparser.ConfigParser()
+        parser = configparser.ConfigParser(strict=False)
         parser.optionxform = str
         parser.read(fname)
 

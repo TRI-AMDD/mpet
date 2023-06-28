@@ -369,7 +369,7 @@ class Mod1var(dae.daeModel):
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("noise"):
-            eta_eff += noise[0]()
+            eta_eff += noise(dae.Time().Value)
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,

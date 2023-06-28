@@ -133,6 +133,18 @@ class SimMPET(dae.daeSimulation):
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
 
+            # set up cycling stuff
+            if config['profileType'] == "CCCVCPcycle":
+                cyc = self.m.cycle
+                cyc.last_current.AssignValue(0)
+                cyc.last_phi_applied.AssignValue(phi_guess)
+                cyc.maccor_cycle_counter.AssignValue(1)
+                cyc.maccor_step_number.SetInitialGuess(1)
+
+                # used to determine new time cutoffs at each section
+                cyc.time_counter.AssignValue(0)
+                cyc.cycle_number.AssignValue(1)
+
         else:
             dPrev = self.dataPrev
             data = utils.open_data_file(dPrev)
@@ -197,6 +209,37 @@ class SimMPET(dae.daeSimulation):
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", final=True))
             self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", final=True))
+
+            # set up cycling stuff
+            if config['profileType'] == "CCCVCPcycle":
+                cycle_header = "CCCVCPcycle_"
+                cyc = self.m.cycle
+                cyc.last_current.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "last_current",
+                        final=True))
+                cyc.last_phi_applied.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "last_phi_applied", final=True))
+                cyc.maccor_cycle_counter.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "maccor_cycle_counter", final=True))
+                cyc.maccor_step_number.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "maccor_step_number", final=True))
+
+                # used to determine new time cutoffs at each section
+                cyc.time_counter.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "time_counter",
+                        final=True))
+                cyc.cycle_number.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "cycle_number",
+                        final=True))
 
             # close file if it is a h5py file
             if isinstance(data, h5py._hl.files.File):

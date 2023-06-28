@@ -21,7 +21,7 @@ def parse_segments(key):
     assert isinstance(segments, list), "segments must be a list"
     assert len(segments) > 0, "There must be at least one segment"
     for item in segments:
-        assert (isinstance(item, tuple)) and (len(item) == 2), \
+        assert (len(item) == 6) or (len(item) == 2), \
             "Each segment must be a tuple of (setpoint, time)"
     return segments
 
@@ -53,7 +53,8 @@ def tobool(value):
 
 #: System parameters, per section
 system = {'Sim Params': {'profileType': lambda x:
-                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
+                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments",
+                                                  "CCCVCPcycle"]),
                          'Crate': Use(float),
                          Optional('power', default=None): Use(float),
                          Optional('1C_current_density', default=None): Use(float),
@@ -77,7 +78,8 @@ system = {'Sim Params': {'profileType': lambda x:
                          'Nvol_s': And(Use(int), lambda x: x >= 0),
                          'Nvol_a': And(Use(int), lambda x: x >= 0),
                          'Npart_c': And(Use(int), lambda x: x >= 0),
-                         'Npart_a': And(Use(int), lambda x: x >= 0)},
+                         'Npart_a': And(Use(int), lambda x: x >= 0),
+                         Optional('totalCycle', default=1): And(Use(int), lambda x: x >= 0)},
           'Electrodes': {'cathode': str,
                          'anode': str,
                          'k0_foil': Use(float),
