@@ -125,5 +125,3 @@ if __name__ == '__main__':
 
     client.shutdown()
     client.close()
-    cluster.close()
-    cluster.shutdown()
