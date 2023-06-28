@@ -10,7 +10,6 @@ from shutil import copyfile
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
-import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
@@ -37,13 +36,19 @@ def run_simulation(config, outdir):
     # Turn off reporting of some variables
     simulation.m.endCondition.ReportingOn = False
 
-    # Turn off reporting of particle ports
+    # Turn off reporting of particle and interface ports
     for trode in simulation.m.trodes:
         for particle in simulation.m.particles[trode]:
             pModel = particle[0]
             for port in pModel.Ports:
                 for var in port.Variables:
                     var.ReportingOn = False
+        if config[f"simInterface_{trode}"]:
+            for interfaces in simulation.m.interfaces[trode]:
+                for iModel in interfaces:
+                    for port in iModel.Ports:
+                        for var in port.Variables:
+                            var.ReportingOn = False
 
     # Turn off reporting of cell ports
     for port in simulation.m.Ports:
@@ -56,7 +61,7 @@ def run_simulation(config, outdir):
     # Set the time horizon and the reporting interval
     simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
-    simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
+    simulation.ReportingTimes = config["times"]
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
@@ -69,7 +74,7 @@ def run_simulation(config, outdir):
 
     # Solve at time=0 (initialization)
     # Increase the number of Newton iterations for more robust initialization
-    dae.daeGetConfig().SetString("daetools.IDAS.MaxNumItersIC","500")
+    dae.daeGetConfig().SetString("daetools.IDAS.MaxNumItersIC","1000")
     dae.daeGetConfig().SetString("daetools.IDAS.MaxNumSteps","100000")
     simulation.SolveInitial()
 
@@ -87,14 +92,13 @@ def run_simulation(config, outdir):
     simulation.Finalize()
 
 
-def main(paramfile, keepArchive=True):
+def main(paramfile, keepArchive=True, keepFullRun=False):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     config = Config(paramfile)
 
     # Directories we'll store output in.
-    outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     config_file = os.path.basename(paramfile)
     config_base = os.path.splitext(config_file)[0]
     outdir_name = "_".join((time.strftime("%Y%m%d_%H%M%S", time.localtime()), config_base))
@@ -198,10 +202,16 @@ def main(paramfile, keepArchive=True):
     except Exception:
         pass
 
-    # Copy or move simulation output to current directory
+    # Copy or move simulation output to current directory. If running multiple jobs,
+    # make sure to keep all sim_output
     tmpDir = os.path.join(os.getcwd(), "sim_output")
-    shutil.rmtree(tmpDir, ignore_errors=True)
-    if keepArchive:
-        shutil.copytree(outdir, tmpDir)
+    if not keepFullRun:
+        shutil.rmtree(tmpDir, ignore_errors=True)
+        tmpsubDir = tmpDir
     else:
-        shutil.move(outdir, tmpDir)
+        tmpsubDir = os.path.join(tmpDir, outdir_name)
+
+    if keepArchive:
+        shutil.copytree(outdir, tmpsubDir)
+    else:
+        shutil.move(outdir, tmpsubDir)
