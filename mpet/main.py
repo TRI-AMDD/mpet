@@ -10,6 +10,7 @@ from shutil import copyfile
 
 import daetools.pyDAE as dae
 from daetools.solvers.superlu import pySuperLU
+import numpy as np
 
 import mpet
 import mpet.data_reporting as data_reporting
@@ -36,7 +37,7 @@ def run_simulation(config, outdir):
     # Turn off reporting of some variables
     simulation.m.endCondition.ReportingOn = False
 
-    # Turn off reporting of particle and interface ports
+    # Turn off reporting of particle ports
     for trode in simulation.m.trodes:
         for particle in simulation.m.particles[trode]:
             pModel = particle[0]
@@ -56,7 +57,6 @@ def run_simulation(config, outdir):
     simulation.TimeHorizon = config["tend"]
     # The list of reporting times excludes the first index (zero, which is implied)
     simulation.ReportingTimes = list(np.linspace(0, config["tend"], config["tsteps"] + 1))[1:]
-
 
     # Connect data reporter
     simName = simulation.m.Name + time.strftime(
@@ -87,13 +87,14 @@ def run_simulation(config, outdir):
     simulation.Finalize()
 
 
-def main(paramfile, keepArchive=True, keepFullRun=False):
+def main(paramfile, keepArchive=True):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
     config = Config(paramfile)
 
     # Directories we'll store output in.
+    outdir_name = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     config_file = os.path.basename(paramfile)
     config_base = os.path.splitext(config_file)[0]
     outdir_name = "_".join((time.strftime("%Y%m%d_%H%M%S", time.localtime()), config_base))
@@ -197,16 +198,10 @@ def main(paramfile, keepArchive=True, keepFullRun=False):
     except Exception:
         pass
 
-    # Copy or move simulation output to current directory. If running multiple jobs,
-    # make sure to keep all sim_output
+    # Copy or move simulation output to current directory
     tmpDir = os.path.join(os.getcwd(), "sim_output")
-    if not keepFullRun:
-        shutil.rmtree(tmpDir, ignore_errors=True)
-        tmpsubDir = tmpDir
-    else:
-        tmpsubDir = os.path.join(tmpDir, outdir_name)
-
+    shutil.rmtree(tmpDir, ignore_errors=True)
     if keepArchive:
-        shutil.copytree(outdir, tmpsubDir)
+        shutil.copytree(outdir, tmpDir)
     else:
-        shutil.move(outdir, tmpsubDir)
+        shutil.move(outdir, tmpDir)
