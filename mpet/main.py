@@ -87,7 +87,7 @@ def run_simulation(config, outdir):
     simulation.Finalize()
 
 
-def main(paramfile, keepArchive=True):
+def main(paramfile, keepArchive=True, keepFullRun=False):
     timeStart = time.time()
     # Get the parameters dictionary (and the config instance) from the
     # parameter file
@@ -200,8 +200,12 @@ def main(paramfile, keepArchive=True):
 
     # Copy or move simulation output to current directory
     tmpDir = os.path.join(os.getcwd(), "sim_output")
-    shutil.rmtree(tmpDir, ignore_errors=True)
-    if keepArchive:
-        shutil.copytree(outdir, tmpDir)
+    if not keepFullRun:
+        shutil.rmtree(tmpDir, ignore_errors=True)
+        tmpsubDir = tmpDir
     else:
-        shutil.move(outdir, tmpDir)
+        tmpsubDir = os.path.join(tmpDir, outdir_name)
+    if keepArchive:
+        shutil.copytree(outdir, tmpsubDir)
+    else:
+        shutil.move(outdir, tmpsubDir)
