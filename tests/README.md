@@ -62,5 +62,5 @@ it is both tested as absolute and relative tolerance.
  - test021: hdf5Fast file output and restarting hdf5 simulations
  - test022: Test of specified_psd_c option, LFP homog
  - test023: CIET for LFP
- - test025: CCCVCPcycling for full cell with LIONSIMBA test file
+ - test028: CCCVCPcycling for full cell with LIONSIMBA test file
  - test029: CCCVCPcycling for half cell with LIONSIMBA test file
