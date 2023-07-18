@@ -376,6 +376,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
             disc = geom.get_elyte_disc(
                 Nvol, config["L"], config["poros"], config["BruggExp"])
+
+            if len(disc['dxvec']) == 1:
+                raise NotImplementedError("Plot type not compatible with single-volume simulations.")
+
             i_edges = np.zeros((numtimes, len(facesvec)))
             for tInd in range(numtimes):
                 i_edges[tInd, :] = mod_cell.get_lyte_internal_fluxes(
@@ -827,6 +831,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
 
     # plot cycling plots
     elif plot_type[0:5] == "cycle":
+
+        if "CCCVCPcycle_charge_discharge" not in data.keys():
+            raise NotImplementedError("Plot type requires 'profileType = CCCVCPcycle'.")
+
         current = utils.get_dict_key(data, pfx + 'current') / td  # gives us C-rates in /s
         # the capacity we calculate is the apparent capacity from experimental measurement,
         # not the real capacity of the electrode
