@@ -178,7 +178,6 @@ electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
                            'rxnType': str,
                            'k0': Use(float),
                            Optional('E_A', default=0.): Use(float),
-                           Optional('surface_diffusion', default=None): Use(tobool),
                            'alpha': Use(float),
                            Optional('lambda', default=None): Use(float),
                            'Rfilm': Use(float)}}
