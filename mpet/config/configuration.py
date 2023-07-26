@@ -777,7 +777,17 @@ class Config:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
-                    self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] * self['t_ref'] / plen**2
+                    if self[trode, 'D'] is not None:
+                        self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
+                            * self['t_ref'] / plen**2
+                    # self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] 
+                    # * self['t_ref'] / plen**2
+                    if self[trode, 'D1'] is not None:
+                        self[trode, 'indvPart']['D1'][i, j] = self[trode, 'D1'] \
+                            * self['t_ref'] / plen**2
+                    if self[trode, 'D2'] is not None:
+                        self[trode, 'indvPart']['D2'][i, j] = self[trode, 'D2'] \
+                            * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \

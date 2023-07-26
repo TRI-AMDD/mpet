@@ -181,6 +181,14 @@ class muRfuncs():
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
+    # def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
+    #         """ Helper function """
+    #         dr = r_vec[1] - r_vec[0]
+    #         Rs = 1.
+    #         curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
+    #         muR_nh = B*(y - ybar) - kappa*curv
+    #         return muR_nh
+
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         mod1var, mod2var = False, False
@@ -195,24 +203,29 @@ class muRfuncs():
             curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
             muR_nh = B*(y - ybar) - kappa*curv
         elif mod2var:
-            stoich_1 = self.get_trode_param("stoich_1")
-            stoich_2 = 1 - stoich_1
-            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
+            if self.get_trode_param("stoich_1") is not None:
+                stoich_1 = self.get_trode_param("stoich_1")
+                stoich_2 = 1 - stoich_1
+            else:
+                stoich_1 = stoich_2 = 0.5
             y1 = y[0]
             y2 = y[1]
             kappa1 = kappa[0]
             kappa2 = kappa[1]
-            B1 = B[0]
-            B2 = B[1]
-            B_avg = stoich_1*B1 + stoich_2*B2
             dr = r_vec[1] - r_vec[0]
             Rs = 1.
             # wetting needs to be fixed
-            y_avg = stoich_1*y1+stoich_2*y2
             curv1 = geo.calc_curv(y1, dr, r_vec, Rs, beta_s, shape)
-            muR1_nh = B_avg*(y_avg - ybar_avg) - stoich_1*kappa1*curv1
             curv2 = geo.calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
+            B1 = B[0]
+            B2 = B[1]
+            y_avg = stoich_1*y1+stoich_2*y2
+            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
+            B_avg = stoich_1*B1 + stoich_2*B2
+
+            muR1_nh = B_avg*(y_avg - ybar_avg) - stoich_1*kappa1*curv1
             muR2_nh = B_avg*(y_avg - ybar_avg) - stoich_2*kappa2*curv2
+
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
@@ -240,15 +253,33 @@ class muRfuncs():
                         y, ybar, B, kappa, cwet)
                 elif mod2var:
                     # only type using this is ACR2
-                    kappa1 = self.get_trode_param("kappa1")
-                    kappa2 = self.get_trode_param("kappa2")
+                    if self.get_trode_param("kappa1") is not None:
+                        kappa1 = self.get_trode_param("kappa1")
+                        kappa2 = self.get_trode_param("kappa2")
+                    else:
+                        kappa1 = kappa2 = self.get_trode_param("kappa")
                     kappa = (kappa1,kappa2)
-                    B1 = self.get_trode_param("B1")
-                    B2 = self.get_trode_param("B2")
+                    if self.get_trode_param("B1") is not None:
+                        B1 = self.get_trode_param("B1")
+                        B2 = self.get_trode_param("B2")
+                    else:
+                        B1 = B2 = self.get_trode_param("B")
                     B = (B1,B2)
                     cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
+            # elif shape in ["cylinder", "sphere"]:
+            #     beta_s = self.get_trode_param("beta_s")
+            #     r_vec = geo.get_unit_solid_discr(shape, N)[0]
+            #     if mod1var:
+            #         muR_nh = self.non_homog_round_wetting(
+            #             y, ybar, B, kappa, beta_s, shape, r_vec)
+            #     elif mod2var:
+            #         muR1_nh = self.non_homog_round_wetting(
+            #             y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
+            #         muR2_nh = self.non_homog_round_wetting(
+            #             y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
+            #         muR_nh = (muR1_nh, muR2_nh)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
@@ -256,11 +287,20 @@ class muRfuncs():
                     muR_nh = self.non_homog_round_wetting(
                         y, ybar, B, kappa, beta_s, shape, r_vec)
                 elif mod2var:
-                    muR1_nh = self.non_homog_round_wetting(
-                        y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
-                    muR2_nh = self.non_homog_round_wetting(
-                        y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
-                    muR_nh = (muR1_nh, muR2_nh)
+                    if self.get_trode_param("kappa1") is not None:
+                        kappa1 = self.get_trode_param("kappa1")
+                        kappa2 = self.get_trode_param("kappa2")
+                    else:
+                        kappa1 = kappa2 = self.get_trode_param("kappa")
+                    kappa = (kappa1,kappa2)
+                    if self.get_trode_param("B1") is not None:
+                        B1 = self.get_trode_param("B1")
+                        B2 = self.get_trode_param("B2")
+                    else:
+                        B1 = B2 = self.get_trode_param("B")
+                    B = (B1,B2)
+                    muR_nh = self.non_homog_round_wetting(
+                        y, ybar, B, kappa, beta_s, shape, r_vec)
         else:  # homogeneous particle
             if mod1var:
                 muR_nh = 0*y

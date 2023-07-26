@@ -287,22 +287,37 @@ class Mod2var(dae.daeModel):
                                           f"mpet.electrode.diffusion.{Dfunc_name}")
             if self.get_trode_param("type") == "CHR2":
                 noise1, noise2 = noises
-                Flux1_vec, Flux2_vec = calc_flux_CHR2(
-                    c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
-                    self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
-                    noise1, noise2)
+                if self.get_trode_param("D1") is not None:
+                    Flux1_vec, Flux2_vec = calc_flux_CHR2_multisub(
+                        c1, c2, mu1R, mu2R, self.get_trode_param("D1"), self.get_trode_param("D2"),
+                        Dfunc, self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
+                        noise1, noise2)
+                else:
+                    Flux1_vec, Flux2_vec = calc_flux_CHR2(
+                        c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
+                        self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
+                        noise1, noise2)
             if self.get_trode_param("shape") == "sphere":
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
             RHS1 = -np.diff(Flux1_vec * area_vec)
             RHS2 = -np.diff(Flux2_vec * area_vec)
-#            kinterlayer = 1e-3
+            lambda_c = 20
+            gamma_ts1 = 1/(1-c1)
+            gamma_ts2 = 1/(1-c2)
+            kinterlayer = 10000
+            delta_mu = mu1R - mu2R
+            interLayerRxn1 = (kinterlayer/gamma_ts1*c1*(1-c2)
+                              * np.exp(-(((lambda_c+delta_mu)**2)/(4*lambda_c))))
+            interLayerRxn2 = (kinterlayer/gamma_ts2*c2*(1-c1)
+                              * np.exp(-(((lambda_c+delta_mu)**2)/(4*lambda_c))))
+            interLayerRxn = interLayerRxn1 - interLayerRxn2
 #            interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
-#            RxnTerm1 = -interLayerRxn
-#            RxnTerm2 = interLayerRxn
-            RxnTerm1 = 0
-            RxnTerm2 = 0
+            RxnTerm1 = -interLayerRxn
+            RxnTerm2 = interLayerRxn
+            # RxnTerm1 = 0
+            # RxnTerm2 = 0
             RHS1 += RxnTerm1
             RHS2 += RxnTerm2
 
@@ -597,6 +612,28 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
         Flux1_vec[1:N] = -D/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * \
             np.diff(mu1_R+noise1(dae.Time().Value))/dr
         Flux2_vec[1:N] = -D/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu2_R+noise2(dae.Time().Value))/dr
+    return Flux1_vec, Flux2_vec
+
+
+def calc_flux_CHR2_multisub(c1, c2, mu1_R, mu2_R, D1, D2, Dfunc, E_D,
+                            Flux1_bc, Flux2_bc, dr, T, noise1, noise2):
+    N = len(c1)
+    Flux1_vec = np.empty(N+1, dtype=object)
+    Flux2_vec = np.empty(N+1, dtype=object)
+    Flux1_vec[0] = 0.  # symmetry at r=0
+    Flux2_vec[0] = 0.  # symmetry at r=0
+    Flux1_vec[-1] = Flux1_bc
+    Flux2_vec[-1] = Flux2_bc
+    c1_edges = utils.mean_linear(c1)
+    c2_edges = utils.mean_linear(c2)
+    if noise1 is None:
+        Flux1_vec[1:N] = -D1/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu1_R)/dr
+        Flux2_vec[1:N] = -D2/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu2_R)/dr
+    else:
+        Flux1_vec[1:N] = -D1/T * Dfunc(c1_edges) * np.exp(-E_D/T + E_D/1) * \
+            np.diff(mu1_R+noise1(dae.Time().Value))/dr
+        Flux2_vec[1:N] = -D2/T * Dfunc(c2_edges) * np.exp(-E_D/T + E_D/1) * \
             np.diff(mu2_R+noise2(dae.Time().Value))/dr
     return Flux1_vec, Flux2_vec
 
