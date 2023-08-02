@@ -519,6 +519,10 @@ class Config:
 
             if self[trode, 'lambda'] is not None:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
+            if self[trode, 'lambda_m'] is not None:
+                self[trode, 'lambda_m'] = self[trode, 'lambda_m'] / kT
+            if self[trode, 'kintra'] is not None:
+                self[trode, 'kintra'] = self[trode, 'kintra'] * self['t_ref']
             if self[trode, 'B'] is not None:
                 self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
             if self[trode, 'B1'] is not None:

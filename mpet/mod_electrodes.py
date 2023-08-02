@@ -43,6 +43,9 @@ class Mod2var(dae.daeModel):
         self.c2 = dae.daeVariable(
             "c2", mole_frac_t, self,
             "Concentration in 'layer' 2 of active particle", [self.Dmn])
+        self.interLayerRxn = dae.daeVariable(
+            "interLayerRxn", dae.no_t, self,
+            "Rate of reaction between layers", [self.Dmn])
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
@@ -288,6 +291,27 @@ class Mod2var(dae.daeModel):
             if self.get_trode_param("type") == "CHR2":
                 noise1, noise2 = noises
                 if self.get_trode_param("D1") is not None:
+                    lambda_m = self.get_trode_param("lambda_m")
+                    gamma_ts = 1/((1-c1)*(1-c2))
+                    kinterlayer = self.get_trode_param("kintra")
+                    delta_mu = mu2R - mu1R - np.log(c2/c1)
+                    interLayerRxn = kinterlayer/gamma_ts\
+                        * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
+                            - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+                    # interLayerRxn = kinterlayer/gamma_ts\
+                    #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+                #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
+                    RxnTerm1 = -interLayerRxn
+                    RxnTerm2 = interLayerRxn
+                    for i in range(N):
+                        eq = self.CreateEquation("interLayerRxn{i}".format(i=i))
+                        eq.Residual = self.interLayerRxn(i) - interLayerRxn[i]
+
+                    RHS1 = RxnTerm1
+                    RHS2 = RxnTerm2
+                    Flux1_bc += -interLayerRxn[-1]
+                    Flux2_bc += interLayerRxn[-1]
+
                     Flux1_vec, Flux2_vec = calc_flux_CHR2_multisub(
                         c1, c2, mu1R, mu2R, self.get_trode_param("D1"), self.get_trode_param("D2"),
                         Dfunc, self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
@@ -301,25 +325,26 @@ class Mod2var(dae.daeModel):
                 area_vec = 4*np.pi*edges**2
             elif self.get_trode_param("shape") == "cylinder":
                 area_vec = 2*np.pi*edges  # per unit height
-            RHS1 = -np.diff(Flux1_vec * area_vec)
-            RHS2 = -np.diff(Flux2_vec * area_vec)
-            lambda_c = 20
-            gamma_ts1 = 1/(1-c1)
-            gamma_ts2 = 1/(1-c2)
-            kinterlayer = 10000
-            delta_mu = mu1R - mu2R
-            interLayerRxn1 = (kinterlayer/gamma_ts1*c1*(1-c2)
-                              * np.exp(-(((lambda_c+delta_mu)**2)/(4*lambda_c))))
-            interLayerRxn2 = (kinterlayer/gamma_ts2*c2*(1-c1)
-                              * np.exp(-(((lambda_c+delta_mu)**2)/(4*lambda_c))))
-            interLayerRxn = interLayerRxn1 - interLayerRxn2
-#            interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
-            RxnTerm1 = -interLayerRxn
-            RxnTerm2 = interLayerRxn
-            # RxnTerm1 = 0
-            # RxnTerm2 = 0
-            RHS1 += RxnTerm1
-            RHS2 += RxnTerm2
+            RHS1 += -np.diff(Flux1_vec * area_vec)
+            RHS2 += -np.diff(Flux2_vec * area_vec)
+        #     lambda_m = self.get_trode_param("lambda_m")
+        #     gamma_ts = 1/((1-c1)*(1-c2))
+        #     kinterlayer = self.get_trode_param("kintra")
+        #     delta_mu = mu2R - mu1R - np.log(c2/c1)
+        #     interLayerRxn = kinterlayer/gamma_ts\
+        #         * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
+        #             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+        #     # interLayerRxn = kinterlayer/gamma_ts\
+        #     #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+        # #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
+        #     RxnTerm1 = -interLayerRxn
+        #     RxnTerm2 = interLayerRxn
+        #     for i in range(N):
+        #         eq = self.CreateEquation("interLayerRxn{i}".format(i=i))
+        #         eq.Residual = self.interLayerRxn(i) - interLayerRxn[i]
+
+        #     RHS1 += RxnTerm1
+        #     RHS2 += RxnTerm2
 
         dc1dt_vec = np.empty(N, dtype=object)
         dc2dt_vec = np.empty(N, dtype=object)

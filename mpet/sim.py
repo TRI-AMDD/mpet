@@ -99,18 +99,19 @@ class SimMPET(dae.daeSimulation):
                             rnd1 -= np.mean(rnd1)
                             rnd2 -= np.mean(rnd2)
                             for k in range(Nij):
-                                if self.config[tr,'type'] == 'ACR2':
-                                    stoich1 = self.config[tr,'stoich_1']
-                                    if cs0 < stoich1:
-                                        part.c1.SetInitialCondition(k, cs0/stoich1+rnd1[k])
-                                        part.c2.SetInitialCondition(k, 0.001+rnd2[k])
-                                    elif cs0 > stoich1:
-                                        cs2 = (cs0 - stoich1)/(0.9999-stoich1)
-                                        part.c1.SetInitialCondition(k, 0.9999)
-                                        part.c2.SetInitialCondition(k, cs2+rnd2[k])
-                                else:
-                                    part.c1.SetInitialCondition(k, cs0+rnd1[k])
-                                    part.c2.SetInitialCondition(k, cs0+rnd2[k])
+                                # if self.config[tr,'type'] == 'ACR2':
+                                part.interLayerRxn.SetInitialGuess(k, 0.0)
+                                stoich1 = self.config[tr,'stoich_1']
+                                if cs0 < stoich1:
+                                    part.c1.SetInitialCondition(k, cs0/stoich1+rnd1[k])
+                                    part.c2.SetInitialCondition(k, 0.01+rnd2[k])
+                                elif cs0 > stoich1:
+                                    cs2 = (cs0 - stoich1)/(0.9999-stoich1)
+                                    part.c1.SetInitialCondition(k, 0.9999)
+                                    part.c2.SetInitialCondition(k, cs2+rnd2[k])
+                                # else:
+                                    # part.c1.SetInitialCondition(k, cs0+rnd1[k])
+                                    # part.c2.SetInitialCondition(k, cs0+rnd2[k])
 
             # Cell potential initialization
             if config['tramp'] > 0:
