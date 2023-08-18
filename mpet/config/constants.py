@@ -13,7 +13,7 @@ F = e * N_A
 #: General particle classification (1 var)
 two_var_types = ["diffn2", "CHR2", "homog2", "homog2_sdn"]
 #: General particle classification (2 var)
-one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn", "ACR2D"]
+one_var_types = ["ACR", "diffn", "CHR", "homog", "homog_sdn","homog_sdn_gen" ,"ACR2D"]
 #: Reference concentration, mol/m^3 = 1M
 c_ref = 1000.
 #: Reaction rate epsilon for values close to zero

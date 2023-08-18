@@ -826,9 +826,7 @@ def get_Mmat(shape, N):
         elif shape == "cylinder":
             Vp = np.pi * Rs**2  # per unit height
         elif shape == "plate":
-            L = 1.
-            h = 1.
-            Vp = L**2 * h
+            Vp = 1.
         vol_vec = Vp * volfrac_vec
         M1 = sprs.diags([1./8, 3./4, 1./8], [-1, 0, 1],
                         shape=(N, N), format="csr")

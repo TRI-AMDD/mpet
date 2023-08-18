@@ -692,7 +692,7 @@ class Config:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
             # For homogeneous particles (only one 'volume' per particle)
-            elif solidType in ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']:
+            elif solidType in ['homog', 'homog_sdn', 'homog_sdn_gen','homog2', 'homog2_sdn']:
                 # Each particle is only one volume
                 psd_num = np.ones(raw.shape, dtype=int)
                 # The lengths are given by the original length distr.
@@ -715,6 +715,7 @@ class Config:
                 if solidType in ['CHR', 'CHR2']:
                     psd_area = 1.2263 * 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
                     psd_vol = 1.2263 * psd_len * self[trode, 'thickness']**2
+                    psd_len = psd_len/2
                 elif solidType in ['ACR2D']:
                     psd_area = 2 * 1.2263 * psd_len**2
                     psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
@@ -833,6 +834,15 @@ class Config:
                     # overwrite its value for each particle
                     if self[trode, 'type'] in ['homog_sdn', 'homog2_sdn']:
                         self[trode, 'indvPart']['Omega_a'][i, j] = self.size2regsln(plen)
+                    elif self[trode, 'type'] in ['homog_sdn_gen']:
+                        if self[trode, 'Omega_a'] > 2:
+                            omega_eff = self[trode, 'Omega_a'] \
+                            - np.exp(-self[trode, 'Omega_a']*(plen*1e9/500))
+                            if omega_eff <= 2:
+                                omega_eff = 2.
+                            self[trode, 'indvPart']['Omega_a'][i, j] = omega_eff
+                        else:
+                            self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
                     else:
                         # just use global value
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
@@ -849,8 +859,8 @@ class Config:
         for trode in self['trodes']:
             solidShape = self[trode, 'shape']
             solidType = self[trode, 'type']
-            if solidType in ["ACR", "homog_sdn"] and solidShape != "C3":
-                raise Exception("ACR and homog_sdn req. C3 shape")
+            if solidType in ["ACR", "homog_sdn", "homog_sdn_gen"] and solidShape != "C3":
+                raise Exception("ACR and homog_sdn and homog_sdn_gen req. C3 shape")
             if (solidType in ["CHR", "diffn"] and solidShape not in ["sphere", "cylinder",
                                                                      "plate"]):
                 raise NotImplementedError("CHR and diffn req. sphere, cylinder or plate shape")

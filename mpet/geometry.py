@@ -37,11 +37,11 @@ def get_unit_solid_discr(Shape, N):
     elif Shape == "plate":
         L = 1.
         h = 1.
-        dx = h / (N - 1)
+        dx = L / (N - 1)
         r_vec = np.linspace(0, h, N)
-        vol_vec = L**2 * dx * np.ones(N)
-        vol_vec[0] = L**2 * dx/2.
-        vol_vec[-1] = L**2 * dx/2.
+        vol_vec = L**2 * dx * h * np.ones(N)
+        vol_vec[0] = L**2 * h *dx/2.
+        vol_vec[-1] = L**2 * h * dx/2.
         Vp = L**2 * h
         volfrac_vec = vol_vec / Vp
     else:
