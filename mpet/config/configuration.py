@@ -643,6 +643,8 @@ class Config:
         self['psd_num_ver'] = {}
         self['psd_len_ver'] = {}
 
+        self['psd_thick'] = {}
+
         for trode in self['trodes']:
             solidType = self[trode, 'type']
             Nvol = self['Nvol'][trode]
@@ -660,6 +662,15 @@ class Config:
                     mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
                     sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
                     raw_t = np.random.lognormal(mu_t, sigma_t, size=(Nvol, Npart))
+                if self[trode,'shape'] == 'plate':
+                    np.random.seed(self.D_s['seed'])
+                    mean_t = self[trode,'thickness']
+                    stddev_t = mean_t*0.8
+                    var_t = stddev_t**2
+                    mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
+                    sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
+                    raw_t = np.random.lognormal(mu_t, sigma_t, size=(Nvol, Npart))
+
                 mean = self['mean'][trode]
                 stddev = self['stddev'][trode]
                 if np.allclose(stddev, 0., atol=1e-12):
@@ -686,11 +697,13 @@ class Config:
                 solidDisc_ver = self[trode, 'discretization_ver']
                 psd_num = np.ceil(raw / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
-                psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int)
-                psd_len_ver = solidDisc_ver * psd_num_ver
+                psd_num_ver = np.ceil(raw_t/solidDisc_ver).astype(int) + 1
+                psd_len_ver = solidDisc_ver * (psd_num_ver-1)
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
+                if self[trode, 'shape'] in ['plate']:
+                    psd_thick = raw_t
             # For homogeneous particles (only one 'volume' per particle)
             elif solidType in ['homog', 'homog_sdn', 'homog_sdn_gen','homog2', 'homog2_sdn']:
                 # Each particle is only one volume
@@ -713,12 +726,12 @@ class Config:
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
             elif solidShape == 'plate':
                 if solidType in ['CHR', 'CHR2']:
-                    psd_area = 1.2263 * 2 * (psd_len/psd_len) * self[trode, 'thickness']**2
-                    psd_vol = 1.2263 * psd_len * self[trode, 'thickness']**2
+                    psd_area = 1.2263 * 2 * psd_thick**2
+                    psd_vol = 1.2263 * psd_len * psd_thick**2
                     psd_len = psd_len/2
                 elif solidType in ['ACR2D']:
                     psd_area = 2 * 1.2263 * psd_len**2
-                    psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
+                    psd_vol = 1.2263 * psd_len**2 * psd_len_ver
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
 
