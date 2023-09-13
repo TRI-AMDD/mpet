@@ -55,6 +55,9 @@ class SimMPET(dae.daeSimulation):
                 for j in range(config["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(config["psd_num"][tr][i,j]))
+                    if config[f"simInterface_{tr}"]:
+                        self.m.interfaces[tr][i, j].Dmn.CreateArray(
+                            int(config["Nvol_i"]))
 
     def SetUpVariables(self):
         config = self.config
@@ -87,6 +90,9 @@ class SimMPET(dae.daeSimulation):
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
+                                if self.config["c","type"] in ["ACR_Diff"]:
+                                    part.c_left_GP.SetInitialGuess(cs0)
+                                    part.c_right_GP.SetInitialGuess(cs0)
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -132,6 +138,12 @@ class SimMPET(dae.daeSimulation):
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
+                        # Set concentration and potential in interface region
+                        if config[f"simInterface_{tr}"]:
+                            for k in range(config["Nvol_i"]):
+                                self.m.interfaces[tr][i,j].c.SetInitialCondition(k,
+                                                                                 config["c0_int"])
+                                self.m.interfaces[tr][i,j].phi.SetInitialGuess(k, 0)
 
             # set up cycling stuff
             if config['profileType'] == "CCCVCPcycle":

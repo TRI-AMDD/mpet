@@ -27,7 +27,8 @@ from mpet.config import Config, constants
 # mpl.rcParams['text.usetex'] = True
 
 
-def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOut=None, tOut=None):
+def show_data(indir, plot_type, print_flag, save_flag, data_only, color_changes, smooth_type,
+              vOut=None, pOut=None, tOut=None):
     pfx = 'mpet.'
     sStr = "_"
     ttl_fmt = "% = {perc:2.1f}"
@@ -239,6 +240,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 ax[pInd,vInd].xaxis.set_major_locator(plt.NullLocator())
                 datay = utils.get_dict_key(data, sol_str, squeeze=False)[:,-1]
                 line, = ax[pInd,vInd].plot(times, datay)
+        if save_flag:
+            fig.savefig("mpet_surf.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot SoC profile
@@ -283,6 +286,8 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             return times*td, cavg
         np.set_printoptions(precision=8)
         ax.plot(times*td, cavg)
+        if save_flag:
+            fig.savefig("mpet_elytecons.pdf", bbox_inches="tight")
         return fig, ax
 
     # Plot current profile
@@ -580,7 +585,10 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                 ax[pInd,vInd].set_ylim(ylim)
                 ax[pInd,vInd].set_xlim((0, lens[pInd,vInd] * Lfac))
                 if plt_axlabels:
-                    ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
+                    if config[trode, "type"] in ["ACR", "ACr_diff", "ACR2"]:
+                        ax[pInd, vInd].set_xlabel(r"$x$ [{Lunit}]".format(Lunit=Lunit))
+                    else:
+                        ax[pInd, vInd].set_xlabel(r"$r$ [{Lunit}]".format(Lunit=Lunit))
                     if plot_type[0] == "c":
                         ax[pInd, vInd].set_ylabel(r"$\widetilde{{c}}$")
                     elif plot_type[:2] == "mu":
@@ -668,12 +676,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         if data_only:
             return dataCbar
         # Set up colors.
-        # Define if you want smooth or discrete color changes
-        # Option: "smooth" or "discrete"
-        color_changes = "discrete"
-#        color_changes = "smooth"
+        # Uses either discrete or smooth colors
+        # Define if you want smooth or discrete color changes in plot settings (-c)
+        # Option: "discrete" or "smooth"
         # Discrete color changes:
-        if color_changes == "discrete":
+        if color_changes == 'discrete':
             # Make a discrete colormap that goes from green to yellow
             # to red instantaneously
             cdict = {
@@ -690,10 +697,11 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
             cmap = mpl.colors.LinearSegmentedColormap(
                 "discrete", cdict)
         # Smooth colormap changes:
-        if color_changes == "smooth":
+        if color_changes == 'smooth':
             # generated with colormap.org
-            cmaps = np.load("colormaps_custom.npz")
-            cmap_data = cmaps["GnYlRd_3"]
+            cmap_location = os.path.dirname(os.path.abspath(__file__)) + r'\colormaps_custom.npz'
+            cmaps = np.load(cmap_location)
+            cmap_data = cmaps[smooth_type]
             cmap = mpl.colors.ListedColormap(cmap_data/255.)
 
         size_frac_min = 0.10
