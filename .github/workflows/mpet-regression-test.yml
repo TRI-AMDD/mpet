@@ -39,7 +39,7 @@ jobs:
     - name: Install dependencies for daetools
       run: |
         sudo apt-get install -y mayavi2
-        pip install numpy scipy matplotlib pyqt5 lxml openpyxl h5py pandas pygraphviz
+        pip install numpy scipy matplotlib pyqt5 lxml openpyxl h5py pandas
 
     - name: Install daetools from sourceforge
       run: |
