@@ -20,16 +20,32 @@ jobs:
         fetch-depth: 1
         path: mpet
 
-    - uses: conda-incubator/setup-miniconda@v2
+    #- uses: conda-incubator/setup-miniconda@v2
+    #  with:
+    #    python-version: ${{ matrix.python-version }}
+    #    mamba-version: "*"
+    #    channels: conda-forge,defaults
+    #    activate-environment: mpet-env
+
+    #- name: Install daetools via mamba
+    #  run: |
+    #    mamba install daetools
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        mamba-version: "*"
-        channels: conda-forge,defaults
-        activate-environment: mpet-env
 
-    - name: Install daetools via mamba
+    - name: Install dependencies for daetools
       run: |
-        mamba install daetools
+        pip install numpy scipy matplotlib pyqt5 mayavi2 lxml openpyxl h5py pandas pygraphviz
+
+    - name: Install daetools from sourceforge
+      run: |
+        curl -L 'https://master.dl.sourceforge.net/project/daetools/daetools/2.2.0/daetools-2.2.0-gnu_linux-x86_64.zip' -o dae.zip
+        unzip dae.zip
+        cd daetools*
+        sudo python setup.py install
 
     - name: Install additional dependencies using mpet's setup.py
       run: |
