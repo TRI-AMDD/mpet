@@ -11,7 +11,8 @@ plots.remove("text")
 def test_plot(Dirs, plot):
     refDir, testDir = Dirs
     try:
-        plot_data.show_data(osp.join(testDir, "sim_output"), plot, False, False, False)
+        plot_data.show_data(osp.join(testDir, "sim_output"), plot,
+                            False, False, False, 'GnYlRd_3', 'discrete')
     except NotImplementedError:
         pass
     except Exception:
