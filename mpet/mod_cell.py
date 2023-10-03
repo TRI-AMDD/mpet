@@ -16,6 +16,7 @@ import mpet.extern_funcs as extern_funcs
 import mpet.geometry as geom
 import mpet.mod_CCCVCPcycle as mod_CCCVCPcycle
 import mpet.mod_electrodes as mod_electrodes
+from mpet.mod_interface import InterfaceRegion
 import mpet.ports as ports
 import mpet.utils as utils
 from mpet.config import constants
@@ -60,6 +61,7 @@ class ModCell(dae.daeModel):
         self.phi_bulk = {}
         self.phi_part = {}
         self.R_Vp = {}
+        self.R_Vi = {}
         self.ffrac = {}
         for trode in trodes:
             # Concentration/potential in electrode regions of elyte
@@ -83,6 +85,11 @@ class ModCell(dae.daeModel):
                 "R_Vp_{trode}".format(trode=trode), dae.no_t, self,
                 "Rate of reaction of positives per electrode volume",
                 [self.DmnCell[trode]])
+            if self.config[f'simInterface_{trode}']:
+                self.R_Vi[trode] = dae.daeVariable(
+                    "R_Vi_{trode}".format(trode=trode), dae.no_t, self,
+                    "Rate of reaction of positives per electrode volume with interface region",
+                    [self.DmnCell[trode]])
             self.ffrac[trode] = dae.daeVariable(
                 "ffrac_{trode}".format(trode=trode), mole_frac_t, self,
                 "Overall filling fraction of solids in electrodes")
@@ -121,13 +128,17 @@ class ModCell(dae.daeModel):
         # volumes and ports with which to talk to them.
         self.portsOutLyte = {}
         self.portsOutBulk = {}
+        self.portsInInterface = {}
         self.particles = {}
+        self.interfaces = {}
         for trode in trodes:
             Nv = Nvol[trode]
             Np = Npart[trode]
             self.portsOutLyte[trode] = np.empty(Nv, dtype=object)
             self.portsOutBulk[trode] = np.empty((Nv, Np), dtype=object)
+            self.portsInInterface[trode] = np.empty((Nv, Np), dtype=object)
             self.particles[trode] = np.empty((Nv, Np), dtype=object)
+            self.interfaces[trode] = np.empty((Nv, Np), dtype=object)
             for vInd in range(Nv):
                 self.portsOutLyte[trode][vInd] = ports.portFromElyte(
                     "portTrode{trode}vol{vInd}".format(trode=trode, vInd=vInd), dae.eOutletPort,
@@ -150,8 +161,42 @@ class ModCell(dae.daeModel):
                         Name="partTrode{trode}vol{vInd}part{pInd}".format(
                             trode=trode, vInd=vInd, pInd=pInd),
                         Parent=self)
-                    self.ConnectPorts(self.portsOutLyte[trode][vInd],
-                                      self.particles[trode][vInd,pInd].portInLyte)
+
+                    if config[f"simInterface_{trode}"]:
+                        # instantiate interfaces between particle and electrolyte per particle
+                        self.interfaces[trode][vInd,pInd] = InterfaceRegion(
+                            Name="interfaceTrode{trode}vol{vInd}part{pInd}".format(
+                                trode=trode, vInd=vInd, pInd=pInd),
+                            Parent=self, config=config, cell=self,
+                            particle=self.particles[trode][vInd,pInd],
+                            vInd=vInd,pInd=pInd,trode=trode)
+
+                        self.portsInInterface[trode][vInd,pInd] = ports.portFromInterface(
+                            "portIface{trode}vol{vInd}part{pInd}".format(
+                                trode=trode, vInd=vInd, pInd=pInd),
+                            dae.eInletPort, self,
+                            "Interface region port to elyte")
+
+                        # connect elyte to interface, then interface to particle
+                        self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                          self.interfaces[trode][vInd,pInd].portInLyte)
+
+                        self.ConnectPorts(
+                            self.interfaces[trode][vInd,pInd].portOutInterfaceParticle,
+                            self.particles[trode][vInd,pInd].portInLyte)
+
+                        # connect interface to elyte
+                        self.ConnectPorts(self.interfaces[trode][vInd,pInd].portOutInterfaceElyte,
+                                          self.portsInInterface[trode][vInd,pInd])
+
+                        # connect particle to interface
+                        self.ConnectPorts(self.particles[trode][vInd,pInd].portOutParticle,
+                                          self.interfaces[trode][vInd,pInd].portInParticle)
+                    else:
+                        # connect elyte to particle
+                        self.ConnectPorts(self.portsOutLyte[trode][vInd],
+                                          self.particles[trode][vInd,pInd].portInLyte)
+
                     self.ConnectPorts(self.portsOutBulk[trode][vInd,pInd],
                                       self.particles[trode][vInd,pInd].portInBulk)
 
@@ -193,6 +238,11 @@ class ModCell(dae.daeModel):
                 # Start with no reaction, then add reactions for each
                 # particle in the volume.
                 RHS = 0
+                # interface region has separate reaction rate
+                if config[f"simInterface_{trode}"]:
+                    eq_i = self.CreateEquation(
+                        "R_Vi_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
+                    RHS_i = 0
                 # sum over particle volumes in given electrode volume
                 for pInd in range(Npart[trode]):
                     # The volume of this particular particle
@@ -200,7 +250,14 @@ class ModCell(dae.daeModel):
                     RHS += -(config["beta"][trode] * (1-config["poros"][trode])
                              * config["P_L"][trode] * Vj
                              * self.particles[trode][vInd,pInd].dcbardt())
+                    if config[f"simInterface_{trode}"]:
+                        # Nm0 = self.portsInInterface[trode][vInd,pInd].Nm0()
+                        i0 = self.portsInInterface[trode][vInd,pInd].i0()
+                        # TODO: what is the reaction rate?
+                        RHS_i += -i0
                 eq.Residual = self.R_Vp[trode](vInd) - RHS
+                if config[f"simInterface_{trode}"]:
+                    eq_i.Residual = self.R_Vi[trode](vInd) - RHS_i
 
         # Define output port variables
         for trode in trodes:
@@ -228,6 +285,12 @@ class ModCell(dae.daeModel):
                 phi_tmp = utils.add_gp_to_vec(utils.get_var_vec(self.phi_bulk[trode], Nvol[trode]))
                 porosvec = utils.pad_vec(utils.get_const_vec(
                     (1-self.config["poros"][trode])**(1-config["BruggExp"][trode]), Nvol[trode]))
+                if np.all(self.config['specified_poros'][trode]):
+                    specified_por = self.config['specified_poros'][trode]
+                    porosvec = (
+                        (np.ones(Nvol[trode]) - specified_por))**(
+                            (1 - self.config["BruggExp"][trode]))
+                    porosvec = utils.pad_vec(porosvec)
                 poros_walls = utils.mean_harmonic(porosvec)
                 if trode == "a":  # anode
                     # Potential at the current collector is from
@@ -243,12 +306,18 @@ class ModCell(dae.daeModel):
                 dx = config["L"][trode]/Nvol[trode]
                 dvg_curr_dens = np.diff(-poros_walls*config["sigma_s"][trode]
                                         * np.diff(phi_tmp)/dx)/dx
+
             # Actually set up the equations for bulk solid phi
             for vInd in range(Nvol[trode]):
                 eq = self.CreateEquation(
                     "phi_ac_trode{trode}vol{vInd}".format(vInd=vInd, trode=trode))
                 if simBulkCond:
-                    eq.Residual = -dvg_curr_dens[vInd] - self.R_Vp[trode](vInd)
+                    # select reaction rate with interface region or particle
+                    if config[f"simInterface_{trode}"]:
+                        R_V = self.R_Vi
+                    else:
+                        R_V = self.R_Vp
+                    eq.Residual = -dvg_curr_dens[vInd] - R_V[trode](vInd)
                 else:
                     if trode == "a":  # anode
                         eq.Residual = self.phi_bulk[trode](vInd) - self.phi_cell()
@@ -294,11 +363,18 @@ class ModCell(dae.daeModel):
             eq = self.CreateEquation("phi_lyte")
             eq.Residual = self.phi_lyte["c"](0) - self.phi_cell()
         else:
-            disc = geom.get_elyte_disc(Nvol, config["L"], config["poros"], config["BruggExp"])
+            if np.all(config["specified_poros"]["c"]):
+                config_poros = config["specified_poros"]
+            else:
+                config_poros = config["poros"]
+            disc = geom.get_elyte_disc(Nvol, config["L"], config_poros, config["BruggExp"])
             cvec = utils.get_asc_vec(self.c_lyte, Nvol)
             dcdtvec = utils.get_asc_vec(self.c_lyte, Nvol, dt=True)
             phivec = utils.get_asc_vec(self.phi_lyte, Nvol)
-            Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)
+            if config[f"simInterface_{trode}"]:
+                Rvvec = utils.get_asc_vec(self.R_Vi, Nvol)
+            else:
+                Rvvec = utils.get_asc_vec(self.R_Vp, Nvol)
             # Apply concentration and potential boundary conditions
             # Ghost points on the left and no-gradients on the right
             ctmp = np.hstack((self.c_lyteGP_L(), cvec, cvec[-1]))
@@ -320,6 +396,9 @@ class ModCell(dae.daeModel):
                 # exchange current density, ecd = k0_foil * c_lyte**(0.5)
                 cWall = .5*(ctmp[0] + ctmp[1])
                 ecd = config["k0_foil"]*cWall**0.5
+                # Concentration is fixed for solid
+                if config["elyteModelType"] == 'solid':
+                    ecd = config["k0_foil"]*1**0.5
                 # note negative current because positive current is
                 # oxidation here
                 eta = self.phi_cell() - self.current()*config["Rfilm_foil"] \
@@ -357,6 +436,7 @@ class ModCell(dae.daeModel):
                 eq.Residual -= dx * self.R_Vp[limtrode](vInd)/rxn_scl
             else:
                 eq.Residual += dx * self.R_Vp[limtrode](vInd)/rxn_scl
+
         # Define the measured voltage, offset by the "applied" voltage
         # by any series resistance.
         # phi_cell = phi_applied - I*R
@@ -490,6 +570,7 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
 
     # Get concentration at cell edges using weighted mean
     wt = utils.pad_vec(disc["dxvec"])
+
     c_edges_int = utils.weighted_linear_mean(c_lyte, wt)
 
     if config["elyteModelType"] == "dilute":
@@ -522,4 +603,26 @@ def get_lyte_internal_fluxes(c_lyte, phi_lyte, disc, config):
             )
         Nm_edges_int = num*(-D_edges*np.diff(c_lyte)/dxd1
                             + (1./(num*zm)*(1-tp0(c_edges_int, T))*i_edges_int))
+    elif config["elyteModelType"] == "solid":
+        SMset = config["SMset"]
+        elyte_function = utils.import_function(config["SMset_filename"], SMset,
+                                               mpet_module=f"mpet.electrolyte.{SMset}")
+        D_fs, sigma_fs, thermFac, tp0 = elyte_function()[:-1]
+        # sigma_fs and thermFac not used bc the solid system is considered linear
+        a_slyte = config["a_slyte"]
+        c_edges_int_norm = c_edges_int / config["cmax"]
+
+        # Get diffusivity at cell edges using weighted harmonic mean
+        eps_o_tau_edges = utils.weighted_linear_mean(eps_o_tau, wt)
+        Dp = eps_o_tau_edges * config["Dp"]
+        Dm = (zp * Dp - zp * Dp * tp0) / (tp0 * zm)
+        Dp0 = Dp / (1-c_edges_int_norm)  # should be c0/cmax
+        Dchemp = Dp0 * (1 - 2 * a_slyte * c_edges_int_norm + 2 * a_slyte * c_edges_int_norm**2)
+        Dchemm = Dm
+        Damb = (zp * Dp * Dchemm + zm * Dm * Dchemp) / (zp * Dp - zm * Dm)
+        i_edges_int = (-((nup*zp*Dchemp + num*zm*Dchemm)*np.diff(c_lyte)/dxd1)
+                       - (nup * zp ** 2 * Dp0 * (1 - c_edges_int_norm) + num * zm ** 2 * Dm) / T
+                       * c_edges_int * np.diff(phi_lyte) / dxd1)
+        Nm_edges_int = num * (-Damb * np.diff(c_lyte) / dxd1
+                              + (1. / (num * zm) * (1 - tp0) * i_edges_int))
     return Nm_edges_int, i_edges_int

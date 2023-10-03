@@ -154,6 +154,19 @@ class muRfuncs():
         muR_nh = -kappa*curv + B*(y - ybar)
         return muR_nh
 
+    def non_homog_rect_variational(self, y, ybar, B, kappa):
+        """ Helper function """
+        # the taylor expansion at the edges is used
+        N_2 = len(y)
+        ytmp = np.empty(N_2+2, dtype=object)
+        dxs = 1./N_2
+        ytmp[1:-1] = y
+        ytmp[0] = y[0] + np.diff(y)[0]*dxs + 0.5*np.diff(y,2)[0]*dxs**2
+        ytmp[-1] = y[-1] + np.diff(y)[-1]*dxs + 0.5*np.diff(y,2)[-1]*dxs**2
+        curv = np.diff(ytmp, 2)/(dxs**2)
+        muR_nh = -kappa*curv + B*(y - ybar)
+        return muR_nh
+
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
         dr = r_vec[1] - r_vec[0]
@@ -177,16 +190,26 @@ class muRfuncs():
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.get_trode_param("shape")
-            kappa = self.get_trode_param("kappa")
-            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
+                    if self.get_trode_param("type") in ["ACR"]:
+                        cwet = self.get_trode_param("cwet")
+                        muR_nh = self.non_homog_rect_fixed_csurf(
+                            y, ybar, B, kappa, cwet)
+                    elif self.get_trode_param("type") in ["ACR_Diff"]:
+                        muR_nh = self.non_homog_rect_variational(
+                            y, ybar, B, kappa)
+                elif mod2var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
-                elif mod2var:
-                    raise NotImplementedError("no 2param C3 model known")
             elif shape in ["cylinder", "sphere"]:
+                kappa = self.get_trode_param("kappa")
+                B = self.get_trode_param("B")
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]
                 if mod1var:
