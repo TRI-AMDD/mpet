@@ -27,7 +27,7 @@ Welcome to MPET's documentation!
    :maxdepth: 1
    :caption: API:
 
-   source/mpet.rst
+   source/modules.rst
 
 
 Indices and tables

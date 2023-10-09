@@ -12,6 +12,7 @@ Analyze output with ``mpetplot.py``. Pass the output data directory, then use th
 1.  Analyze output with plots using ``mpetplot.py``. Pass output data directory, then use ``-pt [plottype]`` with one (or more) of the plot types listed below. Default is ``v``.
     - e.g., voltage plot: ``mpetplot.py sim_output -pt v``
     - other options (``full``, ``c``, ``a`` indicate full cell, cathode, and anode):
+
    #. ``v`` or ``vt`` -- voltage vs filling fraction or vs time
    #. ``curr`` -- current vs time
    #. ``elytec{f}`` -- electrolyte concentration (movie) or final snapshot with f
@@ -23,6 +24,7 @@ Analyze output with ``mpetplot.py``. Pass the output data directory, then use th
    #. ``cbarLine_{c,a}`` -- average concentration in each particle of electrode
    #. ``bulkp_{c,a}`` -- macroscopic electrode solid phase potential (movie)
    #. ``cbar_{full,c,a}`` -- average solid concentrations as changing colors (movie)
+
     - There are two options for the color map type that is used: ``smooth`` or ``discrete``. This can be set with the ``-c`` option, e.g., ``mpetplot.py sim_output -pt cbar_full -c discrete``. The default value is ``discrete``.
     - When using the ``smooth`` color map option, the colors are selected from colormao_custom.npz, which includes three options (``GnYlRd_1``, ``GnYlRd_2``, and ``GnYlRd_3``) that can be selected with the ``st`` option, e.g., ``mpetplot.py sim_output -pt cbar_full -c discrete -st GnYlRd_1``. The default value is ``GnYlRd_3``.
 

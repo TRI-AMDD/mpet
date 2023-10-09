@@ -8,6 +8,7 @@ In each model class it has options for different types of particles:
  - Fick-like diffusion
  - Cahn-Hilliard (with reaction boundary condition)
  - Allen-Cahn (with reaction throughout the particle)
+
 These models can be instantiated from the mod_cell module to simulate various types of active
 materials within a battery electrode.
 """

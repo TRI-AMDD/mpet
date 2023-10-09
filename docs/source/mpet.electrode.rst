@@ -1,16 +1,15 @@
 mpet.electrode package
 ======================
 
-Submodules
-----------
+Subpackages
+-----------
 
-mpet.electrode.reactions module
--------------------------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: mpet.electrode.reactions
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   mpet.electrode.diffusion
+   mpet.electrode.materials
+   mpet.electrode.reactions
 
 Module contents
 ---------------
