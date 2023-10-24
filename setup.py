@@ -17,7 +17,7 @@ setuptools.setup(
     author='Dan Cogswell',
     author_email='cogswell@mit.edu',
     license='MIT',
-    url='https://bitbucket.org/bazantgroup/mpet',
+    url='https://github.com/TRI-AMDD/mpet',
     packages=[
         'mpet','mpet.plot',
         'mpet.electrode.diffusion',
