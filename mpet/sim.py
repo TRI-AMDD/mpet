@@ -90,8 +90,14 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
                         elif solidType in constants.two_var_types:
-                            part.c1bar.SetInitialGuess(cs0)
-                            part.c2bar.SetInitialGuess(cs0)
+                            stoich1 = self.config[tr,'stoich_1']
+                            if cs0 < stoich1:
+                                part.c1bar.SetInitialGuess(cs0/stoich1)
+                                part.c2bar.SetInitialGuess(0.01)
+                            elif cs0 > stoich1:
+                                part.c1bar.SetInitialGuess(0.99)
+                                cs2 = (cs0 - stoich1)/(0.9999-stoich1)
+                                part.c2bar.SetInitialGuess(cs2)
                             part.cbar.SetInitialGuess(cs0)
                             epsrnd = 0.0001
                             rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
@@ -99,15 +105,14 @@ class SimMPET(dae.daeSimulation):
                             rnd1 -= np.mean(rnd1)
                             rnd2 -= np.mean(rnd2)
                             for k in range(Nij):
-                                # if self.config[tr,'type'] == 'ACR2':
-                                part.interLayerRxn.SetInitialGuess(k, 0.0)
-                                stoich1 = self.config[tr,'stoich_1']
+                                if self.config[tr,'type'] not in ['ACR2']:
+                                    part.interLayerRxn.SetInitialGuess(k, 0.0)
                                 if cs0 < stoich1:
                                     part.c1.SetInitialCondition(k, cs0/stoich1+rnd1[k])
-                                    part.c2.SetInitialCondition(k, 0.01+rnd2[k])
+                                    part.c2.SetInitialCondition(k, 0.005+rnd2[k])
                                 elif cs0 > stoich1:
                                     cs2 = (cs0 - stoich1)/(0.9999-stoich1)
-                                    part.c1.SetInitialCondition(k, 0.9999)
+                                    part.c1.SetInitialCondition(k, 0.99+rnd1[k])
                                     part.c2.SetInitialCondition(k, cs2+rnd2[k])
                                 # else:
                                     # part.c1.SetInitialCondition(k, cs0+rnd1[k])

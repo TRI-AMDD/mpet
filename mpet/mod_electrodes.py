@@ -43,9 +43,6 @@ class Mod2var(dae.daeModel):
         self.c2 = dae.daeVariable(
             "c2", mole_frac_t, self,
             "Concentration in 'layer' 2 of active particle", [self.Dmn])
-        self.interLayerRxn = dae.daeVariable(
-            "interLayerRxn", dae.no_t, self,
-            "Rate of reaction between layers", [self.Dmn])
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
@@ -63,6 +60,9 @@ class Mod2var(dae.daeModel):
         if self.get_trode_param("type") not in ["ACR2"]:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1")
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2")
+            self.interLayerRxn = dae.daeVariable("interLayerRxn", dae.no_t, self,
+                                                 "Rate of reaction between layers",
+                                                 [self.Dmn])
         else:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
@@ -253,14 +253,24 @@ class Mod2var(dae.daeModel):
         else:
             eta1_eff = eta1 + self.Rxn1()*self.get_trode_param("Rfilm")
             eta2_eff = eta2 + self.Rxn2()*self.get_trode_param("Rfilm")
-        Rxn1 = self.calc_rxn_rate(
-            eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), self.T_lyte(), act1R_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
-        Rxn2 = self.calc_rxn_rate(
-            eta2_eff, c2_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), self.T_lyte(), act2R_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        if self.get_trode_param("lambda_1") is not None:
+            Rxn1 = self.calc_rxn_rate(
+                eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0_1"),
+                self.get_trode_param("E_A"), self.T_lyte(), act1R_surf, act_lyte,
+                self.get_trode_param("lambda_1"), self.get_trode_param("alpha"))
+            Rxn2 = self.calc_rxn_rate(
+                eta2_eff, c2_surf, self.c_lyte(), self.get_trode_param("k0_2"),
+                self.get_trode_param("E_A"), self.T_lyte(), act2R_surf, act_lyte,
+                self.get_trode_param("lambda_2"), self.get_trode_param("alpha"))
+        else:
+            Rxn1 = self.calc_rxn_rate(
+                eta1_eff, c1_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), self.T_lyte(), act1R_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+            Rxn2 = self.calc_rxn_rate(
+                eta2_eff, c2_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), self.T_lyte(), act2R_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
         if self.get_trode_param("type") in ["ACR2"]:
             for i in range(N):
                 eq1 = self.CreateEquation("Rxn1_{i}".format(i=i))
@@ -321,30 +331,30 @@ class Mod2var(dae.daeModel):
                         c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
                         self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
                         noise1, noise2)
-            if self.get_trode_param("shape") == "sphere":
-                area_vec = 4*np.pi*edges**2
-            elif self.get_trode_param("shape") == "cylinder":
-                area_vec = 2*np.pi*edges  # per unit height
-            RHS1 += -np.diff(Flux1_vec * area_vec)
-            RHS2 += -np.diff(Flux2_vec * area_vec)
-        #     lambda_m = self.get_trode_param("lambda_m")
-        #     gamma_ts = 1/((1-c1)*(1-c2))
-        #     kinterlayer = self.get_trode_param("kintra")
-        #     delta_mu = mu2R - mu1R - np.log(c2/c1)
-        #     interLayerRxn = kinterlayer/gamma_ts\
-        #         * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
-        #             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-        #     # interLayerRxn = kinterlayer/gamma_ts\
-        #     #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-        # #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
-        #     RxnTerm1 = -interLayerRxn
-        #     RxnTerm2 = interLayerRxn
-        #     for i in range(N):
-        #         eq = self.CreateEquation("interLayerRxn{i}".format(i=i))
-        #         eq.Residual = self.interLayerRxn(i) - interLayerRxn[i]
+                if self.get_trode_param("shape") == "sphere":
+                    area_vec = 4*np.pi*edges**2
+                elif self.get_trode_param("shape") == "cylinder":
+                    area_vec = 2*np.pi*edges  # per unit height
+                RHS1 += -np.diff(Flux1_vec * area_vec)
+                RHS2 += -np.diff(Flux2_vec * area_vec)
+            #     lambda_m = self.get_trode_param("lambda_m")
+            #     gamma_ts = 1/((1-c1)*(1-c2))
+            #     kinterlayer = self.get_trode_param("kintra")
+            #     delta_mu = mu2R - mu1R - np.log(c2/c1)
+            #     interLayerRxn = kinterlayer/gamma_ts\
+            #         * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
+            #             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+            #     # interLayerRxn = kinterlayer/gamma_ts\
+            #     #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
+            # #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
+            #     RxnTerm1 = -interLayerRxn
+            #     RxnTerm2 = interLayerRxn
+            #     for i in range(N):
+            #         eq = self.CreateEquation("interLayerRxn{i}".format(i=i))
+            #         eq.Residual = self.interLayerRxn(i) - interLayerRxn[i]
 
-        #     RHS1 += RxnTerm1
-        #     RHS2 += RxnTerm2
+            #     RHS1 += RxnTerm1
+            #     RHS2 += RxnTerm2
 
         dc1dt_vec = np.empty(N, dtype=object)
         dc2dt_vec = np.empty(N, dtype=object)

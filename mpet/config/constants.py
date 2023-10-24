@@ -21,12 +21,13 @@ reactions_epsilon = 1e-12
 
 #: parameter that are defined per electrode with a ``_{electrode}`` suffix
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
-                    'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
+                    'simPartCond', 'G_mean', 'G_stddev','simPartCond_2', 'G_mean_2', 'G_stddev_2',
+                    'L', 'P_L', 'poros', 'BruggExp',
                     'specified_psd', 'rhom', 'cp', 'k_h']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h', 'cp', 'rhom']
 #: parameters that are defined for each particle, and their type
 PARAMS_PARTICLE = {'N': int, 'kappa': float, 'kappa1': float, 'kappa2': float, 'beta_s': float,
-                   'D': float, 'D1': float, 'D2': float, 'k0': float,
+                   'D': float, 'D1': float, 'D2': float, 'k0': float, 'k0_1': float, 'k0_2': float,
                    'Rfilm': float, 'delta_L': float, 'Omega_a': float,
                    'E_D': float,'E_A': float}

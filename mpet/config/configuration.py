@@ -293,7 +293,7 @@ class Config:
                 # only update generated distributions
                 if section == 'system':
                     for key in ['psd_num', 'psd_len', 'psd_area', 'psd_vol',
-                                'psd_vol_FracVol', 'G']:
+                                'psd_vol_FracVol', 'G','G_2']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:
                     trode = section[0]
@@ -444,6 +444,7 @@ class Config:
         # set default 1C_current_density
         limtrode = self['limtrode']
         theoretical_1C_current = self[limtrode, 'cap'] / 3600.  # A/m^2
+        # print('Theoretical 1C current density: ', theoretical_1C_current)
         param = '1C_current_density'
         if self[param] is None:
             # set to theoretical value
@@ -469,6 +470,8 @@ class Config:
             self._distr_part()
             # Gibss free energy, must be done after distr_part
             self._G()
+            # particle distributions for second particle type
+            self._G_2()
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
 
@@ -519,6 +522,10 @@ class Config:
 
             if self[trode, 'lambda'] is not None:
                 self[trode, 'lambda'] = self[trode, 'lambda'] / kT
+            if self[trode, 'lambda_1'] is not None:
+                self[trode, 'lambda_1'] = self[trode, 'lambda_1'] / kT
+            if self[trode, 'lambda_2'] is not None:
+                self[trode, 'lambda_2'] = self[trode, 'lambda_2'] / kT
             if self[trode, 'lambda_m'] is not None:
                 self[trode, 'lambda_m'] = self[trode, 'lambda_m'] / kT
             if self[trode, 'kintra'] is not None:
@@ -715,15 +722,16 @@ class Config:
 
     def _G(self):
         """
-        Generate Gibbs free energy distribution and store in config.
+        Generate Intra-particle connectivity  distribution and store in config.
         """
         self['G'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
             mean = self['G_mean'][trode]
-            stddev = self['G_stddev'][trode]
-            if np.allclose(stddev, 0, atol=1e-12):
+            stddev = 50*mean
+            # stddev = self['G_stddev'][trode]
+            if np.allclose(stddev, 0, atol=1e-17):
                 G = mean * np.ones((Nvol, Npart))
             else:
                 var = stddev**2
@@ -733,6 +741,29 @@ class Config:
 
             # scale and store
             self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+
+    def _G_2(self):
+        """
+        Generate Intra-particle connectivity of second specie  and store in config.
+        """
+        self['G_2'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_mean_2'][trode]
+            stddev = 50*mean
+            # stddev = self['G_stddev_2'][trode]
+            if np.allclose(stddev, 0, atol=1e-17):
+                G_2 = mean * np.ones((Nvol, Npart))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2) / np.sqrt(var + mean**2))
+                sigma = np.sqrt(np.log(var / (mean**2) + 1))
+                G_2 = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+
+            # scale and store
+            self['G_2'][trode] = G_2 * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
     def _indvPart(self):
@@ -794,8 +825,17 @@ class Config:
                             * self['t_ref'] / plen**2
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
-                    self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
-                        / (constants.e * F_s_ref)
+                    if self[trode, 'k0'] is not None:
+                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
+                            / (constants.e * F_s_ref)
+                    if self[trode, 'k0_1'] is not None:
+                        F_s_1ref = plen * constants.N_A * self[trode, 'csmax'] * self[trode,"stoich_1"] / self['t_ref']
+                        self[trode, 'indvPart']['k0_1'][i, j] = self[trode, 'k0_1'] \
+                            / (constants.e * F_s_1ref)
+                    if self[trode, 'k0_2'] is not None:
+                        F_s_2ref = plen * constants.N_A * self[trode, 'csmax'] * (1 - self[trode,"stoich_1"]) / self['t_ref']
+                        self[trode, 'indvPart']['k0_2'][i, j] = self[trode, 'k0_2'] \
+                            / (constants.e * F_s_2ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     self[trode, 'indvPart']['Rfilm'][i, j] = self[trode, 'Rfilm'] \
