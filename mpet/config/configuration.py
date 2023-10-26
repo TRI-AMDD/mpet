@@ -468,9 +468,17 @@ class Config:
         else:
             # particle distributions
             self._distr_part()
-            # Gibss free energy, must be done after distr_part
+            # contact conductivty
+            self._G_cont()
+            # netwerk conductivty
+            self._G_contNet()
+            # carbon coating conductivty
+            self._G_carb()
+            # bulk conductivty
             self._G()
-            # particle distributions for second particle type
+            # bulk sublattice 1 conductivty
+            self._G_1()
+            # bulk sublattice 2 conductivty
             self._G_2()
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
@@ -720,50 +728,109 @@ class Config:
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
 
+    def _G_cont(self):
+        """
+        Generate Inter-particle connectivity  distribution and store in config.
+        """
+        self['G_cont'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_mean_cont'][trode]
+            stddev = self['G_std_cont'][trode]
+            if np.allclose(stddev, 0, atol=1e-17):
+                G_cont = mean * np.ones((Nvol, Npart))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2) / np.sqrt(var + mean**2))
+                sigma = np.sqrt(np.log(var / (mean**2) + 1))
+                G_cont = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+            # scale and store
+            self['G_cont'][trode] = G_cont * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+            
+    def _G_contNet(self):
+        self['G_contNet'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_mean_cont'][trode]
+            stddev = self['G_std_cont'][trode]
+            Nconn = int(Npart * (Npart - 1) / 2)
+            if np.allclose(stddev, 0, atol=1e-17):
+                G_contNet = mean * np.ones((Nvol, Nconn))
+            else:
+                var = stddev**2
+                mu = np.log((mean**2) / np.sqrt(var + mean**2))
+                sigma = np.sqrt(np.log(var / (mean**2) + 1))
+                G_contNet = np.random.lognormal(mu, sigma, size=(Nvol, Nconn))
+            # note G_contNet is not normalized by the particle volume
+            # the normalization is done in mod_cell 
+            self['G_contNet'][trode] = G_contNet * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'])
+            
+    def _G_carb(self):
+        """
+        Generate Carbon conductivity distribution and store in config.
+        """
+        self['G_car'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_carb'][trode]
+            G_carb = mean * np.ones((Nvol, Npart))
+            # scale and store
+            self['G_car'][trode] = G_carb * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+
     def _G(self):
         """
-        Generate Intra-particle connectivity  distribution and store in config.
+        Generate Bulk connectivity and store in config.
         """
         self['G'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_mean'][trode]
-            stddev = 50*mean
-            # stddev = self['G_stddev'][trode]
-            if np.allclose(stddev, 0, atol=1e-17):
-                G = mean * np.ones((Nvol, Npart))
-            else:
-                var = stddev**2
-                mu = np.log((mean**2) / np.sqrt(var + mean**2))
-                sigma = np.sqrt(np.log(var / (mean**2) + 1))
-                G = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
-
+            mean = self['G_bulk'][trode]
+            G = mean * np.ones((Nvol, Npart))
             # scale and store
             self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
-
+            
+    def _G_1(self):
+        """
+        Generate Bulk sublattice 1 connectivity and store in config.
+        """
+        self['G_1'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            mean = self['G_bulk_1'][trode]
+            G_1 = mean * np.ones((Nvol, Npart))
+            if self[trode, 'stoich_1'] is not None:
+                stoich_1 = self[trode, 'stoich_1']
+            else:
+                stoich_1 = 1
+            # scale and store
+            self['G_1'][trode] = stoich_1 * G_1 * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+            
     def _G_2(self):
         """
-        Generate Intra-particle connectivity of second specie  and store in config.
+        Generate Bulk sublattice 2 connectivity and store in config.
         """
         self['G_2'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_mean_2'][trode]
-            stddev = 50*mean
-            # stddev = self['G_stddev_2'][trode]
-            if np.allclose(stddev, 0, atol=1e-17):
-                G_2 = mean * np.ones((Nvol, Npart))
+            mean = self['G_bulk_2'][trode]
+            G_2 = mean * np.ones((Nvol, Npart))
+            if self[trode, 'stoich_1'] is not None:
+                stoich_2 = 1 - self[trode, 'stoich_1']
             else:
-                var = stddev**2
-                mu = np.log((mean**2) / np.sqrt(var + mean**2))
-                sigma = np.sqrt(np.log(var / (mean**2) + 1))
-                G_2 = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
-
+                stoich_2 = 1
             # scale and store
-            self['G_2'][trode] = G_2 * constants.k * constants.T_ref * self['t_ref'] \
+            self['G_2'][trode] = stoich_2 * G_2 * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
     def _indvPart(self):

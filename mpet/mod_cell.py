@@ -290,65 +290,87 @@ class ModCell(dae.daeModel):
             # Simulate the potential drop along the connected
             # particles
             simPartCond = config['simPartCond'][trode]
-            simPartCond_2 = config['simPartCond_2'][trode]
-            if simPartCond_2:
-                # list the content of config
-                stoich_1 = config['c',"stoich_1"]
-                stoich_2 = 1 - stoich_1
-                tail_mid = 1e-3
-            for vInd in range(Nvol[trode]):
-                phi_bulk = self.phi_bulk[trode](vInd)
-                for pInd in range(Npart[trode]):
-                    G_l = config["G"][trode][vInd,pInd]
+            if simPartCond == False:
+                for vInd in range(Nvol[trode]):
+                    for pInd in range(Npart[trode]):
+                        eq = self.CreateEquation(
+                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                    vInd=vInd, trode=trode, pInd=pInd))
+                        eq.Residual = self.phi_part[trode](vInd, pInd) - self.phi_bulk[trode](vInd)
+            else:
+                # if the system is multi-sublattice consider stoich
+                if config["simPartNet"][trode]:
+                    for vInd in range(Nvol[trode]):
+                        phi_bulk = self.phi_bulk[trode](vInd)
+                        G_cont_net = config["G_contNet"][trode][vInd,:]
+                        # remap into matrix
+                        G_cont_mat = np.zeros((Npart[trode],Npart[trode]))
+                        indx = 0
+                        for i in range(Npart[trode]):
+                            for j in range(i + 1, Npart[trode]):
+                                G_cont_mat[i,j] = G_cont_net[indx]
+                                G_cont_mat[j,i] = G_cont_net[indx]
+                                indx += 1
 
-                    # cbar_l = self.particles[trode][vInd,pInd].cbar()
-                    if simPartCond_2:
-                        c2bar_l = self.particles[trode][vInd,pInd].c2bar()
-                        G_l_2 = config["G_2"][trode][vInd,pInd]
+                        for pInd in range(Npart[trode]):
+                            eq = self.CreateEquation(
+                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                    vInd=vInd, trode=trode, pInd=pInd))
+                                # - dcsbar/dt = I_l - I_r
+                            eq.Residual = - self.particles[trode][vInd,pInd].dcbardt()
 
-                        # G_tot_l = G_l + (G_l_2-G_l)/(1+np.exp(300*(stoich_1-cbar_l)))
-                        # G_tot_l = G_l + (G_l_2-G_l)*0.5*(np.tanh((cbar_l - stoich_1)/tail_mid) + 1)
-                        G_tot_l = G_l + (G_l_2-G_l)/(1+np.exp(1000*(0-c2bar_l)))
+                            G_part_i, G_cont_i = self.get_G_part(vInd, pInd, trode, config)
+                            Npart_conn_to_carbon = int((Npart[trode]/10)*4)
+                            # Npart_conn_to_carbon = 1
 
-                    phi_n = self.phi_part[trode](vInd, pInd)
-                    if pInd == 0:  # reference bulk phi
-                        phi_l = phi_bulk
-                    else:
-                        phi_l = self.phi_part[trode](vInd, pInd-1)
-                    if pInd == (Npart[trode] - 1):  # No particle at end of "chain"
-                        G_r = 0
-                        G_tot_r = 0
-                        phi_r = phi_n
-                    else:
-                        G_r = config["G"][trode][vInd,pInd+1]
+                            phi_i = self.phi_part[trode](vInd, pInd)
 
-                        if simPartCond_2:
-                            c2bar_r = self.particles[trode][vInd,pInd+1].c2bar()
-                            # cbar_r = self.particles[trode][vInd,pInd+1].cbar()
-                            G_r_2 = config["G_2"][trode][vInd,pInd+1]
-                            # G_tot_r = G_r + (G_r_2-G_r)/(1+np.exp(300*(stoich_1-cbar_r)))
-                            # G_tot_r = G_r + (G_r_2-G_r)*0.5*(np.tanh((cbar_r - stoich_1)/tail_mid) + 1)
-                            G_tot_r = G_r + (G_r_2-G_r)/(1+np.exp(1000*(0-c2bar_r)))
+                            for pConn in range(Npart[trode]):
+                                if pConn != pInd:
+                                    vol_p = config["psd_vol"][trode][vInd,pConn]
+                                    G_con_ij = G_cont_mat[pInd,pConn]/vol_p
+ 
+                                    phi_j = self.phi_part[trode](vInd, pConn)
 
-                        phi_r = self.phi_part[trode](vInd, pInd+1)
-                    # charge conservation equation around this particle
-                    eq = self.CreateEquation(
-                        "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
-                            vInd=vInd, trode=trode, pInd=pInd))
-                    if simPartCond_2:
-                        G_l_tot = G_tot_l
-                        G_r_tot = G_tot_r
-                    else:
-                        G_l_tot = G_l
-                        G_r_tot = G_r
-                    if simPartCond:
-                        # -dcsbar/dt = I_l - I_r
-                        eq.Residual = (
-                            self.particles[trode][vInd,pInd].dcbardt()
-                            + ((-G_l_tot * (phi_n - phi_l))
-                               - (-G_r_tot * (phi_r - phi_n))))
-                    else:
-                        eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
+                                    G_ij_tot = G_con_ij*G_part_i/(G_con_ij + G_part_i)
+                                    # G_ij_tot = G_con_ij
+
+                                    eq.Residual += G_ij_tot * (phi_i - phi_j)
+                                if pConn == pInd:
+                                    if pInd < Npart_conn_to_carbon:
+                                        eq.Residual += 1*(phi_i - phi_bulk)
+                            
+                else:    
+                    for vInd in range(Nvol[trode]):
+                        phi_bulk = self.phi_bulk[trode](vInd)
+                        for pInd in range(Npart[trode]):
+                            G_part_l, G_cont_l = self.get_G_part(vInd, pInd, trode, config)
+                            G_l_tot = G_cont_l*G_part_l/(G_cont_l + G_part_l)
+                            phi_n = self.phi_part[trode](vInd, pInd)
+
+                            if pInd == 0:  # reference bulk phi
+                                phi_l = phi_bulk
+                            else:
+                                phi_l = self.phi_part[trode](vInd, pInd-1)
+                            if pInd == (Npart[trode] - 1):  # No particle at end of "chain"
+                                G_r_tot = 0
+                                phi_r = phi_n
+                            else:
+                                vol_p_n = config["psd_vol"][trode][vInd,pInd]
+                                vol_p_r = config["psd_vol"][trode][vInd,pInd+1]
+                                G_part_r, G_cont_r = self.get_G_part(vInd, pInd+1, trode, config)
+                                G_r_tot = G_cont_r*G_part_r/(G_cont_r + G_part_r)
+                                G_r_tot = G_r_tot*vol_p_r/vol_p_n
+                                phi_r = self.phi_part[trode](vInd, pInd+1)
+                            # charge conservation equation around this particle
+                            eq = self.CreateEquation(
+                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                    vInd=vInd, trode=trode, pInd=pInd))
+                                # -dcsbar/dt = I_l - I_r
+                            eq.Residual = (
+                                - self.particles[trode][vInd,pInd].dcbardt()
+                                + ((G_l_tot * (phi_n - phi_l))
+                                + (G_r_tot * (phi_n - phi_r))))
 
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
@@ -573,6 +595,39 @@ class ModCell(dae.daeModel):
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
 
+    def get_G_part(self, vInd, pInd, trode, config):
+        # if the system is multi-sublattice consider stoich
+        if config[trode,"stoich_1"] is not None:
+            simPartCond_2param = True
+            # stoich_1 = config[trode,"stoich_1"]
+            # stoich_2 = 1 - stoich_1
+        else:
+            simPartCond_2param = False
+        carbonCoating = config['carbon_coating'][trode]
+        expon = config["c_dep_exp"][trode]
+
+        G_cont = config["G_cont"][trode][vInd,pInd]
+        if simPartCond_2param:
+            c1bar = self.particles[trode][vInd,pInd].c1bar()
+            c2bar = self.particles[trode][vInd,pInd].c2bar()
+            G_bulk_1 = config["G_1"][trode][vInd,pInd]*(c1bar*(1-c1bar))**expon
+            G_bulk_1 = G_bulk_1/(1/(0.25)**expon)
+            G_bulk_2 = config["G_2"][trode][vInd,pInd]*(c2bar*(1-c2bar))**expon
+            G_bulk_2 = G_bulk_2/(1/(0.25)**expon)
+            if carbonCoating:
+                G_carb = config["G_car"][trode][vInd,pInd]
+                G_part = G_carb + G_bulk_1 + G_bulk_2
+            else:
+                G_part = G_bulk_1 + G_bulk_2
+        else:
+            cbar = self.particles[trode][vInd,pInd].cbar()
+            G_bulk = config["G"][trode][vInd,pInd]*(cbar*(1-cbar))**expon
+            G_bulk = G_bulk/(1/(0.25)**expon)
+            if carbonCoating:
+                G_part =  G_carb + G_bulk
+            else:
+                G_part = G_bulk
+        return G_part, G_cont
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
     zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]
