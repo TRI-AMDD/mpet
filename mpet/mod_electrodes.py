@@ -567,9 +567,18 @@ class Mod1var(dae.daeModel):
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
-        for k in range(N):
-            eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            eq.Residual = LHS_vec[k] - RHS[k]
+        if self.get_trode_param("surface_diffusion") and self.get_trode_param("type") in ["ACR"]:
+            surf_diff_vec = calc_surf_diff(c_surf, muR_surf,
+                                           self.get_trode_param("D_surf"),
+                                           self.get_trode_param("E_D_surf"),
+                                           self.T_lyte())
+            for k in range(N):
+                eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
+                eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
+        else:
+            for k in range(N):
+                eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
+                eq.Residual = LHS_vec[k] - RHS[k]
 
         if self.get_trode_param("type") in ["ACR"]:
             return eta[-1], c_surf[-1]
@@ -579,6 +588,21 @@ class Mod1var(dae.daeModel):
 
 def calc_eta(muR, muO):
     return muR - muO
+
+
+def calc_surf_diff(c_surf, muR_surf, D_surf, E_D_surf, T):
+    # the surface diffusion keeps the volume centered method of the ACR
+    N = np.size(c_surf)
+    dxs = 1./N
+    D_eff = (D_surf/(T) * np.exp(-E_D_surf/(T)
+             + E_D_surf/1))
+    c_edges = utils.mean_linear(c_surf)
+    surf_flux = np.empty(N+1, dtype=object)
+    surf_flux[1:-1] = -D_eff*c_edges*(1-c_edges)*np.diff(muR_surf)/(dxs)
+    surf_flux[0] = 0.
+    surf_flux[-1] = 0.
+    surf_diff = -np.diff(surf_flux)/dxs
+    return surf_diff
 
 
 def get_Mmat(shape, N):
@@ -675,8 +699,8 @@ def calc_flux_CHR2_multisub(c1, c2, mu1_R, mu2_R, D1, D2, Dfunc, E_D,
 
 def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
     if elyteModelType == "SM":
-        mu_lyte = phi_lyte
         act_lyte = c_lyte
+        mu_lyte = phi_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte

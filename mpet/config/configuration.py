@@ -882,6 +882,12 @@ class Config:
                     if self[trode, 'D'] is not None:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
                             * self['t_ref'] / plen**2
+                    if self[trode,'surface_diffusion'] is not None:
+                        self[trode,'indvPart']['D_surf'][i, j] = self[trode,'D_surf'] \
+                            * self['t_ref'] / plen**2
+                    if self[trode, 'E_D_surf'] is not None:
+                        self[trode, 'indvPart']['E_D_surf'][i, j] = self[trode, 'E_D_surf'] \
+                            / (constants.k * constants.N_A * constants.T_ref)
                     # self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] 
                     # * self['t_ref'] / plen**2
                     if self[trode, 'D1'] is not None:

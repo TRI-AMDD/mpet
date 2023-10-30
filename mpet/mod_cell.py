@@ -320,25 +320,29 @@ class ModCell(dae.daeModel):
                             eq.Residual = - self.particles[trode][vInd,pInd].dcbardt()
 
                             G_part_i, G_cont_i = self.get_G_part(vInd, pInd, trode, config)
-                            Npart_conn_to_carbon = int((Npart[trode]/10)*4)
+                            # Npart_conn_to_carbon = int((Npart[trode]/10)*5)
+                            # generate random int between 0 and Npart_conn_to_carbon
+                            Npart_conn_to_carbon = np.random.randint(1, int((Npart[trode]/10)*2))
                             # Npart_conn_to_carbon = 1
 
                             phi_i = self.phi_part[trode](vInd, pInd)
 
                             for pConn in range(Npart[trode]):
+                                vol_p = config["psd_vol"][trode][vInd,pInd]
                                 if pConn != pInd:
-                                    vol_p = config["psd_vol"][trode][vInd,pConn]
                                     G_con_ij = G_cont_mat[pInd,pConn]/vol_p
- 
-                                    phi_j = self.phi_part[trode](vInd, pConn)
-
                                     G_ij_tot = G_con_ij*G_part_i/(G_con_ij + G_part_i)
-                                    # G_ij_tot = G_con_ij
-
+                                    phi_j = self.phi_part[trode](vInd, pConn)
                                     eq.Residual += G_ij_tot * (phi_i - phi_j)
                                 if pConn == pInd:
                                     if pInd < Npart_conn_to_carbon:
-                                        eq.Residual += 1*(phi_i - phi_bulk)
+                                        # a bit to adjust
+                                        # very high conductivity for the particles
+                                        # close to the carbon 
+                                        # pick a random value from G_cont_mat
+                                        G_con = G_cont_mat[pInd,pConn]/vol_p
+                                        G_ij_con = G_con*G_part_i/(G_con + G_part_i)
+                                        eq.Residual += G_con*(phi_i - phi_bulk)
                             
                 else:    
                     for vInd in range(Nvol[trode]):
@@ -624,6 +628,7 @@ class ModCell(dae.daeModel):
             G_bulk = config["G"][trode][vInd,pInd]*(cbar*(1-cbar))**expon
             G_bulk = G_bulk/(1/(0.25)**expon)
             if carbonCoating:
+                G_carb = config["G_car"][trode][vInd,pInd]
                 G_part =  G_carb + G_bulk
             else:
                 G_part = G_bulk

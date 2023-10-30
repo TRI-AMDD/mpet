@@ -140,6 +140,36 @@ class muRfuncs():
                   )*step_down(y, 0.35, width)
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
+    
+    def reg_sol_red(self, y, T, Omga, theta):
+        tail = 0.075
+        delta_y = 0.1
+        m = (4 - 2*Omga)
+        muR = (
+            (theta - (m/2)+ m*y)*step_down(y, (1+delta_y), tail)
+            + theta*step_down(y, (0-delta_y), tail)
+        )
+        return muR
+
+    def LMFP_red(self, y, T, Omga, Omgb, theta_1, theta_2, stoich):
+
+        Omegc = (Omga + Omgb)*0.5
+        m_1 = (4 - 2*Omga*stoich)
+        m_2 = (4 - 2*Omgb*(1-stoich))
+        tail_out = 0.015
+        tail_mid = 0.015
+
+        # theta_1 = -4.09
+        # theta_2 = -3.422
+        mu_reduced = (
+            (theta_1-(m_1*stoich/2)+m_1*y)*step_down(y,stoich,tail_mid)
+            + (theta_2-(m_2*(1-stoich)/2)-m_2*stoich+m_2*y)*step_up(y,stoich,tail_mid)
+            + theta_1*step_down(y,-0.01,tail_out)
+            + theta_2*step_down(y,1.01,tail_out) - theta_2
+            - stoich*Omegc*step_up(y,stoich,tail_mid)
+            + (1-stoich)*Omegc*step_down(y,stoich,tail_mid)
+            )
+        return mu_reduced
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
