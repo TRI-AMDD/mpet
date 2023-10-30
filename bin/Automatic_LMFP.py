@@ -2,7 +2,6 @@ import os
 import subprocess
 import itertools
 import configparser
-import numpy as np
 
 
 def run_MPET(cwd, config):
@@ -14,9 +13,6 @@ def ensemble_definitions(parameters):
     keys, vals = zip(*parameters)
     return keys, vals
 
-k_B = 1.38064852e-23
-T = 298.15
-e = 1.60217662e-19
 
 def run_params_mpet(config_file, material_file,
                     system_properties, material_properties, output_folder):
@@ -57,9 +53,6 @@ def run_params_mpet(config_file, material_file,
             nicename_sys = []
             for key, val in params_sys.items():
                 new_sys[key[0]][key[1]] = val
-                if key[1] == "prevDir":
-                    continue
-                new_sys["Sim Params"]["profileType"] = "CVsegments"
                 nicename_sys.append(f"{key[1]}={val}")
             with open(config_file, "w") as f:
                 new_sys.write(f)
@@ -82,57 +75,37 @@ def run_params_mpet(config_file, material_file,
             ind += 1
             print(f"Simulation {ind} of {num_mat * num_sys} completed")
 
-# prev_dir = r"C:\Users\pierfrancescoo\Documents\Phase-field\mpet-LFMP\mpet\LFMP_dyn\pulses_y04\50percMn\base_50pMn"
-prev_dir = r"C:\Users\pierfrancescoo\Documents\Phase-field\mpet-LFMP\mpet\LFP_CV\Iarchuk_1\base"
-# ocv = 3.9998
-ocv = 3.422
-etas = [0.5,1,2,3]
-
-holds = 5000 # sec
-holds = holds/60 # min
-etas = k_B*T/e*np.array(etas)
-segments = []
-for i in range(len(etas)):
-    Vp = str(ocv + etas[i])
-    Vm = str(ocv - etas[i])
-    holds = str(holds)
-    stringp = f"[(3.35,20),({Vp},{holds})]"
-    stringm = f"[(3.5,20),({Vm},{holds})]"
-    segments.append(str(stringp))
-    # segments.append(str(stringm))
 
 system_properties = [
-    [("Sim Params","segments"), segments],
-    # [("Conductivity","G_mean_c"), ["1e-13"]],
-    # [("Conductivity","G_mean_2_c"), ["1e-13"]],
-    # [("Conductivity","G_stddev_2_c"), ["250e-13"]],
-    # [("Conductivity","G_stddev_c"), ["250e-13"]],
+    [("Sim Params","Crate"), ["0.2"]],
+    [("Conductivity","G_carb_c"), ["1e-17"]],
+    [("Conductivity","G_mean_cont_c"), ["1e-16"]],
+    [("Conductivity","G_std_cont_c"), ["50e-14"]],
+    [("Conductivity","G_bulk_1_c"), ["1e-20"]],
+    [("Conductivity","G_bulk_2_c"), ["1e-16"]],
+    [("Conductivity","c_dep_exp_c"), ["0.5"]],
+    # [("Conductivity","simPartNet_c"), ["true"]],
     # [("Sim Params","seed"), ["0"]],
     # [("Conductivity","sigma_s_c"), ["0.5"]],
     # [("Sim Params","Npart_c"), ["5"]],
-    [("Sim Params","Nvol_c"), ["10"]],
-    # [("Particles","mean_c"), ["100e-9","50e-9"]],
-    # [("Particles","stddev_c"), ["50e-9"]],
-    # [("Sim Params","prevDir"), [prev_dir]],
-    # [("Electrolyte","c0"), ["1000"]],
+    # [("Sim Params","Nvol_c"), ["10"]],
+    # [("Particles","mean_c"), ["25e-9"]],
+    # [("Particles","stddev_c"), ["15e-9"]],
     ]
 
 material_properties = [
-    [("Reactions", 'k0'), ["1"]],
-    # [("Reactions", 'rxnType'), ["CIET"]],
-    # [("Reactions", 'surface_diffusion'), ["true"]],
-    # [("Reactions", 'Rfilm'), ["0"]],
+    # [("Reactions", 'k0_1'), ["3"]],
+    # [("Reactions", 'k0_2'), ["3"]],
+    [("Material", 'stoich_1'), ["0.8"]],
+    # [("Material", 'stoich_1'), ["0.2"]],
+    # [("Reactions", 'lambda_1'), ["6e-20"]],
     # [("Reactions", 'lambda_2'), ["3.4113e-20"]],
-    # [("Material", 'B'), ["0.5e9"]],
-    # [("Material", 'kappa'), ["5e-10"]],
-    [("Material", 'cwet'), ["0.02","0.98"]],
     ]
 
 
-output_folder = "LFP_CV\Iarchu_MHC"
-# config_file = 'params_system_LMFP_CV.cfg'
-config_file = 'params_system_LFP_CV.cfg'
-# material_file = 'params_LFMP_ent1.cfg'
-material_file = 'params_LFP.cfg'
+output_folder = "LFMP_dyn/05_network_test"
+config_file = 'params_system_LMFP.cfg'
+material_file = 'params_LFMP_ent1.cfg'
+
 
 run_params_mpet(config_file, material_file, system_properties, material_properties, output_folder)
