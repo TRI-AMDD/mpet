@@ -322,8 +322,8 @@ class ModCell(dae.daeModel):
                             G_part_i, G_cont_i = self.get_G_part(vInd, pInd, trode, config)
                             # Npart_conn_to_carbon = int((Npart[trode]/10)*5)
                             # generate random int between 0 and Npart_conn_to_carbon
-                            Npart_conn_to_carbon = np.random.randint(1, int((Npart[trode]/10)*2))
-                            # Npart_conn_to_carbon = 1
+                            # Npart_conn_to_carbon = np.random.randint(1, int((Npart[trode]/10)*2))
+                            Npart_conn_to_carbon = 1
 
                             phi_i = self.phi_part[trode](vInd, pInd)
 
@@ -342,7 +342,7 @@ class ModCell(dae.daeModel):
                                         # pick a random value from G_cont_mat
                                         G_con = G_cont_mat[pInd,pConn]/vol_p
                                         G_ij_con = G_con*G_part_i/(G_con + G_part_i)
-                                        eq.Residual += G_con*(phi_i - phi_bulk)
+                                        eq.Residual += 1*(phi_i - phi_bulk)
                             
                 else:    
                     for vInd in range(Nvol[trode]):

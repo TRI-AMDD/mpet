@@ -86,9 +86,9 @@ def run_params_mpet(config_file, material_file,
 prev_dir = r"C:\Users\pierfrancescoo\Documents\Phase-field\mpet-LFMP\mpet\LFP_CV\Iarchuk_1\base"
 # ocv = 3.9998
 ocv = 3.422
-etas = [0.5,1,2,3]
+etas = [2]
 
-holds = 5000 # sec
+holds = 4000 # sec
 holds = holds/60 # min
 etas = k_B*T/e*np.array(etas)
 segments = []
@@ -96,10 +96,13 @@ for i in range(len(etas)):
     Vp = str(ocv + etas[i])
     Vm = str(ocv - etas[i])
     holds = str(holds)
-    stringp = f"[(3.35,20),({Vp},{holds})]"
-    stringm = f"[(3.5,20),({Vm},{holds})]"
+    stringp = f"[(3.20,120),(3.4,30),({Vp},{holds})]"
+    # stringm = f"[(3.44,20),({Vm},{holds})]"
+    # stringp = f"[({Vp},{holds})]"
+    # stringm = f"[({Vm},{holds})]"
     segments.append(str(stringp))
     # segments.append(str(stringm))
+
 
 system_properties = [
     [("Sim Params","segments"), segments],
@@ -109,27 +112,30 @@ system_properties = [
     # [("Conductivity","G_stddev_c"), ["250e-13"]],
     # [("Sim Params","seed"), ["0"]],
     # [("Conductivity","sigma_s_c"), ["0.5"]],
+    [("Particles","cs0_c"), ["0.02"]],
     # [("Sim Params","Npart_c"), ["5"]],
-    [("Sim Params","Nvol_c"), ["10"]],
-    # [("Particles","mean_c"), ["100e-9","50e-9"]],
-    # [("Particles","stddev_c"), ["50e-9"]],
+    # [("Sim Params","Nvol_c"), ["10"]],
+    # [("Particles","mean_c"), ["100e-9"]],
+    # [("Particles","stddev_c"), ["25e-9"]],
     # [("Sim Params","prevDir"), [prev_dir]],
     # [("Electrolyte","c0"), ["1000"]],
     ]
 
 material_properties = [
-    [("Reactions", 'k0'), ["1"]],
+    [("Reactions", 'k0'), ["3"]],
     # [("Reactions", 'rxnType'), ["CIET"]],
-    # [("Reactions", 'surface_diffusion'), ["true"]],
+    [("Reactions", 'surface_diffusion'), ["false"]],
     # [("Reactions", 'Rfilm'), ["0"]],
-    # [("Reactions", 'lambda_2'), ["3.4113e-20"]],
-    # [("Material", 'B'), ["0.5e9"]],
-    # [("Material", 'kappa'), ["5e-10"]],
-    [("Material", 'cwet'), ["0.02","0.98"]],
+    [("Material", 'B'), ["0.1916e9"]],
+    # [("Material", 'D'), ["5e-15"]],
+    [("Material", 'kappa'), ["5e-10"]],
+    # [("Reactions", 'lambda'), ["5.54e-20"]],
+    # [("Reactions", 'lambda'), ["3.4113e-20"]],
+    # [("Material", 'cwet'), ["0.98"]],
     ]
 
 
-output_folder = "LFP_CV\Iarchu_MHC"
+output_folder = "LFP_CV\single_part"
 # config_file = 'params_system_LMFP_CV.cfg'
 config_file = 'params_system_LFP_CV.cfg'
 # material_file = 'params_LFMP_ent1.cfg'
