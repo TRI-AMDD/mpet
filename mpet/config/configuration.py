@@ -444,6 +444,7 @@ class Config:
         # set default 1C_current_density
         limtrode = self['limtrode']
         theoretical_1C_current = self[limtrode, 'cap'] / 3600.  # A/m^2
+        # print('Theoretical 1C current density: {:.2f} A/m^2'.format(theoretical_1C_current))
         param = '1C_current_density'
         if self[param] is None:
             # set to theoretical value
@@ -662,10 +663,10 @@ class Config:
                     mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
                     sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
                     raw_t = np.random.lognormal(mu_t, sigma_t, size=(Nvol, Npart))
-                if self[trode,'shape'] == 'plate':
+                elif self[trode,'shape'] == 'plate':
                     np.random.seed(self.D_s['seed'])
                     mean_t = self[trode,'thickness']
-                    stddev_t = mean_t*0.8
+                    stddev_t = self[trode,'std_thick']
                     var_t = stddev_t**2
                     mu_t = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
                     sigma_t = np.sqrt(np.log(var_t/(mean_t**2) + 1))
@@ -680,6 +681,41 @@ class Config:
                     mu = np.log((mean**2) / np.sqrt(var + mean**2))
                     sigma = np.sqrt(np.log(var/(mean**2) + 1))
                     raw = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+                    # if a value is bigger than 200e-9 set it to 200e-9
+                    # max = np.max(raw)
+                    # min = np.min(raw)
+                    # second max
+                    
+                    # raw[raw > 195e-9] = 195e-9
+                    # new_max = np.max(raw)
+                    
+                    # sort columns descending
+                    # raw.sort(axis=1)
+                    # raw = raw[:,::-1]
+                    # find max and min
+                    
+                    # print('Max particle size: {:.2f} nm'.format(max*1e9))
+                    # # print('New max particle size: {:.2f} nm'.format(new_max*1e9))
+                    # print('Min particle size: {:.2f} nm'.format(min*1e9))
+
+                    if self['agglomerate'][trode]:
+                        pAggl = self['pAggl'][trode]
+                        Naggl = self['Naggl'][trode]
+                        raw_sort = np.empty_like(raw)
+                        for v in range(Nvol):
+                            sorted_v = np.argsort(raw[v, :])
+                            # invert sorting
+                            sorted_v = sorted_v[::-1]
+                            groups = [sorted_v[i:i+Naggl] for i in range(0, Npart, Naggl)]
+                            for group in groups:
+                                np.random.shuffle(group)
+                            rearranged_v = np.zeros_like(raw[v, :])
+
+                            for i, group in enumerate(groups):
+                                for j, index in enumerate(group):
+                                    rearranged_v[i + j*pAggl] = raw[v, index]
+                            raw_sort[v, :] = rearranged_v
+                        raw = raw_sort
             else:
                 # use user-defined PSD
                 raw = self['specified_psd'][trode]
@@ -702,8 +738,8 @@ class Config:
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
-                if self[trode, 'shape'] in ['plate']:
-                    psd_thick = raw_t
+            if self[trode, 'shape'] in ['plate']:
+                psd_thick = raw_t
             # For homogeneous particles (only one 'volume' per particle)
             elif solidType in ['homog', 'homog_sdn', 'homog_sdn_gen','homog2', 'homog2_sdn']:
                 # Each particle is only one volume
@@ -732,6 +768,7 @@ class Config:
                 elif solidType in ['ACR2D']:
                     psd_area = 2 * 1.2263 * psd_len**2
                     psd_vol = 1.2263 * psd_len**2 * psd_len_ver
+                    psd_len_ver = psd_len_ver/2
             else:
                 raise NotImplementedError(f'Unknown solid shape: {solidShape}')
 
@@ -748,8 +785,10 @@ class Config:
             self['psd_vol_FracVol'][trode] = psd_frac_vol
             # store values to config 2d
             if self[trode,'type'] == 'ACR2D':
-                self['psd_num_ver'][trode] = psd_num_ver
+                self['psd_num_ver'][trode] = np.ceil(psd_num_ver/2).astype(int)
                 self['psd_len_ver'][trode] = psd_len_ver
+            if self[trode, 'shape'] =='plate':
+                self['psd_thick'][trode] = psd_thick
 
     def _G(self):
         """
@@ -812,13 +851,22 @@ class Config:
                             self[trode,'indvPart']['kappa_x'][i, j] = self[trode,'kappa_x'] / kappa_ref
                     if self[trode, 'kappa_y'] is not None:
                         if self[trode, 'type'] == 'ACR2D':
+
                             pthick = self['psd_len_ver'][trode][i,j]
                             self[trode,'indvPart']['kappa_y'][i, j] = self[trode,'kappa_y'] \
                                 / (kappa_ref * (pthick**2/plen**2))
-                    if self[trode, 'dgammadc'] is not None:
+                            
+                            kappa_ref = constants.k * constants.T_ref * cs_ref_part * pthick**2  # J/m
+                            gamma_S_ref = kappa_ref / pthick
+                            nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
+                            self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
+                                / self[trode, 'indvPart']['kappa_y'][i, j]
+                            
+                    if self[trode, 'dgammadc'] is not None and self[trode, 'type'] != 'ACR2D':
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
                         self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                             / self[trode, 'indvPart']['kappa'][i, j]
+                        
                     if self[trode,'type'] == 'ACR2D':
                         pthick = self['psd_len_ver'][trode][i,j]
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
@@ -856,6 +904,8 @@ class Config:
                             self[trode, 'indvPart']['Omega_a'][i, j] = omega_eff
                         else:
                             self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']
+                    # elif self[trode, 'shape'] in ['plate']:
+                    #     # self[trode, 'indvPart']['Omega_a'][i, j] = self.size2regsln(self['psd_thick'][trode][i,j])
                     else:
                         # just use global value
                         self[trode, 'indvPart']['Omega_a'][i, j] = self[trode, 'Omega_a']

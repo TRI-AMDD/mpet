@@ -94,11 +94,27 @@ class SimMPET(dae.daeSimulation):
                                     part.c.SetInitialGuess(k, cs0)
                                     for j in range(N_ver_ij):
                                         part.cy[k].SetInitialCondition(j, cs0)
-                                        # part.ux[k].SetInitialGuess(j, 0)
-                                        # part.uy[k].SetInitialGuess(j, 0)
+                                        if config["c","mechanics"]:
+                                            part.ux[k].SetInitialGuess(j, 0)
+                                            part.uy[k].SetInitialGuess(j, 0)
                             else:
+                                epsrnd = 0
+                                rnd = epsrnd*(np.random.rand(Nij) - 0.5)
+                                rnd -= np.mean(rnd)
+                                # sinusoidal perturbation
+                                rnd = epsrnd*np.sin(np.linspace(0, (Nij/25)*2*np.pi, Nij))
                                 for k in range(Nij):
-                                    part.c.SetInitialCondition(k, cs0)
+                                    part.c.SetInitialCondition(k, cs0 + rnd[k])
+
+                                # size = int((Nij/25)*5)
+                                # # # if Nij > 2:
+                                # # #     size = 2
+                                # # # else:
+                                # # #     size = 1
+                                # rand_positions = np.random.randint(0, Nij, size=2)
+                                # for rand in rand_positions:
+                                #     part.c.SetInitialCondition(int(rand), 0.01)
+                                # part.c.setInitialGuess(5,0.05)
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -163,6 +179,8 @@ class SimMPET(dae.daeSimulation):
                         i, data["phi_bulk_" + tr][-1,i])
                     for j in range(Npart[tr]):
                         Nij = config["psd_num"][tr][i,j]
+                        # if self.config[tr, "type"] == 'ACR2D':
+                            # Nij_ver = config["psd_num_ver"][tr][i,j]
                         part = self.m.particles[tr][i,j]
                         solidType = self.config[tr, "type"]
                         partStr = "partTrode{l}vol{i}part{j}_".format(
@@ -180,6 +198,15 @@ class SimMPET(dae.daeSimulation):
                             for k in range(Nij):
                                 part.c.SetInitialCondition(
                                     k, data[partStr + "c"][-1,k])
+                                # if solidType == "ACR2D":
+                                #     for j in range(Nij_ver):
+                                #         part.cy[k].SetInitialCondition(
+                                #             j, data[partStr + "cy"][-1,k,j])
+                                #         if config["c","mechanics"]:
+                                #             part.ux[k].SetInitialGuess(
+                                #                 j, data[partStr + "ux"][-1,k,j])
+                                #             part.uy[k].SetInitialGuess(
+                                #                 j, data[partStr + "uy"][-1,k,j])
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(
                                 utils.get_dict_key(data, partStr + "c1bar", final=True))

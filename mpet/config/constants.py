@@ -20,7 +20,7 @@ c_ref = 1000.
 reactions_epsilon = 1e-12
 
 #: parameter that are defined per electrode with a ``_{electrode}`` suffix
-PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
+PARAMS_PER_TRODE = ['Nvol', 'Npart', 'pAggl', 'Naggl','agglomerate','mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
                     'simPartCond', 'G_mean', 'G_stddev', 'L', 'P_L', 'poros', 'BruggExp',
                     'specified_psd', 'rhom', 'cp', 'k_h']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well

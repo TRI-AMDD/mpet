@@ -292,33 +292,72 @@ class ModCell(dae.daeModel):
             # Simulate the potential drop along the connected
             # particles
             simPartCond = config['simPartCond'][trode]
-            for vInd in range(Nvol[trode]):
-                phi_bulk = self.phi_bulk[trode](vInd)
-                for pInd in range(Npart[trode]):
-                    G_l = config["G"][trode][vInd,pInd]
-                    phi_n = self.phi_part[trode](vInd, pInd)
-                    if pInd == 0:  # reference bulk phi
-                        phi_l = phi_bulk
-                    else:
-                        phi_l = self.phi_part[trode](vInd, pInd-1)
-                    if pInd == (Npart[trode] - 1):  # No particle at end of "chain"
-                        G_r = 0
-                        phi_r = phi_n
-                    else:
-                        G_r = config["G"][trode][vInd,pInd+1]
-                        phi_r = self.phi_part[trode](vInd, pInd+1)
-                    # charge conservation equation around this particle
-                    eq = self.CreateEquation(
-                        "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
-                            vInd=vInd, trode=trode, pInd=pInd))
-                    if simPartCond:
-                        # -dcsbar/dt = I_l - I_r
-                        eq.Residual = (
-                            self.particles[trode][vInd,pInd].dcbardt()
-                            + ((-G_l * (phi_n - phi_l))
-                               - (-G_r * (phi_r - phi_n))))
-                    else:
-                        eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
+            agglomerate = config["agglomerate"][trode]
+            if agglomerate:
+                pAggl = config['pAggl'][trode]
+                Naggl = config['Naggl'][trode]
+                for vInd in range(Nvol[trode]):
+                    phi_bulk = self.phi_bulk[trode](vInd)
+                    for ag in range(Naggl):
+                        for part in range(pAggl):
+                            pInd = ag*pAggl + part
+                            G_l = config["G"][trode][vInd,pInd]
+                            phi_n = self.phi_part[trode](vInd, pInd)
+                            if part == 0:  # reference bulk phi
+                                phi_l = phi_bulk
+                            else:
+                                phi_l = self.phi_part[trode](vInd, pInd-1)
+                            if part == (pAggl - 1):  # No particle at end of "chain"
+                                G_r = 0
+                                phi_r = phi_n
+                            else:
+                                vol_p_n = config["psd_vol"][trode][vInd,pInd]
+                                vol_p_r = config["psd_vol"][trode][vInd,pInd+1]
+                                G_r = config["G"][trode][vInd,pInd+1]
+                                G_r = G_r * vol_p_r/vol_p_n
+                                phi_r = self.phi_part[trode](vInd, pInd+1)
+                            # charge conservation equation around this particle
+                            eq = self.CreateEquation(
+                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                    vInd=vInd, trode=trode, pInd=pInd))
+                            if simPartCond:
+                                # -dcsbar/dt = I_l - I_r
+                                eq.Residual = (
+                                    self.particles[trode][vInd,pInd].dcbardt()
+                                    + ((-G_l * (phi_n - phi_l))
+                                    - (-G_r * (phi_r - phi_n))))
+                            else:
+                                eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
+            # E_G = 20  #0.5 eV 
+            else:
+                for vInd in range(Nvol[trode]):
+                    phi_bulk = self.phi_bulk[trode](vInd)
+                    for pInd in range(Npart[trode]):
+                        G_l = config["G"][trode][vInd,pInd]
+                        # G_l = G_l_0 * np.exp(-E_G/self.T_lyte() + E_G/1)
+                        phi_n = self.phi_part[trode](vInd, pInd)
+                        if pInd == 0:  # reference bulk phi
+                            phi_l = phi_bulk
+                        else:
+                            phi_l = self.phi_part[trode](vInd, pInd-1)
+                        if pInd == (Npart[trode] - 1):  # No particle at end of "chain"
+                            G_r = 0
+                            phi_r = phi_n
+                        else:
+                            G_r = config["G"][trode][vInd,pInd+1]
+                            phi_r = self.phi_part[trode](vInd, pInd+1)
+                        # charge conservation equation around this particle
+                        eq = self.CreateEquation(
+                            "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                vInd=vInd, trode=trode, pInd=pInd))
+                        if simPartCond:
+                            # -dcsbar/dt = I_l - I_r
+                            eq.Residual = (
+                                self.particles[trode][vInd,pInd].dcbardt()
+                                + ((-G_l * (phi_n - phi_l))
+                                - (-G_r * (phi_r - phi_n))))
+                        else:
+                            eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
 
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple

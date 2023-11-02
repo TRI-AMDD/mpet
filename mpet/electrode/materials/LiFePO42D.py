@@ -25,7 +25,7 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         curvy = np.empty_like(c_mat)
         curvy[:,0] = (2 * c_mat[:,1] - 2 * c_mat[:,0])/(dys**2)
         curvy[:,1:Ny-1] = (np.diff(c_mat, n=2, axis=1))/(dys**2)
-        curvy[:,Ny-1] = (2 * c_mat[:,-2] - 2 * c_mat[:,-1] + 2*dys*beta_s)/(dys**2)
+        curvy[:,Ny-1] = (2 * c_mat[:,-2] - 2 * c_mat[:,-1] + 2*dys*beta_s*c_mat[:,-1]*(1-c_mat[:,-1]))/(dys**2)
         # orizontally the ACR is model just require 2 ghost points
         curvx = np.diff(np.concatenate((ywet,c_mat,ywet), axis=0), n=2, axis=0)/(dxs**2)
         y_vert_avg = np.average(c_mat, axis=1)
