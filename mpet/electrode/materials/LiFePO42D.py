@@ -45,10 +45,11 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         muR_mat = T*np.log(c_mat/(1- defect_mat -c_mat)) + self.get_trode_param("Omega_a")*(1- defect_mat -2*c_mat)
         # non-homogeneous
         muR_mat += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy
-        muR_mat += self.get_trode_param("Bx")*np.subtract(c_mat,y_oriz_avg)
-        for i in np.arange(Nx):
-            y = c_mat[i,:]
-            muR_mat[i,:] += self.get_trode_param("By")*(y - y_vert_avg[i])
+        if self.get_trode_param("mechanics") == "false":
+            muR_mat += self.get_trode_param("Bx")*np.subtract(c_mat,y_oriz_avg)
+            for i in np.arange(Nx):
+                y = c_mat[i,:]
+                muR_mat[i,:] += self.get_trode_param("By")*(y - y_vert_avg[i])
         actR_mat = np.exp(muR_mat/T)
         muR_mat += muRtheta + muR_ref
         return muR_mat, actR_mat

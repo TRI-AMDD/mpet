@@ -990,7 +990,7 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     norm_stress = kT * N_A * max_conc
     
     Cij, e0 = mech_tensors()
-    Cij = Cij/(kT * N_A * max_conc)*1e9
+    Cij = Cij*0/(kT * N_A * max_conc)
 
     # ywet = 0.98*np.ones(Ny+2, dtype=object)/\
     # c_mat_tmp = np.zeros((Nx+2,Ny+1), dtype=object)
