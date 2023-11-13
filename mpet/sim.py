@@ -87,10 +87,15 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
+                            epsrnd = 0.001
+                            rnd = epsrnd*(np.random.rand(Nij) - 0.5)
                             for k in range(Nij):
-                                part.c.SetInitialCondition(k, cs0)
+                                part.c.SetInitialCondition(k, cs0 + rnd[k])
                         elif solidType in constants.two_var_types:
-                            stoich1 = self.config[tr,'stoich_1']
+                            if self.config[tr,'stoich_1'] is not None:
+                                stoich1 = self.config[tr,'stoich_1']
+                            else:
+                                stoich1 = 0.5
                             if cs0 < stoich1:
                                 part.c1bar.SetInitialGuess(cs0/stoich1)
                                 part.c2bar.SetInitialGuess(0.01)

@@ -472,6 +472,8 @@ class Config:
             self._G_cont()
             # netwerk conductivty
             self._G_contNet()
+            # connectivity matrix
+            self._conn_matrix()
             # carbon coating conductivty
             self._G_carb()
             # bulk conductivty
@@ -730,7 +732,7 @@ class Config:
 
     def _G_cont(self):
         """
-        Generate Inter-particle connectivity  distribution and store in config.
+        Generate inter-particle connectivity distribution of a one-dim wire and store in config.
         """
         self['G_cont'] = {}
         for trode in self['trodes']:
@@ -756,7 +758,9 @@ class Config:
             Npart = self['Npart'][trode]
             mean = self['G_mean_cont'][trode]
             stddev = self['G_std_cont'][trode]
-            Nconn = int(Npart * (Npart - 1) / 2)
+            # N*(N-1)/2 are the number of contacts
+            # + N for the self-contact that is the contact with carbon black
+            Nconn = int(Npart * (Npart - 1) / 2) + int(Npart)
             if np.allclose(stddev, 0, atol=1e-17):
                 G_contNet = mean * np.ones((Nvol, Nconn))
             else:
@@ -768,6 +772,73 @@ class Config:
             # the normalization is done in mod_cell 
             self['G_contNet'][trode] = G_contNet * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'])
+    
+    def _conn_matrix(self):
+        self['conn_matrix'] = {}
+        for trode in self['trodes']:
+            Nvol = self['Nvol'][trode]
+            Npart = self['Npart'][trode]
+            # number of average contacts per particle
+            mean_n = self['avg_num_cont'][trode]
+            # standard deviation of the contacts per particle
+            std_n = self['std_num_cont'][trode]
+            # penalty for the carbon black contact
+            penalty_grid_cont = self['penalty_grid_cont'][trode]
+            # number of lost contact if a particle is connected to carbon black
+            penalty_value = self['penalty_value'][trode]
+            self['conn_matrix'][trode] = {}
+            for vInd in range(Nvol):
+                indeces = np.array([])
+                conn_mat = np.zeros((Npart, Npart))
+                Numb_conn_vec = create_num_conn(mean_n, std_n, Npart)
+                for i in range(Npart):
+                    # generate random number of connections
+                    orig_conn = int(Numb_conn_vec[i])
+                    # max connection = n_part (considering self connection as conn to carbon)
+                    # check how many connections are in that row
+                    existing_conn = np.where(conn_mat[i, :] == 1)[0]
+                    # if there are already connections, subtract them from the total
+                    conn_todo = orig_conn - len(existing_conn)
+                    if conn_todo < 0:
+                        conn_todo = 0
+                    if conn_todo == 0:
+                        continue
+                    empty_positions = np.where(conn_mat[i, :] == 0)[0]
+                    if len(empty_positions) == 0:
+                        continue
+                    # sort empty positions
+                    empty_positions = np.sort(empty_positions)
+                    # available positions = empty positions - already passed positions
+                    available_positions = np.setdiff1d(empty_positions, indeces)
+                    # if there are not enough empty positions, take the minimum
+                    if conn_todo > len(available_positions):
+                        random_positions = available_positions
+                    else:
+                        random_positions = np.random.choice(available_positions, size=conn_todo, replace=False)
+                    conn_mat[i, random_positions] = 1
+                    conn_mat[random_positions, i] = 1
+                    indeces = np.append(indeces, i)
+                # check if at lest one element in the diagonal is 1
+                # if not, add a connection
+                diag = np.diag(conn_mat)
+                if np.sum(diag) == 0:
+                    print('No connections to the grid')
+                    conn_mat[0,0] = 1
+                # if a raw is connected to the grid, remove 2 connections
+                if penalty_grid_cont:
+                    for i in range(Npart):
+                        if conn_mat[i,i] == 1:
+                            existing_conn = np.where(conn_mat[i, :] == 1)[0]
+                            # exlude the grid connection
+                            existing_conn = existing_conn[existing_conn != i]
+                            # need to revaluate this, cannot take away all the connections
+                            penalty_value = np.min([len(existing_conn)+1, penalty_value])
+                            random_positions = np.random.choice(existing_conn, size=penalty_value, replace=False)
+                            conn_mat[i, random_positions] = 0
+                            conn_mat[random_positions, i] = 0
+
+                self['conn_matrix'][trode][vInd] = conn_mat
+
             
     def _G_carb(self):
         """
@@ -975,3 +1046,19 @@ class Config:
         elif param < 2:
             param = 2.
         return param
+
+def lognorm(mean, std, N):
+    var = std**2
+    mu = np.log((mean**2) / np.sqrt(var + mean**2))
+    sigma = np.sqrt(np.log((var)/(mean**2) + 1))
+    return np.random.lognormal(mu, sigma, N)
+
+def create_num_conn(mean_n, std_n, Npart):
+    lognormal_values = lognorm(mean_n, std_n, Npart)
+    outside_bounds = (lognormal_values < 1) | (lognormal_values > Npart)
+    while outside_bounds.any():
+        lognormal_values[outside_bounds] = lognorm(mean_n, std_n, Npart)[outside_bounds]
+        outside_bounds = (lognormal_values < 1) | (lognormal_values > Npart)
+
+    rounded_values = np.round(lognormal_values).astype(int)
+    return rounded_values

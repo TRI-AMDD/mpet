@@ -77,28 +77,29 @@ def run_params_mpet(config_file, material_file,
 
 
 system_properties = [
-    [("Sim Params","Crate"), ["2"]],
-    [("Conductivity","G_carb_c"), ["1e-12"]],
-    [("Conductivity","G_mean_cont_c"), ["1e-13"]],
-    [("Conductivity","G_std_cont_c"), ["1e-9"]],
-    [("Conductivity","G_bulk_c"), ["1e-12"]],
+    # [("Conductivity","G_bulk_c"), ["1e-14","1e-15","1e-16"]],
+    # [("Conductivity","G_mean_cont_c"), ["1e-14"]],
+    [("Conductivity","avg_num_cont_c"), ["5"]],
+    [("Conductivity","std_num_cont_c"), ["5"]],
+    [("Conductivity","penalty_value_c"), ["5"]],
     # [("Conductivity","c_dep_exp_c"), ["1"]],
     # [("Conductivity","simPartNet_c"), ["true"]],
-    # [("Sim Params","seed"), ["0"]],
+    [("Sim Params","seed"), ["0","1","2","3","4"]],
     # [("Conductivity","sigma_s_c"), ["0.5"]],
-    [("Sim Params","Npart_c"), ["20"]],
-    [("Sim Params","Nvol_c"), ["2"]],
+    # [("Sim Params","Npart_c"), ["20"]],
+    # [("Sim Params","Nvol_c"), ["2"]],
     # [("Particles","mean_c"), ["25e-9"]],
     # [("Particles","stddev_c"), ["15e-9"]],
+    [("Sim Params","Crate"), ["4","2"]],
     ]
 
 material_properties = [
-    [("Reactions", 'k0'), ["1"]],
+    [("Reactions", 'k0'), ["3"]],
     # [("Reactions", 'Rfilm'), ["0"]],
     ]
 
 
-output_folder = "LFP_CC/network_1"
+output_folder = "LFP_CC/conn_mat_seed_30vol"
 config_file = 'params_system_LFP.cfg'
 material_file = 'params_LFP.cfg'
 

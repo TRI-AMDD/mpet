@@ -311,6 +311,15 @@ class ModCell(dae.daeModel):
                                 G_cont_mat[i,j] = G_cont_net[indx]
                                 G_cont_mat[j,i] = G_cont_net[indx]
                                 indx += 1
+                        # the last N values are the conductivites to the carbon and are stored in the diagonal
+                        G_cont_mat = np.diag(G_cont_net[-Npart[trode]:]) + G_cont_mat
+                        # we thus have a symmetric matrix that gives the inter-particle contact and the carbon contact
+                        # [00 01 02 03
+                        #  10 11 12 13
+                        #  20 21 22 23
+                        #  30 31 32 33]
+                        conn_matrix = config["conn_matrix"][trode][vInd]
+                        G_cont_mat = G_cont_mat*conn_matrix
 
                         for pInd in range(Npart[trode]):
                             eq = self.CreateEquation(
@@ -320,11 +329,10 @@ class ModCell(dae.daeModel):
                             eq.Residual = - self.particles[trode][vInd,pInd].dcbardt()
 
                             G_part_i, G_cont_i = self.get_G_part(vInd, pInd, trode, config)
+                            # when network is active G_cont of 1d-wire model is not considered
                             # Npart_conn_to_carbon = int((Npart[trode]/10)*5)
                             # generate random int between 0 and Npart_conn_to_carbon
                             # Npart_conn_to_carbon = np.random.randint(1, int((Npart[trode]/10)*2))
-                            Npart_conn_to_carbon = 1
-
                             phi_i = self.phi_part[trode](vInd, pInd)
 
                             for pConn in range(Npart[trode]):
@@ -335,14 +343,9 @@ class ModCell(dae.daeModel):
                                     phi_j = self.phi_part[trode](vInd, pConn)
                                     eq.Residual += G_ij_tot * (phi_i - phi_j)
                                 if pConn == pInd:
-                                    if pInd < Npart_conn_to_carbon:
-                                        # a bit to adjust
-                                        # very high conductivity for the particles
-                                        # close to the carbon 
-                                        # pick a random value from G_cont_mat
-                                        G_con = G_cont_mat[pInd,pConn]/vol_p
-                                        G_ij_con = G_con*G_part_i/(G_con + G_part_i)
-                                        eq.Residual += 1*(phi_i - phi_bulk)
+                                    G_con = G_cont_mat[pInd,pConn]/vol_p
+                                    G_ij_con = G_con*G_part_i/(G_con + G_part_i)
+                                    eq.Residual += G_ij_con*(phi_i - phi_bulk)
                             
                 else:    
                     for vInd in range(Nvol[trode]):
@@ -609,7 +612,7 @@ class ModCell(dae.daeModel):
             simPartCond_2param = False
         carbonCoating = config['carbon_coating'][trode]
         expon = config["c_dep_exp"][trode]
-
+        # G_cont is valid for 1d-wire model
         G_cont = config["G_cont"][trode][vInd,pInd]
         if simPartCond_2param:
             c1bar = self.particles[trode][vInd,pInd].c1bar()
