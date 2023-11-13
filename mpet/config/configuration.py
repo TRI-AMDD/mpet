@@ -822,17 +822,18 @@ class Config:
                 # if not, add a connection
                 diag = np.diag(conn_mat)
                 if np.sum(diag) == 0:
-                    print('No connections to the grid')
                     conn_mat[0,0] = 1
                 # if a raw is connected to the grid, remove 2 connections
                 if penalty_grid_cont:
                     for i in range(Npart):
                         if conn_mat[i,i] == 1:
                             existing_conn = np.where(conn_mat[i, :] == 1)[0]
+                            # need to revaluate this, cannot take away all the connections
+                            # remove a random connection from the list
+                            existing_conn = existing_conn[existing_conn != np.random.choice(existing_conn, size = 1)]
                             # exlude the grid connection
                             existing_conn = existing_conn[existing_conn != i]
-                            # need to revaluate this, cannot take away all the connections
-                            penalty_value = np.min([len(existing_conn)+1, penalty_value])
+                            penalty_value = np.min([len(existing_conn), penalty_value])
                             random_positions = np.random.choice(existing_conn, size=penalty_value, replace=False)
                             conn_mat[i, random_positions] = 0
                             conn_mat[random_positions, i] = 0
