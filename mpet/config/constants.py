@@ -23,7 +23,8 @@ reactions_epsilon = 1e-12
 PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
                     'simPartCond','carbon_coating' ,'G_carb', 'G_bulk', 'G_mean_cont', 'G_std_cont',
                     'G_bulk_1','G_bulk_2', 
-                    'simPartNet', 'avg_num_cont', 'std_num_cont', 'penalty_grid_cont', 'penalty_value',
+                    'simPartNet', 'avg_num_cont', 'std_num_cont', 
+                    'penalty_grid_cont', 'penalty_factor', 'perc_grid',
                     'L', 'P_L', 'poros', 'BruggExp',
                     'specified_psd', 'rhom', 'cp', 'k_h', 'c_dep_exp']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well

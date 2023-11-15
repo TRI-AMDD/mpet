@@ -339,13 +339,15 @@ class ModCell(dae.daeModel):
                                 vol_p = config["psd_vol"][trode][vInd,pInd]
                                 if pConn != pInd:
                                     G_con_ij = G_cont_mat[pInd,pConn]/vol_p
-                                    G_ij_tot = G_con_ij*G_part_i/(G_con_ij + G_part_i)
-                                    phi_j = self.phi_part[trode](vInd, pConn)
-                                    eq.Residual += G_ij_tot * (phi_i - phi_j)
+                                    if G_con_ij != 0:
+                                        G_ij_tot = G_con_ij*G_part_i/(G_con_ij + G_part_i)
+                                        phi_j = self.phi_part[trode](vInd, pConn)
+                                        eq.Residual += G_ij_tot * (phi_i - phi_j)
                                 if pConn == pInd:
                                     G_con = G_cont_mat[pInd,pConn]/vol_p
-                                    G_ij_con = G_con*G_part_i/(G_con + G_part_i)
-                                    eq.Residual += G_ij_con*(phi_i - phi_bulk)
+                                    if G_con != 0:
+                                        G_ij_con = G_con*G_part_i/(G_con + G_part_i)
+                                        eq.Residual += G_ij_con*(phi_i - phi_bulk)
                             
                 else:    
                     for vInd in range(Nvol[trode]):
