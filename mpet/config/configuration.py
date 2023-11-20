@@ -499,6 +499,10 @@ class Config:
         if self['Dm'] is not None:
             self['Dm'] = self['Dm'] / self['D_ref']
         self['c0'] = self['c0'] / constants.c_ref
+        if self['c01'] is not None:
+            self['c01'] = self['c01'] / constants.c_ref
+        if self['c02'] is not None:
+            self['c02'] = self['c02'] / constants.c_ref
         self['phi_cathode'] = 0.  # TODO: why is this defined if always 0?
         self['currset'] = self['currset'] / (theoretical_1C_current * self['curr_ref'])
         if self['power'] is not None:

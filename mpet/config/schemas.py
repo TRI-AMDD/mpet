@@ -150,7 +150,7 @@ system = {'Sim Params': {'profileType': lambda x:
                                  Optional('k_h_s', default=0): Use(float),
                                  Optional('h_h', default=0): Use(float),
                                  Optional('entropy_heat_gen', default=False): Use(tobool)},
-          'Electrolyte': {'c0': Use(float),
+          'Electrolyte': {Optional('c0', default=1000): Use(float),
                           'zp': Use(int),
                           'zm': And(Use(int), lambda x: x < 0),
                           'nup': Use(int),
@@ -161,7 +161,10 @@ system = {'Sim Params': {'profileType': lambda x:
                           'n': Use(int),
                           'sp': Use(int),
                           Optional('Dp', default=None): Use(float),
-                          Optional('Dm', default=None): Use(float)}}
+                          Optional('Dm', default=None): Use(float),
+                          Optional('MultiCation', default=False): Use(tobool),
+                          Optional('c01', default=1000): Use(float),
+                          Optional('c02', default=1000): Use(float),}}
 
 #: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
