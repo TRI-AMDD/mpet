@@ -536,9 +536,9 @@ class Config:
                 self[trode, 'lambda_1'] = self[trode, 'lambda_1'] / kT
             if self[trode, 'lambda_2'] is not None:
                 self[trode, 'lambda_2'] = self[trode, 'lambda_2'] / kT
-            if self[trode, 'lambda_m'] is not None:
+            if self[trode, 'intralayer_rxn']:
                 self[trode, 'lambda_m'] = self[trode, 'lambda_m'] / kT
-            if self[trode, 'kintra'] is not None:
+            if self[trode, 'intralayer_rxn']:
                 self[trode, 'kintra'] = self[trode, 'kintra'] * self['t_ref']
             if self[trode, 'B'] is not None:
                 self[trode, 'B'] = self[trode, 'B'] / (kT * constants.N_A * self[trode, 'cs_ref'])
@@ -778,7 +778,6 @@ class Config:
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            # number of average contacts per particle
             mean_n = self['avg_num_cont'][trode]
             # standard deviation of the contacts per particle
             std_n = self['std_num_cont'][trode]
@@ -789,47 +788,52 @@ class Config:
             # number of lost contact if a particle is connected to carbon black
             self['conn_matrix'][trode] = {}
             for vInd in range(Nvol):
-                indeces = np.array([])
-                conn_mat = np.zeros((Npart, Npart))
-                Numb_conn_vec = create_num_conn(mean_n, std_n, Npart)
-                for i in range(int(Npart*perc_grid)):
-                    conn_mat[i,i] = 1
+                if Npart == 1:
+                    self['conn_matrix'][trode][vInd] = [1]
+                else:
+                    indeces = np.array([])
+                    conn_mat = np.zeros((Npart, Npart))
+                    if mean_n > Npart: # to be sure the while loop is not infinite
+                        mean_n = Npart - 1
+                    Numb_conn_vec = create_num_conn(mean_n, std_n, Npart)
+                    for i in range(int(Npart*perc_grid)):
+                        conn_mat[i,i] = 1
 
-                for i in range(Npart):
-                    # generate random number of connections
-                    orig_conn = int(Numb_conn_vec[i])
-                    if i in range(int(Npart*perc_grid)):
-                        # if we consider a penalty for the grid connection
-                        # reduce the number of connections
-                        if penalty_grid_cont:
-                            orig_conn = int(orig_conn*penalty_factor)
-                    # max connection = n_part (considering self connection as conn to carbon)
-                    # check how many connections are in that row
-                    existing_conn = np.where(conn_mat[i, :] == 1)[0]
-                    existing_conn = existing_conn[existing_conn != i]
-                    # if there are already connections, subtract them from the total
-                    conn_todo = orig_conn - len(existing_conn)
-                    if conn_todo < 0:
-                        conn_todo = 0
-                    if conn_todo == 0:
-                        continue
-                    empty_positions = np.where(conn_mat[i, :] == 0)[0]
-                    if len(empty_positions) == 0:
-                        continue
-                    # sort empty positions
-                    empty_positions = np.sort(empty_positions)
-                    # available positions = empty positions - already passed positions
-                    available_positions = np.setdiff1d(empty_positions, indeces)
-                    # if there are not enough empty positions, take the minimum
-                    if conn_todo > len(available_positions):
-                        random_positions = available_positions
-                    else:
-                        random_positions = np.random.choice(available_positions, size=conn_todo, replace=False)
-                    conn_mat[i, random_positions] = 1
-                    conn_mat[random_positions, i] = 1
-                    indeces = np.append(indeces, i)
+                    for i in range(Npart):
+                        # generate random number of connections
+                        orig_conn = int(Numb_conn_vec[i])
+                        if i in range(int(Npart*perc_grid)):
+                            # if we consider a penalty for the grid connection
+                            # reduce the number of connections
+                            if penalty_grid_cont:
+                                orig_conn = int(orig_conn*penalty_factor)
+                        # max connection = n_part (considering self connection as conn to carbon)
+                        # check how many connections are in that row
+                        existing_conn = np.where(conn_mat[i, :] == 1)[0]
+                        existing_conn = existing_conn[existing_conn != i]
+                        # if there are already connections, subtract them from the total
+                        conn_todo = orig_conn - len(existing_conn)
+                        if conn_todo < 0:
+                            conn_todo = 0
+                        if conn_todo == 0:
+                            continue
+                        empty_positions = np.where(conn_mat[i, :] == 0)[0]
+                        if len(empty_positions) == 0:
+                            continue
+                        # sort empty positions
+                        empty_positions = np.sort(empty_positions)
+                        # available positions = empty positions - already passed positions
+                        available_positions = np.setdiff1d(empty_positions, indeces)
+                        # if there are not enough empty positions, take the minimum
+                        if conn_todo > len(available_positions):
+                            random_positions = available_positions
+                        else:
+                            random_positions = np.random.choice(available_positions, size=conn_todo, replace=False)
+                        conn_mat[i, random_positions] = 1
+                        conn_mat[random_positions, i] = 1
+                        indeces = np.append(indeces, i)
 
-                self['conn_matrix'][trode][vInd] = conn_mat
+                    self['conn_matrix'][trode][vInd] = conn_mat
 
             
     def _G_carb(self):
