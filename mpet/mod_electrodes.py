@@ -60,9 +60,10 @@ class Mod2var(dae.daeModel):
         if self.get_trode_param("type") not in ["ACR2"]:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1")
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2")
-            self.interLayerRxn = dae.daeVariable("interLayerRxn", dae.no_t, self,
-                                                 "Rate of reaction between layers",
-                                                 [self.Dmn])
+            if self.get_trode_param("intralayer_rxn"):
+                self.interLayerRxn = dae.daeVariable("interLayerRxn", dae.no_t, self,
+                                                    "Rate of reaction between layers",
+                                                    [self.Dmn])
         else:
             self.Rxn1 = dae.daeVariable("Rxn1", dae.no_t, self, "Rate of reaction 1", [self.Dmn])
             self.Rxn2 = dae.daeVariable("Rxn2", dae.no_t, self, "Rate of reaction 2", [self.Dmn])
@@ -300,7 +301,12 @@ class Mod2var(dae.daeModel):
                                           f"mpet.electrode.diffusion.{Dfunc_name}")
             if self.get_trode_param("type") == "CHR2":
                 noise1, noise2 = noises
-                if self.get_trode_param("D1") is not None:
+                if self.get_trode_param("shape") == "sphere":
+                    area_vec = 4*np.pi*edges**2
+                elif self.get_trode_param("shape") == "cylinder":
+                    area_vec = 2*np.pi*edges  # per unit height
+
+                if self.get_trode_param("intralayer_rxn"):
                     lambda_m = self.get_trode_param("lambda_m")
                     gamma_ts = 1/((1-c1)*(1-c2))
                     kinterlayer = self.get_trode_param("kintra")
@@ -310,7 +316,7 @@ class Mod2var(dae.daeModel):
                             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
                     # interLayerRxn = kinterlayer/gamma_ts\
                     #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-                #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
+                    # interLayerRxn = np.zeros(N)
                     RxnTerm1 = -interLayerRxn
                     RxnTerm2 = interLayerRxn
                     for i in range(N):
@@ -326,35 +332,16 @@ class Mod2var(dae.daeModel):
                         c1, c2, mu1R, mu2R, self.get_trode_param("D1"), self.get_trode_param("D2"),
                         Dfunc, self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
                         noise1, noise2)
+                    RHS1 += -np.diff(Flux1_vec * area_vec)
+                    RHS2 += -np.diff(Flux2_vec * area_vec)
                 else:
                     Flux1_vec, Flux2_vec = calc_flux_CHR2(
                         c1, c2, mu1R, mu2R, self.get_trode_param("D"), Dfunc,
                         self.get_trode_param("E_D"), Flux1_bc, Flux2_bc, dr, self.T_lyte(),
                         noise1, noise2)
-                if self.get_trode_param("shape") == "sphere":
-                    area_vec = 4*np.pi*edges**2
-                elif self.get_trode_param("shape") == "cylinder":
-                    area_vec = 2*np.pi*edges  # per unit height
-                RHS1 += -np.diff(Flux1_vec * area_vec)
-                RHS2 += -np.diff(Flux2_vec * area_vec)
-            #     lambda_m = self.get_trode_param("lambda_m")
-            #     gamma_ts = 1/((1-c1)*(1-c2))
-            #     kinterlayer = self.get_trode_param("kintra")
-            #     delta_mu = mu2R - mu1R - np.log(c2/c1)
-            #     interLayerRxn = kinterlayer/gamma_ts\
-            #         * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
-            #             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-            #     # interLayerRxn = kinterlayer/gamma_ts\
-            #     #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-            # #    interLayerRxn = (kinterlayer * (1 - c1) * (1 - c2) * (act1R - act2R))
-            #     RxnTerm1 = -interLayerRxn
-            #     RxnTerm2 = interLayerRxn
-            #     for i in range(N):
-            #         eq = self.CreateEquation("interLayerRxn{i}".format(i=i))
-            #         eq.Residual = self.interLayerRxn(i) - interLayerRxn[i]
-
-            #     RHS1 += RxnTerm1
-            #     RHS2 += RxnTerm2
+                
+                    RHS1 = -np.diff(Flux1_vec * area_vec)
+                    RHS2 = -np.diff(Flux2_vec * area_vec)
 
         dc1dt_vec = np.empty(N, dtype=object)
         dc2dt_vec = np.empty(N, dtype=object)
@@ -362,11 +349,26 @@ class Mod2var(dae.daeModel):
         dc2dt_vec[0:N] = [self.c2.dt(k) for k in range(N)]
         LHS1_vec = MX(Mmat, dc1dt_vec)
         LHS2_vec = MX(Mmat, dc2dt_vec)
-        for k in range(N):
-            eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
-            eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
-            eq1.Residual = LHS1_vec[k] - RHS1[k]
-            eq2.Residual = LHS2_vec[k] - RHS2[k]
+        if self.get_trode_param("surface_diffusion") and self.get_trode_param("type") in ["ACR2"]:
+            surf_diff_vec1 = stoich_1*calc_surf_diff(c1_surf, mu1R_surf,
+                                           self.get_trode_param("D_surf"),
+                                           self.get_trode_param("E_D_surf"),
+                                           self.T_lyte())
+            surf_diff_vec2 = stoich_2*calc_surf_diff(c2_surf, mu2R_surf,
+                                           self.get_trode_param("D_surf"),
+                                           self.get_trode_param("E_D_surf"),
+                                           self.T_lyte())
+            for k in range(N):
+                eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
+                eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
+                eq1.Residual = LHS1_vec[k] - RHS1[k] - surf_diff_vec1[k]
+                eq2.Residual = LHS2_vec[k] - RHS2[k] - surf_diff_vec2[k]
+        else:
+            for k in range(N):
+                eq1 = self.CreateEquation("dc1sdt_discr{k}".format(k=k))
+                eq2 = self.CreateEquation("dc2sdt_discr{k}".format(k=k))
+                eq1.Residual = LHS1_vec[k] - RHS1[k]
+                eq2.Residual = LHS2_vec[k] - RHS2[k]
 
         if self.get_trode_param("type") in ["ACR","ACR2"]:
             return eta1[-1], eta2[-1], c1_surf[-1], c2_surf[-1]
@@ -509,7 +511,10 @@ class Mod1var(dae.daeModel):
 
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
-            c_surf = c
+            if noise is None:
+                c_surf = c
+            else:
+                c_surf = c + noise(dae.Time().Value)
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:

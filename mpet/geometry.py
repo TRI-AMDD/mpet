@@ -56,8 +56,8 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
             np.diff(c, 2)/dr**2
             + (2./r_vec[1:-1])*(c[2:] - c[0:-2])/(2*dr))
         curv[N-1] = (
-            (2./Rs)*beta_s
-            + (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dr**2)
+            (2./Rs)*beta_s*c[-1]*(1-c[-1])
+            + (2*c[-2] - 2*c[-1] + 2*dr*6*beta_s*c[-1]*(1-c[-1]))/dr**2)
     elif particleShape == "cylinder":
         curv[0] = 2 * (2*c[1] - 2*c[0]) / dr**2
         curv[1:N-1] = (

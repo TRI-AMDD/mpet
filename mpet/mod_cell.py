@@ -290,14 +290,8 @@ class ModCell(dae.daeModel):
             # Simulate the potential drop along the connected
             # particles
             simPartCond = config['simPartCond'][trode]
-            if simPartCond == False:
-                for vInd in range(Nvol[trode]):
-                    for pInd in range(Npart[trode]):
-                        eq = self.CreateEquation(
-                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
-                                    vInd=vInd, trode=trode, pInd=pInd))
-                        eq.Residual = self.phi_part[trode](vInd, pInd) - self.phi_bulk[trode](vInd)
-            else:
+            
+            if simPartCond:
                 # if the system is multi-sublattice consider stoich
                 if config["simPartNet"][trode]:
                     for vInd in range(Nvol[trode]):
@@ -375,12 +369,22 @@ class ModCell(dae.daeModel):
                             eq = self.CreateEquation(
                                 "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
                                     vInd=vInd, trode=trode, pInd=pInd))
+                            if simPartCond:
                                 # -dcsbar/dt = I_l - I_r
-                            eq.Residual = (
-                                - self.particles[trode][vInd,pInd].dcbardt()
-                                + ((G_l_tot * (phi_n - phi_l))
-                                + (G_r_tot * (phi_n - phi_r))))
-
+                                eq.Residual = (
+                                    - self.particles[trode][vInd,pInd].dcbardt()
+                                    + ((G_l_tot * (phi_n - phi_l))
+                                    + (G_r_tot * (phi_n - phi_r))))
+                            else:
+                                eq.Residual = self.phi_part[trode](vInd, pInd) - phi_bulk
+            else:
+                for vInd in range(Nvol[trode]):
+                    phi_bulk = self.phi_bulk[trode](vInd)
+                    for pInd in range(Npart[trode]):
+                        eq = self.CreateEquation(
+                                "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
+                                    vInd=vInd, trode=trode, pInd=pInd))
+                        eq.Residual = self.phi_part[trode](vInd, pInd) - self.phi_bulk[trode](vInd)
         # If we have a single electrode volume (in a perfect bath),
         # electrolyte equations are simple
         if self.SVsim:
