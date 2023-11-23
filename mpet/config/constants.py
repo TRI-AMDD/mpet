@@ -20,9 +20,9 @@ c_ref = 1000.
 reactions_epsilon = 1e-12
 
 #: parameter that are defined per electrode with a ``_{electrode}`` suffix
-PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'sigma_s',
-                    'simPartCond','carbon_coating' ,'G_carb', 'G_bulk', 'G_mean_cont', 'G_std_cont',
-                    'G_bulk_1','G_bulk_2', 
+PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'structDir', 'simBulkCond', 'sigma_s',
+                    'simPartCond','carbon_coating' ,'G_carb', 'G_bulk', 'G_mean_cont', 
+                    'G_std_cont','G_bulk_1','G_bulk_2', 
                     'simPartNet', 'avg_num_cont', 'std_num_cont', 
                     'penalty_grid_cont', 'penalty_factor', 'perc_grid',
                     'L', 'P_L', 'poros', 'BruggExp',

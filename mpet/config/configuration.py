@@ -10,7 +10,7 @@ import os
 import pickle
 
 import numpy as np
-
+import scipy.io 
 from mpet.config import constants
 from mpet.config.derived_values import DerivedValues
 from mpet.config.parameterset import ParameterSet
@@ -787,7 +787,7 @@ class Config:
             perc_grid = self['perc_grid'][trode]
             # number of lost contact if a particle is connected to carbon black
             self['conn_matrix'][trode] = {}
-            if self['simPartNet'][trode]:
+            if self['simPartNet'][trode] and self['structDir'][trode]=='false':
                 for vInd in range(Nvol):
                     if Npart == 1:
                         self['conn_matrix'][trode][vInd] = [1]
@@ -833,8 +833,12 @@ class Config:
                             conn_mat[i, random_positions] = 1
                             conn_mat[random_positions, i] = 1
                             indeces = np.append(indeces, i)
-
                         self['conn_matrix'][trode][vInd] = conn_mat
+            elif self['simPartNet'][trode] and self['structDir'][trode]!='false':
+                conn_mat = scipy.io.loadmat(os.path.join(self.path, self['structDir'][trode]))
+                conn_mat = conn_mat['conn_mat']
+                for vInd in range(Nvol):
+                    self['conn_matrix'][trode][vInd] = conn_mat
             else:
                 for vInd in range(Nvol):
                     self['conn_matrix'][trode][vInd] = np.ones((Npart, Npart))
@@ -952,7 +956,7 @@ class Config:
                             self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                                 / self[trode, 'indvPart']['kappa'][i, j]
                         if self[trode, 'kappa1'] is not None:
-                            self[trode, 'indvPart']['beta_s1'][i, j] = nd_dgammadc \
+                            self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                                 / self[trode, 'indvPart']['kappa1'][i, j]
                     if self[trode, 'D'] is not None:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
