@@ -97,8 +97,6 @@ system = {'Sim Params': {'profileType': lambda x:
                            'simBulkCond_a': Use(tobool),
                            'sigma_s_c': Use(float),
                            'sigma_s_a': Use(float),
-                           Optional('structDir_c', default=False): str,
-                           Optional('structDir_a', default=False): str,
                            Optional('simPartCond_c', default=False): Use(tobool),
                            Optional('simPartCond_a', default=False): Use(tobool),
                            Optional('carbon_coating_c', default=False): Use(tobool),
