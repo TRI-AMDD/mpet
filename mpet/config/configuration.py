@@ -468,9 +468,9 @@ class Config:
         else:
             # particle distributions
             self._distr_part()
-            # contact conductivty
+            # conductivty for 1D net
             self._G_cont()
-            # netwerk conductivty
+            # contact conductivty
             self._G_contNet()
             # connectivity matrix
             self._conn_matrix()
@@ -505,7 +505,11 @@ class Config:
             self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
-
+        if self['E_G_c'] is not None:
+            self['E_G_c'] = self['E_G_c']*constants.e / (constants.k * constants.T_ref)
+        if self['E_G_a'] is not None:
+            self['E_G_a'] = self['E_G_a']*constants.e / (constants.k * constants.T_ref)
+        
     def _scale_electrode_parameters(self):
         """
         Scale electrode and separator parameters to non-dimensional values.
@@ -550,7 +554,7 @@ class Config:
                 value = self[trode, param]
                 if value is not None:
                     self[trode, param] = value / kT
-
+            
         # scalings on separator
         if self['have_separator']:
             self['L']['s'] /= self['L_ref']
@@ -750,7 +754,7 @@ class Config:
             # scale and store
             self['G_cont'][trode] = G_cont * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
-            
+
     def _G_contNet(self):
         self['G_contNet'] = {}
         for trode in self['trodes']:
@@ -760,14 +764,13 @@ class Config:
             stddev = self['G_std_cont'][trode]
             # N*(N-1)/2 are the number of contacts
             # + N for the self-contact that is the contact with carbon black
-            Nconn = int(Npart * (Npart - 1) / 2) + int(Npart)
             if np.allclose(stddev, 0, atol=1e-17):
-                G_contNet = mean * np.ones((Nvol, Nconn))
+                G_contNet = mean * np.ones((Nvol, Npart, Npart))
             else:
                 var = stddev**2
                 mu = np.log((mean**2) / np.sqrt(var + mean**2))
                 sigma = np.sqrt(np.log(var / (mean**2) + 1))
-                G_contNet = np.random.lognormal(mu, sigma, size=(Nvol, Nconn))
+                G_contNet = np.random.lognormal(mu, sigma, size=(Nvol, Npart, Npart))
             # note G_contNet is not normalized by the particle volume
             # the normalization is done in mod_cell 
             self['G_contNet'][trode] = G_contNet * constants.k * constants.T_ref * self['t_ref'] \
@@ -952,7 +955,7 @@ class Config:
                             self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                                 / self[trode, 'indvPart']['kappa'][i, j]
                         if self[trode, 'kappa1'] is not None:
-                            self[trode, 'indvPart']['beta_s1'][i, j] = nd_dgammadc \
+                            self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
                                 / self[trode, 'indvPart']['kappa1'][i, j]
                     if self[trode, 'D'] is not None:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \

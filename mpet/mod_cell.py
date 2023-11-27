@@ -292,28 +292,15 @@ class ModCell(dae.daeModel):
             simPartCond = config['simPartCond'][trode]
             
             if simPartCond:
+                E_G = config["E_G"][trode]
                 # if the system is multi-sublattice consider stoich
                 if config["simPartNet"][trode]:
                     for vInd in range(Nvol[trode]):
                         phi_bulk = self.phi_bulk[trode](vInd)
-                        G_cont_net = config["G_contNet"][trode][vInd,:]
-                        # remap into matrix
-                        G_cont_mat = np.zeros((Npart[trode],Npart[trode]))
-                        indx = 0
-                        for i in range(Npart[trode]):
-                            for j in range(i + 1, Npart[trode]):
-                                G_cont_mat[i,j] = G_cont_net[indx]
-                                G_cont_mat[j,i] = G_cont_net[indx]
-                                indx += 1
-                        # the last N values are the conductivites to the carbon and are stored in the diagonal
-                        G_cont_mat = np.diag(G_cont_net[-Npart[trode]:]) + G_cont_mat
-                        # we thus have a symmetric matrix that gives the inter-particle contact and the carbon contact
-                        # [00 01 02 03
-                        #  10 11 12 13
-                        #  20 21 22 23
-                        #  30 31 32 33]
+                        G_cont_mat = config["G_contNet"][trode][vInd,:,:]
                         conn_matrix = config["conn_matrix"][trode][vInd]
                         G_cont_mat = G_cont_mat*conn_matrix
+                        G_cont_mat = G_cont_mat*(np.exp(-E_G/self.T_lyte[trode](vInd) + E_G/1))
 
                         for pInd in range(Npart[trode]):
                             eq = self.CreateEquation(
@@ -326,7 +313,6 @@ class ModCell(dae.daeModel):
                             # when network is active G_cont of 1d-wire model is not considered
                             # Npart_conn_to_carbon = int((Npart[trode]/10)*5)
                             # generate random int between 0 and Npart_conn_to_carbon
-                            # Npart_conn_to_carbon = np.random.randint(1, int((Npart[trode]/10)*2))
                             phi_i = self.phi_part[trode](vInd, pInd)
 
                             for pConn in range(Npart[trode]):
@@ -612,8 +598,8 @@ class ModCell(dae.daeModel):
         # if the system is multi-sublattice consider stoich
         if config[trode,"stoich_1"] is not None:
             simPartCond_2param = True
-            # stoich_1 = config[trode,"stoich_1"]
-            # stoich_2 = 1 - stoich_1
+            stoich_1 = config[trode,"stoich_1"]
+            stoich_2 = 1 - stoich_1
         else:
             simPartCond_2param = False
         carbonCoating = config['carbon_coating'][trode]
@@ -629,7 +615,7 @@ class ModCell(dae.daeModel):
             G_bulk_2 = G_bulk_2/(1/(0.25)**expon)
             if carbonCoating:
                 G_carb = config["G_car"][trode][vInd,pInd]
-                G_part = G_carb + G_bulk_1 + G_bulk_2
+                G_part = G_carb + stoich_1*G_bulk_1 + stoich_2*G_bulk_2
             else:
                 G_part = G_bulk_1 + G_bulk_2
         else:

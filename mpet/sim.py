@@ -87,7 +87,12 @@ class SimMPET(dae.daeSimulation):
                         solidType = self.config[tr, "type"]
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
-                            epsrnd = 0.01
+                            if solidType == "homog_sdn":
+                                epsrnd = 0
+                            elif solidType == "ACR":
+                                epsrnd = 0.005
+                            else:
+                                epsrnd = 0.001
                             rnd = epsrnd*(np.random.rand(Nij) - 0.5)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0 + rnd[k])

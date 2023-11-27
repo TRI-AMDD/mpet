@@ -24,6 +24,7 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
                     'simPartCond','carbon_coating' ,'G_carb', 'G_bulk', 'G_mean_cont', 'G_std_cont',
                     'G_bulk_1','G_bulk_2', 
                     'simPartNet', 'avg_num_cont', 'std_num_cont', 
+                    'E_G',
                     'penalty_grid_cont', 'penalty_factor', 'perc_grid',
                     'L', 'P_L', 'poros', 'BruggExp',
                     'specified_psd', 'rhom', 'cp', 'k_h', 'c_dep_exp']

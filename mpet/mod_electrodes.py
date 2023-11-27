@@ -314,9 +314,6 @@ class Mod2var(dae.daeModel):
                     interLayerRxn = kinterlayer/gamma_ts\
                         * (c1*np.exp(-(((lambda_m+delta_mu)**2)/(4*lambda_m)))
                             - c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-                    # interLayerRxn = kinterlayer/gamma_ts\
-                    #     * (- c2*np.exp(-(((lambda_m-delta_mu)**2)/(4*lambda_m))))
-                    # interLayerRxn = np.zeros(N)
                     RxnTerm1 = -interLayerRxn
                     RxnTerm2 = interLayerRxn
                     for i in range(N):

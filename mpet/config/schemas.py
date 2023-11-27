@@ -127,6 +127,8 @@ system = {'Sim Params': {'profileType': lambda x:
                            Optional('G_bulk_1_a', default=0): Use(float),
                            Optional('G_bulk_2_c', default=0): Use(float),
                            Optional('G_bulk_2_a', default=0): Use(float),
+                           Optional('E_G_c', default=0): Use(float),
+                           Optional('E_G_a', default=0): Use(float),
                            },
           'Geometry': {'L_c': Use(float),
                        'L_a': Use(float),
