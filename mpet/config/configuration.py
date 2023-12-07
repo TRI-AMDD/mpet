@@ -806,11 +806,10 @@ class Config:
                         for i in range(Npart):
                             # generate random number of connections
                             orig_conn = int(Numb_conn_vec[i])
-                            if i in range(int(Npart*perc_grid)):
+                            if i in range(int(Npart*perc_grid)) and penalty_grid_cont:
                                 # if we consider a penalty for the grid connection
                                 # reduce the number of connections
-                                if penalty_grid_cont:
-                                    orig_conn = int(orig_conn*penalty_factor)
+                                orig_conn = int(orig_conn*penalty_factor)
                             # max connection = n_part (considering self connection as conn to carbon)
                             # check how many connections are in that row
                             existing_conn = np.where(conn_mat[i, :] == 1)[0]
@@ -822,9 +821,9 @@ class Config:
                             if conn_todo == 0:
                                 continue
                             empty_positions = np.where(conn_mat[i, :] == 0)[0]
+                            empty_positions = empty_positions[empty_positions != i]
                             if len(empty_positions) == 0:
                                 continue
-                            # sort empty positions
                             empty_positions = np.sort(empty_positions)
                             # available positions = empty positions - already passed positions
                             available_positions = np.setdiff1d(empty_positions, indeces)
