@@ -140,36 +140,7 @@ class muRfuncs():
                   )*step_down(y, 0.35, width)
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
-    
-    def reg_sol_red(self, y, T, Omga, theta):
-        tail = 0.075
-        delta_y = 0.1
-        m = (4 - 2*Omga)
-        muR = (
-            (theta - (m/2)+ m*y)*step_down(y, (1+delta_y), tail)
-            + theta*step_down(y, (0-delta_y), tail)
-        )
-        return muR
-
-    def LMFP_red(self, y, T, Omga, Omgb, theta_1, theta_2, stoich):
-
-        Omegc = (Omga + Omgb)*0.5
-        m_1 = (4 - 2*Omga*stoich)
-        m_2 = (4 - 2*Omgb*(1-stoich))
-        tail_out = 0.015
-        tail_mid = 0.015
-
-        # theta_1 = -4.09
-        # theta_2 = -3.422
-        mu_reduced = (
-            (theta_1-(m_1*stoich/2)+m_1*y)*step_down(y,stoich,tail_mid)
-            + (theta_2-(m_2*(1-stoich)/2)-m_2*stoich+m_2*y)*step_up(y,stoich,tail_mid)
-            + theta_1*step_down(y,-0.01,tail_out)
-            + theta_2*step_down(y,1.01,tail_out) - theta_2
-            - stoich*Omegc*step_up(y,stoich,tail_mid)
-            + (1-stoich)*Omegc*step_down(y,stoich,tail_mid)
-            )
-        return mu_reduced
+  
 
     def non_homog_rect_fixed_csurf(self, y, ybar, B, kappa, ywet):
         """ Helper function """
@@ -184,40 +155,31 @@ class muRfuncs():
             muR_nh = -kappa*curv + B*(y - ybar)
         elif (isinstance(y, tuple) and len(y) == 2
                 and isinstance(y[0], np.ndarray)):
-            stoich_1 = self.get_trode_param("stoich_1")
-            stoich_2 = 1 - stoich_1
-            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
-            y_avg = stoich_1*y[0]+stoich_2*y[1]
+            ybar_avg = ybar[0]+ybar[1]
             N = len(y[0])
             kappa1 = kappa[0]
             kappa2 = kappa[1]
             B1 = B[0]
             B2 = B[1]
-            B_avg = stoich_1*B1 + stoich_2*B2
+            B_avg = B1 + B2
             ytmp1 = np.empty(N+2, dtype=object)
             ytmp1[1:-1] = y[0]
-            ytmp1[0] = ywet
-            ytmp1[-1] = ywet
+            ytmp1[0] = ywet[0]
+            ytmp1[-1] = ywet[0]
             dxs = 1./N
             curv1 = np.diff(ytmp1, 2)/(dxs**2)
-            muR1_nh = -stoich_1*kappa1*curv1 + B_avg*(y_avg - ybar_avg)
+            
             ytmp2 = np.empty(N+2, dtype=object)
             ytmp2[1:-1] = y[1]
-            ytmp2[0] = ywet
-            ytmp2[-1] = ywet
+            ytmp2[0] = ywet[1]
+            ytmp2[-1] = ywet[1]
             curv2 = np.diff(ytmp2, 2)/(dxs**2)
-            muR2_nh = -stoich_2*kappa2*curv2 + B_avg*(y_avg - ybar_avg)
+            muR1_nh = -kappa1*curv1 + (B1*y[0]+B2*y[1] - ybar_avg)
+            muR2_nh = -kappa2*curv2 + (B1*y[0]+B2*y[1] - ybar_avg)
 
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
 
-    # def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
-    #         """ Helper function """
-    #         dr = r_vec[1] - r_vec[0]
-    #         Rs = 1.
-    #         curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
-    #         muR_nh = B*(y - ybar) - kappa*curv
-    #         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
@@ -233,11 +195,6 @@ class muRfuncs():
             curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
             muR_nh = B*(y - ybar) - kappa*curv
         elif mod2var:
-            if self.get_trode_param("stoich_1") is not None:
-                stoich_1 = self.get_trode_param("stoich_1")
-                stoich_2 = 1 - stoich_1
-            else:
-                stoich_1 = stoich_2 = 0.5
             y1 = y[0]
             y2 = y[1]
             kappa1 = kappa[0]
@@ -249,12 +206,12 @@ class muRfuncs():
             curv2 = geo.calc_curv(y2, dr, r_vec, Rs, beta_s, shape)
             B1 = B[0]
             B2 = B[1]
-            y_avg = stoich_1*y1+stoich_2*y2
-            ybar_avg = stoich_1*ybar[0]+stoich_2*ybar[1]
-            B_avg = stoich_1*B1 + stoich_2*B2
+            y_avg = y1+y2
+            ybar_avg = ybar[0]+ybar[1]
+            B_avg = B1 + B2
 
-            muR1_nh = B_avg*(y_avg - ybar_avg) - stoich_1*kappa1*curv1
-            muR2_nh = B_avg*(y_avg - ybar_avg) - stoich_2*kappa2*curv2
+            muR1_nh = (B1*y1 + B2*y2 - ybar_avg) - kappa1*curv1
+            muR2_nh = (B1*y1 + B2*y2 - ybar_avg) - kappa2*curv2
 
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
@@ -274,10 +231,10 @@ class muRfuncs():
             raise Exception("Unknown input type")
         if ("homog" not in ptype) and (N > 1):
             shape = self.get_trode_param("shape")
-            kappa = self.get_trode_param("kappa")
-            B = self.get_trode_param("B")
             if shape == "C3":
                 if mod1var:
+                    kappa = self.get_trode_param("kappa")
+                    B = self.get_trode_param("B")
                     cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
@@ -295,7 +252,12 @@ class muRfuncs():
                     else:
                         B1 = B2 = self.get_trode_param("B")
                     B = (B1,B2)
-                    cwet = self.get_trode_param("cwet")
+                    if self.get_trode_param("cwet_1") is not None:
+                        cwet1 = self.get_trode_param("cwet_1")
+                        cwet2 = self.get_trode_param("cwet_2")
+                        cwet = (cwet1,cwet2)
+                    else:
+                        cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
             # elif shape in ["cylinder", "sphere"]:

@@ -586,7 +586,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     c2barstr[pInd,vInd] = c2barstr_base.format(trode=trode, pInd=pInd, vInd=vInd)
                     datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[t0ind]
                     datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[t0ind]
-                    datay3 = 0.5*(datay1 + datay2)
+                    datay3 = (datay1 + datay2)
                     lbl1, lbl2 = r"$\widetilde{c}_1$", r"$\widetilde{c}_2$"
                     lbl3 = r"$\overline{c}$"
                     numy = len(datay1) if isinstance(datay1, np.ndarray) else 1
@@ -655,7 +655,7 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
                     if type2c:
                         datay1 = utils.get_dict_key(data, c1str[pInd,vInd])[tind]
                         datay2 = utils.get_dict_key(data, c2str[pInd,vInd])[tind]
-                        datay3 = 0.5*(datay1 + datay2)
+                        datay3 = (datay1 + datay2)
                         lines1[pInd,vInd].set_ydata(datay1)
                         lines2[pInd,vInd].set_ydata(datay2)
                         lines_local = np.vstack((lines1, lines2))

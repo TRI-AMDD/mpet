@@ -3,6 +3,22 @@ import daetools.pyDAE as dae
 
 from mpet.daeVariableTypes import mole_frac_t, elec_pot_t
 
+class portFromElyte_mcat(dae.daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+            dae.daePort.__init__(self, Name, PortType, Model, Description)
+            self.c_lyte_1 = dae.daeVariable(
+                "c_lyte_1", mole_frac_t, self,
+                "Concentration 1 in the electrolyte")
+            self.c_lyte_2 = dae.daeVariable(
+                "c_lyte_2", mole_frac_t, self,
+                "Concentration 2 in the electrolyte")
+            self.T_lyte = dae.daeVariable(
+                "T_lyte", mole_frac_t, self,
+                "Temperature in the electrolyte")
+            self.phi_lyte = dae.daeVariable(
+                "phi_lyte", elec_pot_t, self,
+                "Electric potential in the electrolyte")
+        
 
 class portFromElyte(dae.daePort):
     def __init__(self, Name, PortType, Model, Description=""):

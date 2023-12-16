@@ -41,7 +41,10 @@ class SimMPET(dae.daeSimulation):
         mpet.daeVariableTypes.elec_pot_t.AbsoluteTolerance = config["absTol"]
 
         # Define the model we're going to simulate
-        self.m = mod_cell.ModCell(config, "mpet")
+        if config['MultiCation']:
+            self.m = mod_cell.ModCell_multication(config, "mpet")
+        else:
+            self.m = mod_cell.ModCell(config, "mpet")
 
     def SetUpParametersAndDomains(self):
         # Domains
@@ -64,12 +67,18 @@ class SimMPET(dae.daeSimulation):
         if not config["prevDir"] or config["prevDir"] == "false":
             # Solids
             for tr in config["trodes"]:
-                cs0 = config['cs0'][tr]
+                cs1 = config['cs1'][tr]
+                cs2 = config['cs2'][tr]
+                self.m.ffrac[tr].SetInitialGuess(cs1+cs2)
                 # Guess initial filling fractions
-                self.m.ffrac[tr].SetInitialGuess(cs0)
+                
                 for i in range(Nvol[tr]):
                     # Guess initial volumetric reaction rates
-                    self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
+                    if config["MultiCation"]:
+                        self.m.R_Vp_1[tr].SetInitialGuess(i, 0.0)
+                        self.m.R_Vp_2[tr].SetInitialGuess(i, 0.0)
+                    else:
+                        self.m.R_Vp[tr].SetInitialGuess(i, 0.0)
                     # set initial temperature condition
                     self.m.T_lyte[tr].SetInitialCondition(i, config["T"])
                     # Guess initial value for the potential of the
@@ -85,56 +94,20 @@ class SimMPET(dae.daeSimulation):
                         # concentrations and set initial value for
                         # solid concentrations
                         solidType = self.config[tr, "type"]
-                        if solidType in constants.one_var_types:
-                            part.cbar.SetInitialGuess(cs0)
-                            epsrnd = 0.01
-                            rnd = epsrnd*(np.random.rand(Nij) - 0.5)
-                            for k in range(Nij):
-                                part.c.SetInitialCondition(k, cs0 + rnd[k])
-                        elif solidType in constants.two_var_types:
-                            if self.config[tr,'stoich_1'] is not None:
-                                stoich1 = self.config[tr,'stoich_1']
-                            else:
-                                stoich1 = 0.5
-                            if cs0 < stoich1 and cs0 > 0.03:
-                                part.c1bar.SetInitialGuess(cs0/stoich1)
-                                part.c2bar.SetInitialGuess(0.01)
-                            elif cs0 < 0.03:
-                                part.c1bar.SetInitialGuess(cs0)
-                                part.c2bar.SetInitialGuess(cs0)
-                            elif cs0 > stoich1 and cs0 < 0.97:
-                                part.c1bar.SetInitialGuess(0.99)
-                                cs2 = (cs0 - stoich1)/(0.9999-stoich1)
-                                part.c2bar.SetInitialGuess(cs2)
-                            elif cs0 > 0.97:
-                                part.c1bar.SetInitialGuess(cs0)
-                                part.c2bar.SetInitialGuess(cs0)
-                            part.cbar.SetInitialGuess(cs0)
-                            epsrnd = 0.0001
-                            rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
-                            rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
-                            rnd1 -= np.mean(rnd1)
-                            rnd2 -= np.mean(rnd2)
-                            for k in range(Nij):
-                                if self.config[tr,'type'] not in ['ACR2']:
-                                    if self.config[tr,'intralayer_rxn']:
-                                        part.interLayerRxn.SetInitialGuess(k, 0.0)
-                                if cs0 < stoich1 and cs0 > 0.03:
-                                    part.c1.SetInitialCondition(k, cs0/stoich1+rnd1[k])
-                                    part.c2.SetInitialCondition(k, 0.005+rnd2[k])
-                                elif cs0 <= 0.03:
-                                    part.c1.SetInitialCondition(k, cs0+rnd1[k])
-                                    part.c2.SetInitialCondition(k, cs0+rnd2[k])
-                                elif cs0 > stoich1 and cs0 < 0.97:
-                                    cs2 = (cs0 - stoich1)/(0.999-stoich1)
-                                    part.c1.SetInitialCondition(k, 0.99+rnd1[k])
-                                    part.c2.SetInitialCondition(k, cs2+rnd2[k])
-                                elif cs0 >= 0.97:
-                                    part.c1.SetInitialCondition(k, cs0+rnd1[k])
-                                    part.c2.SetInitialCondition(k, cs0+rnd2[k])
-                                # else:
-                                    # part.c1.SetInitialCondition(k, cs0+rnd1[k])
-                                    # part.c2.SetInitialCondition(k, cs0+rnd2[k])
+                        part.c1bar.SetInitialGuess(cs1)
+                        part.c2bar.SetInitialGuess(cs2)
+                        epsrnd = 0.0001
+                        rnd1 = epsrnd*(np.random.rand(Nij) - 0.5)
+                        rnd2 = epsrnd*(np.random.rand(Nij) - 0.5)
+                        rnd1 -= np.mean(rnd1)
+                        rnd2 -= np.mean(rnd2)
+                        for k in range(Nij):
+                            if self.config[tr,'type'] not in ['ACR2']:
+                                if self.config[tr,'intralayer_rxn']:
+                                    part.interLayerRxn.SetInitialGuess(k, 0.0)
+                            if config['cs1'][tr] is not None:
+                                part.c1.SetInitialCondition(k, cs1+rnd1[k])
+                                part.c2.SetInitialCondition(k, cs2+rnd2[k])
 
             # Cell potential initialization
             if config['tramp'] > 0:
@@ -150,10 +123,17 @@ class SimMPET(dae.daeSimulation):
 
             # Initialize the ghost points used for boundary conditions
             if not self.m.SVsim:
-                self.m.c_lyteGP_L.SetInitialGuess(config["c0"])
-                self.m.phi_lyteGP_L.SetInitialGuess(0)
-                self.m.T_lyteGP_L.SetInitialGuess(config["T"])
-                self.m.T_lyteGP_R.SetInitialGuess(config["T"])
+                if self.config["MultiCation"]:
+                    self.m.c_lyte_1_GP_L.SetInitialGuess(config["c01"])
+                    self.m.c_lyte_2_GP_L.SetInitialGuess(config["c02"])
+                    self.m.phi_lyteGP_L.SetInitialGuess(0)
+                    self.m.T_lyteGP_L.SetInitialGuess(config["T"])
+                    self.m.T_lyteGP_R.SetInitialGuess(config["T"])
+                else:    
+                    self.m.c_lyteGP_L.SetInitialGuess(config["c0"])
+                    self.m.phi_lyteGP_L.SetInitialGuess(0)
+                    self.m.T_lyteGP_L.SetInitialGuess(config["T"])
+                    self.m.T_lyteGP_R.SetInitialGuess(config["T"])
 
             # Separator electrolyte initialization
             if config["have_separator"]:
@@ -164,15 +144,27 @@ class SimMPET(dae.daeSimulation):
 
             # Anode and cathode electrolyte initialization
             for tr in config["trodes"]:
-                for i in range(Nvol[tr]):
-                    self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
-                    self.m.T_lyte[tr].SetInitialCondition(i, config['T'])
-                    self.m.phi_lyte[tr].SetInitialGuess(i, 0)
+                if self.config["MultiCation"]:
+                    for i in range(Nvol[tr]):
+                        self.m.c_lyte_1[tr].SetInitialCondition(i, config['c01'])
+                        self.m.c_lyte_2[tr].SetInitialCondition(i, config['c02'])
+                        self.m.T_lyte[tr].SetInitialCondition(i, config['T'])
+                        self.m.phi_lyte[tr].SetInitialGuess(i, 0)
 
-                    # Set electrolyte concentration in each particle
-                    for j in range(Npart[tr]):
-                        self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
-                        self.m.particles[tr][i,j].T_lyte.SetInitialGuess(config["T"])
+                        for j in range(Npart[tr]):
+                            self.m.particles[tr][i,j].c_lyte_1.SetInitialGuess(config["c01"])
+                            self.m.particles[tr][i,j].c_lyte_2.SetInitialGuess(config["c01"])
+                            self.m.particles[tr][i,j].T_lyte.SetInitialGuess(config["T"])
+                else:
+                    for i in range(Nvol[tr]):
+                        self.m.c_lyte[tr].SetInitialCondition(i, config['c0'])
+                        self.m.T_lyte[tr].SetInitialCondition(i, config['T'])
+                        self.m.phi_lyte[tr].SetInitialGuess(i, 0)
+
+                        # Set electrolyte concentration in each particle
+                        for j in range(Npart[tr]):
+                            self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
+                            self.m.particles[tr][i,j].T_lyte.SetInitialGuess(config["T"])
 
         else:
             dPrev = self.dataPrev
@@ -235,10 +227,18 @@ class SimMPET(dae.daeSimulation):
 
             # Read in the ghost point values
             if not self.m.SVsim:
-                self.m.c_lyteGP_L.SetInitialGuess(
-                    utils.get_dict_key(data, "c_lyteGP_L", final=True))
-                self.m.phi_lyteGP_L.SetInitialGuess(
-                    utils.get_dict_key(data, "phi_lyteGP_L", final=True))
+                if self.config["MultiCation"]:
+                    self.m.c_lyte_1_GP_L.SetInitialGuess(
+                        utils.get_dict_key(data, "c_lyte_1_GP_L", final=True))
+                    self.m.c_lyte_2_GP_L.SetInitialGuess(
+                        utils.get_dict_key(data, "c_lyte_2_GP_L", final=True))
+                    self.m.phi_lyteGP_L.SetInitialGuess(
+                        utils.get_dict_key(data, "phi_lyteGP_L", final=True))
+                else:
+                    self.m.c_lyteGP_L.SetInitialGuess(
+                        utils.get_dict_key(data, "c_lyteGP_L", final=True))
+                    self.m.phi_lyteGP_L.SetInitialGuess(
+                        utils.get_dict_key(data, "phi_lyteGP_L", final=True))
 
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", final=True))

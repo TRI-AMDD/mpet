@@ -478,10 +478,6 @@ class Config:
             self._G_carb()
             # bulk conductivty
             self._G()
-            # bulk sublattice 1 conductivty
-            self._G_1()
-            # bulk sublattice 2 conductivty
-            self._G_2()
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
 
@@ -779,66 +775,71 @@ class Config:
     
     def _conn_matrix(self):
         self['conn_matrix'] = {}
+        
         for trode in self['trodes']:
-            Nvol = self['Nvol'][trode]
-            Npart = self['Npart'][trode]
-            mean_n = self['avg_num_cont'][trode]
-            # standard deviation of the contacts per particle
-            std_n = self['std_num_cont'][trode]
-            # penalty for the carbon black contact
-            penalty_grid_cont = self['penalty_grid_cont'][trode]
-            penalty_factor = self['penalty_factor'][trode]
-            perc_grid = self['perc_grid'][trode]
-            # number of lost contact if a particle is connected to carbon black
-            self['conn_matrix'][trode] = {}
-            for vInd in range(Nvol):
-                if Npart == 1:
-                    self['conn_matrix'][trode][vInd] = [1]
-                else:
-                    indeces = np.array([])
-                    conn_mat = np.zeros((Npart, Npart))
-                    if mean_n > Npart: # to be sure the while loop is not infinite
-                        mean_n = Npart - 1
-                    Numb_conn_vec = create_num_conn(mean_n, std_n, Npart)
-                    for i in range(int(Npart*perc_grid)):
-                        conn_mat[i,i] = 1
+            if self['simPartNet'][trode]:
+                Nvol = self['Nvol'][trode]
+                Npart = self['Npart'][trode]
+                mean_n = self['avg_num_cont'][trode]
+                # standard deviation of the contacts per particle
+                std_n = self['std_num_cont'][trode]
+                # penalty for the carbon black contact
+                penalty_grid_cont = self['penalty_grid_cont'][trode]
+                penalty_factor = self['penalty_factor'][trode]
+                perc_grid = self['perc_grid'][trode]
+                # number of lost contact if a particle is connected to carbon black
+                self['conn_matrix'][trode] = {}
+                for vInd in range(Nvol):
+                    if Npart == 1:
+                        self['conn_matrix'][trode][vInd] = [1]
+                    else:
+                        indeces = np.array([])
+                        conn_mat = np.zeros((Npart, Npart))
+                        if mean_n > Npart: # to be sure the while loop is not infinite
+                            mean_n = Npart - 1
+                        Numb_conn_vec = create_num_conn(mean_n, std_n, Npart)
+                        for i in range(int(Npart*perc_grid)):
+                            conn_mat[i,i] = 1
 
-                    for i in range(Npart):
-                        # generate random number of connections
-                        orig_conn = int(Numb_conn_vec[i])
-                        if i in range(int(Npart*perc_grid)):
-                            # if we consider a penalty for the grid connection
-                            # reduce the number of connections
-                            if penalty_grid_cont:
-                                orig_conn = int(orig_conn*penalty_factor)
-                        # max connection = n_part (considering self connection as conn to carbon)
-                        # check how many connections are in that row
-                        existing_conn = np.where(conn_mat[i, :] == 1)[0]
-                        existing_conn = existing_conn[existing_conn != i]
-                        # if there are already connections, subtract them from the total
-                        conn_todo = orig_conn - len(existing_conn)
-                        if conn_todo < 0:
-                            conn_todo = 0
-                        if conn_todo == 0:
-                            continue
-                        empty_positions = np.where(conn_mat[i, :] == 0)[0]
-                        if len(empty_positions) == 0:
-                            continue
-                        # sort empty positions
-                        empty_positions = np.sort(empty_positions)
-                        # available positions = empty positions - already passed positions
-                        available_positions = np.setdiff1d(empty_positions, indeces)
-                        # if there are not enough empty positions, take the minimum
-                        if conn_todo > len(available_positions):
-                            random_positions = available_positions
-                        else:
-                            random_positions = np.random.choice(available_positions, size=conn_todo, replace=False)
-                        conn_mat[i, random_positions] = 1
-                        conn_mat[random_positions, i] = 1
-                        indeces = np.append(indeces, i)
+                        for i in range(Npart):
+                            # generate random number of connections
+                            orig_conn = int(Numb_conn_vec[i])
+                            if i in range(int(Npart*perc_grid)):
+                                # if we consider a penalty for the grid connection
+                                # reduce the number of connections
+                                if penalty_grid_cont:
+                                    orig_conn = int(orig_conn*penalty_factor)
+                            # max connection = n_part (considering self connection as conn to carbon)
+                            # check how many connections are in that row
+                            existing_conn = np.where(conn_mat[i, :] == 1)[0]
+                            existing_conn = existing_conn[existing_conn != i]
+                            # if there are already connections, subtract them from the total
+                            conn_todo = orig_conn - len(existing_conn)
+                            if conn_todo < 0:
+                                conn_todo = 0
+                            if conn_todo == 0:
+                                continue
+                            empty_positions = np.where(conn_mat[i, :] == 0)[0]
+                            if len(empty_positions) == 0:
+                                continue
+                            # sort empty positions
+                            empty_positions = np.sort(empty_positions)
+                            # available positions = empty positions - already passed positions
+                            available_positions = np.setdiff1d(empty_positions, indeces)
+                            # if there are not enough empty positions, take the minimum
+                            if conn_todo > len(available_positions):
+                                random_positions = available_positions
+                            else:
+                                random_positions = np.random.choice(available_positions, size=conn_todo, replace=False)
+                            conn_mat[i, random_positions] = 1
+                            conn_mat[random_positions, i] = 1
+                            indeces = np.append(indeces, i)
 
-                    self['conn_matrix'][trode][vInd] = conn_mat
-
+                        self['conn_matrix'][trode][vInd] = conn_mat
+            else:
+                self['conn_matrix'][trode] = {}
+                for vInd in range(self['Nvol'][trode]):
+                    self['conn_matrix'][trode][vInd] = np.ones((self['Npart'][trode], self['Npart'][trode]))
             
     def _G_carb(self):
         """
@@ -867,42 +868,7 @@ class Config:
             # scale and store
             self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
-            
-    def _G_1(self):
-        """
-        Generate Bulk sublattice 1 connectivity and store in config.
-        """
-        self['G_1'] = {}
-        for trode in self['trodes']:
-            Nvol = self['Nvol'][trode]
-            Npart = self['Npart'][trode]
-            mean = self['G_bulk_1'][trode]
-            G_1 = mean * np.ones((Nvol, Npart))
-            if self[trode, 'stoich_1'] is not None:
-                stoich_1 = self[trode, 'stoich_1']
-            else:
-                stoich_1 = 1
-            # scale and store
-            self['G_1'][trode] = stoich_1 * G_1 * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
-            
-    def _G_2(self):
-        """
-        Generate Bulk sublattice 2 connectivity and store in config.
-        """
-        self['G_2'] = {}
-        for trode in self['trodes']:
-            Nvol = self['Nvol'][trode]
-            Npart = self['Npart'][trode]
-            mean = self['G_bulk_2'][trode]
-            G_2 = mean * np.ones((Nvol, Npart))
-            if self[trode, 'stoich_1'] is not None:
-                stoich_2 = 1 - self[trode, 'stoich_1']
-            else:
-                stoich_2 = 1
-            # scale and store
-            self['G_2'][trode] = stoich_2 * G_2 * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+
 
     def _indvPart(self):
         """
@@ -948,8 +914,12 @@ class Config:
                                                                    / kappa_ref2)
                     if self[trode, 'dgammadc'] is not None:
                         nd_dgammadc = self[trode, 'dgammadc'] * cs_ref_part / gamma_S_ref
-                        self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
-                            / self[trode, 'indvPart']['kappa'][i, j]
+                        if self[trode, 'kappa'] is not None:
+                            self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
+                                / self[trode, 'indvPart']['kappa'][i, j]
+                        if self[trode, 'kappa1'] is not None:
+                            self[trode, 'indvPart']['beta_s'][i, j] = nd_dgammadc \
+                                / self[trode, 'indvPart']['kappa1'][i, j]
                     if self[trode, 'D'] is not None:
                         self[trode, 'indvPart']['D'][i, j] = self[trode, 'D'] \
                             * self['t_ref'] / plen**2
@@ -973,11 +943,11 @@ class Config:
                         self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
                             / (constants.e * F_s_ref)
                     if self[trode, 'k0_1'] is not None:
-                        F_s_1ref = plen * constants.N_A * self[trode, 'csmax'] * self[trode,"stoich_1"] / self['t_ref']
+                        F_s_1ref = plen * constants.N_A * self[trode, 'csmax'] / self['t_ref']
                         self[trode, 'indvPart']['k0_1'][i, j] = self[trode, 'k0_1'] \
                             / (constants.e * F_s_1ref)
                     if self[trode, 'k0_2'] is not None:
-                        F_s_2ref = plen * constants.N_A * self[trode, 'csmax'] * (1 - self[trode,"stoich_1"]) / self['t_ref']
+                        F_s_2ref = plen * constants.N_A * self[trode, 'csmax'] / self['t_ref']
                         self[trode, 'indvPart']['k0_2'][i, j] = self[trode, 'k0_2'] \
                             / (constants.e * F_s_2ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \

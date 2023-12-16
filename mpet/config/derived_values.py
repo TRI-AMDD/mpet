@@ -175,7 +175,7 @@ class DerivedValues:
         """Maximum concentration for given electrode
         """
         if self.config[trode, 'rho_s_1'] is not None:
-            prefac_1 = self.config[trode,"stoich_1"]
+            prefac_1 = 0.5
             prefac_2 = 1-prefac_1
             rho_s = (prefac_1*self.config[trode, 'rho_s_1']
                      + prefac_2*self.config[trode, 'rho_s_2'])
@@ -187,7 +187,7 @@ class DerivedValues:
         """Theoretical capacity of given electrode
         """
         if self.config[trode, 'rho_s_1'] is not None:
-            prefac_1 = self.config[trode,"stoich_1"]
+            prefac_1 = 0.5
             prefac_2 = 1-prefac_1
             rho_s = (prefac_1*self.config[trode, 'rho_s_1']
                      + prefac_2*self.config[trode, 'rho_s_2'])
@@ -256,17 +256,13 @@ class DerivedValues:
         """Reference chemical potential of given electrode
         """
         muRfunc = props_am.muRfuncs(self.config, trode).muRfunc
-        cs0bar = self.config['cs0'][trode]
-        cs0 = np.array([cs0bar])
-
-        solidType = self.config[trode, 'type']
-        if solidType in constants.two_var_types:
-            muR_ref = -muRfunc((cs0, cs0), (cs0bar, cs0bar), self.config['T'], 0.)[0][0]
-        elif solidType in constants.one_var_types:
-            muR_ref = -muRfunc(cs0, cs0bar, self.config['T'], 0.)[0]
-        else:
-            raise ValueError(f'Unknown solid type: {solidType}')
+        cs1bar = self.config['cs1'][trode]
+        cs2bar = self.config['cs2'][trode]
+        cs1 = np.array([cs1bar])
+        cs2 = np.array([cs2bar])
+        muR_ref = -muRfunc((cs1, cs2), (cs1bar, cs2bar), self.config['T'], 0.)[0][0]
         return muR_ref
+    
 
     def phiRef(self, trode):
         """Reference electrostatic potential of given electrode
