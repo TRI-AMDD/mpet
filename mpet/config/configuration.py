@@ -14,6 +14,8 @@ import numpy as np
 from mpet.config import constants
 from mpet.config.derived_values import DerivedValues
 from mpet.config.parameterset import ParameterSet
+import pandas as pd
+from scipy.optimize import curve_fit
 
 
 class Config:
@@ -292,8 +294,12 @@ class Config:
             else:
                 # only update generated distributions
                 if section == 'system':
-                    for key in ['psd_num', 'psd_len', 'psd_area', 'psd_vol',
-                                'psd_vol_FracVol', 'G','G_2']:
+                    for key in ['psd_num', 'psd_len', 
+                                'psd_area', 'psd_vol',
+                                'psd_vol_FracVol', 'G',
+                                'G_2', 'G_1', 
+                                'G_carb', 'G_contNet', 
+                                'G_cont', 'conn_matrix']:
                         self[key] = d[key]
                 elif section in ['anode', 'cathode']:
                     trode = section[0]
@@ -661,6 +667,7 @@ class Config:
         # intialize dicts in config
         self['psd_num'] = {}
         self['psd_len'] = {}
+        self['psd_thick'] = {}
         self['psd_area'] = {}
         self['psd_vol'] = {}
         self['psd_vol_FracVol'] = {}
@@ -674,19 +681,28 @@ class Config:
             if not np.all(self['specified_psd'][trode]):
                 # If PSD is not specified, make a length-sampled particle size distribution
                 # Log-normally distributed
-                mean = self['mean'][trode]
-                stddev = self['stddev'][trode]
-                if np.allclose(stddev, 0., atol=1e-12):
-                    raw = mean * np.ones((Nvol, Npart))
+                mean_l = self['mean'][trode]
+                stddev_l = self['stddev'][trode]
+                mean_t = self[trode, 'thickness']
+                stddev_t = self[trode, 'std_thickness']
+                if np.allclose(stddev_l, 0., atol=1e-12):
+                    raw_l = mean_l * np.ones((Nvol, Npart))
                 else:
-                    var = stddev**2
-                    mu = np.log((mean**2) / np.sqrt(var + mean**2))
-                    sigma = np.sqrt(np.log(var/(mean**2) + 1))
-                    raw = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+                    var_l = stddev_l**2
+                    mu = np.log((mean_l**2) / np.sqrt(var_l + mean_l**2))
+                    sigma = np.sqrt(np.log(var_l/(mean_l**2) + 1))
+                    raw_l = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+                if np.allclose(stddev_t, 0., atol=1e-12):
+                    raw_t = mean_t * np.ones((Nvol, Npart))
+                else:
+                    var_t = stddev_t**2
+                    mu = np.log((mean_t**2) / np.sqrt(var_t + mean_t**2))
+                    sigma = np.sqrt(np.log(var_t/(mean_t**2) + 1))
+                    raw_t = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
             else:
                 # use user-defined PSD
-                raw = self['specified_psd'][trode]
-                if raw.shape != (Nvol, Npart):
+                raw_l = self['specified_psd'][trode]
+                if raw_l.shape != (Nvol, Npart):
                     raise ValueError('Specified particle size distribution discretization '
                                      'of volumes inequal to the one specified in the config file')
 
@@ -694,17 +710,17 @@ class Config:
             # integers -- number of steps
             solidDisc = self[trode, 'discretization']
             if solidType in ['ACR', 'ACR2']:
-                psd_num = np.ceil(raw / solidDisc).astype(int)
+                psd_num = np.ceil(raw_l / solidDisc).astype(int)
                 psd_len = solidDisc * psd_num
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
-                psd_num = np.ceil(raw / solidDisc).astype(int) + 1
+                psd_num = np.ceil(raw_l / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
             # For homogeneous particles (only one 'volume' per particle)
             elif solidType in ['homog', 'homog_sdn', 'homog2', 'homog2_sdn']:
                 # Each particle is only one volume
-                psd_num = np.ones(raw.shape, dtype=int)
+                psd_num = np.ones(raw_l.shape, dtype=int)
                 # The lengths are given by the original length distr.
-                psd_len = raw
+                psd_len = raw_l
             else:
                 raise NotImplementedError(f'Unknown solid type: {solidType}')
 
@@ -715,7 +731,8 @@ class Config:
                 psd_vol = (4. / 3) * np.pi * psd_len**3
             elif solidShape == 'C3':
                 psd_area = 2 * 1.2263 * psd_len**2
-                psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
+                # psd_vol = 1.2263 * psd_len**2 * self[trode, 'thickness']
+                psd_vol = 1.2263 * psd_len**2 * raw_t
             elif solidShape == 'cylinder':
                 psd_area = 2 * np.pi * psd_len * self[trode, 'thickness']
                 psd_vol = np.pi * psd_len**2 * self[trode, 'thickness']
@@ -930,6 +947,11 @@ class Config:
                     plen = self['psd_len'][trode][i,j]
                     parea = self['psd_area'][trode][i,j]
                     pvol = self['psd_vol'][trode][i,j]
+                    gamma_effective = True
+                    if gamma_effective and np.abs(self[trode, 'delta_gamma_vert']) > 1e-30:
+                        self[trode, 'indvPart']['gamma_eff'][i,j] = fit_gamma_eff(self[trode,'delta_gamma_vert'], 2*pvol/(parea))
+                    else:
+                        self[trode, 'indvPart']['gamma_eff'][i,j] = 0  
                     # Define a few reference scales
                     F_s_ref = plen * cs_ref_part / self['t_ref']  # part/(m^2 s)
                     i_s_ref = constants.e * F_s_ref  # A/m^2
@@ -1053,18 +1075,37 @@ class Config:
             param = 2.
         return param
 
-def lognorm(mean, std, N):
+def lognorm_cont(mean, std, N):
     var = std**2
     mu = np.log((mean**2) / np.sqrt(var + mean**2))
     sigma = np.sqrt(np.log((var)/(mean**2) + 1))
     return np.random.lognormal(mu, sigma, N)
 
 def create_num_conn(mean_n, std_n, Npart):
-    lognormal_values = lognorm(mean_n, std_n, Npart)
+    lognormal_values = lognorm_cont(mean_n, std_n, Npart)
     outside_bounds = (lognormal_values < 1) | (lognormal_values > (Npart-1))
     while outside_bounds.any():
-        lognormal_values[outside_bounds] = lognorm(mean_n, std_n, Npart)[outside_bounds]
+        lognormal_values[outside_bounds] = lognorm_cont(mean_n, std_n, Npart)[outside_bounds]
         outside_bounds = (lognormal_values < 1) | (lognormal_values > (Npart-1))
 
     rounded_values = np.round(lognormal_values).astype(int)
     return rounded_values
+
+def csurf_of_c(x, a):
+    return x - (x**(1+a))*((1-x)**(a))
+
+def fit_gamma_eff(dgammadc, L):
+    cwd = os.getcwd()
+    folder_path = os.path.join(cwd)
+    csv_path = os.path.join(folder_path, 'c_surf_c_bar.csv')
+    data = pd.read_csv(csv_path)
+    closest_dgammadc = data['gamma'].values[np.argmin(np.abs(data['gamma'].values - dgammadc))]
+    data = data[data['gamma'] == closest_dgammadc]
+    closest_L = data['L'].values[np.argmin(np.abs(data['L'].values - L))]
+    data = data[data['L'] == closest_L]
+    # c_bar = data['c_bar'].values
+    # c_surf = data['c_surf'].values
+    alpha = data['alpha'].values[0]
+    # popt, pcov = curve_fit(csurf_of_c, c_bar, c_surf)
+    gamma_eff = alpha
+    return gamma_eff

@@ -141,14 +141,18 @@ class muRfuncs():
         muR = 0.18 + muLMod + muLtail + muRtail + muLlin + muRlin
         return muR
     
+    def ideal_sln_red(self, y, T):
+        b = 0.003
+        c = 0.07
+        a = 2
+        # muR = -20*np.exp(-y/b) + 20*np.exp(-(1-y)/b)
+        muR = -5*np.exp(-y/0.02) + 20*np.exp(-(1-y)/b)
+        muR += -2.5*np.exp(-y/c) + 2.5*np.exp(-(1-y)/c)
+        muR += a*(2*y-1)
+        return T*muR
+    
     def reg_sol_red(self, y, T, Omga, theta):
-        tail = 0.075
-        delta_y = 0.1
-        m = (4 - 2*Omga)
-        muR = (
-            (theta - (m/2)+ m*y)*step_down(y, (1+delta_y), tail)
-            + theta*step_down(y, (0-delta_y), tail)
-        )
+        muR = self.ideal_sln_red(y, T) + Omga*(1-2*y) + theta
         return muR
 
     def LMFP_red(self, y, T, Omga, Omgb, theta_1, theta_2, stoich):
@@ -175,11 +179,19 @@ class muRfuncs():
         """ Helper function """
         if isinstance(y, np.ndarray):
             N = len(y)
+            dxs = 1./N
             ytmp = np.empty(N+2, dtype=object)
             ytmp[1:-1] = y
-            ytmp[0] = ywet
-            ytmp[-1] = ywet
-            dxs = 1./N
+            if self.get_trode_param("natural_bc"):
+                beta_s = self.get_trode_param("beta_s")
+                ytmp[0] = y[1] + 2*dxs*6*beta_s*(y[0]*(1-y[0]))
+                ytmp[-1] = y[-2] + 2*dxs*6*beta_s*(y[-1]*(1-y[-1]))
+            else:
+                ytmp[0] = ywet
+                ytmp[-1] = ywet
+            # ytmp[0] = y[0] + dxs*6*beta_s*(y[0]*(1-y[0]))
+            # ytmp[-1] = y[-1] + dxs*6*beta_s*(y[-1]*(1-y[-1]))
+            
             curv = np.diff(ytmp, 2)/(dxs**2)
             muR_nh = -kappa*curv + B*(y - ybar)
         elif (isinstance(y, tuple) and len(y) == 2
@@ -210,14 +222,6 @@ class muRfuncs():
 
             muR_nh = (muR1_nh, muR2_nh)
         return muR_nh
-
-    # def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
-    #         """ Helper function """
-    #         dr = r_vec[1] - r_vec[0]
-    #         Rs = 1.
-    #         curv = geo.calc_curv(y, dr, r_vec, Rs, beta_s, shape)
-    #         muR_nh = B*(y - ybar) - kappa*curv
-    #         return muR_nh
 
     def non_homog_round_wetting(self, y, ybar, B, kappa, beta_s, shape, r_vec):
         """ Helper function """
@@ -298,18 +302,6 @@ class muRfuncs():
                     cwet = self.get_trode_param("cwet")
                     muR_nh = self.non_homog_rect_fixed_csurf(
                         y, ybar, B, kappa, cwet)
-            # elif shape in ["cylinder", "sphere"]:
-            #     beta_s = self.get_trode_param("beta_s")
-            #     r_vec = geo.get_unit_solid_discr(shape, N)[0]
-            #     if mod1var:
-            #         muR_nh = self.non_homog_round_wetting(
-            #             y, ybar, B, kappa, beta_s, shape, r_vec)
-            #     elif mod2var:
-            #         muR1_nh = self.non_homog_round_wetting(
-            #             y[0], ybar[0], B, kappa, beta_s, shape, r_vec)
-            #         muR2_nh = self.non_homog_round_wetting(
-            #             y[1], ybar[1], B, kappa, beta_s, shape, r_vec)
-            #         muR_nh = (muR1_nh, muR2_nh)
             elif shape in ["cylinder", "sphere"]:
                 beta_s = self.get_trode_param("beta_s")
                 r_vec = geo.get_unit_solid_discr(shape, N)[0]

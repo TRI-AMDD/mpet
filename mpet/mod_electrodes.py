@@ -486,6 +486,11 @@ class Mod1var(dae.daeModel):
                                        self.trode, self.ind)
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
+        gamma_eff = self.get_trode_param("gamma_eff")
+        if np.abs(gamma_eff) > 1e-3:
+            c_surf = c - (c**(1+gamma_eff))*((1-c)**(gamma_eff))
+        else:
+            c_surf = c
         if self.get_trode_param("noise"):
             eta_eff += noise[0]()
         Rxn = self.calc_rxn_rate(
@@ -508,10 +513,9 @@ class Mod1var(dae.daeModel):
 
         # Get solid particle chemical potential, overpotential, reaction rate
         if self.get_trode_param("type") in ["ACR"]:
-            if noise is None:
-                c_surf = c
-            else:
-                c_surf = c + noise(dae.Time().Value)
+            c_surf = c
+            if noise is not None:
+                c_surf += noise(dae.Time().Value)
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.T_lyte(), self.config, self.trode, self.ind)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
@@ -523,6 +527,12 @@ class Mod1var(dae.daeModel):
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
+        if self.get_trode_param("type") in ["ACR"]: 
+            gamma_eff = self.get_trode_param("gamma_eff")
+            if np.abs(gamma_eff) > 1e-3:
+                c_surf = c - (c**(1+gamma_eff))*((1-c)**(gamma_eff))
+            else:
+                c_surf = c
         eta = calc_eta(muR_surf, muO)
         if self.get_trode_param("type") in ["ACR"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
