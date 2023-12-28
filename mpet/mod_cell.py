@@ -292,50 +292,83 @@ class ModCell(dae.daeModel):
             simPartCond = config['simPartCond'][trode]
             
             if simPartCond:
-                E_G = config["E_G"][trode]
                 expon = config["c_dep_exp"][trode]
+                E_G_carb = config["E_sig_carb"][trode]
                 # if the system is multi-sublattice consider stoich
                 if config["simPartNet"][trode]:
                     for vInd in range(Nvol[trode]):
                         phi_bulk = self.phi_bulk[trode](vInd)
-                        G_cont_mat = config["G_contNet"][trode][vInd,:,:]
                         conn_matrix = config["conn_matrix"][trode][vInd]
-                        G_cont_mat = G_cont_mat*conn_matrix
 
                         for pInd in range(Npart[trode]):
                             eq = self.CreateEquation(
                                 "phi_ac_trode{trode}vol{vInd}part{pInd}".format(
                                     vInd=vInd, trode=trode, pInd=pInd))
-                                # - dcsbar/dt = I_l - I_r
+
                             eq.Residual = - self.particles[trode][vInd,pInd].dcbardt()
-
-                            G_carb_i, G_part_i = get_G_part(vInd, pInd, trode, config)
-                            if config[trode,"stoich_1"] is not None:
-                                c1bar = self.particles[trode][vInd,pInd].c1bar()
-                                c2bar = self.particles[trode][vInd,pInd].c2bar()
-                                G_part_i_1 = G_part_i[0]*(c1bar*(1-c1bar))**expon
-                                G_part_i_2 = G_part_i[1]*(c2bar*(1-c2bar))**expon
-                                G_part_i = G_part_i_1 + G_part_i_2 + G_carb_i
-                            else:
-                                cbar = self.particles[trode][vInd,pInd].cbar()
-                                G_part_i = G_part_i*(cbar*(1-cbar))**expon + G_carb_i
-                            # when network is active G_cont of 1d-wire model is not considered
-                            # Npart_conn_to_carbon = int((Npart[trode]/10)*5)
-                            # generate random int between 0 and Npart_conn_to_carbon
                             phi_i = self.phi_part[trode](vInd, pInd)
+                            vol_i = config["psd_vol"][trode][vInd,pInd]
+                            
+                            G_carb_i, G_bulk_i = get_G_part(vInd, pInd, trode, config)
+                            G_carb_i *= (np.exp(-E_G_carb/self.T_lyte[trode](vInd) + E_G_carb/1.))
+                            
+                              
+                            if config[trode,"stoich_1"] is not None:
+                                E_G_bulk_1 = 0
+                                E_G_bulk_2 = 0
+                                c1bar_i = self.particles[trode][vInd,pInd].c1bar()
+                                c2bar_i = self.particles[trode][vInd,pInd].c2bar()
+                                G_bulk_i_1 = G_bulk_i[0]*(c1bar_i*(1-c1bar_i))**expon
+                                G_bulk_i_1 *= (np.exp(-E_G_bulk_1/self.T_lyte[trode](vInd) + E_G_bulk_1/1.))
+                                G_bulk_i_2 = G_bulk_i[1]*(c2bar_i*(1-c2bar_i))**expon
+                                G_bulk_i_2 *= (np.exp(-E_G_bulk_2/self.T_lyte[trode](vInd) + E_G_bulk_2/1.))
+                                G_part_i = G_bulk_i_1 + G_bulk_i_2 + G_carb_i
+                            else:
+                                E_G_bulk = config["E_sig_bulk"][trode]
+                                cbar_i = self.particles[trode][vInd,pInd].cbar()
+                                G_part_i = G_bulk_i*(cbar_i*(1-cbar_i))**expon 
+                                G_part_i *= (np.exp(-E_G_bulk/self.T_lyte[trode](vInd) + E_G_bulk/1.))
+                                G_part_i = G_part_i + G_carb_i
 
+                            # normalize by the particle volume since the concentration is normalized by it
+                            
+                            
                             for pConn in range(Npart[trode]):
-                                vol_p = config["psd_vol"][trode][vInd,pInd]
-                                G_con_ij = G_cont_mat[pInd,pConn]/vol_p
-                                G_ij_tot = G_con_ij*G_part_i/(G_con_ij + G_part_i)
-                                # G_ij_tot = G_ij_tot*(np.exp(-E_G/self.T_lyte[trode](vInd) + E_G/1))
-                                if pConn != pInd and G_con_ij != 0:
-                                    phi_j = self.phi_part[trode](vInd, pConn)
-                                    eq.Residual += G_ij_tot *(np.exp(-E_G/self.T_lyte[trode](vInd) + E_G/1)) * (phi_i - phi_j)
-                                elif pConn == pInd:
-                                    if G_con_ij != 0:
-                                        G_ij_tot = G_con_ij*(np.exp(-E_G/self.T_lyte[trode](vInd) + E_G/1))
-                                        eq.Residual += G_ij_tot*(phi_i - phi_bulk)
+                                phi_j = self.phi_part[trode](vInd, pConn)
+
+                                G_carb_j, G_bulk_j = get_G_part(vInd, pConn, trode, config)
+                                G_carb_j *= (np.exp(-E_G_carb/self.T_lyte[trode](vInd) + E_G_carb/1.))
+                                
+                                if config[trode,"stoich_1"] is not None:
+                                    c1bar_j = self.particles[trode][vInd,pConn].c1bar()
+                                    c2bar_j = self.particles[trode][vInd,pConn].c2bar()
+                                    G_bulk_j_1 = G_bulk_j[0]*(c1bar_j*(1-c1bar_j))**expon
+                                    G_bulk_j_1 *= (np.exp(-E_G_bulk_1/self.T_lyte[trode](vInd) + E_G_bulk_1/1.))
+                                    G_bulk_j_2 = G_bulk_j[1]*(c2bar_j*(1-c2bar_j))**expon
+                                    G_bulk_j_2 *= (np.exp(-E_G_bulk_2/self.T_lyte[trode](vInd) + E_G_bulk_2/1.))
+                                    G_part_j = G_bulk_j_1 + G_bulk_j_2 + G_carb_j
+                                else:
+                                    cbar_j = self.particles[trode][vInd,pConn].cbar()
+                                    if expon != 0:
+                                        G_bulk_j = G_bulk_j*(cbar_j*(1-cbar_j))**expon
+                                    G_bulk_j *= (np.exp(-E_G_bulk/self.T_lyte[trode](vInd) + E_G_bulk/1.))
+                                    G_part_j = G_bulk_j + G_carb_j
+
+                                if pConn != pInd and conn_matrix[pInd,pConn] > 0:
+                                    connections_i = np.count_nonzero(conn_matrix[pInd,:]) - int(conn_matrix[pInd,pInd])
+                                    # G_con_ij = (sig_carb_i*area_i/carb_thick)/connections_i
+                                    # G_con_ij *= (np.exp(-E_G_carb/self.T_lyte[trode](vInd) + E_G_carb/1.))
+                                    # G_con_ij = 5e-23
+                                    G_con_ij = 1
+                                    G_ij = (G_con_ij*G_part_i*G_part_j)/(G_con_ij*G_part_i + G_con_ij*G_part_j + G_part_i*G_part_j)
+                                    eq.Residual += (G_ij/vol_i) * (phi_i - phi_j)
+                                elif pConn == pInd and conn_matrix[pInd,pConn] > 0:
+                                    # G_con_ij = (sig_carb_i*area_i/carb_thick)
+                                    # G_con_ij *= (np.exp(-E_G_carb/self.T_lyte[trode](vInd) + E_G_carb/1.))
+                                    # G_con_ij = 3e-22
+                                    G_con_ij = 1
+                                    G_ibulk = (G_con_ij*G_part_i)/(G_con_ij + G_part_i)
+                                    eq.Residual += (G_ibulk/vol_i)*(phi_i - phi_bulk)
                             
                 else:    
                     for vInd in range(Nvol[trode]):
@@ -602,69 +635,28 @@ class ModCell(dae.daeModel):
                               & (self.endCondition() < 1),
                               setVariableValues=[(self.endCondition, 2)])
 
-    # def get_G_part(self, vInd, pInd, trode, config):
-    #     # if the system is multi-sublattice consider stoich
-    #     if config[trode,"stoich_1"] is not None:
-    #         simPartCond_2param = True
-    #         stoich_1 = config[trode,"stoich_1"]
-    #         stoich_2 = 1 - stoich_1
-    #     else:
-    #         simPartCond_2param = False
-    #     carbonCoating = config['carbon_coating'][trode]
-    #     expon = config["c_dep_exp"][trode]
-    #     # G_cont is valid for 1d-wire model
-    #     G_cont = config["G_cont"][trode][vInd,pInd]
-    #     if simPartCond_2param:
-    #         c1bar = self.particles[trode][vInd,pInd].c1bar()
-    #         c2bar = self.particles[trode][vInd,pInd].c2bar()
-    #         G_bulk_1 = config["G_1"][trode][vInd,pInd]*(c1bar*(1-c1bar))**expon
-    #         G_bulk_1 = G_bulk_1/(1/(0.25)**expon)
-    #         G_bulk_2 = config["G_2"][trode][vInd,pInd]*(c2bar*(1-c2bar))**expon
-    #         G_bulk_2 = G_bulk_2/(1/(0.25)**expon)
-    #         if carbonCoating:
-    #             G_carb = config["G_car"][trode][vInd,pInd]
-    #             G_part = G_carb + stoich_1*G_bulk_1 + stoich_2*G_bulk_2
-    #         else:
-    #             G_part = stoich_1*G_bulk_1 + stoich_2*G_bulk_2
-    #     else:
-    #         cbar = self.particles[trode][vInd,pInd].cbar()
-    #         G_bulk = config["G"][trode][vInd,pInd]*(cbar*(1-cbar))**expon
-    #         G_bulk = G_bulk/(1/(0.25)**expon)
-    #         if carbonCoating:
-    #             G_carb = config["G_car"][trode][vInd,pInd]
-    #             G_part =  G_carb + G_bulk
-    #         else:
-    #             G_part = G_bulk
-    #     return G_part, G_cont
-    
 def get_G_part(vInd, pInd, trode, config):
-    # if the system is multi-sublattice consider stoich
-    if config[trode,"stoich_1"] is not None:
-        simPartCond_2param = True
-        stoich_1 = config[trode,"stoich_1"]
-        stoich_2 = 1 - stoich_1
-    else:
-        simPartCond_2param = False
-    carbonCoating = config['carbon_coating'][trode]
     expon = config["c_dep_exp"][trode]
-    if simPartCond_2param:
-        # G_bulk_1 = config["G_1"][trode][vInd,pInd]*(c1bar*(1-c1bar))**expon
-        G_bulk_1 = config["G_1"][trode][vInd,pInd]/(1/(0.25)**expon)
-        # G_bulk_2 = config["G_2"][trode][vInd,pInd]*(c2bar*(1-c2bar))**expon
-        G_bulk_2 = config["G_2"][trode][vInd,pInd]/(1/(0.25)**expon)
-        if carbonCoating:
-            G_carb = config["G_car"][trode][vInd,pInd]
-            return G_carb, (stoich_1*G_bulk_1, stoich_2*G_bulk_2)
-        else:
-            return 0, (stoich_1*G_bulk_1, stoich_2*G_bulk_2)
+    vol = config["psd_vol"][trode][vInd,pInd]
+    area = config["psd_area"][trode][vInd,pInd]/2
+    leng = config["psd_len"][trode][vInd,pInd]
+    carb_thick = config["carb_thickness"][trode]
+    thick = vol/area
+    a_o_t = area/thick
+    sig_carb = config["sig_c"][trode][vInd,pInd]
+    a_o_t_carb = ((1.2263 * leng+2*carb_thick)**2-(1.2263 * leng)**2)/thick
+    a_o_t_carb = (leng*carb_thick)/(leng/2+thick)
+    G_carb = sig_carb*a_o_t_carb
+    if config[trode,"stoich_1"] is not None:
+        sig_bulk_1 = config["sig_b_1"][trode][vInd,pInd]/(1/(0.25)**expon)
+        sig_bulk_2 = config["sig_b_2"][trode][vInd,pInd]/(1/(0.25)**expon)
+        G_bulk_1 = sig_bulk_1*a_o_t
+        G_bulk_2 = sig_bulk_2*a_o_t
+        return G_carb, (G_bulk_1, G_bulk_2)
     else:
-        # G_bulk = config["G"][trode][vInd,pInd]*(cbar*(1-cbar))**expon
-        G_bulk = config["G"][trode][vInd,pInd]/(1/(0.25)**expon)
-        if carbonCoating:
-            G_carb = config["G_car"][trode][vInd,pInd]
-            return G_carb, G_bulk
-        else:
-            return 0, G_bulk
+        sig_bulk = config["sig_b"][trode][vInd,pInd]/(1/(0.25)**expon)
+        G_bulk = sig_bulk*a_o_t
+        return G_carb, G_bulk
 
 def get_lyte_internal_fluxes(c_lyte, phi_lyte, T_lyte, disc, config, Nvol):
     zp, zm, nup, num = config["zp"], config["zm"], config["nup"], config["num"]

@@ -474,20 +474,20 @@ class Config:
         else:
             # particle distributions
             self._distr_part()
-            # conductivty for 1D net
-            self._G_cont()
+            # # conductivty for 1D net
+            # self._G_cont()
             # contact conductivty
-            self._G_contNet()
-            # connectivity matrix
+            # self._G_contNet()
+            # # connectivity matrix
             self._conn_matrix()
             # carbon coating conductivty
             self._G_carb()
             # bulk conductivty
-            self._G()
+            self._G_bulk()
             # bulk sublattice 1 conductivty
-            self._G_1()
+            self._G_bulk_1()
             # bulk sublattice 2 conductivty
-            self._G_2()
+            self._G_bulk_2()
             # Electrode parameters that depend on invidividual particle
             self._indvPart()
 
@@ -511,10 +511,14 @@ class Config:
             self['power'] = self['power'] / (self['power_ref'])
         self['k0_foil'] = self['k0_foil'] / (self['1C_current_density'] * self['curr_ref'])
         self['Rfilm_foil'] = self['Rfilm_foil'] / self['Rser_ref']
-        if self['E_G_c'] is not None:
-            self['E_G_c'] = self['E_G_c']*constants.e / (constants.k * constants.T_ref)
-        if self['E_G_a'] is not None:
-            self['E_G_a'] = self['E_G_a']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_carb_c'] is not None:
+            self['E_sig_carb_c'] = self['E_sig_carb_c']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_carb_a'] is not None:
+            self['E_sig_carb_a'] = self['E_sig_carb_a']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_c'] is not None:
+            self['E_sig_bulk_c'] = self['E_sig_bulk_c']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_a'] is not None:
+            self['E_sig_bulk_a'] = self['E_sig_bulk_a']*constants.e / (constants.k * constants.T_ref)
         
     def _scale_electrode_parameters(self):
         """
@@ -751,47 +755,45 @@ class Config:
             self['psd_vol'][trode] = psd_vol
             self['psd_vol_FracVol'][trode] = psd_frac_vol
 
-    def _G_cont(self):
-        """
-        Generate inter-particle connectivity distribution of a one-dim wire and store in config.
-        """
-        self['G_cont'] = {}
-        for trode in self['trodes']:
-            Nvol = self['Nvol'][trode]
-            Npart = self['Npart'][trode]
-            mean = self['G_mean_cont'][trode]
-            stddev = self['G_std_cont'][trode]
-            if np.allclose(stddev, 0, atol=1e-17):
-                G_cont = mean * np.ones((Nvol, Npart))
-            else:
-                var = stddev**2
-                mu = np.log((mean**2) / np.sqrt(var + mean**2))
-                sigma = np.sqrt(np.log(var / (mean**2) + 1))
-                G_cont = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
-            # scale and store
-            self['G_cont'][trode] = G_cont * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+    # def _G_cont(self):
+    #     """
+    #     Generate inter-particle connectivity distribution of a one-dim wire and store in config.
+    #     """
+    #     self['G_cont'] = {}
+    #     for trode in self['trodes']:
+    #         Nvol = self['Nvol'][trode]
+    #         Npart = self['Npart'][trode]
+    #         mean = self['G_mean_cont'][trode]
+    #         stddev = self['G_std_cont'][trode]
+    #         if np.allclose(stddev, 0, atol=1e-17):
+    #             G_cont = mean * np.ones((Nvol, Npart))
+    #         else:
+    #             var = stddev**2
+    #             mu = np.log((mean**2) / np.sqrt(var + mean**2))
+    #             sigma = np.sqrt(np.log(var / (mean**2) + 1))
+    #             G_cont = np.random.lognormal(mu, sigma, size=(Nvol, Npart))
+    #         # scale and store
+    #         self['G_cont'][trode] = G_cont * constants.k * constants.T_ref * self['t_ref'] \
+    #             / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
-    def _G_contNet(self):
-        self['G_contNet'] = {}
-        for trode in self['trodes']:
-            Nvol = self['Nvol'][trode]
-            Npart = self['Npart'][trode]
-            mean = self['G_mean_cont'][trode]
-            stddev = self['G_std_cont'][trode]
-            # N*(N-1)/2 are the number of contacts
-            # + N for the self-contact that is the contact with carbon black
-            if np.allclose(stddev, 0, atol=1e-17):
-                G_contNet = mean * np.ones((Nvol, Npart, Npart))
-            else:
-                var = stddev**2
-                mu = np.log((mean**2) / np.sqrt(var + mean**2))
-                sigma = np.sqrt(np.log(var / (mean**2) + 1))
-                G_contNet = np.random.lognormal(mu, sigma, size=(Nvol, Npart, Npart))
-            # note G_contNet is not normalized by the particle volume
-            # the normalization is done in mod_cell 
-            self['G_contNet'][trode] = G_contNet * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'])
+    # def _G_contNet(self):
+    #     self['G_contNet'] = {}
+    #     for trode in self['trodes']:
+    #         Nvol = self['Nvol'][trode]
+    #         Npart = self['Npart'][trode]
+    #         mean = self['G_mean_cont'][trode]
+    #         stddev = self['G_std_cont'][trode]
+    #         if np.allclose(stddev, 0, atol=1e-17):
+    #             G_contNet = mean * np.ones((Nvol, Npart, Npart))
+    #         else:
+    #             var = stddev**2
+    #             mu = np.log((mean**2) / np.sqrt(var + mean**2))
+    #             sigma = np.sqrt(np.log(var / (mean**2) + 1))
+    #             G_contNet = np.random.lognormal(mu, sigma, size=(Nvol, Npart, Npart))
+    #         # note G_contNet is not normalized by the particle volume
+    #         # the normalization is done in mod_cell 
+    #         self['G_contNet'][trode] = G_contNet * constants.k * constants.T_ref * self['t_ref'] \
+    #             / (constants.e * constants.F * self[trode, 'csmax'])
     
     def _conn_matrix(self):
         self['conn_matrix'] = {}
@@ -801,11 +803,7 @@ class Config:
             mean_n = self['avg_num_cont'][trode]
             # standard deviation of the contacts per particle
             std_n = self['std_num_cont'][trode]
-            # penalty for the carbon black contact
-            penalty_grid_cont = self['penalty_grid_cont'][trode]
-            penalty_factor = self['penalty_factor'][trode]
             perc_grid = self['perc_grid'][trode]
-            # number of lost contact if a particle is connected to carbon black
             self['conn_matrix'][trode] = {}
             if self['simPartNet'][trode]:
                 for vInd in range(Nvol):
@@ -823,10 +821,10 @@ class Config:
                         for i in range(Npart):
                             # generate random number of connections
                             orig_conn = int(Numb_conn_vec[i])
-                            if i in range(int(Npart*perc_grid)) and penalty_grid_cont:
+                            if i in range(int(Npart*perc_grid)):
                                 # if we consider a penalty for the grid connection
                                 # reduce the number of connections
-                                orig_conn = int(orig_conn*penalty_factor)
+                                orig_conn = int(orig_conn/2)
                             # max connection = n_part (considering self connection as conn to carbon)
                             # check how many connections are in that row
                             existing_conn = np.where(conn_mat[i, :] == 1)[0]
@@ -863,64 +861,64 @@ class Config:
         """
         Generate Carbon conductivity distribution and store in config.
         """
-        self['G_car'] = {}
+        self['sig_c'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_carb'][trode]
-            G_carb = mean * np.ones((Nvol, Npart))
+            mean = self['sig_carb'][trode]
+            sig_carb = mean * np.ones((Nvol, Npart))
             # scale and store
-            self['G_car'][trode] = G_carb * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+            self['sig_c'][trode] = sig_carb * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'])
 
-    def _G(self):
+    def _G_bulk(self):
         """
         Generate Bulk connectivity and store in config.
         """
-        self['G'] = {}
+        self['sig_b'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_bulk'][trode]
+            mean = self['sig_bulk'][trode]
             G = mean * np.ones((Nvol, Npart))
             # scale and store
-            self['G'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+            self['sig_b'][trode] = G * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'])
             
-    def _G_1(self):
+    def _G_bulk_1(self):
         """
         Generate Bulk sublattice 1 connectivity and store in config.
         """
-        self['G_1'] = {}
+        self['sig_b_1'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_bulk_1'][trode]
+            mean = self['sig_bulk_1'][trode]
             G_1 = mean * np.ones((Nvol, Npart))
             if self[trode, 'stoich_1'] is not None:
                 stoich_1 = self[trode, 'stoich_1']
             else:
                 stoich_1 = 1
             # scale and store
-            self['G_1'][trode] = stoich_1 * G_1 * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+            self['sig_b_1'][trode] = stoich_1 * G_1 * constants.k * constants.T_ref * self['t_ref'] \
+                / (constants.e * constants.F * self[trode, 'csmax'])
             
-    def _G_2(self):
+    def _G_bulk_2(self):
         """
         Generate Bulk sublattice 2 connectivity and store in config.
         """
-        self['G_2'] = {}
+        self['sig_b_2'] = {}
         for trode in self['trodes']:
             Nvol = self['Nvol'][trode]
             Npart = self['Npart'][trode]
-            mean = self['G_bulk_2'][trode]
+            mean = self['sig_bulk_2'][trode]
             G_2 = mean * np.ones((Nvol, Npart))
             if self[trode, 'stoich_1'] is not None:
                 stoich_2 = 1 - self[trode, 'stoich_1']
             else:
                 stoich_2 = 1
             # scale and store
-            self['G_2'][trode] = stoich_2 * G_2 * constants.k * constants.T_ref * self['t_ref'] \
+            self['sig_b_2'][trode] = stoich_2 * G_2 * constants.k * constants.T_ref * self['t_ref'] \
                 / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
 
     def _indvPart(self):
@@ -998,8 +996,9 @@ class Config:
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     if self[trode, 'k0'] is not None:
-                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0'] \
-                            / (constants.e * F_s_ref)
+                        random_factor = np.random.normal(1, 0.15)
+                        # Assign the modified value back to the configuration
+                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0']*random_factor/ (constants.e * F_s_ref)
                     if self[trode, 'k0_1'] is not None:
                         F_s_1ref = plen * constants.N_A * self[trode, 'csmax'] * self[trode,"stoich_1"] / self['t_ref']
                         self[trode, 'indvPart']['k0_1'][i, j] = self[trode, 'k0_1'] \

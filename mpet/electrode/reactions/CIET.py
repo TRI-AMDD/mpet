@@ -12,7 +12,7 @@ def CIET(eta, c_sld, c_lyte, k0, E_A, T, act_R=None,
         for i, etaval in enumerate(eta):
             krd = k0*MHC_kfunc(-eta_f[i], lmbda)
             kox = k0*MHC_kfunc(eta_f[i], lmbda)
-            Rate[i] = ecd_extras[i]*(krd*c_lyte - kox*c_sld[i])
+            Rate[i] = np.exp(-E_A/T + E_A/1) * ecd_extras[i]*(krd*c_lyte - kox*c_sld[i])
     else:
         krd = k0*MHC_kfunc(-eta_f, lmbda)
         kox = k0*MHC_kfunc(eta_f, lmbda)

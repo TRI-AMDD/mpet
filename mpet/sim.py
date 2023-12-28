@@ -88,7 +88,7 @@ class SimMPET(dae.daeSimulation):
                         if solidType in constants.one_var_types:
                             part.cbar.SetInitialGuess(cs0)
                             if solidType == "homog_sdn":
-                                epsrnd = 0
+                                epsrnd = 0.001
                             elif solidType == "ACR":
                                 epsrnd = 0.005
                             else:
@@ -162,6 +162,7 @@ class SimMPET(dae.daeSimulation):
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
+                        # self.m.particles[tr][i,j].phi_m.SetInitialGuess(config["phi_cathode"]+5)
                         self.m.particles[tr][i,j].T_lyte.SetInitialGuess(config["T"])
 
         else:
