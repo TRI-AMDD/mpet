@@ -58,6 +58,10 @@ class SimMPET(dae.daeSimulation):
                     if self.config[tr, "type"] == 'ACR2D':
                         self.m.particles[tr][i, j].Dmny.CreateArray(
                             int(config["psd_num_ver"][tr][i,j]))
+                        self.m.particles[tr][i, j].Dmny_u.CreateArray(
+                            (int(config["psd_num_ver"][tr][i,j])-1))
+                        self.m.particles[tr][i, j].Dmnx_u.CreateArray(
+                            (int(config["psd_num"][tr][i,j])-1))
 
     def SetUpVariables(self):
         config = self.config
@@ -94,6 +98,8 @@ class SimMPET(dae.daeSimulation):
                                     part.c.SetInitialGuess(k, cs0)
                                     for j in range(N_ver_ij):
                                         part.cy[k].SetInitialCondition(j, cs0)
+                                for k in range(Nij-1):
+                                    for j in range(N_ver_ij-1):
                                         if config["c","mechanics"]:
                                             part.ux[k].SetInitialGuess(j, 0)
                                             part.uy[k].SetInitialGuess(j, 0)

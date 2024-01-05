@@ -38,10 +38,10 @@ class Mod2D(dae.daeModel):
         self.Dmny = dae.daeDomain("discretizationDomainY", self, dae.unit(),
                                   "discretization domain in y direction")
         
-        # self.Dmnx_u = dae.daeDomain("discretizationDomainX_u", self, dae.unit(),
-        #                          "discretization domain in x direction")
-        # self.Dmny_u = dae.daeDomain("discretizationDomainY_u", self, dae.unit(),
-        #                             "discretization domain in y direction")
+        self.Dmnx_u = dae.daeDomain("discretizationDomainX_u", self, dae.unit(),
+                                 "discretization domain in x direction")
+        self.Dmny_u = dae.daeDomain("discretizationDomainY_u", self, dae.unit(),
+                                    "discretization domain in y direction")
 
         # Variables
         self.c = dae.daeVariable(
@@ -58,17 +58,17 @@ class Mod2D(dae.daeModel):
         # # check unit of measures
         if self.get_trode_param("mechanics"):
             self.uy = {}
-            for k in range(Nx):
+            for k in range(Nx-1):
                 self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,
                                             self,
                                             "Displacement in y direction of element in row {k}".format(k=k),
-                                            [self.Dmny])
+                                            [self.Dmny_u])
             self.ux = {}
-            for k in range(Nx):
+            for k in range(Nx-1):
                 self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,
                                             self,
                                             "Displacement in x direction of element in row {k}".format(k=k),
-                                            [self.Dmny])
+                                            [self.Dmny_u])
 
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
@@ -147,13 +147,13 @@ class Mod2D(dae.daeModel):
             c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
         if self.get_trode_param("mechanics"):
-            u_y_mat = np.empty((Nx, Ny), dtype=object)
-            for k in range(Nx):
-                u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny)]
+            u_y_mat = np.empty((Nx-1, Ny-1), dtype=object)
+            for k in range(Nx-1):
+                u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny-1)]
 
-            u_x_mat = np.empty((Nx, Ny), dtype=object)
-            for k in range(Nx):
-                u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny)]
+            u_x_mat = np.empty((Nx-1, Ny-1), dtype=object)
+            for k in range(Nx-1):
+                u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny-1)]
 
         # eta, c_surf = self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
         if self.get_trode_param("mechanics"):
@@ -259,8 +259,8 @@ class Mod2D(dae.daeModel):
         muR_mat += muR_el
         actR_mat = np.exp(muR_mat)
 
-        for i in range(Nx):
-            for j in range(Ny):
+        for i in range(Nx-1):
+            for j in range(Ny-1):
                 eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
                 eq1.Residual = div_stress_mat[i,j,0]
                 eq2 = self.CreateEquation("divsigma2_{i}_{j}_equal0".format(i=i, j=j))
@@ -1004,23 +1004,18 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     # c_mat_tmp[-1,:] = ywet # wetting BC
     # c_mat_tmp[0,:] = ywet # wetting BC
     # c_mat_tmp[1:-1,0] = c_mat[:,0] # no flux in the center
-    c_mat_tmp = np.zeros((Nx+1,Ny+1), dtype=object)
-    c_mat_tmp[:-1,:-1] = c_mat
-    c_mat_tmp[-1,:-1] = c_mat[-1,:]
-    # fill the last corner with the average of the values in between
-    c_mat_tmp[-1,-1] = 0.5*(c_mat_tmp[-2,-1]+c_mat_tmp[-1,-2])
-    c_mat_tmp[:-1,-1] = c_mat[:,-1]
 
     u_x_tmp = np.zeros((Nx,Ny), dtype=object) # Nx +1, Ny + 1
     # u_x_tmp[:-1,1:] = u_x # Nx +1, Ny +1
-    # u_x_tmp[:,0] = e0[0]*c_mat[:,0] # Nx +1, Ny +1
-    u_x_tmp = u_x
+    u_x_tmp[:-1,1:] = u_x
+    u_x_tmp[:,0] = e0[0]*c_mat[:,0] # Nx +1, Ny +1
+    
+    # u_x_tmp[:,-1] = u_x[:,-1]
     # u_x_tmp[:,0] = u_x[:,0] # Nx +1, Ny +1
     u_y_tmp = np.zeros((Nx,Ny), dtype=object) # Nx + 1, Ny + 1
     # u_y_tmp[1:,:-1] = u_y # Nx + 1, Ny +1
-    u_y_tmp = u_y
-    
-    # u_y_tmp[0,:] = e0[1]*c_mat[0,:] # Nx + 1, Ny +1
+    u_y_tmp[1:,:-1] = u_y
+    u_y_tmp[0,:] = e0[1]*c_mat[0,:] # Nx + 1, Ny +1
 
     # e1 = np.zeros((Nx,Ny), dtype=object)
     # e2 = np.zeros((Nx,Ny), dtype=object)
@@ -1123,8 +1118,8 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
         for j in range(Ny):
             muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/(kT * N_A * max_conc)
     
-    sigma_mat_temp = np.zeros((Nx+1,Ny+1,6), dtype=object) # Nx +1 , Ny + 1
-    sigma_mat_temp[1:,1:,:] = sigma_mat
+    sigma_mat_temp = np.zeros((Nx,Ny,6), dtype=object) # Nx +1 , Ny + 1
+    sigma_mat_temp = sigma_mat
     # muR_el = muR_el[:-1,:-1]
     # sigma 0 on the boundaries
     # append zeros on the boundaries
@@ -1138,10 +1133,10 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     # now that ew found the chem pot
     # it is time to create the div(sigma) so that out of the function
     # can be posed = 0
-    dsigma1dx_mat = np.zeros((Nx,Ny+1), dtype=object)
-    dsigma2dy_mat = np.zeros((Nx + 1,Ny), dtype=object)
-    dsigma12dx_mat = np.zeros((Nx,Ny + 1), dtype=object)
-    dsigma12dy_mat = np.zeros((Nx + 1,Ny), dtype=object)
+    dsigma1dx_mat = np.zeros((Nx,Ny), dtype=object)
+    dsigma2dy_mat = np.zeros((Nx,Ny), dtype=object)
+    dsigma12dx_mat = np.zeros((Nx,Ny), dtype=object)
+    dsigma12dy_mat = np.zeros((Nx,Ny), dtype=object)
 
     # check boundaries !
     # sigma_mean_x =0.5*(sigma_mat[1:,:,:] + sigma_mat[:-1,:,:])
@@ -1151,19 +1146,22 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
 
     # dsigma12dx_mat = np.gradient(sigma_mat[:,:,2], axis = 0, edge_order=2)/dxs # Nx, Ny + 1
     dsigma12dx_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,2], dxs, axis=0)
-    dsigma1dx_mat = dsigma1dx_mat[:-1,:]
-    dsigma12dx_mat = dsigma12dx_mat[:-1,:]
+
+    #dsigma1dx_mat = dsigma1dx_mat[:-1,:]
+    #dsigma12dx_mat = dsigma12dx_mat[:-1,:]
 
     # dsigma2dy_mat = np.gradient(sigma_mat[:,:,1], axis = 1, edge_order=2)/dys # Nx + 1, Ny
     dsigma2dy_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,1], dys, axis=1)
     # dsigma12dy_mat = np.gradient(sigma_mat[:,:,2], axis = 1, edge_order=2)/dys # Nx + 1, Ny
     dsigma12dy_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,2], dys, axis=1)
-    dsigma2dy_mat = dsigma2dy_mat[:,:-1]
-    dsigma12dy_mat = dsigma12dy_mat[:,:-1]
 
-    div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
-    for i in range(Nx):
-        for j in range(Ny):
+    #dsigma2dy_mat = dsigma2dy_mat[:,:-1]
+    #dsigma12dy_mat = dsigma12dy_mat[:,:-1]
+
+    div_stress_mat = np.zeros((Nx-1,Ny-1,2), dtype=object)
+
+    for i in range(Nx-1):
+        for j in range(Ny-1):
             div_stress_mat[i,j,:] = np.array([
                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
                 dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]

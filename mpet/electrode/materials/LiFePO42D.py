@@ -39,13 +39,14 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         curvy[:,Ny-1] = (2 * c_mat[:,-2] - 2 * c_mat[:,-1] + 2*dys*beta_s*c_mat[:,-1]*(1-c_mat[:,-1]))/(dys**2)
         # orizontally the ACR is model just require 2 ghost points
         curvx = np.diff(np.concatenate((ywet,c_mat,ywet), axis=0), n=2, axis=0)/(dxs**2)
-        y_vert_avg = np.average(c_mat, axis=1)
-        y_oriz_avg = np.average(c_mat, axis=0)
+        
         # regular solution
         muR_mat = T*np.log(c_mat/(1- defect_mat -c_mat)) + self.get_trode_param("Omega_a")*(1- defect_mat -2*c_mat)
         # non-homogeneous
         muR_mat += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy
-        if self.get_trode_param("mechanics") == "false":
+        if self.get_trode_param("mechanics") == False:
+            y_vert_avg = np.average(c_mat, axis=1)
+            y_oriz_avg = np.average(c_mat, axis=0)
             muR_mat += self.get_trode_param("Bx")*np.subtract(c_mat,y_oriz_avg)
             for i in np.arange(Nx):
                 y = c_mat[i,:]
