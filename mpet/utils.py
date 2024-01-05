@@ -14,6 +14,57 @@ def mean_linear(a):
     """Calculate the linear mean along a vector."""
     return 0.5*(a[1:] + a[:-1])
 
+# def mean_linear_2D(a, ds, axis=0):
+#     """Calculate the linear mean along a direction."""
+#     if axis == 0:
+#         L = np.zeros_like(a)
+#         diff = np.diff(a, axis = axis)/ds
+#         L[1:-1,:] = 0.5*(L + L)
+#         L[0,:] = L[0]
+#         L[-1,:] = L[-1]
+#         return L
+#         # return np.diff((0.5*(a[1:,:]+a[:-1,:])), axis = axis)/ds
+#     elif axis == 1:
+#         L = np.zeros_like(a)
+#         diff = np.diff(a, axis = axis)/ds
+#         L[:,1:-1] = 0.5*(diff[:,1:] + diff[:,:-1])
+#         L[:,0] = L[:,0]
+#         L[:,-1] = L[:,-1]
+#         return L
+
+
+def mean_linear_diff_2D(arr, h=1, axis=0):
+    n = len(arr)
+    grad = np.zeros_like(arr, dtype=object)
+    if axis == 0:
+        # Calculate the central differences for the bulk of the array
+        # Skipping the first element as central difference needs a previous element
+        diff = np.diff(arr, axis = axis)/h
+        grad[1:-1,:] = 0.5*(diff[1:,:] + diff[:-1,:])
+        
+        # Calculate the derivative at the last point using the backward difference
+        grad[-1,:] = (3*arr[-1,:] - 4*arr[-2,:] + arr[-3,:]) / (2 * h)
+        
+        # For the first element, using forward difference as a placeholder
+        # Typically, you might have more information or use another method for higher accuracy
+        grad[0,:] = (arr[1,:] - arr[0,:]) / h
+    
+        return grad
+    elif axis == 1:
+        # Calculate the central differences for the bulk of the array
+        # Skipping the first element as central difference needs a previous element
+        diff = np.diff(arr, axis = axis)/h
+        grad[:,1:-1] = 0.5*(diff[:,1:] + diff[:,:-1])
+        
+        # Calculate the derivative at the last point using the backward difference
+        grad[:,-1] = (3*arr[:,-1] - 4*arr[:,-2] + arr[:,-3]) / (2 * h)
+        
+        # For the first element, using forward difference as a placeholder
+        # Typically, you might have more information or use another method for higher accuracy
+        grad[:,0] = (arr[:,1] - arr[:,0]) / h
+    
+        return grad
+
 
 def weighted_linear_mean(a, wt):
     return (wt[1:]*a[1:] + wt[:-1]*a[:-1])/(wt[1:]+wt[:-1])
