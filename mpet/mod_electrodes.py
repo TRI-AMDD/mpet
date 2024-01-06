@@ -255,7 +255,6 @@ class Mod2D(dae.daeModel):
                                      self.config, self.trode, self.ind)
         muR_el, div_stress_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
                              self.config, self.trode, self.ind)
-
         muR_mat += muR_el
         actR_mat = np.exp(muR_mat)
 
@@ -306,7 +305,7 @@ class Mod2D(dae.daeModel):
             if self.get_trode_param("shape") == "plate":
                 area_vec = np.ones(np.shape(edges))
             elif self.get_trode_param("shape") == "cylinder":
-                area_vec = 2*np.pi*edges  # per unit height
+                print('only plate, sorry :)')
 
             RHS_vec = -np.diff(Flux_vec * area_vec)
             dcdt_vec_y = np.empty(Ny, dtype=object)
@@ -992,113 +991,31 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     k = 1.381e-23
     N_A = 6.022e23
     kT = k * T_ref
-    norm_stress = kT * N_A * max_conc
     
     Cij, e0 = mech_tensors()
     Cij = Cij*1e9
 
-    # ywet = 0.98*np.ones(Ny+2, dtype=object)/\
-    # c_mat_tmp = np.zeros((Nx+2,Ny+1), dtype=object)
-    # c_mat_tmp[1:-1,1:] = c_mat
-    # first and last row is 0.98
-    # c_mat_tmp[-1,:] = ywet # wetting BC
-    # c_mat_tmp[0,:] = ywet # wetting BC
-    # c_mat_tmp[1:-1,0] = c_mat[:,0] # no flux in the center
-
     u_x_tmp = np.zeros((Nx,Ny), dtype=object) # Nx +1, Ny + 1
-    # u_x_tmp[:-1,1:] = u_x # Nx +1, Ny +1
-    u_x_tmp[:-1,1:] = u_x
+    u_x_tmp[:int(Nx/2),1:] = u_x[:int(Nx/2),:]
+    u_x_tmp[int(Nx/2)+1:,1:] = u_x[int(Nx/2):,:]
     u_x_tmp[:,0] = e0[0]*c_mat[:,0] # Nx +1, Ny +1
     
-    # u_x_tmp[:,-1] = u_x[:,-1]
-    # u_x_tmp[:,0] = u_x[:,0] # Nx +1, Ny +1
     u_y_tmp = np.zeros((Nx,Ny), dtype=object) # Nx + 1, Ny + 1
-    # u_y_tmp[1:,:-1] = u_y # Nx + 1, Ny +1
-    u_y_tmp[1:,:-1] = u_y
-    u_y_tmp[0,:] = e0[1]*c_mat[0,:] # Nx + 1, Ny +1
+    u_y_tmp[:int(Nx/2),1:] = u_y[:int(Nx/2),:]
+    u_y_tmp[int(Nx/2)+1:,1:] = u_y[int(Nx/2):,:]
+    u_y_tmp[int(Nx/2),:] = e0[1]*c_mat[int(Nx/2),:] # Nx + 1, Ny +1
 
-    # e1 = np.zeros((Nx,Ny), dtype=object)
-    # e2 = np.zeros((Nx,Ny), dtype=object)
-    # duxdy = np.zeros((Nx,Ny), dtype=object)
-    # duydx = np.zeros((Nx,Ny), dtype=object)
-
-    # e1 = np.diff(u_x_tmp, axis = 0)/dxs # Nx, Ny +1
-    # e2 = np.diff(u_y_tmp, axis = 1)/dys 
-    # duydx = np.diff(u_y_tmp, axis = 0)/dxs 
-    # duxdy = np.diff(u_x_tmp, axis = 1)/dys 
-
-    # Calculate central difference in the x-direction
-    # e1 = np.gradient(u_x_tmp, dxs, axis=0, edge_order = 2)  # Nx , Ny
-    # # Calculate central difference in the y-direction
-    # e2 = np.gradient(u_y_tmp, dys, axis=1, edge_order = 2) # Nx, Ny 
-    # # Calculate central difference in both directions
-    # duydx = np.gradient(u_y_tmp, dxs, axis=0, edge_order = 1) # Nx, Ny + 1
-    # duydx = duydx[:,:-1]
-    # duxdy = np.gradient(u_x_tmp, dys, axis=1, edge_order = 1) # Nx + 1, Ny 
-    # duxdy = duxdy[:-1,:]
     e1 = np.zeros((Nx,Ny), dtype=object)
-    # e1_temp[:,:] = 0.5*(np.diff(u_x_tmp[:-1,:], axis=0)/dxs+np.diff(u_x_tmp[1:,:], axis=0)/dxs)  # Nx , Ny
-    # e1[:,:] = np.diff(u_x_tmp, axis=0)/dxs
     e1[:,:] = utils.mean_linear_diff_2D(u_x_tmp, dxs, axis=0)
-    
-    # Calculate central difference in the y-direction
-    # e2 = np.diff(u_y_tmp[:,1:-1], dys, axis=1, edge_order = 2) # Nx, Ny 
-    e2 = np.zeros((Nx,Ny), dtype=object)
-    # e2[:,:] = np.diff(u_y_tmp, axis=1)/dys
-    # e2_temp[:,:] = 0.5*(np.diff(u_y_tmp[:,:-1], axis=1)/dys+np.diff(u_y_tmp[:,1:], axis=1)/dys) # Nx +1, Ny
-    # e2[:,:] = np.diff(u_y_tmp, axis=1)/dys
-    e2[:,:] = utils.mean_linear_diff_2D(u_y_tmp, dys, axis=1)
-    # Calculate central difference in both directions
 
-    # duydx = np.gradient(u_y_tmp, axis=0, edge_order = 1) # Nx, Ny + 1
-    # duydx = duydx[:,:-1]
-    # duxdy = np.gradient(u_x_tmp, axis=1, edge_order = 1) # Nx + 1, Ny 
-    # duxdy = duxdy[:-1,:]
-    # duxdy = np.utils.mean_linear(duxdy)
+    e2 = np.zeros((Nx,Ny), dtype=object)
+    e2[:,:] = utils.mean_linear_diff_2D(u_y_tmp, dys, axis=1)
     duydx = np.zeros((Nx,Ny), dtype=object)
     duydx[:,:] = utils.mean_linear_diff_2D(u_y_tmp, dxs, axis=0)
-    # duydx_temp[:-1,:] = 0.5*(np.diff(u_y_tmp[:-1,:], axis=0)/dxs + np.diff(u_y_tmp[1:,:], axis=0)/dxs) # Nx -1,Ny+1
-    # duydx[-1,:] = np.diff(u_y_tmp[-2:,:], axis=0)/dxs
 
     duxdy = np.zeros((Nx,Ny), dtype=object)
     duxdy[:,:] = utils.mean_linear_diff_2D(u_x_tmp, dys, axis=1)
-    # duxdy_temp[:,:-1] = 0.5*(np.diff(u_x_tmp[:,:-1], axis=1)/dys + np.diff(u_x_tmp[:,1:], axis=1)/dys) # Nx +1,Ny
-    # duxdy[:,-1] = np.diff(u_x_tmp[:,-2:], axis=1)/dys
     e12 = 0.5*(duydx + duxdy) # Nx , Ny 
-
-    # def in ywet
-    # e1_wet = np.ones(Ny, dtype=object)*e0[0]*0.98
-    # e1_temp = np.zeros((Nx+1,Ny), dtype=object)
-    # e1_temp[1:-1,:] = e1
-    # e1_temp[0,:] = e1_wet
-    # e1_temp[-1,:] = e1_wet
-    # e1 = 0.5*(e1_temp[1:,:] + e1_temp[:-1,:]) # Nx, Ny
-
-    # u_y_tmp = np.zeros((Nx,Ny+1), dtype=object) # Nx, Ny+1
-    # u_y_tmp[:,1:] = u_y #Nx, Ny
-    # u_y_tmp[:,0] = np.zeros(Nx, dtype=object) #Nx, Ny + 
-
-    # e2 = np.diff(u_y_tmp, axis = 1)/dys # Nx, Ny
-    # # diff shape
-    # duydx_long = np.diff(u_y_tmp, axis = 0)/dxs # Nx-1, Ny + 1
-    # # cut the first column sice they are all 0
-    # duydx = duydx_long[:,1:] # Nx-1, Ny + 1
-    # duydx_temp = np.zeros((Nx+1,Ny), dtype=object)
-    # duydx_temp[1:-1,:] = duydx
-    # duydx_temp[0,:] = duydx[0,:]
-    # duydx_temp[-1,:] = duydx[-1,:]
-    # # mean linear 
-    # # 0.5*(a[1:] + a[:-1])
-    # duydx = 0.5*(duydx_temp[1:,:] + duydx_temp[:-1,:]) # Nx, Ny
-
-    # duxdy = np.diff(u_x_tmp, axis = 1)/dys # Nx, Ny-1
-    # duxdy_temp = np.zeros((Nx,Ny+1), dtype=object)
-    # duxdy_temp[:,1:-1] = duxdy
-    # duxdy_temp[:,0] = duydx[:,0]
-    # duxdy_temp[:,-1] = duydx[:,-1]
-    # duxdy = 0.5*(duxdy_temp[:,1:] + duxdy_temp[:,:-1]) # Nx, Ny
-
-    
 
     e_mat = np.zeros((Nx,Ny,6), dtype=object)
     sigma_mat = np.zeros((Nx,Ny,6), dtype=object)
@@ -1116,48 +1033,27 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     muR_el = np.zeros((Nx,Ny), dtype=object)
     for i in range(Nx):
         for j in range(Ny):
-            muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/(kT * N_A * max_conc)
-    
-    sigma_mat_temp = np.zeros((Nx,Ny,6), dtype=object) # Nx +1 , Ny + 1
-    sigma_mat_temp = sigma_mat
-    # muR_el = muR_el[:-1,:-1]
-    # sigma 0 on the boundaries
-    # append zeros on the boundaries
-    # sigma_mat_temp = np.zeros((Nx+1,Ny+1,6), dtype=object) # Nx +2 , Ny + 1
-    # sigma_mat_temp[1:-1,:-1,:] = sigma_mat
+            muR_el[i,j] = np.dot(sigma_mat[i,j,:],e0)/(kT * max_conc)
 
-    # sigma_mat_temp[0,:-1,:] = sigma_mat[0,:,:]
-    # sigma_mat_temp[-1,:-1,:] = sigma_mat[-1,:,:]
-    # sigma_mat_temp[1:-1:,-1,:] = sigma_mat[:,0,:]
-    # sigma_mat = sigma_mat_temp
-    # now that ew found the chem pot
-    # it is time to create the div(sigma) so that out of the function
-    # can be posed = 0
-    dsigma1dx_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma2dy_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma12dx_mat = np.zeros((Nx,Ny), dtype=object)
-    dsigma12dy_mat = np.zeros((Nx,Ny), dtype=object)
+    sigma_1_temp = np.zeros((Nx+2,Ny), dtype=object)
+    sigma_1_temp[1:-1,:] = sigma_mat[:,:,0]
+    # sigma_1_temp = 0.5*(sigma_1_temp[1:,:] + sigma_1_temp[:-1,:])
 
-    # check boundaries !
-    # sigma_mean_x =0.5*(sigma_mat[1:,:,:] + sigma_mat[:-1,:,:])
+    sigma_2_temp = np.zeros((Nx,Ny+1), dtype=object)
+    sigma_2_temp[:,:-1] = sigma_mat[:,:,1]
 
-    # dsigma1dx_mat = np.gradient(sigma_mat[:,:,0], axis = 0, edge_order=2)/dxs # Nx, Ny + 1
-    dsigma1dx_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,0], dxs, axis=0)
+    sigma_12_temp_x = np.zeros((Nx+2,Ny), dtype=object)
+    sigma_12_temp_x[1:-1,:] = sigma_mat[:,:,3]
 
-    # dsigma12dx_mat = np.gradient(sigma_mat[:,:,2], axis = 0, edge_order=2)/dxs # Nx, Ny + 1
-    dsigma12dx_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,2], dxs, axis=0)
+    sigma_12_temp_y = np.zeros((Nx,Ny+1), dtype=object)
+    sigma_12_temp_y[:,:-1] = sigma_mat[:,:,3]
+    dsigma1dx_mat = np.diff(sigma_1_temp, axis=0)/dxs
+    dsigma1dx_mat = 0.5*(dsigma1dx_mat[1:,:] + dsigma1dx_mat[:-1,:]) 
+    dsigma12dx_mat = np.diff(sigma_12_temp_x, axis=0)/dxs
+    dsigma12dx_mat = 0.5*(dsigma12dx_mat[1:,:] + dsigma12dx_mat[:-1,:])
 
-    #dsigma1dx_mat = dsigma1dx_mat[:-1,:]
-    #dsigma12dx_mat = dsigma12dx_mat[:-1,:]
-
-    # dsigma2dy_mat = np.gradient(sigma_mat[:,:,1], axis = 1, edge_order=2)/dys # Nx + 1, Ny
-    dsigma2dy_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,1], dys, axis=1)
-    # dsigma12dy_mat = np.gradient(sigma_mat[:,:,2], axis = 1, edge_order=2)/dys # Nx + 1, Ny
-    dsigma12dy_mat = utils.mean_linear_diff_2D(sigma_mat[:,:,2], dys, axis=1)
-
-    #dsigma2dy_mat = dsigma2dy_mat[:,:-1]
-    #dsigma12dy_mat = dsigma12dy_mat[:,:-1]
-
+    dsigma2dy_mat = np.diff(sigma_2_temp, axis=1)/dys
+    dsigma12dy_mat = np.diff(sigma_12_temp_y, axis=1)/dys
     div_stress_mat = np.zeros((Nx-1,Ny-1,2), dtype=object)
 
     for i in range(Nx-1):
