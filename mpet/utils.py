@@ -34,7 +34,6 @@ def mean_linear(a):
 
 
 def mean_linear_diff_2D(arr, h=1, axis=0):
-    n = len(arr)
     grad = np.zeros_like(arr, dtype=object)
     if axis == 0:
         # Calculate the central differences for the bulk of the array
@@ -47,7 +46,8 @@ def mean_linear_diff_2D(arr, h=1, axis=0):
         
         # For the first element, using forward difference as a placeholder
         # Typically, you might have more information or use another method for higher accuracy
-        grad[0,:] = (arr[1,:] - arr[0,:]) / h
+        # grad[0,:] = (arr[1,:] - arr[0,:]) / h
+        grad[0,:] = (-3*arr[0,:] + 4*arr[1,:] - arr[2,:]) / (2 * h)
     
         return grad
     elif axis == 1:
@@ -61,7 +61,7 @@ def mean_linear_diff_2D(arr, h=1, axis=0):
         
         # For the first element, using forward difference as a placeholder
         # Typically, you might have more information or use another method for higher accuracy
-        grad[:,0] = (arr[:,1] - arr[:,0]) / h
+        grad[:,0] = (-3*arr[:,0] + 4*arr[:,1] - arr[:,2]) / (2 * h)
     
         return grad
 

@@ -101,8 +101,8 @@ class SimMPET(dae.daeSimulation):
                                 for k in range(Nij-1):
                                     for j in range(N_ver_ij-1):
                                         if config["c","mechanics"]:
-                                            part.ux[k].SetInitialGuess(j, 0.0517*cs0)
-                                            part.uy[k].SetInitialGuess(j, 0.0359*cs0)
+                                            part.ux[k].SetInitialGuess(j, 0)
+                                            part.uy[k].SetInitialGuess(j, 0)
                             else:
                                 epsrnd = 0
                                 rnd = epsrnd*(np.random.rand(Nij) - 0.5)
