@@ -299,6 +299,23 @@ def show_data(indir, plot_type, print_flag, save_flag, data_only, vOut=None, pOu
         if save_flag:
             fig.savefig("mpet_current.png", bbox_inches="tight")
         return fig, ax
+    
+    if plot_type == "curr_log":
+        theoretical_1C_current = config[config['limtrode'], "cap"] / 3600.  # A/m^2
+        current = (utils.get_dict_key(data, pfx + 'current')
+                   * theoretical_1C_current / config['1C_current_density'] * config['curr_ref'])
+        ffvec = utils.get_dict_key(data, pfx + 'ffrac_c')
+        if data_only:
+            return times*td, current
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(times*td, np.log(current))
+        xmin = np.min(ffvec)
+        xmax = np.max(ffvec)
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel("log Current [C-rate]")
+        if save_flag:
+            fig.savefig("mpet_current.png", bbox_inches="tight")
+        return fig, ax
 
     if plot_type == "power":
         current = utils.get_dict_key(data, pfx + 'current') * (3600/td) * (cap/3600)  # in A/m^2
