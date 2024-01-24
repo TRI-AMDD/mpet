@@ -1,5 +1,5 @@
 """This folder contains diffusion functions that return
- the filling-fraction dependent variation of
+the filling-fraction dependent variation of
 the transport coefficient, D(y), such that
 Flux = -D_ref*D(y)*grad(y) for solid solution transport or
 Flux = -D_ref*D(y)*grad(mu) for thermo-based transport

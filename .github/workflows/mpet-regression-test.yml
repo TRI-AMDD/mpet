@@ -22,14 +22,14 @@ jobs:
 
     - uses: conda-incubator/setup-miniconda@v2
       with:
-        auto-update-conda: true
         python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+        channels: conda-forge,defaults
         activate-environment: mpet-env
 
-    - name: Install daetools via conda
+    - name: Install daetools via mamba
       run: |
-        conda activate mpet-env
-        conda install -c conda-forge daetools python=${{ matrix.python-version }} pip
+        mamba install daetools
 
     - name: Install additional dependencies using mpet's setup.py
       run: |
@@ -49,7 +49,6 @@ jobs:
 
     - name: run tests for modified branch and get coverage
       run: |
-        conda activate mpet-env
         cd mpet/bin/workdir
         coverage run --source=../../mpet/ run_tests.py --test_dir ./tests --output_dir ../../bin/workdir/modified > /dev/null
 

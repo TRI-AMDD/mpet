@@ -5,9 +5,11 @@ Subpackages
 -----------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 4
 
+   mpet.config
    mpet.electrode
+   mpet.electrolyte
    mpet.plot
 
 Submodules
@@ -29,6 +31,14 @@ mpet.data\_reporting module
    :undoc-members:
    :show-inheritance:
 
+mpet.exceptions module
+----------------------
+
+.. automodule:: mpet.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mpet.extern\_funcs module
 -------------------------
 
@@ -45,18 +55,18 @@ mpet.geometry module
    :undoc-members:
    :show-inheritance:
 
-mpet.io\_utils module
----------------------
-
-.. automodule:: mpet.io_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 mpet.main module
 ----------------
 
 .. automodule:: mpet.main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mpet.mod\_CCCVCPcycle module
+----------------------------
+
+.. automodule:: mpet.mod_CCCVCPcycle
    :members:
    :undoc-members:
    :show-inheritance:
@@ -77,6 +87,14 @@ mpet.mod\_electrodes module
    :undoc-members:
    :show-inheritance:
 
+mpet.mod\_interface module
+--------------------------
+
+.. automodule:: mpet.mod_interface
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 mpet.ports module
 -----------------
 
@@ -89,14 +107,6 @@ mpet.props\_am module
 ---------------------
 
 .. automodule:: mpet.props_am
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-mpet.props\_elyte module
-------------------------
-
-.. automodule:: mpet.props_elyte
    :members:
    :undoc-members:
    :show-inheritance:

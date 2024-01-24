@@ -28,6 +28,14 @@ mpet.plot.plot\_data module
    :undoc-members:
    :show-inheritance:
 
+mpet.plot.plot\_data\_db module
+-------------------------------
+
+.. automodule:: mpet.plot.plot_data_db
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

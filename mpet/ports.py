@@ -21,3 +21,23 @@ class portFromBulk(dae.daePort):
         self.phi_m = dae.daeVariable(
             "phi_m", elec_pot_t, self,
             "Electric potential in the e- conducting phase")
+
+
+class portFromParticle(dae.daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+        dae.daePort.__init__(self, Name, PortType, Model, Description)
+        self.dcbardt = dae.daeVariable(
+            "dcbardt", dae.no_t, self,
+            "Rate of particle filling")
+
+
+class portFromInterface(dae.daePort):
+    def __init__(self, Name, PortType, Model, Description=""):
+        dae.daePort.__init__(self, Name, PortType, Model, Description)
+        self.i0 = dae.daeVariable(
+            "i0", dae.no_t, self,
+            "Current density in first interface region volume")
+
+        self.Nm0 = dae.daeVariable(
+            "Nm0", dae.no_t, self,
+            "Flux in first interface region volume")

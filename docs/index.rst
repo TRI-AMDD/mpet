@@ -18,13 +18,16 @@ Welcome to MPET's documentation!
    :caption: Tutorials:
 
    run_sim
+   cluster
    analysis
+   dashboard
+   ensemble
 
 .. toctree::
    :maxdepth: 1
    :caption: API:
 
-   source/mpet.rst
+   source/modules.rst
 
 
 Indices and tables
