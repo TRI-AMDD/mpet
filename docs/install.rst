@@ -12,16 +12,15 @@ Prerequisites
 MPET on Windows
 -----------------------------
 
-MPET on Windows needs to use python 3.6 or 3.7 because daetools on
-windows is only available for those versions.
+MPET on Windows can be installed directly.
 
-First make sure that you have a correct python version with (ana)conda for
+The python version can be chosen with (ana)conda for
 example:
 
 
 .. code-block:: bash
 
-  conda create -n mpet python=3.7 pip
+  conda create -n mpet python=3.X pip
   conda activate mpet
 
 Then install daetools via PyPi
