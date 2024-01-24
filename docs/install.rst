@@ -6,7 +6,7 @@ Prerequisites
 
 
   * Python 3.6 to 3.10
-  * numpy, scipy, matplotlib, pyqt5, h5py
+  * numpy, scipy, matplotlib, pyqt5, h5py, configparser, schema
   * daetools
 
 MPET on Windows
@@ -14,7 +14,7 @@ MPET on Windows
 
 MPET on Windows can be installed directly.
 
-The python version can be chosen with (ana)conda for
+The python version can be chosen with (ana)conda, for
 example:
 
 
