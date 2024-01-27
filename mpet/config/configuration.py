@@ -738,16 +738,17 @@ class Config:
             elif solidType in ['CHR', 'diffn', 'CHR2', 'diffn2']:
                 psd_num = np.ceil(raw / solidDisc).astype(int) + 1
                 psd_len = solidDisc * (psd_num - 1)
+            else:
+                raise NotImplementedError(f'Unknown solid type: {solidType}')
+            
             if self[trode, 'shape'] in ['plate']:
                 psd_thick = raw_t
             # For homogeneous particles (only one 'volume' per particle)
-            elif solidType in ['homog', 'homog_sdn', 'homog_sdn_gen','homog2', 'homog2_sdn']:
+            if solidType in ['homog', 'homog_sdn', 'homog_sdn_gen','homog2', 'homog2_sdn']:
                 # Each particle is only one volume
                 psd_num = np.ones(raw.shape, dtype=int)
                 # The lengths are given by the original length distr.
                 psd_len = raw
-            else:
-                raise NotImplementedError(f'Unknown solid type: {solidType}')
 
             # Calculate areas and volumes
             solidShape = self[trode, 'shape']

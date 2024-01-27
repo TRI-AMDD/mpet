@@ -65,7 +65,39 @@ def mean_linear_diff_2D(arr, h=1, axis=0):
     
         return grad
 
-
+def mean_linear_diff_2D_ndiff(arr, h=1, axis=0):
+    grad = np.zeros_like(arr, dtype=object)
+    if axis == 0:
+        # Calculate the central differences for the bulk of the array
+        # Skipping the first element as central difference needs a previous element
+        diff = np.diff(arr, axis = axis)/h
+        grad[1:-1,:] = 0.5*(diff[1:,:] + diff[:-1,:])
+        
+        # Calculate the derivative at the last point using the backward difference
+        grad[-1,:] = diff[-1,:]
+        
+        # For the first element, using forward difference as a placeholder
+        # Typically, you might have more information or use another method for higher accuracy
+        # grad[0,:] = (arr[1,:] - arr[0,:]) / h
+        grad[0,:] = diff[0,:]
+    
+        return grad
+    elif axis == 1:
+        # Calculate the central differences for the bulk of the array
+        # Skipping the first element as central difference needs a previous element
+        diff = np.diff(arr, axis = axis)/h
+        grad[:,1:-1] = 0.5*(diff[:,1:] + diff[:,:-1])
+        
+        # Calculate the derivative at the last point using the backward difference
+        grad[:,-1] = diff[:,-1]
+        
+        # For the first element, using forward difference as a placeholder
+        # Typically, you might have more information or use another method for higher accuracy
+        grad[:,0] = diff[:,0]
+    
+        return grad
+    
+    
 def weighted_linear_mean(a, wt):
     return (wt[1:]*a[1:] + wt[:-1]*a[:-1])/(wt[1:]+wt[:-1])
 

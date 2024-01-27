@@ -82,7 +82,7 @@ def calc_curv(c, dr, r_vec, Rs, beta_s, particleShape):
         dx = dr
         curv[0] = (2*c[1] - 2*c[0]) / dx**2
         curv[1:N-1] = np.diff(c,2)/dx**2
-        curv[N-1] = (2*c[-2] - 2*c[-1] + 2*dr*beta_s)/dx**2
+        curv[N-1] = (2*c[-2] - 2*c[-1] + 2*dr*beta_s*c[-1]*(1-c[-1])*6)/dx**2
     else:
         raise NotImplementedError("calc_curv_c only for sphere, cylinder or plate")
     return curv

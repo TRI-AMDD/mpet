@@ -58,13 +58,13 @@ class Mod2D(dae.daeModel):
         # # check unit of measures
         if self.get_trode_param("mechanics"):
             self.uy = {}
-            for k in range(Nx-1):
+            for k in range(Nx-2):
                 self.uy[k] = dae.daeVariable("uy{k}".format(k=k), mole_frac_t,
                                             self,
                                             "Displacement in y direction of element in row {k}".format(k=k),
                                             [self.Dmny_u])
             self.ux = {}
-            for k in range(Nx-1):
+            for k in range(Nx-2):
                 self.ux[k] = dae.daeVariable("ux{k}".format(k=k), mole_frac_t,
                                             self,
                                             "Displacement in x direction of element in row {k}".format(k=k),
@@ -147,12 +147,12 @@ class Mod2D(dae.daeModel):
             c_mat[k,:] = [self.cy[k](j) for j in range(Ny)]
 
         if self.get_trode_param("mechanics"):
-            u_y_mat = np.empty((Nx-1, Ny-1), dtype=object)
-            for k in range(Nx-1):
+            u_y_mat = np.empty((Nx-2, Ny-1), dtype=object)
+            for k in range(Nx-2):
                 u_y_mat[k,:] = [self.uy[k](j) for j in range(Ny-1)]
 
-            u_x_mat = np.empty((Nx-1, Ny-1), dtype=object)
-            for k in range(Nx-1):
+            u_x_mat = np.empty((Nx-2, Ny-1), dtype=object)
+            for k in range(Nx-2):
                 u_x_mat[k,:] = [self.ux[k](j) for j in range(Ny-1)]
 
         # eta, c_surf = self.sld_dynamics_2D1var(c_mat, mu_O, act_lyte, self.noise)
@@ -253,12 +253,12 @@ class Mod2D(dae.daeModel):
         # print(c_mat)
         muR_mat, actR_mat = calc_muR(c_mat, self.cbar(), self.T_lyte(),
                                      self.config, self.trode, self.ind)
-        muR_el, div_stress_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
+        muR_el, div_stress_mat, str_mat = calc_muR_el(c_mat, u_x_mat, u_y_mat,
                              self.config, self.trode, self.ind)
         muR_mat -= muR_el
         actR_mat = np.exp(muR_mat)
 
-        for i in range(Nx-1):
+        for i in range(Nx-2):
             for j in range(Ny-1):
                 eq1 = self.CreateEquation("divsigma1_{i}_{j}_equal0".format(i=i, j=j))
                 eq1.Residual = div_stress_mat[i,j,0]
@@ -271,9 +271,14 @@ class Mod2D(dae.daeModel):
                                            self.get_trode_param("D_surf"),
                                            self.get_trode_param("E_D_surf"),
                                            self.T_lyte())
-            
+        str_mat_tmp = np.zeros((Nx, Ny, 6), dtype=object)
+        str_mat_tmp[1:-1,1:,:] = str_mat[:,:,:]
+        str_mat_tmp[0,1:,:] = str_mat[0,:,:]
+        str_mat_tmp[-1,1:,:] = str_mat[-1,:,:]
+        str_mat_tmp[:,0,:] = str_mat_tmp[:,1,:]
         for k in range(Nx):
             c_vec = c_mat[k,:]
+            str_vec = str_mat_tmp[k,:,:]
             muR_vec = muR_mat[k,:]
             actR_vec = actR_mat[k,:]
             # muR_vec, actR_vec = calc_muR(c_vec, self.cbar(),
@@ -299,7 +304,7 @@ class Mod2D(dae.daeModel):
             else:
                 Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
-            Flux_vec = calc_flux_CHR_2D(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+            Flux_vec = calc_flux_CHR_2D(c_vec, str_vec, muR_vec, self.get_trode_param("D"), Dfunc,
                                      self.get_trode_param("E_D"), Flux_bc, dr,
                                      self.T_lyte(), noise)
             if self.get_trode_param("shape") == "plate":
@@ -882,16 +887,21 @@ def calc_flux_CHR(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
             np.diff(mu + noise(dae.Time().Value))/dr
     return Flux_vec
 
-def calc_flux_CHR_2D(c, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
+def calc_flux_CHR_2D(c, str, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     N = len(c)
     Flux_vec = np.empty(N+1, dtype=object)
     Flux_vec[0] = 0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
+    str_vert_edges = utils.mean_linear(str[:,1])
+    str_a = utils.mean_linear(str[:,0])
+    str_c = utils.mean_linear(str[:,2])
+    D_of_c_eps = D*(c_edges*(1-c_edges))*np.exp(100*str_vert_edges)
+    # D_of_c_eps = D*(c_edges*(1-c_edges))
     if noise is None:
-        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
+        Flux_vec[1:N] = -D/T * D_of_c_eps * np.exp(-E_D/T + E_D/1) * np.diff(mu)/dr
     else:
-        Flux_vec[1:N] = -D/T * Dfunc(c_edges) * np.exp(-E_D/T + E_D/1) * \
+        Flux_vec[1:N] = -D/T * D_of_c_eps * np.exp(-E_D/T + E_D/1) * \
             np.diff(mu + noise(dae.Time().Value))/dr
     return Flux_vec
 
@@ -950,15 +960,25 @@ def calc_muR(c, cbar, T, config, trode, ind):
 
 def mech_tensors():
     # FePo4 elastic constants (GPa)
-    c11 = 175.9
-    c22 = 153.6
-    c33 = 135.0
-    c44 = 38.8
-    c55 = 47.5
-    c66 = 55.6
-    c13 = 54.0
-    c12 = 29.6
-    c23 = 19.6
+    c11 = 157.4
+    c22 = 175.8
+    c33 = 154
+    c44 = 37.8
+    c55 = 49.05
+    c66 = 51.6
+    c13 = 51.2
+    c12 = 53.35
+    c23 = 32.7
+
+    # c11 = 175.9
+    # c22 = 153.6
+    # c33 = 135.0
+    # c44 = 38.8
+    # c55 = 47.5
+    # c66 = 55.6
+    # c13 = 54.0
+    # c12 = 29.6
+    # c23 = 19.6
 
     # c11 = 100
     # c22 = 100
@@ -983,19 +1003,111 @@ def mech_tensors():
     Cij[0,2] = c13
     Cij[1,2] = c23
     Cij[2,1] = c23
-    # strain
-    e01 = 0.0517
-    e02 = 0.0359
-    e03 = -0.0186
+    # # strain
+    # e01 = 0.0517
+    # e02 = 0.0359
+    # e03 = -0.0186
+    e01 = 0.05
+    e02 = 0.028
+    e03 = -0.025
     e0 = np.array([e01, e02, e03, 0, 0, 0])
 
     return Cij, e0
 
+# def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
+#     # pier fixed bc
+#     Ny = np.size(c_mat, 1)
+#     Nx = np.size(c_mat, 0)
+#     dys = 1./(Ny-1)
+#     dxs = 1./Nx
+
+#     Nx = Nx - 1
+#     Ny = Ny - 1
+
+#     max_conc = conf[trode, "rho_s"]
+#     T_ref = 298
+#     k = 1.381e-23
+#     N_A = 6.022e23
+#     kT = k * T_ref
+    
+#     Cij, e0 = mech_tensors()
+#     Cij = Cij*1e9
+
+#     u_x_tmp = np.zeros((Nx+1,Ny+1), dtype=object) # Nx +1, Ny + 1
+#     u_x_tmp[1:,1:] = u_x[:,:]
+
+#     u_y_tmp = np.zeros((Nx+1,Ny+1), dtype=object) # Nx + 1, Ny + 1
+#     u_y_tmp[1:,1:] = u_y[:,:]
+
+#     e1_tmp = np.zeros((Nx,Ny+1), dtype=object)
+#     e1_tmp = np.diff(u_x_tmp, axis=0)/dxs
+#     e1 = np.zeros((Nx,Ny), dtype=object)
+#     e1[:,:] = e1_tmp[:,1:]
+
+#     e2_tmp = np.zeros((Nx+1,Ny), dtype=object)
+#     e2_tmp = np.diff(u_y_tmp, axis=1)/dys
+#     e2 = np.zeros((Nx,Ny), dtype=object)
+#     e2[:,:] = e2_tmp[1:,:]
+
+#     duydx = np.zeros((Nx,Ny+1), dtype=object)
+#     duydx = np.diff(u_y_tmp, axis=0)/dxs
+
+#     duxdy = np.zeros((Nx+1,Ny), dtype=object)
+#     duxdy = np.diff(u_x_tmp, axis=1)/dys
+#     e12 = 0.5*(duydx[:,1:] + duxdy[1:,:]) # Nx , Ny 
+
+#     e_mat = np.zeros((Nx,Ny,6), dtype=object)
+#     sigma_mat = np.zeros((Nx,Ny,6), dtype=object)
+
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat[i,j],
+#                                     e2[i,j]- e0[1]*c_mat[i,j],
+#                                     0,
+#                                     e12[i,j],
+#                                     0,
+#                                     0])
+#             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
+#     sigma_mat_temp = np.zeros((Nx+1,Ny+1,6), dtype=object)
+#     sigma_mat_temp[:-1,:-1,:] = sigma_mat[:,:,:]
+
+#     muR_el = np.zeros((Nx+1,Ny+1), dtype=object)
+#     for i in range(Nx+1):
+#         for j in range(Ny+1):
+#             muR_el[i,j] = np.dot(sigma_mat_temp[i,j,:],e0)/(kT * max_conc)
+            
+#     dsigma1dx_mat_temp = np.diff(sigma_mat_temp[:,:,0], axis=0)/dxs
+#     dsigma1dx_mat = dsigma1dx_mat_temp[:,:-1]
+
+#     dsigma2dy_mat_temp = np.diff(sigma_mat_temp[:,:,1], axis=1)/dys
+#     dsigma2dy_mat = dsigma2dy_mat_temp[:-1,:]
+
+#     dsigma12dx_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=0)/dxs
+#     dsigma12dx_mat = dsigma12dx_mat_temp[:,:-1]
+
+#     dsigma12dy_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=1)/dys
+#     dsigma12dy_mat = dsigma12dy_mat_temp[:-1,:]
+
+#     div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             div_stress_mat[i,j,:] = np.array([
+#                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+#                 dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+#             ]
+#             )
+
+#     return muR_el, div_stress_mat
+
+
 def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
+    # pier fixed symm
     Ny = np.size(c_mat, 1)
     Nx = np.size(c_mat, 0)
     dys = 1./(Ny-1)
     dxs = 1./Nx
+
     max_conc = conf[trode, "rho_s"]
     T_ref = 298
     k = 1.381e-23
@@ -1003,114 +1115,101 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
     kT = k * T_ref
     
     Cij, e0 = mech_tensors()
-    Cij = Cij*1e9
+    Cij = Cij*1.3e9
 
-    u_x_tmp = np.zeros((Nx,Ny), dtype=object) # Nx +1, Ny + 1
-    u_x_tmp[1:,1:] = u_x[:,:]
-    # u_x_tmp[:int(Nx/2),1:] = u_x[:int((Nx-1)/2),:]
-    # u_x_tmp[int(Nx/2)+1:,1:] = u_x[int((Nx-1)/2):,:]
-    # for i in range(int(Nx/2)-1, -1, -1):
-    #     u_x_tmp[i,0] = u_x_tmp[i+1,0] - e0[0]*c_mat[i,0]*dxs
+    # u enters as Nx  - 2 and Ny - 1
 
-    # for i in range(int(Nx/2)+1,Nx):
-    #     u_x_tmp[i,0] = u_x_tmp[i-1,0] + e0[0]*c_mat[i,0]*dxs
-    # print(u_x_tmp[int(Nx/2),:])
-    # print('----------')
-    # print(u_x_tmp[int(Nx/2)-1,:])
-    # print('----------')
-    # print(u_x_tmp[int(Nx/2)+1,:])
+    u_x_tmp = np.zeros((Nx-1,Ny), dtype=object) # Nx, Ny 
+    u_x_tmp[:int(Nx/2),1:] = u_x[:int(Nx/2),:]
+    u_x_tmp[int(Nx/2)+1:,1:] = u_x[int(Nx/2):,:]
+    u_x_tmp[:,0] = u_x_tmp[:,1]
 
+    # u_y_tmp = np.zeros((Nx-1,Ny), dtype=object) # Nx-1, Ny
+    # u_y_tmp[:int(Nx/2),1:] = u_y[:int(Nx/2),:]
+    # u_y_tmp[int(Nx/2)+1:,1:] = u_y[int(Nx/2):,:]
+    # u_y_tmp[int(Nx/2),1:] = 0.5*(u_y[int(Nx/2),:] + u_y[int(Nx/2)-1,:])
 
-    # u_x_tmp[int(Nx/2)+1:,0] = +e0[0]*c_mat[:,0]*dxs # Nx, Ny
-    # u_x_tmp[1:,1:] = u_x[:,:]
-    # for i in range(1,Nx):
-    #     u_x_tmp[i,0] = u_x_tmp[i-1,0] + e0[0]*c_mat[i,0]*dxs
+    u_y_tmp = np.zeros((Nx,Ny), dtype=object) # Nx-2, Ny
+    u_y_tmp[1:-1,1:] = u_y[:,:]
+    u_y_tmp[0,1:] = u_y_tmp[1,1:]
+    u_y_tmp[-1,1:] = u_y_tmp[-2,1:]
 
 
-    u_y_tmp = np.zeros((Nx,Ny), dtype=object) # Nx + 1, Ny + 1
-    u_y_tmp[1:,1:] = u_y[:,:]
-    # u_y_tmp[:int(Nx/2),1:] = u_y[:int((Nx-1)/2),:]
-    # u_y_tmp[int(Nx/2)+1:,1:] = u_y[int((Nx-1)/2):,:]
-    # for i in range(1,Ny):
-    #     u_y_tmp[int(Nx/2), i] = u_y_tmp[int(Nx/2), i-1]  + e0[1]*c_mat[int(Nx/2),i]*dys # Nx + 1, Ny +1
+    # e1_tmp = np.zeros((Nx-2,Ny), dtype=object)
+    e1_tmp = np.diff(u_x_tmp, axis=0)/dxs # Nx, Ny
 
-    e1_tmp = np.zeros((Nx-1,Ny), dtype=object)
-    e1_tmp = np.diff(u_x_tmp, axis=0)/dxs
-    e1 = np.zeros((Nx-1,Ny-1), dtype=object)
-    e1[:,:] = e1_tmp[:,1:]
-    # e1[:,:] = utils.mean_linear_diff_2D(u_x_tmp, dxs, axis=0)
+    # e1 = np.zeros((Nx-2,Ny-1), dtype=object)
+    e1 = e1_tmp[:,1:] # Nx-2, Ny-1
+    # e1[:,:] =0.5*(e1_tmp[1:,1:] + e1_tmp[:-1,1:]) # Nx-2, Ny-1
 
-    e2_tmp = np.zeros((Nx,Ny-1), dtype=object)
-    e2_tmp = np.diff(u_y_tmp, axis=1)/dys
-    e2 = np.zeros((Nx-1,Ny-1), dtype=object)
-    e2[:,:] = e2_tmp[1:,:]
-    # e2[:,:] = utils.mean_linear_diff_2D(u_y_tmp, dys, axis=1)
+    # e2_tmp = np.zeros((Nx+2,Ny), dtype=object)
+    e2_tmp = np.diff(u_y_tmp, axis=1)/dys # Nx-1, Ny-1
+    # e2 = np.zeros((Nx+1,Ny), dtype=object)
+    # e2 = 0.5*(e2_tmp[1:,:] + e2_tmp[:-1,:])
+    e2 = e2_tmp[1:-1,:] # Nx-2, Ny-1
 
-    duydx = np.zeros((Nx-1,Ny), dtype=object)
-    duydx = np.diff(u_y_tmp, axis=0)/dxs
-    # duydx[:,:] = utils.mean_linear_diff_2D(u_y_tmp, dxs, axis=0)
+    # duydx = np.zeros((Nx-2,Ny-1), dtype=object)
+    duydx_tmp = np.diff(u_y_tmp[:,1:], axis=0)/dxs # Nx-2, Ny -1
+    duydx = 0.5*(duydx_tmp[1:,:] + duydx_tmp[:-1,:]) # Nx-2, Ny -1
+    # duydx = duydx_tmp
 
-    duxdy = np.zeros((Nx,Ny-1), dtype=object)
-    duxdy = np.diff(u_x_tmp, axis=1)/dys
-    # duxdy[:,:] = utils.mean_linear_diff_2D(u_x_tmp, dys, axis=1)
-    e12 = 0.5*(duydx[:,1:] + duxdy[1:,:]) # Nx , Ny 
+    # duxdy = np.zeros((Nx-2,Ny-1), dtype=object) # Nx-2, Ny -1
+    duxdy_tmp = np.diff(u_x_tmp, axis=1)/dys # Nx-2, Ny-1
+    duxdy = 0.5*(duxdy_tmp[1:,:] + duxdy_tmp[:-1,:]) # Nx-2, Ny-1
+    # duxdy = duxdy_tmp[1:-1,:] # Nx-2, Ny-1
 
-    e_mat = np.zeros((Nx-1,Ny-1,6), dtype=object)
-    sigma_mat = np.zeros((Nx-1,Ny-1,6), dtype=object)
 
-    for i in range(Nx-1):
+    e12 = 0.5*(duydx + duxdy) # Nx-2 , Ny-1 
+
+    e_mat = np.zeros((Nx-2,Ny-1,6), dtype=object)
+    sigma_mat = np.zeros((Nx-2,Ny-1,6), dtype=object)
+    str_mat = np.zeros((Nx-2,Ny-1,6), dtype=object)
+
+    for i in range(Nx-2):
         for j in range(Ny-1):
-            e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat[i,j],
-                                    e2[i,j]- e0[1]*c_mat[i,j],
+            str_mat[i,j,:] = np.array([e1[i,j],
+                                    e2[i,j],
+                                    e0[2]*c_mat[i+1,j],
+                                    e12[i,j],
+                                    0,
+                                    0])
+            
+            e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat[i+1,j],
+                                    e2[i,j]- e0[1]*c_mat[i+1,j],
                                     0,
                                     e12[i,j],
                                     0,
                                     0])
+            
             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
+
+
     sigma_mat_temp = np.zeros((Nx,Ny,6), dtype=object)
-    sigma_mat_temp[:-1,:-1,:] = sigma_mat[:,:,:]
+    sigma_mat_temp[1:-1,:-1,:] = sigma_mat[:,:,:]
 
     muR_el = np.zeros((Nx,Ny), dtype=object)
+
     for i in range(Nx):
         for j in range(Ny):
             muR_el[i,j] = np.dot(sigma_mat_temp[i,j,:],e0)/(kT * max_conc)
-
-    # sigma_1_temp = np.zeros((Nx+2,Ny), dtype=object)
-    # sigma_1_temp[1:-1,:] = sigma_mat[:,:,0]
-    # # sigma_1_temp = 0.5*(sigma_1_temp[1:,:] + sigma_1_temp[:-1,:])
-
-    # sigma_2_temp = np.zeros((Nx,Ny+1), dtype=object)
-    # sigma_2_temp[:,:-1] = sigma_mat[:,:,1]
-
-    # sigma_12_temp_x = np.zeros((Nx+2,Ny), dtype=object)
-    # sigma_12_temp_x[1:-1,:] = sigma_mat[:,:,3]
-
-    # sigma_12_temp_y = np.zeros((Nx,Ny+1), dtype=object)
-    # sigma_12_temp_y[:,:-1] = sigma_mat[:,:,3]
-
-    # dsigma1dx_mat = np.diff(sigma_1_temp, axis=0)/dxs
-    # dsigma1dx_mat = 0.5*(dsigma1dx_mat[1:,:] + dsigma1dx_mat[:-1,:]) 
-    # dsigma12dx_mat = np.diff(sigma_12_temp_x, axis=0)/dxs
-    # dsigma12dx_mat = 0.5*(dsigma12dx_mat[1:,:] + dsigma12dx_mat[:-1,:])
-
-    # dsigma2dy_mat = np.diff(sigma_2_temp, axis=1)/dys
-    # dsigma12dy_mat = np.diff(sigma_12_temp_y, axis=1)/dys
             
-    dsigma1dx_mat_temp = np.diff(sigma_mat_temp[:,:,0], axis=0)/dxs
-    dsigma1dx_mat = dsigma1dx_mat_temp[:,:-1]
+    dsigma1dx_mat_tmp = np.diff(sigma_mat_temp[:,:-1,0], axis=0)/dxs # Nx-1, Ny -1
+    dsigma1dx_mat = 0.5*(dsigma1dx_mat_tmp[1:,:] + dsigma1dx_mat_tmp[:-1,:]) # Nx-2, Ny-1
 
-    dsigma2dy_mat_temp = np.diff(sigma_mat_temp[:,:,1], axis=1)/dys
-    dsigma2dy_mat = dsigma2dy_mat_temp[:-1,:]
+    dsigma2dy_mat_tmp = np.diff(sigma_mat_temp[:,:,1], axis=1)/dys # Nx, Ny-1
+    # dsigma2dy_mat = 0.5*(dsigma2dy_mat_tmp[1:,:] + dsigma2dy_mat_tmp[:-1,:]) # Nx-1, Ny-1
+    dsigma2dy_mat = dsigma2dy_mat_tmp[1:-1,:] # Nx-2, Ny-1
 
-    dsigma12dx_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=0)/dxs
-    dsigma12dx_mat = dsigma12dx_mat_temp[:,:-1]
+    dsigma12dx_mat_tmp = np.diff(sigma_mat_temp[:,:-1,3], axis=0)/dxs # Nx, Ny -1
+    dsigma12dx_mat = 0.5*(dsigma12dx_mat_tmp[1:,:]+dsigma12dx_mat_tmp[:-1,:]) # Nx-2, Ny-1
 
-    dsigma12dy_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=1)/dys
-    dsigma12dy_mat = dsigma12dy_mat_temp[:-1,:]
+    dsigma12dy_mat_tmp = np.diff(sigma_mat_temp[:,:,3], axis=1)/dys # Nx, Ny-1
+    # dsigma12dy_mat = 0.5*(dsigma12dy_mat_tmp[1:,:] + dsigma12dy_mat_tmp[:-1,:]) # Nx-1, Ny-1
+    dsigma12dy_mat = dsigma12dy_mat_tmp[1:-1,:] # Nx-2, Ny-1
 
-    div_stress_mat = np.zeros((Nx-1,Ny-1,2), dtype=object)
+    div_stress_mat = np.zeros((Nx-2,Ny-1,2), dtype=object)
 
-    for i in range(Nx-1):
+    for i in range(Nx-2):
         for j in range(Ny-1):
             div_stress_mat[i,j,:] = np.array([
                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
@@ -1118,8 +1217,96 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
             ]
             )
 
-    return muR_el, div_stress_mat
+    return muR_el, div_stress_mat, e_mat
 
+
+
+# def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind):
+#     # shakul
+#     Ny = np.size(c_mat, 1)
+#     Nx = np.size(c_mat, 0)
+#     dys = 1./(Ny-1)
+#     dxs = 1./Nx
+
+#     Nx = Nx - 1
+#     Ny = Ny - 1
+
+#     max_conc = conf[trode, "rho_s"]
+#     T_ref = 298
+#     k = 1.381e-23
+#     N_A = 6.022e23
+#     kT = k * T_ref
+    
+#     Cij, e0 = mech_tensors()
+#     Cij = Cij*1e9
+
+#     u_x_tmp = np.zeros((Nx,Ny), dtype=object) # Nx +1, Ny + 1
+#     u_x_tmp[:,:] = u_x[:,:]
+
+#     u_y_tmp = np.zeros((Nx,Ny), dtype=object) # Nx + 1, Ny + 1
+#     u_y_tmp[:,:] = u_y[:,:]
+
+#     e1_tmp = np.zeros((Nx,Ny), dtype=object)
+#     e1_tmp = utils.mean_linear_diff_2D_ndiff(u_x_tmp,dxs,axis=0)
+#     e1 = np.zeros((Nx,Ny), dtype=object)
+#     e1[:,:] = e1_tmp[:,:]
+
+#     e2_tmp = np.zeros((Nx,Ny), dtype=object)
+#     e2_tmp = utils.mean_linear_diff_2D_ndiff(u_y_tmp,dys,axis=1)
+#     e2 = np.zeros((Nx,Ny), dtype=object)
+#     e2[:,:] = e2_tmp[:,:]
+
+#     duydx = np.zeros((Nx,Ny), dtype=object)
+#     duydx = utils.mean_linear_diff_2D_ndiff(u_y_tmp,dxs,axis=0)
+
+#     duxdy = np.zeros((Nx,Ny), dtype=object)
+#     duxdy = utils.mean_linear_diff_2D_ndiff(u_x_tmp,dys,axis=1)
+
+#     e12 = 0.5*(duydx + duxdy) # Nx , Ny 
+
+#     e_mat = np.zeros((Nx,Ny,6), dtype=object)
+#     sigma_mat = np.zeros((Nx,Ny,6), dtype=object)
+
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             e_mat[i,j,:] = np.array([e1[i,j]- e0[0]*c_mat[i,j],
+#                                     e2[i,j]- e0[1]*c_mat[i,j],
+#                                     0,
+#                                     e12[i,j],
+#                                     0,
+#                                     0])
+#             sigma_mat[i,j,:] = np.dot(Cij,e_mat[i,j,:])
+#     sigma_mat_temp = np.zeros((Nx+2,Ny+2,6), dtype=object)
+#     sigma_mat_temp[1:-1,:-1,:] = sigma_mat[:,:,:]
+
+#     muR_el = np.zeros((Nx+1,Ny+1), dtype=object)
+#     for i in range(Nx+1):
+#         for j in range(Ny+1):
+#             muR_el[i,j] = np.dot(sigma_mat_temp[i,j,:],e0)/(kT * max_conc)
+          
+#     dsigma1dx_mat_temp = np.diff(sigma_mat_temp[:,:,0], axis=0)/dxs
+#     dsigma1dx_mat = dsigma1dx_mat_temp[:-1,1:-1]
+
+#     dsigma2dy_mat_temp = np.diff(sigma_mat_temp[:,:,1], axis=1)/dys
+#     dsigma2dy_mat = dsigma2dy_mat_temp[1:-1,:-1]
+
+#     dsigma12dx_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=0)/dxs
+#     dsigma12dx_mat = dsigma12dx_mat_temp[:-1,1:-1]
+
+#     dsigma12dy_mat_temp = np.diff(sigma_mat_temp[:,:,3], axis=1)/dys
+#     dsigma12dy_mat = dsigma12dy_mat_temp[1:-1,:-1]
+
+#     div_stress_mat = np.zeros((Nx,Ny,2), dtype=object)
+
+#     for i in range(Nx):
+#         for j in range(Ny):
+#             div_stress_mat[i,j,:] = np.array([
+#                 dsigma1dx_mat[i,j] + dsigma12dy_mat[i,j],
+#                 dsigma2dy_mat[i,j] + dsigma12dx_mat[i,j]
+#             ]
+#             )
+
+#     return muR_el, div_stress_mat
 
 def MX(mat, objvec):
     if not isinstance(mat, sprs.csr.csr_matrix):

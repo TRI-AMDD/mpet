@@ -61,7 +61,7 @@ class SimMPET(dae.daeSimulation):
                         self.m.particles[tr][i, j].Dmny_u.CreateArray(
                             (int(config["psd_num_ver"][tr][i,j])-1))
                         self.m.particles[tr][i, j].Dmnx_u.CreateArray(
-                            (int(config["psd_num"][tr][i,j])-1))
+                            (int(config["psd_num"][tr][i,j])-2))
 
     def SetUpVariables(self):
         config = self.config
@@ -94,15 +94,32 @@ class SimMPET(dae.daeSimulation):
                             part.cbar.SetInitialGuess(cs0)
                             if solidType == "ACR2D":
                                 N_ver_ij = config["psd_num_ver"][tr][i,j]
+                                epsrnd = 0.01
+                                rnd = epsrnd*(np.random.rand(Nij,N_ver_ij) - 0.5)
+                                rnd -= np.mean(rnd)
                                 for k in range(Nij):
                                     part.c.SetInitialGuess(k, cs0)
                                     for j in range(N_ver_ij):
-                                        part.cy[k].SetInitialCondition(j, cs0)
-                                for k in range(Nij-1):
-                                    for j in range(N_ver_ij-1):
-                                        if config["c","mechanics"]:
-                                            part.ux[k].SetInitialGuess(j, 0)
-                                            part.uy[k].SetInitialGuess(j, 0)
+                                        part.cy[k].SetInitialCondition(j, cs0+rnd[k,j])
+                                if config["c","mechanics"]:
+                                    # e01 = 0.0517
+                                    # e02 = 0.0359
+                                    e01 = 0.05
+                                    e02 = 0.028
+                                    dxs = 1/Nij
+                                    dys = 1/(N_ver_ij-1)
+                                    u_x_tmp = np.zeros((Nij,N_ver_ij))
+                                    u_y_tmp = np.zeros((Nij,N_ver_ij))
+                                    for k in range(1,Nij-2):
+                                        u_x_tmp[k,:] = u_x_tmp[k-1,:] + e01*cs0*dxs
+                                    for j in range(1,N_ver_ij-1):
+                                        u_y_tmp[:,j] = u_y_tmp[:,j-1] + e02*cs0*dys
+                                    for k in range(Nij-2):
+                                        for j in range(N_ver_ij-1):
+                                            part.ux[k].SetInitialGuess(j, u_x_tmp[k,j])
+                                            part.uy[k].SetInitialGuess(j, u_y_tmp[k,j])
+                                            # part.ux[k].SetInitialGuess(j, 0.01)
+                                            # part.uy[k].SetInitialGuess(j, 0.01)
                             else:
                                 epsrnd = 0
                                 rnd = epsrnd*(np.random.rand(Nij) - 0.5)
