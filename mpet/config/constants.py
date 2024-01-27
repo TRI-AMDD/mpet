@@ -27,9 +27,11 @@ PARAMS_PER_TRODE = ['Nvol', 'Npart', 'mean', 'stddev', 'cs0', 'simBulkCond', 'si
                     'sig_bulk_1','sig_bulk_2', 
                     'avg_num_cont', 'std_num_cont', 
                     'E_sig_carb', 'E_sig_bulk',
+                    'E_sig_bulk_1', 'E_sig_bulk_2',
                     'perc_grid',
                     'L', 'P_L', 'poros', 'BruggExp',
-                    'specified_psd', 'rhom', 'cp', 'k_h', 'c_dep_exp']
+                    'specified_psd', 'rhom', 'cp', 'k_h', 
+                    'c_dep_exp', 'c_dep_exp_1', 'c_dep_exp_2']
 #: subset of ``PARAMS_PER_TRODE``` that is defined for the separator as well
 PARAMS_SEPARATOR = ['Nvol', 'L', 'poros', 'BruggExp', 'k_h', 'cp', 'rhom']
 #: parameters that are defined for each particle, and their type

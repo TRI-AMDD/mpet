@@ -519,6 +519,15 @@ class Config:
             self['E_sig_bulk_c'] = self['E_sig_bulk_c']*constants.e / (constants.k * constants.T_ref)
         if self['E_sig_bulk_a'] is not None:
             self['E_sig_bulk_a'] = self['E_sig_bulk_a']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_1_c'] is not None:
+            self['E_sig_bulk_1_c'] = self['E_sig_bulk_1_c']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_1_a'] is not None:
+            self['E_sig_bulk_1_a'] = self['E_sig_bulk_1_a']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_2_c'] is not None:
+            self['E_sig_bulk_2_c'] = self['E_sig_bulk_2_c']*constants.e / (constants.k * constants.T_ref)
+        if self['E_sig_bulk_2_a'] is not None:
+            self['E_sig_bulk_2_a'] = self['E_sig_bulk_2_a']*constants.e / (constants.k * constants.T_ref)
+            
         
     def _scale_electrode_parameters(self):
         """
@@ -919,7 +928,7 @@ class Config:
                 stoich_2 = 1
             # scale and store
             self['sig_b_2'][trode] = stoich_2 * G_2 * constants.k * constants.T_ref * self['t_ref'] \
-                / (constants.e * constants.F * self[trode, 'csmax'] * self['psd_vol'][trode])
+                / (constants.e * constants.F * self[trode, 'csmax'])
 
     def _indvPart(self):
         """
@@ -996,16 +1005,22 @@ class Config:
                     self[trode, 'indvPart']['E_D'][i, j] = self[trode, 'E_D'] \
                         / (constants.k * constants.N_A * constants.T_ref)
                     if self[trode, 'k0'] is not None:
-                        random_factor = np.random.normal(1, 0.15)
-                        # Assign the modified value back to the configuration
-                        self[trode, 'indvPart']['k0'][i, j] = self[trode, 'k0']*random_factor/ (constants.e * F_s_ref)
+                        # random_k0 = np.random.lognormal(0,0.4)
+                        # random_k0 = np.random.lognormal(0,1) # physically better lognormal distribution, but due to low statistic it breaks the simulation
+                        if self[trode, 'type'] in ['homog_sdn']:
+                            random_k0 = np.random.normal(1,0.15)
+                        else:
+                            random_k0 = np.random.normal(1,0.15)
+                        self[trode, 'indvPart']['k0'][i, j] = random_k0*self[trode, 'k0']/ (constants.e * F_s_ref)
                     if self[trode, 'k0_1'] is not None:
+                        random_k0 = np.random.normal(1,0.1)
                         F_s_1ref = plen * constants.N_A * self[trode, 'csmax'] * self[trode,"stoich_1"] / self['t_ref']
-                        self[trode, 'indvPart']['k0_1'][i, j] = self[trode, 'k0_1'] \
+                        self[trode, 'indvPart']['k0_1'][i, j] = random_k0*self[trode, 'k0_1'] \
                             / (constants.e * F_s_1ref)
                     if self[trode, 'k0_2'] is not None:
+                        random_k0 = np.random.normal(1,0.1)
                         F_s_2ref = plen * constants.N_A * self[trode, 'csmax'] * (1 - self[trode,"stoich_1"]) / self['t_ref']
-                        self[trode, 'indvPart']['k0_2'][i, j] = self[trode, 'k0_2'] \
+                        self[trode, 'indvPart']['k0_2'][i, j] = random_k0*self[trode, 'k0_2'] \
                             / (constants.e * F_s_2ref)
                     self[trode, 'indvPart']['E_A'][i, j] = self[trode, 'E_A'] \
                         / (constants.k * constants.N_A * constants.T_ref)
@@ -1082,10 +1097,10 @@ def lognorm_cont(mean, std, N):
 
 def create_num_conn(mean_n, std_n, Npart):
     lognormal_values = lognorm_cont(mean_n, std_n, Npart)
-    outside_bounds = (lognormal_values < 1) | (lognormal_values > (Npart-1))
+    outside_bounds = (lognormal_values < 1) | (lognormal_values > (10))
     while outside_bounds.any():
         lognormal_values[outside_bounds] = lognorm_cont(mean_n, std_n, Npart)[outside_bounds]
-        outside_bounds = (lognormal_values < 1) | (lognormal_values > (Npart-1))
+        outside_bounds = (lognormal_values < 1) | (lognormal_values > (10))
 
     rounded_values = np.round(lognormal_values).astype(int)
     return rounded_values
