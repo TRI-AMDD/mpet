@@ -5,7 +5,7 @@ Prerequisites
 ----------------------------
 
 
-  * Python 3.6 to 3.10
+  * Python 3.6 to 3.12
   * numpy, scipy, matplotlib, pyqt5, h5py, configparser, schema
   * daetools
 
@@ -65,7 +65,7 @@ Install from source
 
 You can also download the source code and install the latest version
 
- * clone the repository : ``git clone https://bitbucket.org/bazantgroup/mpet``
+ * clone the repository : ``git clone https://github.com/TRI-AMDD/mpet.git``
  * Enter the mpet directory : ``cd mpet``
  * install MPET using pip ``pip install -e .``
 

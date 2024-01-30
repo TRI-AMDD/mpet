@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'mpet'
-copyright = '2021, Daniel Cogswell'
+copyright = '2024, Daniel Cogswell'
 author = 'Daniel Cogswell'
 
 # The full version, including alpha/beta/rc tags
