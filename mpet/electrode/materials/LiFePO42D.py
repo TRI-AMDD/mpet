@@ -59,7 +59,7 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         phi = -700
         muR_meta_1 = a*20*pi*np.cos(pi*c_mat-b)*(np.sin(pi*c_mat-b))**19
         muR_meta_2 = phi*6*((c_mat*(1-c_mat))**5)*(1-2*c_mat)
-        # muR += 0.5*(muR_meta_1 + muR_meta_2)
+        muR += 0.5*(muR_meta_1 + muR_meta_2)
 
         # non-homogeneous
         muR += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy

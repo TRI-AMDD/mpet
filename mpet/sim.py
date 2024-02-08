@@ -104,22 +104,30 @@ class SimMPET(dae.daeSimulation):
                                 if config["c","mechanics"]:
                                     # e01 = 0.0517
                                     # e02 = 0.0359
-                                    e01 = 0.05
+                                    e01 = 0.0125
                                     e02 = 0.028
                                     dxs = 1/Nij
                                     dys = 1/(N_ver_ij-1)
-                                    u_x_tmp = np.zeros((Nij,N_ver_ij))
-                                    u_y_tmp = np.zeros((Nij,N_ver_ij))
-                                    for k in range(1,Nij-2):
-                                        u_x_tmp[k,:] = u_x_tmp[k-1,:] + e01*cs0*dxs
-                                    for j in range(1,N_ver_ij-1):
-                                        u_y_tmp[:,j] = u_y_tmp[:,j-1] + e02*cs0*dys
+                                    u_x_tmp = np.zeros((Nij-2,N_ver_ij-1))
+                                    u_y_tmp = np.zeros((Nij-2,N_ver_ij-1))
+                                    # for k in range(int((Nij-2)/2), -1, -1):
+                                    #     u_x_tmp[k,:] = u_x_tmp[k+1,:] - e01*cs0*dxs
+                                    # for k in range(int((Nij-2)/2), Nij-2):
+                                    #     u_x_tmp[k,:] = u_x_tmp[k-1,:] + e01*cs0*dxs
+                                    # for j in range(N_ver_ij-1):
+                                    #     u_y_tmp[:,j] = u_y_tmp[:,j-1] + e02*cs0*dys
+
+                                    for k in range(int((Nij-2)/2)-1, -1, -1):
+                                        u_x_tmp[k,:] = u_x_tmp[k+1,:] - e01*(1/(1+np.exp(-10*(cs0-0.5))))*dxs
+                                    u_x_tmp[int((Nij-2)/2),:] = -u_x_tmp[int((Nij-2)/2)-1,:]
+                                    for k in range(int((Nij-2)/2)+1, Nij-2):
+                                        u_x_tmp[k,:] = u_x_tmp[k-1,:] + e01*(1/(1+np.exp(-10*(cs0-0.5))))*dxs
+                                    for j in range(N_ver_ij-1):
+                                        u_y_tmp[:,j] = u_y_tmp[:,j-1] + e02*(1/(1+np.exp(-10*(cs0-0.5))))*dys
                                     for k in range(Nij-2):
                                         for j in range(N_ver_ij-1):
                                             part.ux[k].SetInitialGuess(j, u_x_tmp[k,j])
                                             part.uy[k].SetInitialGuess(j, u_y_tmp[k,j])
-                                            # part.ux[k].SetInitialGuess(j, 0.01)
-                                            # part.uy[k].SetInitialGuess(j, 0.01)
                             else:
                                 epsrnd = 0
                                 rnd = epsrnd*(np.random.rand(Nij) - 0.5)
