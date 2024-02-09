@@ -219,7 +219,7 @@ class Mod2D(dae.daeModel):
             else:
                 Flux_bc = -self.Rxn(k)*self.get_trode_param("delta_L")
 
-            Flux_vec = calc_flux_CHR_2D(c_vec, muR_vec, self.get_trode_param("D"), Dfunc,
+            Flux_vec = calc_flux_CHR_2D(c_vec, 0, muR_vec, self.get_trode_param("D"), Dfunc,
                                      self.get_trode_param("E_D"), Flux_bc, dr,
                                      self.T_lyte(), noise)
             if self.get_trode_param("shape") == "plate":
@@ -903,9 +903,9 @@ def calc_flux_CHR_2D(c, str, mu, D, Dfunc, E_D, Flux_bc, dr, T, noise):
     Flux_vec[0] = 0
     Flux_vec[-1] = Flux_bc
     c_edges = utils.mean_linear(c)
-    str_vert_edges = utils.mean_linear(str[:,1])
-    str_a = utils.mean_linear(str[:,0])
-    str_c = utils.mean_linear(str[:,2])
+    # str_vert_edges = utils.mean_linear(str[:,1])
+    # str_a = utils.mean_linear(str[:,0])
+    # str_c = utils.mean_linear(str[:,2])
     # D_of_c_eps = D*(c_edges*(1-c_edges))*np.exp(100*str_vert_edges)
     # D_of_c_eps = D*(c_edges*(1-c_edges))*np.exp(100*0.04*c_edges)
     D_of_c_eps = D*(c_edges*(1-c_edges))
@@ -974,7 +974,7 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind, Mfunc, Epsfunc):
     # pier symm
     Nx = np.size(c_mat, 0)
     Ny = np.size(c_mat, 1)
-    dxs = 1./(Nx)
+    dxs = 1./(Nx-2)
     dys = 1./(Ny-1)
 
     max_conc = conf[trode, "rho_s"]
@@ -998,11 +998,15 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind, Mfunc, Epsfunc):
     e1 = e1_tmp[:,1:] # Nx-2, Ny-1
 
     e2_tmp = np.diff(u_y_tmp, axis=1)/dys # Nx-1, Ny-1
+    # e2_tmp[:,0] = e2_tmp[:,0]*2
+    # e2_tmp[:,-1] = e2_tmp[:,-1]*2
     e2 = e2_tmp[1:-1,:] # Nx-2, Ny-1
 
     duydx_tmp = np.diff(u_y_tmp[:,1:], axis=0)/dxs # Nx-1, Ny -1
     duydx = 0.5*(duydx_tmp[1:,:] + duydx_tmp[:-1,:]) # Nx-2, Ny -1
     duxdy_tmp = np.diff(u_x_tmp, axis=1)/dys # Nx-2, Ny-1
+    # duxdy_tmp[0,:] = duxdy_tmp[0,:]*2
+    # duxdy_tmp[-1,:] = duxdy_tmp[-1,:]*2
     duxdy = 0.5*(duxdy_tmp[1:,:] + duxdy_tmp[:-1,:]) # Nx-2, Ny-1
     e12 = 0.5*(duydx + duxdy) # Nx-2 , Ny-1 
 
@@ -1022,7 +1026,7 @@ def calc_muR_el(c_mat, u_x, u_y, conf, trode, ind, Mfunc, Epsfunc):
             e_mat[i,j,:] = np.array([e1[i,j]- Epsfunc(e0[0],c_mat[i+1,j]),
                                     e2[i,j]- Epsfunc(e0[1],c_mat[i+1,j]),
                                     0,
-                                    0 -  Epsfunc(e0[3],c_mat[i+1,j]),
+                                    0 - Epsfunc(e0[3],c_mat[i+1,j]),
                                     0 - Epsfunc(e0[4],c_mat[i+1,j]),
                                     e12[i,j]- Epsfunc(e0[5],c_mat[i+1,j])
                                     ])
@@ -1051,12 +1055,16 @@ def div_stress(sigma_mat_temp, Nx, Ny):
     dsigma1dx_mat = 0.5*(dsigma1dx_mat_tmp[1:,:] + dsigma1dx_mat_tmp[:-1,:]) # Nx-2, Ny-1
 
     dsigma2dy_mat_tmp = np.diff(sigma_mat_temp[:,:,1], axis=1)/dys # Nx, Ny-1
+    # dsigma2dy_mat_tmp[:,0] = dsigma2dy_mat_tmp[:,0]*2 
+    # dsigma2dy_mat_tmp[:,-1] = dsigma2dy_mat_tmp[:,-1]*2
     dsigma2dy_mat = dsigma2dy_mat_tmp[1:-1,:] # Nx-2, Ny-1
 
     dsigma12dx_mat_tmp = np.diff(sigma_mat_temp[:,:-1,3], axis=0)/dxs # Nx, Ny -1
     dsigma12dx_mat = 0.5*(dsigma12dx_mat_tmp[1:,:]+dsigma12dx_mat_tmp[:-1,:]) # Nx-2, Ny-1
 
     dsigma12dy_mat_tmp = np.diff(sigma_mat_temp[:,:,3], axis=1)/dys # Nx, Ny-1
+    # dsigma12dy_mat_tmp[:,0] = dsigma12dy_mat_tmp[:,0]*2
+    # dsigma12dy_mat_tmp[:,-1] = dsigma12dy_mat_tmp[:,-1]*2
     dsigma12dy_mat = dsigma12dy_mat_tmp[1:-1,:] # Nx-2, Ny-1
 
     div_stress_mat = np.zeros((Nx-2,Ny-1,2), dtype=object)

@@ -106,7 +106,7 @@ class SimMPET(dae.daeSimulation):
                                     # e02 = 0.0359
                                     e01 = 0.0125
                                     e02 = 0.028
-                                    dxs = 1/Nij
+                                    dxs = 1/(Nij-2)
                                     dys = 1/(N_ver_ij-1)
                                     u_x_tmp = np.zeros((Nij-2,N_ver_ij-1))
                                     u_y_tmp = np.zeros((Nij-2,N_ver_ij-1))

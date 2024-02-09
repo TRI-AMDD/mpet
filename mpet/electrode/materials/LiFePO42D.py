@@ -55,16 +55,16 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         # regular solution
         # muR = T*np.log(c_mat/(1- defect_mat -c_mat)) + self.get_trode_param("Omega_a")*(1- defect_mat -2*c_mat)
         muR = mu(c_mat, defect_mat, L_Li,T)
-        b = 0.3
-        pi = 3.14159
-        a = -0.11
-        phi = -700
-        muR_meta_1 = a*20*pi*np.cos(pi*c_mat-b)*(np.sin(pi*c_mat-b))**19
-        muR_meta_2 = phi*6*((c_mat*(1-c_mat))**5)*(1-2*c_mat)
-        muR += 0*(muR_meta_1 + muR_meta_2)
+        if self.get_trode_param("meta"):
+            b = 0.1
+            pi = 3.14159
+            a = -0.05
+            muR_meta_1 = a*20*pi*np.cos(pi*(c_mat-b))*(np.sin(pi*(c_mat-b)))**19
+            muR += muR_meta_1
 
         # non-homogeneous
         muR += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy
+
         if self.get_trode_param("mechanics") == False:
             y_vert_avg = np.average(c_mat, axis=1)
             y_oriz_avg = np.average(c_mat, axis=0)
@@ -72,6 +72,7 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
             for i in np.arange(Nx):
                 y = c_mat[i,:]
                 muR[i,:] += self.get_trode_param("By")*(y - y_vert_avg[i])
+
         actR_mat = np.exp(muR/T)
         muR += muRtheta + muR_ref
         return muR, actR_mat
