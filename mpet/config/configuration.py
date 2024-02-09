@@ -624,7 +624,11 @@ class Config:
             if path is not None and not os.path.isabs(path):
                 self[key] = os.path.abspath(os.path.join(self.path, path))
         # filenames in trode config
-        for key in ["rxnType_filename", "muRfunc_filename", "Dfunc_filename"]:
+        for key in ["rxnType_filename", 
+                    "muRfunc_filename", 
+                    "Dfunc_filename",
+                    "Mfunc_filename",
+                    "Epsfunc_filename"]:
             for trode in self['trodes']:
                 path = self[trode, key]
                 if path is not None and not os.path.isabs(path):

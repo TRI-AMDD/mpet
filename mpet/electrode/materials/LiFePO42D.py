@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-def mu(x, Lxs,T):
-    mu = T*np.log(x / (1-x))
+def mu(x, d, Lxs,T):
+    mu = T*np.log(x / (1-d-x))
     kx = 0
     for Lx in Lxs:
         mu += Lx * ((1-2*x)**kx) * ((1-2*x) - 2 * kx * (x * (1-x)/(1-2*x)))
@@ -17,7 +17,8 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
     if np.size(c_mat) == 1:
         y = c_mat
         # muRhomog = self.reg_sln(y, T, self.get_trode_param("Omega_a"))
-        muRhomog = mu(y, L_Li,T)
+        d = 0
+        muRhomog = mu(y, d, L_Li,T)
         muRnonHomog = self.general_non_homog(y, ybar)
         muR = muRhomog + muRnonHomog
         actR = np.exp(muR/T)
@@ -35,6 +36,7 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         # sigma = np.sqrt(np.log(var/mean**2 + 1))
         # defect_mat = np.random.lognormal(mu, sigma, (Nx,Ny))
         defect_mat = np.random.rand(Nx,Ny)*0
+        # be sure it is not smaller than 0
         # gaussian smoothing
         # defect_mat = gaussian_filter(defect_mat, sigma=0.5)
         dys = 1./(Ny-1)
@@ -52,14 +54,14 @@ def LiFePO42D(self, c_mat, ybar, T, muR_ref):
         
         # regular solution
         # muR = T*np.log(c_mat/(1- defect_mat -c_mat)) + self.get_trode_param("Omega_a")*(1- defect_mat -2*c_mat)
-        muR = mu(c_mat, L_Li,T)
+        muR = mu(c_mat, defect_mat, L_Li,T)
         b = 0.3
         pi = 3.14159
         a = -0.11
         phi = -700
         muR_meta_1 = a*20*pi*np.cos(pi*c_mat-b)*(np.sin(pi*c_mat-b))**19
         muR_meta_2 = phi*6*((c_mat*(1-c_mat))**5)*(1-2*c_mat)
-        muR += 0.5*(muR_meta_1 + muR_meta_2)
+        muR += 0*(muR_meta_1 + muR_meta_2)
 
         # non-homogeneous
         muR += -self.get_trode_param("kappa_x")*curvx - self.get_trode_param("kappa_y")*curvy
