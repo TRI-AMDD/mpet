@@ -12,6 +12,7 @@ Welcome to MPET's documentation!
 
    install
    theory
+   benchmarks
 
 .. toctree::
    :maxdepth: 2
