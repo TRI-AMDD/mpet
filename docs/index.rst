@@ -12,19 +12,23 @@ Welcome to MPET's documentation!
 
    install
    theory
+   benchmarks
 
 .. toctree::
    :maxdepth: 2
    :caption: Tutorials:
 
    run_sim
+   cluster
    analysis
+   dashboard
+   ensemble
 
 .. toctree::
    :maxdepth: 1
    :caption: API:
 
-   source/mpet.rst
+   source/modules.rst
 
 
 Indices and tables

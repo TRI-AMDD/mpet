@@ -8,10 +8,14 @@ In each model class it has options for different types of particles:
  - Fick-like diffusion
  - Cahn-Hilliard (with reaction boundary condition)
  - Allen-Cahn (with reaction throughout the particle)
+
 These models can be instantiated from the mod_cell module to simulate various types of active
 materials within a battery electrode.
 """
+
+
 import daetools.pyDAE as dae
+
 import numpy as np
 import scipy.sparse as sprs
 import scipy.interpolate as sintrp
@@ -75,6 +79,10 @@ class Mod2var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        if self.config[f"simInterface_{trode}"]:
+            self.portOutParticle = ports.portFromParticle(
+                "portOutParticle", dae.eOutletPort, self,
+                "Outlet port from particle")
 
     def get_trode_param(self, item):
         """
@@ -109,7 +117,7 @@ class Mod2var(dae.daeModel):
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(
             self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-            self.config["elyteModelType"])
+            self.config, self.trode)
 
         # Define average filling fractions in particle
         eq1 = self.CreateEquation("c1bar")
@@ -120,27 +128,32 @@ class Mod2var(dae.daeModel):
             eq1.Residual -= self.c1(k) * volfrac_vec[k]
             eq2.Residual -= self.c2(k) * volfrac_vec[k]
         eq = self.CreateEquation("cbar")
-        eq.Residual = self.cbar() - .5*(self.c1bar() + self.c2bar())
+        eq.Residual = self.cbar() - (0.5*self.c1bar() + 0.5*self.c2bar())
 
         # Define average rate of filling of particle
         eq = self.CreateEquation("dcbardt")
         eq.Residual = self.dcbardt()
         for k in range(N):
-            eq.Residual -= .5*(self.c1.dt(k) + self.c2.dt(k)) * volfrac_vec[k]
+            eq.Residual -= (0.5*self.c1.dt(k) + 0.5*self.c2.dt(k)) * volfrac_vec[k]
 
         c1 = np.empty(N, dtype=object)
         c2 = np.empty(N, dtype=object)
         c1[:] = [self.c1(k) for k in range(N)]
         c2[:] = [self.c2(k) for k in range(N)]
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
-            # Equations for 1D particles of 1 field varible
+        if self.get_trode_param("type") in ["diffn2", "CHR2", "ACR2"]:
+            # Equations for 1D particles of 2 field variables
             self.sld_dynamics_1D2var(c1, c2, mu_O, act_lyte, noises)
         elif self.get_trode_param("type") in ["homog2", "homog2_sdn"]:
-            # Equations for 0D particles of 1 field variables
+            # Equations for 0D particles of 2 field variables
             self.sld_dynamics_0D2var(c1, c2, mu_O, act_lyte, noises)
 
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
+
+        if self.config[f"simInterface_{self.trode}"]:
+            # Output dcbardt to interface region
+            eq = self.CreateEquation("particle_to_interface_dcbardt")
+            eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
 
     def sld_dynamics_0D2var(self, c1, c2, muO, act_lyte, noises):
         T = self.config["T"]
@@ -191,9 +204,17 @@ class Mod2var(dae.daeModel):
             c2_surf = c2[-1]
             mu1R_surf, act1R_surf = mu1R[-1], act1R[-1]
             mu2R_surf, act2R_surf = mu2R[-1], act2R[-1]
-        eta1 = calc_eta(mu1R_surf, muO)
-        eta2 = calc_eta(mu2R_surf, muO)
+            eta1 = calc_eta(mu1R_surf, muO)
+            eta2 = calc_eta(mu2R_surf, muO)
         if self.get_trode_param("type") in ["ACR2"]:
+            c1_surf = c1
+            c2_surf = c2
+            (mu1R, mu2R), (act1R, act2R) = calc_muR(
+                (c1, c2), (self.c1bar(), self.c2bar()), self.config, self.trode, self.ind)
+            mu1R_surf, act1R_surf = mu1R, act1R
+            mu2R_surf, act2R_surf = mu2R, act2R
+            eta1 = calc_eta(mu1R, muO)
+            eta2 = calc_eta(mu2R, muO)
             eta1_eff = np.array([eta1[i]
                                  + self.Rxn1(i)*self.get_trode_param("Rfilm") for i in range(N)])
             eta2_eff = np.array([eta2[i]
@@ -222,7 +243,10 @@ class Mod2var(dae.daeModel):
             eq2.Residual = self.Rxn2() - Rxn2
 
         # Get solid particle fluxes (if any) and RHS
-        if self.get_trode_param("type") in ["diffn2", "CHR2"]:
+        if self.get_trode_param("type") in ["ACR2"]:
+            RHS1 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn1(i) for i in range(N)])
+            RHS2 = 0.5*np.array([self.get_trode_param("delta_L")*self.Rxn2(i) for i in range(N)])
+        elif self.get_trode_param("type") in ["diffn2", "CHR2"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
             Flux1_bc = -0.5 * self.Rxn1()
@@ -276,16 +300,24 @@ class Mod1var(dae.daeModel):
         # Domain
         self.Dmn = dae.daeDomain("discretizationDomain", self, dae.unit(),
                                  "discretization domain")
-
         # Variables
         self.c = dae.daeVariable("c", mole_frac_t, self,
                                  "Concentration in active particle",
                                  [self.Dmn])
+
+        # Creation of the ghost points to assit BC
+
+        if self.get_trode_param("type") in ["ACR_Diff"]:
+            self.c_left_GP = dae.daeVariable("c_left", mole_frac_t, self,
+                                             "Concentration on the left side of the particle")
+            self.c_right_GP = dae.daeVariable("c_right", mole_frac_t, self,
+                                              "Concentration on the right side of the particle")
+
         self.cbar = dae.daeVariable(
             "cbar", mole_frac_t, self,
             "Average concentration in active particle")
         self.dcbardt = dae.daeVariable("dcbardt", dae.no_t, self, "Rate of particle filling")
-        if config[trode, "type"] not in ["ACR"]:
+        if config[trode, "type"] not in ["ACR", "ACR_Diff"]:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction")
         else:
             self.Rxn = dae.daeVariable("Rxn", dae.no_t, self, "Rate of reaction", [self.Dmn])
@@ -306,6 +338,10 @@ class Mod1var(dae.daeModel):
         self.phi_lyte = self.portInLyte.phi_lyte
         self.c_lyte = self.portInLyte.c_lyte
         self.phi_m = self.portInBulk.phi_m
+        if config[f"simInterface_{trode}"]:
+            self.portOutParticle = ports.portFromParticle(
+                "portOutParticle", dae.eOutletPort, self,
+                "Outlet port from particle")
 
     def get_trode_param(self, item):
         """
@@ -335,7 +371,7 @@ class Mod1var(dae.daeModel):
 
         # Figure out mu_O, mu of the oxidized state
         mu_O, act_lyte = calc_mu_O(self.c_lyte(), self.phi_lyte(), self.phi_m(), T,
-                                   self.config["elyteModelType"])
+                                   self.config, self.trode)
 
         # Define average filling fraction in particle
         eq = self.CreateEquation("cbar")
@@ -350,8 +386,12 @@ class Mod1var(dae.daeModel):
             eq.Residual -= self.c.dt(k) * volfrac_vec[k]
 
         c = np.empty(N, dtype=object)
-        c[:] = [self.c(k) for k in range(N)]
-        if self.get_trode_param("type") in ["ACR", "diffn", "CHR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
+            ctmp = utils.get_var_vec(self.c,N)
+            c = np.hstack((self.c_left_GP(),ctmp,self.c_right_GP()))
+        else:
+            c[:] = [self.c(k) for k in range(N)]
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff", "diffn", "CHR"]:
             # Equations for 1D particles of 1 field varible
             self.sld_dynamics_1D1var(c, mu_O, act_lyte, self.noise)
         elif self.get_trode_param("type") in ["homog", "homog_sdn"]:
@@ -361,6 +401,11 @@ class Mod1var(dae.daeModel):
         for eq in self.Equations:
             eq.CheckUnitsConsistency = False
 
+        if self.config[f"simInterface_{self.trode}"]:
+            # Output dcbardt to interface region
+            eq = self.CreateEquation("particle_to_interface_dcbardt")
+            eq.Residual = self.portOutParticle.dcbardt() - self.dcbardt()
+
     def sld_dynamics_0D1var(self, c, muO, act_lyte, noise):
         T = self.config["T"]
         c_surf = c
@@ -369,7 +414,7 @@ class Mod1var(dae.daeModel):
         eta = calc_eta(muR_surf, muO)
         eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
         if self.get_trode_param("noise"):
-            eta_eff += noise[0]()
+            eta_eff += noise(dae.Time().Value)
         Rxn = self.calc_rxn_rate(
             eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
             self.get_trode_param("E_A"), T, actR_surf, act_lyte,
@@ -389,8 +434,20 @@ class Mod1var(dae.daeModel):
         dr, edges = geo.get_dr_edges(self.get_trode_param('shape'), N)
 
         # Get solid particle chemical potential, overpotential, reaction rate
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             c_surf = c
+            # surface diffusion in the ACR C3 model
+            if self.get_trode_param("type") in ["ACR_Diff"]:
+                dx = 1/np.size(c)
+                beta_s = self.get_trode_param("beta_s")
+                eqL = self.CreateEquation("leftBC")
+                eqL.Residual = (c_surf[0] - c_surf[1] +
+                                - dx*beta_s*(c_surf[1]+0.008)*(1-c_surf[1]-0.008))
+                eqR = self.CreateEquation("rightBC")
+                eqR.Residual = (c_surf[-1] - c_surf[-2] +
+                                - dx*beta_s*(c_surf[-2]+0.008)*(1-c_surf[-2]-0.008))
+
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             muR_surf, actR_surf = calc_muR(
                 c_surf, self.cbar(), self.config, self.trode, self.ind)
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
@@ -401,17 +458,27 @@ class Mod1var(dae.daeModel):
                 actR_surf = None
             else:
                 actR_surf = actR[-1]
-        eta = calc_eta(muR_surf, muO)
-        if self.get_trode_param("type") in ["ACR"]:
+        # surface diffusion in the ACR C3 model
+        if self.get_trode_param("type") in ["ACR_Diff"]:
+            eta = calc_eta(muR_surf[1:-1], muO)
+        else:
+            eta = calc_eta(muR_surf, muO)
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             eta_eff = np.array([eta[i] + self.Rxn(i)*self.get_trode_param("Rfilm")
                                 for i in range(N)])
         else:
             eta_eff = eta + self.Rxn()*self.get_trode_param("Rfilm")
-        Rxn = self.calc_rxn_rate(
-            eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
-            self.get_trode_param("E_A"), T, actR_surf, act_lyte,
-            self.get_trode_param("lambda"), self.get_trode_param("alpha"))
-        if self.get_trode_param("type") in ["ACR"]:
+        if self.get_trode_param("type") in ["ACR_Diff"]:
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf[1:-1], self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf[1:-1], act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        else:
+            Rxn = self.calc_rxn_rate(
+                eta_eff, c_surf, self.c_lyte(), self.get_trode_param("k0"),
+                self.get_trode_param("E_A"), T, actR_surf, act_lyte,
+                self.get_trode_param("lambda"), self.get_trode_param("alpha"))
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
             for i in range(N):
                 eq = self.CreateEquation("Rxn_{i}".format(i=i))
                 eq.Residual = self.Rxn(i) - Rxn[i]
@@ -420,8 +487,34 @@ class Mod1var(dae.daeModel):
             eq.Residual = self.Rxn() - Rxn
 
         # Get solid particle fluxes (if any) and RHS
-        if self.get_trode_param("type") in ["ACR"]:
-            RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+        if self.get_trode_param("type") in ["ACR", "ACR_Diff"]:
+            # For ACR model localized contact loss.
+            if self.config['localized_losses']:
+                gamma_con = self.get_trode_param('gamma_con')
+                if gamma_con == 1:
+                    RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+                else:
+                    N_cont = int((gamma_con)*N)-12
+                    RHS = np.zeros(N, dtype=object)
+                    position = int(np.random.uniform()*N)
+                    # random position of contact + 6 points on the sides to facilitate wetting
+                    if 6+position+N_cont < N-6:
+                        for i in range(0,6):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+                        for i in range(N-6,N):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+                        for i in range(position+6,position+N_cont,1):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+                    else:
+                        for i in range(0,6):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+                        for i in range(position, N):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+                        for i in range(6,N_cont-(N-position)):
+                            RHS[i] = self.get_trode_param("delta_L")*self.Rxn(i)
+            else:
+                RHS = np.array([self.get_trode_param("delta_L")*self.Rxn(i) for i in range(N)])
+
         elif self.get_trode_param("type") in ["diffn", "CHR"]:
             # Positive reaction (reduction, intercalation) is negative
             # flux of Li at the surface.
@@ -445,9 +538,25 @@ class Mod1var(dae.daeModel):
         dcdt_vec = np.empty(N, dtype=object)
         dcdt_vec[0:N] = [self.c.dt(k) for k in range(N)]
         LHS_vec = MX(Mmat, dcdt_vec)
+        if self.get_trode_param("type") in ["ACR_Diff"]:
+            # surface diffusion in the ACR C3 model
+            surf_diff_vec = calc_surf_diff(c_surf, muR_surf, self.get_trode_param("D"))
         for k in range(N):
             eq = self.CreateEquation("dcsdt_discr{k}".format(k=k))
-            eq.Residual = LHS_vec[k] - RHS[k]
+            if self.get_trode_param("type") in ["ACR_Diff"]:
+                eq.Residual = LHS_vec[k] - RHS[k] - surf_diff_vec[k]
+            else:
+                eq.Residual = LHS_vec[k] - RHS[k]
+
+
+# surface diffusion in the ACR C3 model
+def calc_surf_diff(c_surf, muR_surf, D):
+    N_2 = np.size(c_surf)
+    dxs = 1./N_2
+    c_surf_long = c_surf
+    c_surf_short = (c_surf_long[0:-1] + c_surf_long[1:])/2
+    surf_diff = D*(np.diff(c_surf_short*(1-c_surf_short)*np.diff(muR_surf)))/(dxs**2)
+    return surf_diff
 
 
 def calc_eta(muR, muO):
@@ -524,13 +633,23 @@ def calc_flux_CHR2(c1, c2, mu1_R, mu2_R, D, Dfunc, E_D, Flux1_bc, Flux2_bc, dr, 
     return Flux1_vec, Flux2_vec
 
 
-def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, elyteModelType):
+def calc_mu_O(c_lyte, phi_lyte, phi_sld, T, config, trode):
+    elyteModelType = config["elyteModelType"]
+
+    if config[f"simInterface_{trode}"]:
+        elyteModelType = config["interfaceModelType"]
+
     if elyteModelType == "SM":
         mu_lyte = phi_lyte
         act_lyte = c_lyte
     elif elyteModelType == "dilute":
         act_lyte = c_lyte
         mu_lyte = T*np.log(act_lyte) + phi_lyte
+    elif elyteModelType == "solid":
+        a_slyte = config['a_slyte']
+        cmax = config['cmax']
+        act_lyte = (c_lyte / cmax) / (1 - c_lyte / cmax)*np.exp(a_slyte*(1 - 2*c_lyte))
+        mu_lyte = phi_lyte
     mu_O = mu_lyte - phi_sld
     return mu_O, act_lyte
 

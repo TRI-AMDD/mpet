@@ -74,15 +74,32 @@ positions (see discData.txt).
 bulkpHdr = ("Bulk electrode electric potential [V]\n" + RowsStr + bulkpHdrP2)
 fnameBulkpBase = "bulkPot{l}Data.txt"
 
+RowStrHdr1 = "First column corresponds to the cycle number.\n"
+RowStrHdr2 = """Second, third and fourth columns respond to gravimetric charge capacity of limiting
+electrode in mAh/g, gravimetric discharge capacity of limiting electrode in mAh/g, cycle
+capacity fraction relative to original capacity, and cycle efficiency (discharge
+capacity/charge capacity).\n"""
+cyclerHdr = ("Cycling Data\n" + RowStrHdr1 + RowStrHdr2)
+fnameCycleBase = "cycleData.txt"
+
+RowStrHdr1Q = """Each (2*i,2*i+1) row represents the (V(t), Q(t)) in cycle i in units of
+(V, Ah/m^2).\n"""
+vQCyclerHdr = ("Voltage/Capacity Cycling Data\n" + RowStrHdr1Q)
+
+RowStrHdr2Q = """Each (2*i,2*i+1) row represents the (V(t), dQ(t)dV) in cycle i in units of
+(V, Ah/m^2).\n"""
+vdQCyclerHdr = ("Voltage/dQ Cycling Data\n" + RowStrHdr2Q)
+
 
 def main(indir, genData=True, discData=True, elyteData=True,
          csldData=True, cbarData=True, bulkpData=True):
     config = plot_data.show_data(
         indir, plot_type="params", print_flag=False, save_flag=False,
-        data_only=True)
+        data_only=True, color_changes=None, smooth_type=None)
     trodes = config["trodes"]
     CrateCurr = config["1C_current_density"]  # A/m^2
     psd_len_c = config["psd_len"]["c"]
+    totalCycle = config["totalCycle"]
     Nv_c, Np_c = psd_len_c.shape
     dlm = ","
 
@@ -93,25 +110,25 @@ def main(indir, genData=True, discData=True, elyteData=True,
         Nv_a, Np_a = psd_len_a.shape
     tVec, vVec = plot_data.show_data(
         indir, plot_type="vt", print_flag=False, save_flag=False,
-        data_only=True)
+        data_only=True, color_changes=None, smooth_type=None)
     ntimes = len(tVec)
 
     if genData:
         ffVec_c = plot_data.show_data(
             indir, plot_type="soc_c", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         if "a" in trodes:
             ffVec_a = plot_data.show_data(
                 indir, plot_type="soc_a", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         else:
             ffVec_a = np.ones(len(tVec))
         currVec = plot_data.show_data(
             indir, plot_type="curr", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         powerVec = plot_data.show_data(
             indir, plot_type="power", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         genMat = np.zeros((ntimes, 7))
         genMat[:,0] = tVec
         genMat[:,1] = ffVec_a
@@ -126,7 +143,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     if discData:
         cellCentersVec, facesVec = plot_data.show_data(
             indir, plot_type="discData", print_flag=False,
-            save_flag=False, data_only=True)
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)
         with open(os.path.join(indir, "discData.txt"), "w") as fo:
             print(discCCbattery, file=fo)
             print(",".join(map(str, cellCentersVec)), file=fo)
@@ -164,15 +181,16 @@ def main(indir, genData=True, discData=True, elyteData=True,
         # so we'll get a KeyError in attempting to "plot" the electrolyte current density.
         try:
             plot_data.show_data(
-                indir, plot_type="elytei", print_flag=False, save_flag=False, data_only=True)
+                indir, plot_type="elytei", print_flag=False, save_flag=False, data_only=True,
+                color_changes=None, smooth_type=None)
         except KeyError:
             valid_current = False
         elytecMat = plot_data.show_data(
             indir, plot_type="elytec", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         elytepMat = plot_data.show_data(
             indir, plot_type="elytep", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         np.savetxt(os.path.join(indir, "elyteConcData.txt"),
                    elytecMat, delimiter=dlm, header=elytecHdr)
         np.savetxt(os.path.join(indir, "elytePotData.txt"),
@@ -180,10 +198,10 @@ def main(indir, genData=True, discData=True, elyteData=True,
         if valid_current:
             elyteiMat = plot_data.show_data(
                 indir, plot_type="elytei", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             elytediviMat = plot_data.show_data(
                 indir, plot_type="elytedivi", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             np.savetxt(os.path.join(indir, "elyteCurrDensData.txt"),
                        elyteiMat, delimiter=dlm, header=elyteiHdr)
             np.savetxt(os.path.join(indir, "elyteDivCurrDensData.txt"),
@@ -229,7 +247,7 @@ def main(indir, genData=True, discData=True, elyteData=True,
     if cbarData:
         cbarDict = plot_data.show_data(
             indir, plot_type="cbar_full", print_flag=False,
-            save_flag=False, data_only=True)
+            save_flag=False, data_only=True, color_changes='discrete', smooth_type=None)
         for tr in trodes:
             Trode = get_trode_str(tr)
             fname = "cbar{l}Data.txt".format(l=Trode)
@@ -250,15 +268,60 @@ def main(indir, genData=True, discData=True, elyteData=True,
         if "a" in trodes:
             bulkp_aData = plot_data.show_data(
                 indir, plot_type="bulkp_a", print_flag=False,
-                save_flag=False, data_only=True)[1]
+                save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
             fname = fnameBulkpBase.format(l="Anode")
             np.savetxt(os.path.join(indir, fname), bulkp_aData,
                        delimiter=dlm, header=bulkpHdr)
         bulkp_cData = plot_data.show_data(
             indir, plot_type="bulkp_c", print_flag=False,
-            save_flag=False, data_only=True)[1]
+            save_flag=False, data_only=True, color_changes=None, smooth_type=None)[1]
         fname = fnameBulkpBase.format(l="Cathode")
         np.savetxt(os.path.join(indir, fname), bulkp_cData,
                    delimiter=dlm, header=bulkpHdr)
+
+    if totalCycle > 1:
+        # save general cycle data
+        cycNum, cycleCapacityCh, cycleCapacityDisch = plot_data.show_data(
+            indir, plot_type="cycle_capacity", print_flag=False, save_flag=False,
+            data_only=True)
+        cycleCapFrac = plot_data.show_data(
+            indir, plot_type="cycle_cap_frac", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        cycleEfficiency = plot_data.show_data(
+            indir, plot_type="cycle_efficiency", print_flag=False,
+            save_flag=False, data_only=True)[1]
+        genMat = np.zeros((len(cycNum), 5))
+        genMat[:,0] = cycNum
+        genMat[:,1] = cycleCapacityCh
+        genMat[:,2] = cycleCapacityDisch
+        genMat[:,3] = cycleCapFrac
+        genMat[:,4] = cycleEfficiency
+        np.savetxt(os.path.join(indir, fnameCycleBase), genMat, delimiter=dlm,
+                   header=cyclerHdr)
+
+        # save QV and dQdV data
+        voltCycle, capCycle = plot_data.show_data(
+            indir, plot_type="cycle_Q_V", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "QVCycle.txt"
+        genMat = np.zeros((voltCycle.shape[0]*2, voltCycle.shape[1]))
+        genMat[:voltCycle.shape[0],:] = voltCycle
+        genMat[voltCycle.shape[0]:voltCycle.shape[0]*2,:] = capCycle
+        np.savetxt(os.path.join(indir, fname), genMat, delimiter=dlm,
+                   header=vQCyclerHdr)
+
+        voltCycle, dQdVCycle = plot_data.show_data(
+            indir, plot_type="cycle_dQ_dV", print_flag=False, save_flag=False,
+            data_only=True)
+        fname = "dQdVCycle.txt"
+        genMat = np.zeros((voltCycle.shape[0]*2, voltCycle.shape[1]))
+        genMat[:voltCycle.shape[0],:] = voltCycle
+        genMat[voltCycle.shape[0]:voltCycle.shape[0]*2,:] = dQdVCycle
+        np.savetxt(os.path.join(indir, fname), genMat, delimiter=dlm,
+                   header=vdQCyclerHdr)
+
+        # close file if it is a h5py file
+        if isinstance(data, h5py._hl.files.File):
+            data.close()
 
     return

@@ -46,7 +46,7 @@ class SimMPET(dae.daeSimulation):
     def SetUpParametersAndDomains(self):
         # Domains
         config = self.config
-        if config["have_separator"]:
+        if config["Nvol"]["s"]:
             self.m.DmnCell["s"].CreateArray(config["Nvol"]["s"])
         for tr in config["trodes"]:
             self.m.DmnCell[tr].CreateArray(config["Nvol"][tr])
@@ -55,6 +55,9 @@ class SimMPET(dae.daeSimulation):
                 for j in range(config["Npart"][tr]):
                     self.m.particles[tr][i, j].Dmn.CreateArray(
                         int(config["psd_num"][tr][i,j]))
+                    if config[f"simInterface_{tr}"]:
+                        self.m.interfaces[tr][i, j].Dmn.CreateArray(
+                            int(config["Nvol_i"]))
 
     def SetUpVariables(self):
         config = self.config
@@ -87,6 +90,9 @@ class SimMPET(dae.daeSimulation):
                             part.cbar.SetInitialGuess(cs0)
                             for k in range(Nij):
                                 part.c.SetInitialCondition(k, cs0)
+                                if self.config["c","type"] in ["ACR_Diff"]:
+                                    part.c_left_GP.SetInitialGuess(cs0)
+                                    part.c_right_GP.SetInitialGuess(cs0)
                         elif solidType in constants.two_var_types:
                             part.c1bar.SetInitialGuess(cs0)
                             part.c2bar.SetInitialGuess(cs0)
@@ -118,7 +124,7 @@ class SimMPET(dae.daeSimulation):
                 self.m.phi_lyteGP_L.SetInitialGuess(0)
 
             # Separator electrolyte initialization
-            if config["have_separator"]:
+            if config["Nvol"]["s"]:
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(i, config['c0'])
                     self.m.phi_lyte["s"].SetInitialGuess(i, 0)
@@ -132,6 +138,24 @@ class SimMPET(dae.daeSimulation):
                     # Set electrolyte concentration in each particle
                     for j in range(Npart[tr]):
                         self.m.particles[tr][i,j].c_lyte.SetInitialGuess(config["c0"])
+                        # Set concentration and potential in interface region
+                        if config[f"simInterface_{tr}"]:
+                            for k in range(config["Nvol_i"]):
+                                self.m.interfaces[tr][i,j].c.SetInitialCondition(k,
+                                                                                 config["c0_int"])
+                                self.m.interfaces[tr][i,j].phi.SetInitialGuess(k, 0)
+
+            # set up cycling stuff
+            if config['profileType'] == "CCCVCPcycle":
+                cyc = self.m.cycle
+                cyc.last_current.AssignValue(0)
+                cyc.last_phi_applied.AssignValue(phi_guess)
+                cyc.maccor_cycle_counter.AssignValue(1)
+                cyc.maccor_step_number.SetInitialGuess(1)
+
+                # used to determine new time cutoffs at each section
+                cyc.time_counter.AssignValue(0)
+                cyc.cycle_number.AssignValue(1)
 
         else:
             dPrev = self.dataPrev
@@ -174,7 +198,7 @@ class SimMPET(dae.daeSimulation):
                                     k, data[partStr + "c1"][-1,k])
                                 part.c2.SetInitialCondition(
                                     k, data[partStr + "c2"][-1,k])
-            if config["have_separator"]:
+            if config["Nvol"]["s"]:
                 for i in range(Nvol["s"]):
                     self.m.c_lyte["s"].SetInitialCondition(
                         i, data["c_lyte_s"][-1,i])
@@ -197,6 +221,37 @@ class SimMPET(dae.daeSimulation):
             # Guess the initial cell voltage
             self.m.phi_applied.SetInitialGuess(utils.get_dict_key(data, "phi_applied", final=True))
             self.m.phi_cell.SetInitialGuess(utils.get_dict_key(data, "phi_cell", final=True))
+
+            # set up cycling stuff
+            if config['profileType'] == "CCCVCPcycle":
+                cycle_header = "CCCVCPcycle_"
+                cyc = self.m.cycle
+                cyc.last_current.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "last_current",
+                        final=True))
+                cyc.last_phi_applied.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "last_phi_applied", final=True))
+                cyc.maccor_cycle_counter.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "maccor_cycle_counter", final=True))
+                cyc.maccor_step_number.AssignValue(utils.get_dict_key(
+                    data, cycle_header + "maccor_step_number", final=True))
+
+                # used to determine new time cutoffs at each section
+                cyc.time_counter.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "time_counter",
+                        final=True))
+                cyc.cycle_number.AssignValue(
+                    utils.get_dict_key(
+                        data,
+                        cycle_header
+                        + "cycle_number",
+                        final=True))
 
             # close file if it is a h5py file
             if isinstance(data, h5py._hl.files.File):

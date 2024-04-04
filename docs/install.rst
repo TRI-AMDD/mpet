@@ -5,23 +5,22 @@ Prerequisites
 ----------------------------
 
 
-  * Python 3.6 to 3.10
-  * numpy, scipy, matplotlib, pyqt5, h5py
+  * Python 3.6 to 3.12
+  * numpy, scipy, matplotlib, pyqt5, h5py, configparser, schema
   * daetools
 
 MPET on Windows
 -----------------------------
 
-MPET on Windows needs to use python 3.6 or 3.7 because daetools on
-windows is only available for those versions.
+MPET on Windows can be installed directly.
 
-First make sure that you have a correct python version with (ana)conda for
+The python version can be chosen with (ana)conda, for
 example:
 
 
 .. code-block:: bash
 
-  conda create -n mpet python=3.7 pip
+  conda create -n mpet python=3.X pip
   conda activate mpet
 
 Then install daetools via PyPi
@@ -66,7 +65,7 @@ Install from source
 
 You can also download the source code and install the latest version
 
- * clone the repository : ``git clone https://bitbucket.org/bazantgroup/mpet``
+ * clone the repository : ``git clone https://github.com/TRI-AMDD/mpet.git``
  * Enter the mpet directory : ``cd mpet``
  * install MPET using pip ``pip install -e .``
 

@@ -17,7 +17,7 @@ setuptools.setup(
     author='Dan Cogswell',
     author_email='cogswell@mit.edu',
     license='MIT',
-    url='https://bitbucket.org/bazantgroup/mpet',
+    url='https://github.com/TRI-AMDD/mpet',
     packages=[
         'mpet','mpet.plot',
         'mpet.electrode.diffusion',
@@ -27,9 +27,12 @@ setuptools.setup(
     ],
     install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema'],
     extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
-                    'doc':['sphinx','sphinx_rtd_theme']},
+                    'doc':['sphinx','sphinx_rtd_theme'],
+                    'dashboard': ['dash', 'dash_bootstrap_components'],
+                    'cluster_jobs': ['dask-jobqueue', 'bokeh']},
     python_requires='>=3.6',
-    scripts=['bin/mpetrun.py','bin/mpetplot.py'],
+    scripts=['bin/mpetrun.py','bin/mpetplot.py','bin/run_jobs.py', 'bin/create_ensemble.py',
+             'bin/mpet_create_runjobs_dashboard.py', 'bin/mpet_plot_app.py'],
     classifiers=[
         "Programming Language :: Python :: 3",
     ],

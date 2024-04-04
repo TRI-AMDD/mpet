@@ -21,7 +21,7 @@ def parse_segments(key):
     assert isinstance(segments, list), "segments must be a list"
     assert len(segments) > 0, "There must be at least one segment"
     for item in segments:
-        assert (isinstance(item, tuple)) and (len(item) == 2), \
+        assert (len(item) == 6) or (len(item) == 2), \
             "Each segment must be a tuple of (setpoint, time)"
     return segments
 
@@ -51,9 +51,14 @@ def tobool(value):
     return bool(strtobool(value))
 
 
+#: Defaults for config sections that are optional
+DEFAULT_SECTIONS = {'Interface': {'simInterface_a': False, 'simInterface_c': False}}
+
+
 #: System parameters, per section
 system = {'Sim Params': {'profileType': lambda x:
-                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments"]),
+                         check_allowed_values(x, ["CC", "CV", "CP", "CCsegments", "CVsegments",
+                                                  "CCCVCPcycle"]),
                          'Crate': Use(float),
                          Optional('power', default=None): Use(float),
                          Optional('1C_current_density', default=None): Use(float),
@@ -66,6 +71,7 @@ system = {'Sim Params': {'profileType': lambda x:
                          Optional('prevDir', default=''): str,
                          'tend': And(Use(float), lambda x: x > 0),
                          'tsteps': And(Use(int), lambda x: x > 0),
+                         Optional('times', default=[]): Use(ast.literal_eval),
                          'relTol': And(Use(float), lambda x: x > 0),
                          'absTol': And(Use(float), lambda x: x > 0),
                          'T': Use(float),
@@ -77,7 +83,8 @@ system = {'Sim Params': {'profileType': lambda x:
                          'Nvol_s': And(Use(int), lambda x: x >= 0),
                          'Nvol_a': And(Use(int), lambda x: x >= 0),
                          'Npart_c': And(Use(int), lambda x: x >= 0),
-                         'Npart_a': And(Use(int), lambda x: x >= 0)},
+                         'Npart_a': And(Use(int), lambda x: x >= 0),
+                         Optional('totalCycle', default=1): And(Use(int), lambda x: x >= 0)},
           'Electrodes': {'cathode': str,
                          'anode': str,
                          'k0_foil': Use(float),
@@ -86,6 +93,10 @@ system = {'Sim Params': {'profileType': lambda x:
                         'stddev_c': Use(float),
                         'mean_a': Use(float),
                         'stddev_a': Use(float),
+                        Optional('fraction_of_contact',default=1.0): Use(float),
+                        Optional('stand_dev_contact',default=0): Use(float),
+                        Optional('localized_losses', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
                         'cs0_c': Use(float),
                         'cs0_a': Use(float),
                         Optional('specified_psd_c', default=False):
@@ -110,6 +121,12 @@ system = {'Sim Params': {'profileType': lambda x:
                        'poros_c': Use(float),
                        'poros_a': Use(float),
                        'poros_s': Use(float),
+                       Optional('specified_poros_c', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
+                       Optional('specified_poros_a', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
+                       Optional('specified_poros_s', default=False):
+                            Or(Use(tobool), Use(lambda x: np.array(ast.literal_eval(x)))),
                        'BruggExp_c': Use(float),
                        'BruggExp_a': Use(float),
                        'BruggExp_s': Use(float)},
@@ -124,7 +141,21 @@ system = {'Sim Params': {'profileType': lambda x:
                           'n': Use(int),
                           'sp': Use(int),
                           Optional('Dp', default=None): Use(float),
-                          Optional('Dm', default=None): Use(float)}}
+                          Optional('Dm', default=None): Use(float),
+                          Optional('cmax'): Use(float),
+                          Optional('a_slyte'): Use(float)},
+          'Interface': {Optional('simInterface_a',default=False): Use(tobool),
+                        Optional('simInterface_c',default=False): Use(tobool),
+                        Optional('Nvol_i'): And(Use(int), lambda x: x > 0),
+                        Optional('L_i'): Use(float),
+                        Optional('BruggExp_i'): Use(float),
+                        Optional('poros_i'): Use(float),
+                        Optional('interfaceModelType'): str,
+                        Optional('interfaceSMset'): str,
+                        Optional('c0_int'): Use(float),
+                        Optional('cmax_i'): Use(float),
+                        Optional('Dp_i'): Use(float),
+                        Optional('Dm_i'): Use(float)}}
 
 #: Electrode parameters, per section
 electrode = {'Particles': {'type': lambda x: check_allowed_values(x,
