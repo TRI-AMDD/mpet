@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.0.0] - 2024-04-11
+### Added
+- Ability to simulate complex battery cycling protocols with 'profileType = CCCVCPcycle'.
+- New physics model for simulating solid-state batteries from a recent publication: https://doi.org/10.1103/PRXEnergy.2.033014
+- Dask-based script for scheduling lists of mpet simulations in a queuing system in a parellel or cluster environment.
+- Dash-based script for batch processing and comparison of multiple simulations.
+- Script for generating config files for parameter space exploration.
+
+### Changed
+- Commandline arguments for mpetplot.py have changed.
+
+### Fixed
+- Numerous bug fixes and compatibility updates.
+
+
 ## [0.1.9] - 2023-01-27
 ### Added
 - Regression tests for Python 3.10 and 3.11.
