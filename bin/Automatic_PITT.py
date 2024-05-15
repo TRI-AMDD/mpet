@@ -2,6 +2,7 @@ import os
 import subprocess
 import itertools
 import configparser
+import numpy as np
 
 
 def run_MPET(cwd, config):
@@ -13,6 +14,9 @@ def ensemble_definitions(parameters):
     keys, vals = zip(*parameters)
     return keys, vals
 
+k_B = 1.38064852e-23
+T = 298.15
+e = 1.60217662e-19
 
 def run_params_mpet(config_file, material_file,
                     system_properties, material_properties, output_folder):
@@ -53,6 +57,9 @@ def run_params_mpet(config_file, material_file,
             nicename_sys = []
             for key, val in params_sys.items():
                 new_sys[key[0]][key[1]] = val
+                if key[1] == "prevDir":
+                    continue
+                new_sys["Sim Params"]["profileType"] = "CVsegments"
                 nicename_sys.append(f"{key[1]}={val}")
             with open(config_file, "w") as f:
                 new_sys.write(f)
@@ -75,35 +82,67 @@ def run_params_mpet(config_file, material_file,
             ind += 1
             print(f"Simulation {ind} of {num_mat * num_sys} completed")
 
+# prev_dir = r"C:\Users\pierfrancescoo\Documents\Phase-field\mpet-LFMP\mpet\LFMP_dyn\pulses_y04\50percMn\base_50pMn"
+# prev_dir = r"C:\Users\pierfrancescoo\Documents\Phase-field\mpet-LFMP\mpet\LFP_CV\Iarchuk_1\base"
+# ocv = 3.9998
+ocv = 3.422
+etas = [2,3,4]
+
+holds = 30000 # sec
+holds = holds/60 # min
+etas = k_B*T/e*np.array(etas)
+segments = []
+for i in range(len(etas)):
+    Vp = str(ocv + etas[i])
+    Vm = str(ocv - etas[i])
+    holds = str(holds)
+    # stringp = f"[(3.20,120),(3.4,30),({Vp},{holds})]"
+    # stringm = f"[(3.47,20),({Vm},{holds})]"
+    # stringp = f"[({Vp},{holds})]"
+    stringm = f"[({Vm},{holds})]"
+    # segments.append(str(stringp))
+    segments.append(str(stringm))
+
 
 system_properties = [
-    # [("Conductivity","E_G_c"), ["0.4"]],
-    # [("Conductivity","avg_num_cont_c"), ["2"]],
-    # [("Conductivity","std_num_cont_c"), ["3"]],
-    # [("Conductivity","sigma_s_c"), ["0.03"]],
-    # [("Conductivity","perc_grid_c"), ["0.1","0.5","0.8"]],
-    # [("Conductivity","c_dep_exp_c"), ["1"]],
-    # [("Conductivity","simPartNet_c"), ["true"]],
+    
     # [("Sim Params","seed"), ["0"]],
-    # [("Conductivity","sigma_s_c"), ["0.5"]],
-    # [("Sim Params","Npart_c"), ["20"]],
-    # [("Sim Params","Nvol_c"), ["2"]],
-    # [("Particles","mean_c"), ["25e-9"]],
-    # [("Particles","stddev_c"), ["15e-9"]],
-    # [("Sim Params","T"), ["268","283","298"]],
-    [("Sim Params","Crate"), ["0.5","2"]],
+    # [("Conductivity","perc_grid_c"), ["0.45"]],
+    # [("Conductivity","avg_num_cont_c"), ["2"]],
+    # [("Conductivity","sig_bulk_c"), ["3e-8"]],
+    # [("Conductivity","sigma_s_c"), ["0.05"]],
+    # [("Conductivity","avg_num_cont_c"), ["2"]],
+    # [("Conductivity","std_num_cont_c"), ["2"]],
+    # [("Conductivity","perc_grid_c"), ["0.3"]],
+    [("Conductivity","c_dep_exp_c"), ["0"]],
+    [("Conductivity","sig_carb_c"), ["1e-4"]],
+    [("Conductivity","sig_bulk_c"), ["5e-8"]],
+    [('Geometry',"L_c"), ["40e-6"]],
+    # [("Sim Params","Npart_c"), ["5"]],
+    # [("Sim Params","Nvol_c"), ["10"]],
+    # [("Particles","mean_c"), ["100e-9"]],
+    # [("Particles","stddev_c"), ["25e-9"]],
+    # [("Sim Params","prevDir"), [prev_dir]],
+    # [("Electrolyte","c0"), ["1000"]],
+    [("Sim Params","segments"), segments],
     ]
 
 material_properties = [
-    # [("Particles", 'type'), ["CHR"]],
     [("Reactions", 'k0'), ["15"]],
-    # [("Material", 'D'), ["7.5e-17"]],
+    # [("Particles", 'std_thickness'), ["20e-9"]],
+    # [("Material", 'delta_gamma_vert'), ["0e-30"]],
+    # [("Reactions", 'Rfilm'), ["0"]],
+    # [("Material", 'B'), ["0.1916e9"]],
+    # [("Material", 'D'), ["1e-17"]],
+    # [("Material", 'kappa'), ["5e-10"]],
+    # [("Reactions", 'lambda'), ["5.54e-20"]],
+    # [("Reactions", 'lambda'), ["3.4113e-20"]],
+    # [("Material", 'cwet'), ["0.98"]],
     ]
 
 
-output_folder = "LFP_CC/conc_dep_cond"
-config_file = 'params_system_net_SS.cfg'
-material_file = 'params_LFP_ss.cfg'
-
+output_folder = "LFP_PITT\\con_dep_cond"
+config_file = 'params_system_Temp.cfg'
+material_file = 'params_LFP.cfg'
 
 run_params_mpet(config_file, material_file, system_properties, material_properties, output_folder)

@@ -77,16 +77,14 @@ def run_params_mpet(config_file, material_file,
 
 
 system_properties = [
-    [("Sim Params","Crate"), ["0.2"]],
-    [("Conductivity","G_carb_c"), ["1e-17"]],
-    [("Conductivity","G_mean_cont_c"), ["1e-16"]],
-    [("Conductivity","G_std_cont_c"), ["50e-14"]],
-    [("Conductivity","G_bulk_1_c"), ["1e-20"]],
-    [("Conductivity","G_bulk_2_c"), ["1e-16"]],
-    [("Conductivity","c_dep_exp_c"), ["0.5"]],
-    # [("Conductivity","simPartNet_c"), ["true"]],
+    [("Sim Params","Crate"), ["5","7.5"]],
+    # [("Conductivity","avg_num_cont_c"), ["0.5","2","4"]],
     # [("Sim Params","seed"), ["0"]],
-    # [("Conductivity","sigma_s_c"), ["0.5"]],
+    # [("Conductivity","sig_bulk_1_c"), ["1e-9"]],
+    [("Conductivity","sig_bulk_2_c"), ["5e-8"]],
+    [("Conductivity","sig_carb_c"), ["0.5e-6"]],
+    [("Conductivity","c_dep_exp_1_c"), ["0.2"]],
+    [("Conductivity","c_dep_exp_2_c"), ["0.2"]],
     # [("Sim Params","Npart_c"), ["5"]],
     # [("Sim Params","Nvol_c"), ["10"]],
     # [("Particles","mean_c"), ["25e-9"]],
@@ -97,15 +95,15 @@ material_properties = [
     # [("Reactions", 'k0_1'), ["3"]],
     # [("Reactions", 'k0_2'), ["3"]],
     [("Material", 'stoich_1'), ["0.8"]],
-    # [("Material", 'stoich_1'), ["0.2"]],
+    # [("Material", 'stoich_1'), ["0.6"]],
     # [("Reactions", 'lambda_1'), ["6e-20"]],
     # [("Reactions", 'lambda_2'), ["3.4113e-20"]],
     ]
 
 
-output_folder = "LFMP_dyn/05_network_test"
-config_file = 'params_system_LMFP.cfg'
-material_file = 'params_LFMP_ent1.cfg'
+output_folder = "LFMP_dyn/nice_net_lowercond"
+config_file = 'params_system_LMFP_net.cfg'
+material_file = 'params_LFMP.cfg'
 
 
 run_params_mpet(config_file, material_file, system_properties, material_properties, output_folder)
