@@ -19,8 +19,10 @@ def LiFeMnPO4(self, y, ybar, T, muR_ref):
     muR1 = muR1homog + muR1nonHomog
     muR2 = muR2homog + muR2nonHomog
     # interaction between the two phases
-    muR1 += stoich_2*Omgc*(1-2*y2)
-    muR2 += stoich_1*Omgc*(1-2*y1)
+    # muR1 += stoich_2*Omgc*(1-2*y2)
+    # muR2 += stoich_1*Omgc*(1-2*y1)
+    muR1 += stoich_2*Omgc*(1)
+    muR2 += stoich_1*Omgc*(-1)
     actR1 = np.exp(muR1/T)
     actR2 = np.exp(muR2/T)
     muR1 += muRtheta1 + muR_ref
