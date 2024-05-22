@@ -4,16 +4,16 @@ import os
 
 def sim_instructions():
     # A lot of smalle 40nm particles with low wiring does not work 
-    optimization_method = 'GD'  # 'DE' or 'GD'
+    optimization_method = 'DE'  # 'DE' or 'GD'
 
     ensable_system = [
-            [("Conductivity", "sig_carb_c"), ["1e-3", "5e-4"]],
-            [("Conductivity", "E_sig_carb_c"), ["0.1", "0.4"]],
+            [("Conductivity", "sig_carb_c"), ["2e-4", "0.5e-4"]],
+            # [("Conductivity", "E_sig_carb_c"), ["0.1", "0.4"]],
             # [("Electrodes", "k0_foil"), ["10","50"]],
                     ]
 
     ensable_cathode = [
-            [("Reactions", "k0"), ["5", "30"]],
+            # [("Reactions", "k0"), ["5", "30"]],
                     ]
 
     ensable_anode = []
@@ -21,14 +21,12 @@ def sim_instructions():
     # Define C-rates and Temperatures
     
     # temps = [298,283,268]  # K
-    temperatures = [298,283,268]  # K
+    temperatures = [298]  # K
     # Possible protocols: 'cc', 'pitt', 'gitt'
     protocols = ['cc']
     # one list for each protocol and temperature
     # it is important that the order of temperatures and conditions is the same
-    c_rates_cc = [[1],
-                  [2],
-                  [0.5]]  # C-rates
+    c_rates_cc = [[0.5,2]]  # C-rates
     c_rates_gitt = [[1],
                     [1]]  # C-rates
     cont_volts = [[3.377, 3.351, 3.326],
@@ -58,6 +56,8 @@ def weight_mse(protocol, temp, applied_con):
         weight_mse = 0.2
         # since the current goes from 0 to 10 and the voltage from 3.5 to 2.5
         # the error on the current must be reduced
+    else:
+        weight_mse = 1
     return weight_mse
 
 def c0():
