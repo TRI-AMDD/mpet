@@ -7,7 +7,7 @@ def sim_instructions():
     optimization_method = 'GD'  # 'DE' or 'GD'
 
     ensable_system = [
-            [("Conductivity", "sig_carb_c"), ["1e-2", "1e-3"]],
+            [("Conductivity", "sig_carb_c"), ["1e-3", "5e-4"]],
             [("Conductivity", "E_sig_carb_c"), ["0.1", "0.4"]],
             # [("Electrodes", "k0_foil"), ["10","50"]],
                     ]
@@ -20,20 +20,21 @@ def sim_instructions():
 
     # Define C-rates and Temperatures
     
-
-    temperatures = [298]  # K
+    # temps = [298,283,268]  # K
+    temperatures = [298,283,268]  # K
     # Possible protocols: 'cc', 'pitt', 'gitt'
-    protocols = ['pitt']
+    protocols = ['cc']
     # one list for each protocol and temperature
     # it is important that the order of temperatures and conditions is the same
-    c_rates_cc = [[0.5,1,2],
-                  [0.5,1]]  # C-rates
+    c_rates_cc = [[1],
+                  [2],
+                  [0.5]]  # C-rates
     c_rates_gitt = [[1],
                     [1]]  # C-rates
-    # cont_volts = [[3.377, 3.351, 3.326],
-                #   [3.376,3.352,3.271,3.221]]  # V
-    cont_volts = [[3.376, 3.326],
-                  ]  # V
+    cont_volts = [[3.377, 3.351, 3.326],
+                  [3.376,3.352,3.271,3.221]]  # V
+    # volts at 298 = [3.376, 3.351 ,3.326 ,2.926 ,3.126 ,3.026]
+    # volts at 268 = [3.376,3.352,3.271,3.221]
 
     # Define params_system file
     params_system = 'params_system_wiring.cfg'
@@ -52,7 +53,11 @@ def weight_mse(protocol, temp, applied_con):
     # function that can be personalized to 
     # assign different weights to different
     # operating conditions
-    weight_mse = 1
+
+    if protocol == 'pitt':
+        weight_mse = 0.2
+        # since the current goes from 0 to 10 and the voltage from 3.5 to 2.5
+        # the error on the current must be reduced
     return weight_mse
 
 def c0():

@@ -132,7 +132,8 @@ def run_mpet(scaled_parameters):
                                 return 0.25
                         
                     elif prot == 'pitt':
-                        time_tolerance = 300*60 # seconds
+                        time_tolerance = 3*60 # seconds
+                        print('TIME END SIMULATION: ', tim[-1])
                         if tim[-1] < 1e3-time_tolerance:
                             print('simulation did not finish')
                             print('decreasing time tolerance and running again')
@@ -225,7 +226,7 @@ def obj(parameters):
                     
                     out_interp = np.interp(time_exp, time_sim, out_sim)\
                     # remove initialization point
-                    
+
                     out_interp = out_interp[1:]
                     time_sim = time_sim[1:]
                     out_sim = out_sim[1:]
