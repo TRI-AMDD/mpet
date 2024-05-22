@@ -12,6 +12,12 @@ import random
 
 
 def import_data(temps, protocols, c_rates_cc, c_rates_gitt, cont_volts):
+    """
+    Import the data from the csv files.
+    Input: list of temperatures, protocols, and conditions
+    The files must be in the folder exp_data within the Param_estim folder in mpet
+    Output: dictionary with data for each temperature, protocol and condition
+    """
     # csv file
     # first raw is header
     # header = "Temp(K)\tCondition(C-Rate/Volts)\tSpecCap(mAh/cm2)\tStepTime(s)\tOutput(V/C-rate)\n"
@@ -24,9 +30,7 @@ def import_data(temps, protocols, c_rates_cc, c_rates_gitt, cont_volts):
         path = os.path.join(mpet_folder_path,'Param_estim' ,data_path)
         
         data = pd.read_csv(path, header=0, sep="\t")
-        # select data for the specified temperatures and C-rates
-        # data = data.loc[data['Temp(K)'].isin(temps)]
-        
+        # select data for the specified temperatures and C-rates    
         if protocol == 'cc':
             applied_conditions = c_rates_cc
         elif protocol == 'gitt':
@@ -34,19 +38,18 @@ def import_data(temps, protocols, c_rates_cc, c_rates_gitt, cont_volts):
         elif protocol == 'pitt':
             applied_conditions = cont_volts
 
-        # data = data.loc[data['Condition(C-Rate/Volts)'].isin(applied_conditions)]
-        # convert data to dictionary
-        t_ind = 0
-        for temp in temps:
+        for i, temp in enumerate(temps):
             dict_data[protocol][temp] = {}
             data_temp = data.loc[data['Temp(K)'] == temp]
-            for cond in applied_conditions[t_ind]:
+            for cond in applied_conditions[i]:
+                # for some reason 3.376 was not working, so I had to use > and < condition
+                data_cond_lower = data_temp.loc[data_temp['Condition(C-Rate/Volts)'] > (cond-0.02)]
+                data_cond = data_cond_lower.loc[data_cond_lower['Condition(C-Rate/Volts)'] < (cond+0.02)]
                 dict_data[protocol][temp][cond] = {}
-                data_crate = data_temp.loc[data_temp['Condition(C-Rate/Volts)'] == cond]
-                dict_data[protocol][temp][cond]['Output(V/C-rate)'] = np.array(data_crate['Output(V/C-rate)'])
-                dict_data[protocol][temp][cond]['StepTime(s)'] = np.array(data_crate['StepTime(s)'])
-                dict_data[protocol][temp][cond]['SpecCap(mAh/cm2)'] = np.array(data_crate['SpecCap(mAh/cm2)'])
-            t_ind += 1
+                dict_data[protocol][temp][cond]['Output(V/C-rate)'] = np.array(data_cond['Output(V/C-rate)'])
+                dict_data[protocol][temp][cond]['StepTime(s)'] = np.array(data_cond['StepTime(s)'])
+                dict_data[protocol][temp][cond]['SpecCap(mAh/cm2)'] = np.array(data_cond['SpecCap(mAh/cm2)'])
+            
     return dict_data
 
 
@@ -105,6 +108,18 @@ def get_voltage(sim_output, file_type, mpet_dir):
 
     return volt
 
+def get_current(sim_output, file_type, mpet_dir):
+    if file_type == 'mat':
+        curr = sim_output['current'][0]
+    elif file_type == 'hdf5':
+        curr = np.squeeze(sim_output['current'][...])
+
+    derived_values_pickle = os.path.join(mpet_dir,r'sim_output','input_dict_derived_values.p')
+    with open(derived_values_pickle, 'rb') as f:
+        dict_derived_values = pickle.load(f)
+    current = (curr * dict_derived_values['curr_ref'])
+    return current
+
 def get_ff(sim_output, file_type, mpet_dir):
     if file_type == 'mat':
         ff = sim_output['ffrac_c'][0]
@@ -117,7 +132,7 @@ def get_specap(sim_output, file_type, mpet_dir):
         ff = sim_output['ffrac_c'][0]
     elif file_type == 'hdf5':
         ff = np.squeeze(sim_output['ffrac_c'][...])
-    specap = ff*spec_cap()
+    specap = ff*sp_cap()
     return specap
 
 def get_time(sim_output, file_type, mpet_dir):
@@ -133,13 +148,14 @@ def get_time(sim_output, file_type, mpet_dir):
 
 def take_data_sim_out(mpet_dir):
     """
-    Extract Voltage, Capacity and Times curves from the folders.
+    Extract Voltage, Current, Capacity and Times curves from the folders.
     """
     sim_output, file_type = get_sim_out_data(mpet_dir)
     volt = get_voltage(sim_output, file_type,mpet_dir)
+    curr = get_current(sim_output, file_type,mpet_dir)
     spec_cap = get_specap(sim_output, file_type,mpet_dir)
     time = get_time(sim_output, file_type,mpet_dir)
-    return volt, spec_cap, time
+    return volt, curr, spec_cap, time
 
 def cut_off_voltage(mpet_dir):
     """
@@ -161,7 +177,7 @@ def build_gitt_segments(c_rate_gitt, numb_time_steps, ocv_time):
 
     time_per_step = 60/(c_rate_gitt*numb_time_steps)
     segments = "["
-    for i in range(numb_time_steps-5):
+    for i in range(int(numb_time_steps*0.7)):
         string = f"({c_rate_gitt},{time_per_step}), (0,{ocv_time}),"
         segments += string
     segments += "]"
@@ -187,17 +203,24 @@ def update_params_system(ensambles, params_system, param_c, param_a, protocol, t
         new_params_system["Sim Params"]["Crate"] = str(condition)
         new_params_system["Sim Params"]["T"] = str(temp)
         new_params_system["Sim Params"]["tramp"] = "0.01"
+        new_params_system["Sim Params"]["relTol"] = "1e-6"
+        new_params_system["Sim Params"]["absTol"] = "1e-6"
     elif protocol == 'gitt':
         new_params_system["Sim Params"]["profileType"] = 'CCsegments'
-        new_params_system["Sim Params"]["segments"] = build_gitt_segments(condition, 10, 30)
+        steps, rest_time = gitt_protocol()
+        new_params_system["Sim Params"]["segments"] = build_gitt_segments(condition, steps, rest_time)
         new_params_system["Sim Params"]["T"] = str(temp)
-        new_params_system["Sim Params"]["tramp"] = "1"
+        new_params_system["Sim Params"]["tramp"] = "0.5"
+        new_params_system["Sim Params"]["relTol"] = "1e-7"
+        new_params_system["Sim Params"]["absTol"] = "1e-7"
     elif protocol == 'pitt':
         new_params_system["Sim Params"]["profileType"] = 'CV'
-        new_params_system["Sim Params"]["V"] = str(condition)
+        new_params_system["Sim Params"]["Vset"] = str(condition)
         new_params_system["Sim Params"]["tend"] = "1e3" # minutes
         new_params_system["Sim Params"]["T"] = str(temp)
-        new_params_system["Sim Params"]["tramp"] = "0.001"
+        new_params_system["Sim Params"]["tramp"] = "0"
+        new_params_system["Sim Params"]["relTol"] = "1e-7"
+        new_params_system["Sim Params"]["absTol"] = "1e-7"
     for val in ensambles_s:
         section = val[0][0]
         key = val[0][1]

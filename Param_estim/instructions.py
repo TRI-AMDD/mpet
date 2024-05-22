@@ -7,7 +7,7 @@ def sim_instructions():
     optimization_method = 'GD'  # 'DE' or 'GD'
 
     ensable_system = [
-            [("Conductivity", "sig_carb_c"), ["1e-3", "1e-4"]],
+            [("Conductivity", "sig_carb_c"), ["1e-2", "1e-3"]],
             [("Conductivity", "E_sig_carb_c"), ["0.1", "0.4"]],
             # [("Electrodes", "k0_foil"), ["10","50"]],
                     ]
@@ -21,17 +21,19 @@ def sim_instructions():
     # Define C-rates and Temperatures
     
 
-    temperatures = [298, 268]  # K
+    temperatures = [298]  # K
     # Possible protocols: 'cc', 'pitt', 'gitt'
-    protocols = ['gitt']
+    protocols = ['pitt']
     # one list for each protocol and temperature
     # it is important that the order of temperatures and conditions is the same
     c_rates_cc = [[0.5,1,2],
                   [0.5,1]]  # C-rates
     c_rates_gitt = [[1],
                     [1]]  # C-rates
-    cont_volts = [[3.377, 3.351, 3.326],
-                  [3.376,3.352,3.271,3.221]]  # V
+    # cont_volts = [[3.377, 3.351, 3.326],
+                #   [3.376,3.352,3.271,3.221]]  # V
+    cont_volts = [[3.376, 3.326],
+                  ]  # V
 
     # Define params_system file
     params_system = 'params_system_wiring.cfg'
@@ -61,10 +63,15 @@ def discharge():
     discharge = True
     return discharge
 
-def spec_cap():
+def sp_cap():
     spec_cap = 1 # mAh/cm2
     return spec_cap
 
+def gitt_protocol():
+    steps = 20
+    rest_time = 30 # min
+    # NB: the simulation will run for 70% of the real steps to avoid crashing
+    return steps, rest_time
 # if it is necessary to neglect the first
 # initial points of the voltage curve
 def neglect_parts_volts():
