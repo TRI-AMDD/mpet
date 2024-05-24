@@ -133,7 +133,6 @@ def run_mpet(scaled_parameters):
                         
                     elif prot == 'pitt':
                         time_tolerance = 3*60 # seconds
-                        print('TIME END SIMULATION: ', tim[-1])
                         if tim[-1] < 1e3-time_tolerance:
                             print('simulation did not finish')
                             print('decreasing time tolerance and running again')
@@ -176,6 +175,13 @@ def obj(parameters):
 
     dict_res = run_mpet(parameters)
     if dict_res == 0.25:
+        with open(os.path.join(save_folder(),"log_book.txt"), 'a') as f:
+            param_rescaled = copy.deepcopy(parameters)
+            scaled_enasmble, scaling_factors = scale(ensamble_tot)
+            params = rescale(param_rescaled, scaling_factors)
+            for par in params:
+                f.write(str(par) + "\t")
+            f.write(str(0.25) + "\n")
         return 0.25
     
     weighted_mse = 0

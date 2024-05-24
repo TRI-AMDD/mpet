@@ -7,13 +7,13 @@ def sim_instructions():
     optimization_method = 'DE'  # 'DE' or 'GD'
 
     ensable_system = [
-            [("Conductivity", "sig_carb_c"), ["2e-4", "0.5e-4"]],
-            # [("Conductivity", "E_sig_carb_c"), ["0.1", "0.4"]],
+            [("Conductivity", "sig_carb_c"), ["3e-4", "1e-4"]],
+            [("Conductivity", "E_sig_carb_c"), ["0.1", "0.3"]],
             # [("Electrodes", "k0_foil"), ["10","50"]],
                     ]
 
     ensable_cathode = [
-            # [("Reactions", "k0"), ["5", "30"]],
+            [("Reactions", "k0"), ["10", "30"]],
                     ]
 
     ensable_anode = []
@@ -21,16 +21,16 @@ def sim_instructions():
     # Define C-rates and Temperatures
     
     # temps = [298,283,268]  # K
-    temperatures = [298]  # K
+    temperatures = [298, 268]  # K
     # Possible protocols: 'cc', 'pitt', 'gitt'
-    protocols = ['cc']
+    protocols = ['pitt']
     # one list for each protocol and temperature
     # it is important that the order of temperatures and conditions is the same
     c_rates_cc = [[0.5,2]]  # C-rates
     c_rates_gitt = [[1],
                     [1]]  # C-rates
-    cont_volts = [[3.377, 3.351, 3.326],
-                  [3.376,3.352,3.271,3.221]]  # V
+    cont_volts = [[3.376,3.326],
+                  [3.271]]  # V
     # volts at 298 = [3.376, 3.351 ,3.326 ,2.926 ,3.126 ,3.026]
     # volts at 268 = [3.376,3.352,3.271,3.221]
 
