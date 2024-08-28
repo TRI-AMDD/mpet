@@ -25,7 +25,12 @@ setuptools.setup(
         'mpet.electrode.reactions',
         'mpet.electrolyte','mpet.config'
     ],
-    install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema'],
+    install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema',
+                      'daetools @ https://sourceforge.net/projects/daetools/files/daetools/2.3.0/daetools-2.3.0-gnu_linux-x86_64.zip ; python_version >= "3.10" and python_version <= "3.12" and sys_platform == "linux"',
+                      'daetools @ https://sourceforge.net/projects/daetools/files/daetools/2.3.0/daetools-2.3.0-win64.zip ; python_version >= "3.10" and python_version <= "3.12" and sys_platform == "win32"',
+                      'daetools @ https://sourceforge.net/projects/daetools/files/Old-releases/daetools-old/1.9.0/daetools-1.9.0-gnu_linux-x86_64.tar.gz ; python_version >= "3.5" and python_version <= "3.7" and sys_platform == "linux"',
+                      'daetools @ https://sourceforge.net/projects/daetools/files/Old-releases/daetools-old/1.9.0/daetools-1.9.0-win64.zip ; python_version >= "3.5" and python_version <= "3.7" and sys_platform == "win32"',
+                      ],
     extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
                     'doc':['sphinx','sphinx_rtd_theme'],
                     'dashboard': ['dash', 'dash_bootstrap_components'],
