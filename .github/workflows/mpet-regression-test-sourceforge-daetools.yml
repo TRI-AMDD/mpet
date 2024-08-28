@@ -1,4 +1,4 @@
-name: MPET regression test with daetools 2.2.0 from sourceforge on python 3.10
+name: MPET regression test with daetools from sourceforge
 
 on: [push, workflow_dispatch]
 
@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.10", "3.11", "3.12"]
     defaults:
       run:
         shell: bash -l {0}
@@ -20,24 +20,10 @@ jobs:
         fetch-depth: 1
         path: mpet
 
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        mamba-version: "*"
-        channels: conda-forge,defaults
         activate-environment: mpet-env
-
-    - name: Install dependencies for daetools
-      run: |
-        mamba install numpy scipy matplotlib pyqt lxml pandas h5py openpyxl
-
-
-    - name: Install daetools from sourceforge
-      run: |
-        curl -L 'https://master.dl.sourceforge.net/project/daetools/daetools/2.2.0/daetools-2.2.0-gnu_linux-x86_64.zip' -o dae.zip
-        unzip dae.zip
-        cd daetools*
-        python setup.py install
 
     - name: Install additional dependencies using mpet's setup.py
       run: |
