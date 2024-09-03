@@ -4,59 +4,14 @@ Installation
 Prerequisites
 ----------------------------
 
-
   * Python 3.6 to 3.12
   * numpy, scipy, matplotlib, pyqt5, h5py, configparser, schema
   * daetools
 
-MPET on Windows
------------------------------
-
-MPET on Windows can be installed directly.
-
-The python version can be chosen with (ana)conda, for
-example:
-
-
-.. code-block:: bash
-
-  conda create -n mpet python=3.X pip
-  conda activate mpet
-
-Then install daetools via PyPi
-
-
-.. code-block:: bash
-
-  conda activate mpet
-  pip install daetools
-
-
-Then either clone the MPET repository if you want to work on the source code, or
-install the mpet package through PyPi (see steps below)
-
-
-MPET on Linux
------------------------------
-
-The easiest way to install MPET on Linux is via conda
-
-Install the daetools dependency via conda (in a new environment called mpet)
-
-
-.. code-block:: bash
-
-  conda create -n mpet -c conda-forge daetools
-  conda activate mpet
-
-Then either clone the MPET repository if you want to work on the source code, or
-install the mpet package through PyPi (see steps below)
-
-
 Install via PyPi
 -----------------------------
 
-MPET is available on PyPi, the Python Packaging Index and can be installed with :
+MPET is available on PyPi, the Python Packaging Index, and can be installed with:
 
 ``pip install mpet``
 
@@ -68,6 +23,15 @@ You can also download the source code and install the latest version
  * clone the repository : ``git clone https://github.com/TRI-AMDD/mpet.git``
  * Enter the mpet directory : ``cd mpet``
  * install MPET using pip ``pip install -e .``
+
+MPET on Linux
+-----------------------------
+
+Running MPET on Linux requires a few additional libraries, which are dependencies for daetools:
+
+.. code-block:: bash
+
+  apt-get install libgl1-mesa-glx libgfortran5
 
 Test your installation
 ---------------------------
