@@ -47,5 +47,3 @@ docs/apidocs
 
 # ignore python biuld files
 build/
-# ignore daetools
-daetools*
