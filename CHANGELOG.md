@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.0.1] - 2024-09-19
+### Added
+- daetools is now installed by setup.py on Windows and Linux, no need to download it separately.
+
+### Fixed
+- Github actions updates
+- Regression test all active Python versions
+
+
 ## [1.0.0] - 2024-04-11
 ### Added
 - Ability to simulate complex battery cycling protocols with 'profileType = CCCVCPcycle'.
