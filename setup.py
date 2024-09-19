@@ -25,7 +25,7 @@ setuptools.setup(
         'mpet.electrode.reactions',
         'mpet.electrolyte','mpet.config'
     ],
-    install_requires=['numpy','scipy','matplotlib','pyQt5', 'h5py', 'configparser', 'schema'],
+    install_requires=open('requirements.txt').readlines(),
     extras_require={'test':['pytest','coverage', 'coveralls', 'flake8'],
                     'doc':['sphinx','sphinx_rtd_theme'],
                     'dashboard': ['dash', 'dash_bootstrap_components'],
